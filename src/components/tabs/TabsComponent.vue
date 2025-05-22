@@ -28,13 +28,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import TabHeader from './TabHeader.vue';
 import TabContent from './TabContent.vue';
 import StaffTabContent from './tab-contents/StaffTabContent.vue';
 import LocationsTabContent from './tab-contents/LocationsTabContent.vue';
 import TaskTypesTabContent from './tab-contents/TaskTypesTabContent.vue';
 import SettingsTabContent from './tab-contents/SettingsTabContent.vue';
+
+const route = useRoute();
 
 const tabs = [
   { id: 'staff', label: 'Staff' },
@@ -43,7 +46,17 @@ const tabs = [
   { id: 'settings', label: 'Settings' }
 ];
 
+// Initialize active tab based on route
 const activeTab = ref('staff');
+
+// Set active tab based on current route
+onMounted(() => {
+  if (route.path === '/settings') {
+    activeTab.value = 'settings';
+  } else if (route.path === '/') {
+    activeTab.value = 'staff'; // Default for home route
+  }
+});
 
 function setActiveTab(tabId) {
   activeTab.value = tabId;
