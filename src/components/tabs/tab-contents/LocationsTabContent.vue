@@ -1,19 +1,15 @@
 <template>
   <div class="locations-tab">
-    <h3>Locations Management</h3>
-    <p>Locations content will go here</p>
+    <BuildingsList />
   </div>
 </template>
 
 <script setup>
-// Component logic will go here
+import BuildingsList from '../../../components/locations/BuildingsList.vue';
 </script>
 
 <style lang="scss" scoped>
 .locations-tab {
-  h3 {
-    margin-top: 0;
-    margin-bottom: 16px;
-  }
+  padding: 16px 0;
 }
 </style>
