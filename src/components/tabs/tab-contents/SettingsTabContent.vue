@@ -2,13 +2,8 @@
   <div class="settings-tab">
     <h3>App Settings</h3>
     
-    <!-- Shift Defaults Section -->
-    <div class="settings-section">
-      <ShiftDefaultsSettings />
-    </div>
-    
     <!-- Area Cover Section -->
-    <div class="settings-section">
+    <div class="settings-section area-cover-section">
       <h4>Area Cover</h4>
       <p class="section-description">
         Configure departments that need to be covered by porters during shifts. 
@@ -16,6 +11,11 @@
       </p>
       
       <AreaCoverTabs />
+    </div>
+    
+    <!-- Shift Defaults Section -->
+    <div class="settings-section">
+      <ShiftDefaultsSettings />
     </div>
   </div>
 </template>
@@ -57,6 +57,10 @@ onMounted(() => {
       color: rgba(0, 0, 0, 0.6);
       margin-bottom: 16px;
     }
+  }
+  
+  .area-cover-section {
+    margin-bottom: 64px; // Bigger gap between Area Cover and Shift Defaults
   }
 }
 </style>
