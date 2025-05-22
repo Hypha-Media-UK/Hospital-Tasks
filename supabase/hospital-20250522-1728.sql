@@ -133,6 +133,24 @@ CREATE TABLE IF NOT EXISTS "public"."departments" (
 ALTER TABLE "public"."departments" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."shift_defaults" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "shift_type" "text" NOT NULL,
+    "start_time" time without time zone NOT NULL,
+    "end_time" time without time zone NOT NULL,
+    "color" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."shift_defaults" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."shift_defaults" IS 'Stores default shift times and colors';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."staff" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "first_name" "text" NOT NULL,
@@ -236,6 +254,16 @@ ALTER TABLE ONLY "public"."buildings"
 
 ALTER TABLE ONLY "public"."departments"
     ADD CONSTRAINT "departments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."shift_defaults"
+    ADD CONSTRAINT "shift_defaults_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."shift_defaults"
+    ADD CONSTRAINT "shift_defaults_shift_type_key" UNIQUE ("shift_type");
 
 
 
@@ -435,6 +463,17 @@ ALTER TABLE ONLY "public"."task_type_department_assignments"
 ALTER TABLE ONLY "public"."task_type_department_assignments"
     ADD CONSTRAINT "task_type_department_assignments_task_type_id_fkey" FOREIGN KEY ("task_type_id") REFERENCES "public"."task_types"("id") ON DELETE CASCADE;
 
+
+
+CREATE POLICY "Allow authenticated users to manage shift defaults" ON "public"."shift_defaults" USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+CREATE POLICY "Allow authenticated users to read all shift defaults" ON "public"."shift_defaults" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+ALTER TABLE "public"."shift_defaults" ENABLE ROW LEVEL SECURITY;
 
 
 
@@ -641,6 +680,12 @@ GRANT ALL ON TABLE "public"."buildings" TO "service_role";
 GRANT ALL ON TABLE "public"."departments" TO "anon";
 GRANT ALL ON TABLE "public"."departments" TO "authenticated";
 GRANT ALL ON TABLE "public"."departments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."shift_defaults" TO "anon";
+GRANT ALL ON TABLE "public"."shift_defaults" TO "authenticated";
+GRANT ALL ON TABLE "public"."shift_defaults" TO "service_role";
 
 
 
@@ -908,6 +953,15 @@ INSERT INTO "public"."area_cover_porter_assignments" ("id", "area_cover_assignme
 	('1720cc56-dbe7-4708-b2eb-a486fa49870b', 'abac3b75-8e95-4557-9a80-527fa225e63a', 'f45a46c3-2240-462f-9895-494965ecd1a8', '08:00:00', '09:00:00', '2025-05-22 14:58:12.027621+00', '2025-05-22 15:34:55.623607+00'),
 	('5c568bc8-000e-42cb-8474-3d3aa16252b8', 'abac3b75-8e95-4557-9a80-527fa225e63a', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '09:00:00', '14:00:00', '2025-05-22 15:19:19.700741+00', '2025-05-22 15:34:55.686691+00'),
 	('82fd685c-504b-4ab4-885c-9d39ff733649', 'abac3b75-8e95-4557-9a80-527fa225e63a', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '15:59:00', '2025-05-22 15:34:42.044143+00', '2025-05-22 15:34:55.767884+00');
+
+
+--
+-- Data for Name: shift_defaults; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."shift_defaults" ("id", "shift_type", "start_time", "end_time", "color", "created_at", "updated_at") VALUES
+	('8472931e-f2fd-4827-a444-ab4827e706d2', 'day', '08:00:00', '16:00:00', '#4285F4', '2025-05-22 16:22:03.801345+00', '2025-05-22 16:22:03.801345+00'),
+	('f6a391c3-2e65-4b33-ad43-76857a81aa4d', 'night', '20:00:00', '08:00:00', '#673AB7', '2025-05-22 16:22:03.801345+00', '2025-05-22 16:22:03.801345+00');
 
 
 --
