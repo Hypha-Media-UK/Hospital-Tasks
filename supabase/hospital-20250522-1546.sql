@@ -77,6 +77,23 @@ SET default_tablespace = '';
 SET default_table_access_method = "heap";
 
 
+CREATE TABLE IF NOT EXISTS "public"."area_cover_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "department_id" "uuid" NOT NULL,
+    "shift_type" "text" NOT NULL,
+    "porter_id" "uuid",
+    "start_time" time without time zone NOT NULL,
+    "end_time" time without time zone NOT NULL,
+    "color" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "area_cover_assignments_shift_type_check" CHECK (("shift_type" = ANY (ARRAY['day'::"text", 'night'::"text"])))
+);
+
+
+ALTER TABLE "public"."area_cover_assignments" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."buildings" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "name" "text" NOT NULL,
@@ -178,6 +195,16 @@ CREATE TABLE IF NOT EXISTS "public"."task_types" (
 ALTER TABLE "public"."task_types" OWNER TO "postgres";
 
 
+ALTER TABLE ONLY "public"."area_cover_assignments"
+    ADD CONSTRAINT "area_cover_assignments_department_id_shift_type_key" UNIQUE ("department_id", "shift_type");
+
+
+
+ALTER TABLE ONLY "public"."area_cover_assignments"
+    ADD CONSTRAINT "area_cover_assignments_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."buildings"
     ADD CONSTRAINT "buildings_pkey" PRIMARY KEY ("id");
 
@@ -233,6 +260,18 @@ ALTER TABLE ONLY "public"."task_types"
 
 
 
+CREATE INDEX "area_cover_assignments_department_id_idx" ON "public"."area_cover_assignments" USING "btree" ("department_id");
+
+
+
+CREATE INDEX "area_cover_assignments_porter_id_idx" ON "public"."area_cover_assignments" USING "btree" ("porter_id");
+
+
+
+CREATE INDEX "area_cover_assignments_shift_type_idx" ON "public"."area_cover_assignments" USING "btree" ("shift_type");
+
+
+
 CREATE INDEX "departments_building_id_idx" ON "public"."departments" USING "btree" ("building_id");
 
 
@@ -273,6 +312,10 @@ CREATE INDEX "task_type_dept_assign_task_type_id_idx" ON "public"."task_type_dep
 
 
 
+CREATE OR REPLACE TRIGGER "update_area_cover_assignments_updated_at" BEFORE UPDATE ON "public"."area_cover_assignments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_buildings_updated_at" BEFORE UPDATE ON "public"."buildings" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
@@ -290,6 +333,16 @@ CREATE OR REPLACE TRIGGER "update_task_items_updated_at" BEFORE UPDATE ON "publi
 
 
 CREATE OR REPLACE TRIGGER "update_task_types_updated_at" BEFORE UPDATE ON "public"."task_types" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+ALTER TABLE ONLY "public"."area_cover_assignments"
+    ADD CONSTRAINT "area_cover_assignments_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "public"."departments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."area_cover_assignments"
+    ADD CONSTRAINT "area_cover_assignments_porter_id_fkey" FOREIGN KEY ("porter_id") REFERENCES "public"."staff"("id") ON DELETE SET NULL;
 
 
 
@@ -518,6 +571,12 @@ GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
 
 
 
+
+
+
+GRANT ALL ON TABLE "public"."area_cover_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."area_cover_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."area_cover_assignments" TO "service_role";
 
 
 
@@ -772,6 +831,19 @@ INSERT INTO "public"."departments" ("id", "building_id", "name", "is_frequent", 
 INSERT INTO "public"."staff" ("id", "first_name", "last_name", "role", "created_at", "updated_at", "department_id") VALUES
 	('f45a46c3-2240-462f-9895-494965ecd1a8', 'Michael', 'Johnson', 'porter', '2025-05-22 12:37:46.596932+00', '2025-05-22 12:57:04.760181+00', 'f47ac10b-58cc-4372-a567-0e02b2c3d485'),
 	('b88b49d1-c394-491e-aaa7-cc196250f0e4', 'John', 'Smith', 'supervisor', '2025-05-22 12:36:39.488519+00', '2025-05-22 12:57:52.483121+00', 'f47ac10b-58cc-4372-a567-0e02b2c3d484');
+
+
+--
+-- Data for Name: area_cover_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."area_cover_assignments" ("id", "department_id", "shift_type", "porter_id", "start_time", "end_time", "color", "created_at", "updated_at") VALUES
+	('30996744-4aea-4fce-a661-f97a6ab0ad9e', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'day', NULL, '09:00:00', '17:00:00', '#EA4335', '2025-05-22 14:23:42.63881+00', '2025-05-22 14:23:42.63881+00'),
+	('0e206879-4f2c-4c71-a1f6-ee717fad7d29', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', 'day', NULL, '07:30:00', '15:30:00', '#FBBC05', '2025-05-22 14:23:42.63881+00', '2025-05-22 14:23:42.63881+00'),
+	('da7c9105-d530-4b40-b3db-1e7a73145b70', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'night', NULL, '20:00:00', '04:00:00', '#4285F4', '2025-05-22 14:23:42.63881+00', '2025-05-22 14:23:42.63881+00'),
+	('b839a39a-ead1-4542-8cc9-0c9bfc0bb8d0', '831035d1-93e9-4683-af25-b40c2332b2fe', 'night', NULL, '22:00:00', '06:00:00', '#34A853', '2025-05-22 14:23:42.63881+00', '2025-05-22 14:23:42.63881+00'),
+	('abac3b75-8e95-4557-9a80-527fa225e63a', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'day', NULL, '08:00:00', '16:00:00', '#4285F4', '2025-05-22 14:31:17.181485+00', '2025-05-22 14:31:17.181485+00'),
+	('b560c26d-710d-46bb-b8ec-29a3f47857fe', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'day', 'f45a46c3-2240-462f-9895-494965ecd1a8', '08:00:00', '16:00:00', '#4285F4', '2025-05-22 14:23:42.63881+00', '2025-05-22 14:41:53.486925+00');
 
 
 --
