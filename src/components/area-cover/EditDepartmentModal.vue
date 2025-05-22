@@ -8,12 +8,21 @@
       
       <div class="modal-body">
         <div class="department-info">
-          <div class="department-name">{{ assignment.department.name }}</div>
-          <div class="department-building">{{ assignment.department.building?.name || 'Unknown Building' }}</div>
+          <div class="department-header">
+            <div class="department-title">
+              <div class="department-name">{{ assignment.department.name }}</div>
+              <div class="department-building">{{ assignment.department.building?.name || 'Unknown Building' }}</div>
+            </div>
+            <input 
+              type="color" 
+              id="color" 
+              v-model="localColor" 
+              class="color-picker"
+            />
+          </div>
         </div>
         
         <!-- Department Time settings -->
-        <div class="section-title">Required Coverage Period</div>
         <div class="time-settings">
           <div class="time-group">
             <label for="startTime">Start Time</label>
@@ -34,20 +43,10 @@
           </div>
         </div>
         
-        <!-- Color picker -->
-        <div class="color-settings">
-          <label for="color">Color</label>
-          <input 
-            type="color" 
-            id="color" 
-            v-model="localColor" 
-          />
-        </div>
-        
         <!-- Multiple Porter assignments -->
         <div class="porter-assignments">
           <div class="section-title">
-            Porter Assignments
+            Porters
             <span v-if="hasLocalCoverageGap" class="coverage-gap-indicator">
               Coverage Gap Detected
             </span>
@@ -505,16 +504,40 @@ onMounted(async () => {
 
 // Department info
 .department-info {
-  margin-bottom: 4px;
+  margin-bottom: 12px;
   
-  .department-name {
-    font-weight: 600;
-    font-size: mix.font-size('lg');
-  }
-  
-  .department-building {
-    font-size: mix.font-size('sm');
-    color: rgba(0, 0, 0, 0.6);
+  .department-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    .department-title {
+      flex: 1;
+    }
+    
+    .department-name {
+      font-weight: 600;
+      font-size: mix.font-size('lg');
+    }
+    
+    .department-building {
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
+    }
+    
+    .color-picker {
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('sm');
+      cursor: pointer;
+      
+      &:focus {
+        outline: none;
+        border-color: mix.color('primary');
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      }
+    }
   }
 }
 
@@ -606,7 +629,7 @@ onMounted(async () => {
   
   .porter-pill {
     min-width: 120px;
-    margin-right: 12px;
+    margin-right: auto;
     
     .porter-name {
       display: inline-block;
@@ -621,10 +644,10 @@ onMounted(async () => {
   }
   
   .porter-times {
-    flex: 1;
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-right: 8px;
     
     .time-group {
       input[type="time"] {
@@ -665,7 +688,7 @@ onMounted(async () => {
 
 .add-porter-button {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .add-porter-form {
