@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-container">
       <div class="modal-header">
-        <h3 class="modal-title">Assign Departments to {{ taskType.name }}</h3>
+        <h3 class="modal-title">Assign Departments to {{ taskItem.name }}</h3>
         <button class="modal-close" @click="$emit('close')">&times;</button>
       </div>
       
@@ -100,9 +100,9 @@
         <button 
           class="btn btn--primary" 
           @click="saveAssignments"
-          :disabled="taskTypesStore.loading.typeAssignments"
+          :disabled="taskTypesStore.loading.itemAssignments"
         >
-          {{ taskTypesStore.loading.typeAssignments ? 'Saving...' : 'Save' }}
+          {{ taskTypesStore.loading.itemAssignments ? 'Saving...' : 'Save' }}
         </button>
       </div>
     </div>
@@ -115,7 +115,7 @@ import { useLocationsStore } from '../../stores/locationsStore';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
 
 const props = defineProps({
-  taskType: {
+  taskItem: {
     type: Object,
     required: true
   }
@@ -141,8 +141,8 @@ onMounted(async () => {
     await locationsStore.initialize();
   }
   
-  // Get existing assignments for this task type
-  const existingAssignments = taskTypesStore.getTypeAssignmentsByTypeId(props.taskType.id);
+  // Get existing assignments for this task item
+  const existingAssignments = taskTypesStore.getItemAssignmentsByItemId(props.taskItem.id);
   
   // Find the origin and destination departments (if any)
   const originAssignment = existingAssignments.find(a => a.is_origin);
@@ -191,7 +191,7 @@ const saveAssignments = async () => {
   // Add origin assignment if selected
   if (selectedOrigin.value) {
     assignmentsArray.push({
-      task_type_id: props.taskType.id,
+      task_item_id: props.taskItem.id,
       department_id: selectedOrigin.value,
       is_origin: true,
       is_destination: false
@@ -210,7 +210,7 @@ const saveAssignments = async () => {
     } else {
       // Add a new assignment
       assignmentsArray.push({
-        task_type_id: props.taskType.id,
+        task_item_id: props.taskItem.id,
         department_id: selectedDestination.value,
         is_origin: false,
         is_destination: true
@@ -219,7 +219,7 @@ const saveAssignments = async () => {
   }
   
   // Save to database
-  const success = await taskTypesStore.updateTypeAssignments(props.taskType.id, assignmentsArray);
+  const success = await taskTypesStore.updateItemAssignments(props.taskItem.id, assignmentsArray);
   
   if (success) {
     emit('saved');

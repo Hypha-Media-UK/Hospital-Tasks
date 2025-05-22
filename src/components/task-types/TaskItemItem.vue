@@ -14,6 +14,14 @@
       <div class="task-item__name">{{ taskItem.name }}</div>
       <div class="task-item__actions">
         <IconButton 
+          title="Assign Departments"
+          :active="hasAssignments"
+          @click="showAssignmentModal = true"
+        >
+          <MapPinIcon :active="hasAssignments" />
+        </IconButton>
+        
+        <IconButton 
           title="Edit Task Item"
           @click="startEdit"
         >
@@ -28,15 +36,24 @@
         </IconButton>
       </div>
     </div>
+    
+    <ItemDepartmentAssignmentModal 
+      v-if="showAssignmentModal"
+      :taskItem="taskItem"
+      @close="showAssignmentModal = false"
+      @saved="onAssignmentsSaved"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, computed } from 'vue';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
 import IconButton from '../IconButton.vue';
 import EditIcon from '../icons/EditIcon.vue';
 import CloseIcon from '../icons/CloseIcon.vue';
+import MapPinIcon from '../icons/MapPinIcon.vue';
+import ItemDepartmentAssignmentModal from './ItemDepartmentAssignmentModal.vue';
 
 const props = defineProps({
   taskItem: {
@@ -51,6 +68,12 @@ const taskTypesStore = useTaskTypesStore();
 const isEditing = ref(false);
 const editName = ref('');
 const editInput = ref(null);
+const showAssignmentModal = ref(false);
+
+// Check if this task item has any department assignments
+const hasAssignments = computed(() => {
+  return taskTypesStore.hasItemAssignments(props.taskItem.id);
+});
 
 // Start editing the task item name
 const startEdit = async () => {
@@ -89,6 +112,11 @@ const confirmDelete = async () => {
     await taskTypesStore.deleteTaskItem(props.taskItem.id);
     emit('deleted', props.taskItem.id);
   }
+};
+
+// Handle assignments saved
+const onAssignmentsSaved = () => {
+  // This is just a hook in case we need to do something after assignments are saved
 };
 </script>
 

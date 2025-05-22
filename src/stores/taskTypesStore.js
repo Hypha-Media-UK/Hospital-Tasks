@@ -5,11 +5,13 @@ export const useTaskTypesStore = defineStore('taskTypes', {
   state: () => ({
     taskTypes: [],
     taskItems: [],
-    assignments: [],
+    typeAssignments: [],
+    itemAssignments: [],
     loading: {
       taskTypes: false,
       taskItems: false,
-      assignments: false
+      typeAssignments: false,
+      itemAssignments: false
     },
     error: null
   }),
@@ -31,21 +33,41 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       return state.taskItems.filter(item => item.task_type_id === typeId);
     },
     
-    getAssignmentsByTypeId: (state) => (typeId) => {
-      return state.assignments.filter(
+    // Task Type Assignment Getters
+    getTypeAssignmentsByTypeId: (state) => (typeId) => {
+      return state.typeAssignments.filter(
         assignment => assignment.task_type_id === typeId
       );
     },
     
-    hasAssignments: (state) => (typeId) => {
-      return state.assignments.some(
+    hasTypeAssignments: (state) => (typeId) => {
+      return state.typeAssignments.some(
         assignment => assignment.task_type_id === typeId
       );
     },
     
-    getDepartmentAssignment: (state) => (typeId, departmentId) => {
-      return state.assignments.find(
+    getTypeDepartmentAssignment: (state) => (typeId, departmentId) => {
+      return state.typeAssignments.find(
         a => a.task_type_id === typeId && a.department_id === departmentId
+      ) || { is_origin: false, is_destination: false };
+    },
+    
+    // Task Item Assignment Getters
+    getItemAssignmentsByItemId: (state) => (itemId) => {
+      return state.itemAssignments.filter(
+        assignment => assignment.task_item_id === itemId
+      );
+    },
+    
+    hasItemAssignments: (state) => (itemId) => {
+      return state.itemAssignments.some(
+        assignment => assignment.task_item_id === itemId
+      );
+    },
+    
+    getItemDepartmentAssignment: (state) => (itemId, departmentId) => {
+      return state.itemAssignments.find(
+        a => a.task_item_id === itemId && a.department_id === departmentId
       ) || { is_origin: false, is_destination: false };
     }
   },
@@ -145,7 +167,7 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         this.taskTypes = this.taskTypes.filter(t => t.id !== id);
         // Also remove associated task items and assignments
         this.taskItems = this.taskItems.filter(i => i.task_type_id !== id);
-        this.assignments = this.assignments.filter(a => a.task_type_id !== id);
+        this.typeAssignments = this.typeAssignments.filter(a => a.task_type_id !== id);
         
         return true;
       } catch (error) {
@@ -249,6 +271,8 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         
         // Remove from local state
         this.taskItems = this.taskItems.filter(i => i.id !== id);
+        // Also remove associated assignments
+        this.itemAssignments = this.itemAssignments.filter(a => a.task_item_id !== id);
         
         return true;
       } catch (error) {
@@ -260,9 +284,9 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       }
     },
     
-    // Department Assignments operations
-    async fetchAssignments() {
-      this.loading.assignments = true;
+    // Task Type Department Assignments operations
+    async fetchTypeAssignments() {
+      this.loading.typeAssignments = true;
       this.error = null;
       
       try {
@@ -272,17 +296,17 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         
         if (error) throw error;
         
-        this.assignments = data || [];
+        this.typeAssignments = data || [];
       } catch (error) {
-        console.error('Error fetching assignments:', error);
-        this.error = 'Failed to load department assignments';
+        console.error('Error fetching type assignments:', error);
+        this.error = 'Failed to load department assignments for task types';
       } finally {
-        this.loading.assignments = false;
+        this.loading.typeAssignments = false;
       }
     },
     
-    async updateAssignments(taskTypeId, departmentAssignments) {
-      this.loading.assignments = true;
+    async updateTypeAssignments(taskTypeId, departmentAssignments) {
+      this.loading.typeAssignments = true;
       this.error = null;
       
       try {
@@ -309,21 +333,88 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         }
         
         // Update local state
-        this.assignments = this.assignments.filter(
+        this.typeAssignments = this.typeAssignments.filter(
           a => a.task_type_id !== taskTypeId
         );
         
         validAssignments.forEach(assignment => {
-          this.assignments.push(assignment);
+          this.typeAssignments.push(assignment);
         });
         
         return true;
       } catch (error) {
-        console.error('Error updating assignments:', error);
-        this.error = 'Failed to update department assignments';
+        console.error('Error updating type assignments:', error);
+        this.error = 'Failed to update department assignments for task type';
         return false;
       } finally {
-        this.loading.assignments = false;
+        this.loading.typeAssignments = false;
+      }
+    },
+    
+    // Task Item Department Assignments operations
+    async fetchItemAssignments() {
+      this.loading.itemAssignments = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('task_item_department_assignments')
+          .select('*');
+        
+        if (error) throw error;
+        
+        this.itemAssignments = data || [];
+      } catch (error) {
+        console.error('Error fetching item assignments:', error);
+        this.error = 'Failed to load department assignments for task items';
+      } finally {
+        this.loading.itemAssignments = false;
+      }
+    },
+    
+    async updateItemAssignments(taskItemId, departmentAssignments) {
+      this.loading.itemAssignments = true;
+      this.error = null;
+      
+      try {
+        // First, delete all existing assignments for this task item
+        const { error: deleteError } = await supabase
+          .from('task_item_department_assignments')
+          .delete()
+          .eq('task_item_id', taskItemId);
+        
+        if (deleteError) throw deleteError;
+        
+        // Filter out assignments where both is_origin and is_destination are false
+        const validAssignments = departmentAssignments.filter(
+          a => a.is_origin || a.is_destination
+        );
+        
+        // If there are valid assignments, insert them
+        if (validAssignments.length > 0) {
+          const { error: insertError } = await supabase
+            .from('task_item_department_assignments')
+            .insert(validAssignments);
+          
+          if (insertError) throw insertError;
+        }
+        
+        // Update local state
+        this.itemAssignments = this.itemAssignments.filter(
+          a => a.task_item_id !== taskItemId
+        );
+        
+        validAssignments.forEach(assignment => {
+          this.itemAssignments.push(assignment);
+        });
+        
+        return true;
+      } catch (error) {
+        console.error('Error updating item assignments:', error);
+        this.error = 'Failed to update department assignments for task item';
+        return false;
+      } finally {
+        this.loading.itemAssignments = false;
       }
     },
     
@@ -332,7 +423,8 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       await Promise.all([
         this.fetchTaskTypes(),
         this.fetchTaskItems(),
-        this.fetchAssignments()
+        this.fetchTypeAssignments(),
+        this.fetchItemAssignments()
       ]);
     }
   }

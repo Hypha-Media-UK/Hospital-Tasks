@@ -77,7 +77,7 @@ const showAssignmentModal = ref(false);
 
 // Check if this task type has any department assignments
 const hasAssignments = computed(() => {
-  return taskTypesStore.hasAssignments(props.taskType.id);
+  return taskTypesStore.hasTypeAssignments(props.taskType.id);
 });
 
 // Start editing the task type name
