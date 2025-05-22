@@ -3,6 +3,7 @@
     class="department-card" 
     :style="{ borderLeftColor: assignment.color || '#4285F4' }"
     @click="showEditModal = true"
+    :class="{ 'has-coverage-gap': hasCoverageGap }"
   >
     <div class="department-card__content">
       <div class="department-card__name">
@@ -11,9 +12,11 @@
       <div class="department-card__building">
         {{ assignment.department.building?.name || 'Unknown Building' }}
       </div>
-      <div v-if="assignment.porter" class="department-card__porter">
-        <span class="porter-name">
-          {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+      
+      <div v-if="porterAssignments.length > 0" class="department-card__porters">
+        <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
+          {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
+          <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
         </span>
       </div>
     </div>
@@ -30,7 +33,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import EditDepartmentModal from './EditDepartmentModal.vue';
 
 const props = defineProps({
@@ -42,7 +46,18 @@ const props = defineProps({
 
 const emit = defineEmits(['update', 'remove']);
 
+const areaCoverStore = useAreaCoverStore();
 const showEditModal = ref(false);
+
+// Get porter assignments for this area
+const porterAssignments = computed(() => {
+  return areaCoverStore.getPorterAssignmentsByAreaId(props.assignment.id);
+});
+
+// Check if there's a coverage gap
+const hasCoverageGap = computed(() => {
+  return areaCoverStore.hasCoverageGap(props.assignment.id);
+});
 
 // Forward events from modal to parent
 const handleUpdate = (assignmentId, updates) => {
@@ -66,10 +81,25 @@ const handleRemove = (assignmentId) => {
   overflow: hidden;
   transition: box-shadow 0.2s ease;
   cursor: pointer;
+  position: relative;
   
   &:hover {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     background-color: rgba(0, 0, 0, 0.01);
+  }
+  
+  &.has-coverage-gap {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 0 12px 12px 0;
+      border-color: transparent #EA4335 transparent transparent;
+    }
   }
   
   &__content {
@@ -85,20 +115,35 @@ const handleRemove = (assignmentId) => {
   &__building {
     font-size: mix.font-size('sm');
     color: rgba(0, 0, 0, 0.6);
-    margin-bottom: 4px;
+    margin-bottom: 8px;
   }
   
-  &__porter {
+  &__porters {
     margin-top: 8px;
     
-    .porter-name {
-      display: inline-block;
+    .porter-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       background-color: rgba(66, 133, 244, 0.1);
       color: mix.color('primary');
       border-radius: 100px;
       padding: 2px 8px;
       font-size: mix.font-size('xs');
       font-weight: 500;
+      
+      &.has-coverage-gap {
+        background-color: rgba(234, 67, 53, 0.1);
+        color: #EA4335;
+      }
+      
+      .gap-indicator {
+        background-color: #EA4335;
+        color: white;
+        font-size: mix.font-size('2xs');
+        padding: 1px 4px;
+        border-radius: 100px;
+      }
     }
   }
 }

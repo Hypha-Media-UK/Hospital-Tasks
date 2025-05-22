@@ -12,7 +12,8 @@
           <div class="department-building">{{ assignment.department.building?.name || 'Unknown Building' }}</div>
         </div>
         
-        <!-- Time settings -->
+        <!-- Department Time settings -->
+        <div class="section-title">Required Coverage Period</div>
         <div class="time-settings">
           <div class="time-group">
             <label for="startTime">Start Time</label>
@@ -46,37 +47,115 @@
           />
         </div>
         
-        <!-- Porter assignment -->
-        <div class="porter-assignment">
-          <label>Assigned Porter</label>
-          
-          <div v-if="assignment.porter" class="porter-pill">
-            <span class="porter-name">
-              {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+        <!-- Multiple Porter assignments -->
+        <div class="porter-assignments">
+          <div class="section-title">
+            Porter Assignments
+            <span v-if="hasCoverageGap" class="coverage-gap-indicator">
+              Coverage Gap Detected
             </span>
-            <button 
-              class="porter-remove" 
-              title="Remove porter assignment"
-              @click="removePorter"
-            >
-              &times;
-            </button>
           </div>
           
-          <div v-else class="porter-selector">
-            <select 
-              v-model="selectedPorterId" 
-              @change="assignPorter"
+          <div v-if="porterAssignments.length === 0" class="empty-state">
+            No porters assigned. Add a porter to provide coverage.
+          </div>
+          
+          <div v-else class="porter-list">
+            <div 
+              v-for="porterAssignment in porterAssignments" 
+              :key="porterAssignment.id"
+              class="porter-assignment-item"
             >
-              <option value="">-- Select Porter --</option>
-              <option 
-                v-for="porter in porters" 
-                :key="porter.id" 
-                :value="porter.id"
+              <div class="porter-pill">
+                <span class="porter-name">
+                  {{ porterAssignment.porter.first_name }} {{ porterAssignment.porter.last_name }}
+                </span>
+              </div>
+              
+              <div class="porter-times">
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="porterAssignment.start_time_display" 
+                    @change="updatePorterTime(porterAssignment)"
+                  />
+                </div>
+                <span class="time-separator">to</span>
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="porterAssignment.end_time_display" 
+                    @change="updatePorterTime(porterAssignment)"
+                  />
+                </div>
+              </div>
+              
+              <button 
+                class="btn btn--icon" 
+                title="Remove porter assignment"
+                @click="removePorterAssignment(porterAssignment.id)"
               >
-                {{ porter.first_name }} {{ porter.last_name }}
-              </option>
-            </select>
+                &times;
+              </button>
+            </div>
+          </div>
+          
+          <div class="add-porter">
+            <div v-if="!showAddPorter" class="add-porter-button">
+              <button 
+                class="btn btn--primary" 
+                @click="showAddPorter = true"
+              >
+                Add Porter
+              </button>
+            </div>
+            
+            <div v-else class="add-porter-form">
+              <div class="form-row">
+                <select v-model="newPorterAssignment.porter_id">
+                  <option value="">-- Select Porter --</option>
+                  <option 
+                    v-for="porter in availablePorters" 
+                    :key="porter.id" 
+                    :value="porter.id"
+                  >
+                    {{ porter.first_name }} {{ porter.last_name }}
+                  </option>
+                </select>
+                
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="newPorterAssignment.start_time"
+                    placeholder="Start Time"
+                  />
+                </div>
+                
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="newPorterAssignment.end_time"
+                    placeholder="End Time"
+                  />
+                </div>
+                
+                <div class="action-buttons">
+                  <button 
+                    class="btn btn--small btn--primary" 
+                    @click="addPorterAssignment"
+                    :disabled="!newPorterAssignment.porter_id || !newPorterAssignment.start_time || !newPorterAssignment.end_time"
+                  >
+                    Add
+                  </button>
+                  <button 
+                    class="btn btn--small btn--secondary" 
+                    @click="showAddPorter = false"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -120,11 +199,36 @@ const staffStore = useStaffStore();
 const startTime = ref('');
 const endTime = ref('');
 const color = ref('#4285F4');
-const selectedPorterId = ref('');
+const showAddPorter = ref(false);
+const newPorterAssignment = ref({
+  porter_id: '',
+  start_time: '',
+  end_time: ''
+});
 
-// Computed
-const porters = computed(() => {
-  return staffStore.sortedPorters;
+// Computed properties
+const porterAssignments = computed(() => {
+  const assignments = areaCoverStore.getPorterAssignmentsByAreaId(props.assignment.id);
+  
+  // Add display time properties for the UI
+  return assignments.map(pa => ({
+    ...pa,
+    start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
+    end_time_display: pa.end_time ? pa.end_time.slice(0, 5) : ''
+  }));
+});
+
+const availablePorters = computed(() => {
+  // Get all porters
+  const allPorters = staffStore.sortedPorters || [];
+  
+  // Filter out porters that are already assigned to this area cover
+  const assignedPorterIds = porterAssignments.value.map(pa => pa.porter_id);
+  return allPorters.filter(porter => !assignedPorterIds.includes(porter.id));
+});
+
+const hasCoverageGap = computed(() => {
+  return areaCoverStore.hasCoverageGap(props.assignment.id);
 });
 
 // Methods
@@ -139,14 +243,41 @@ const updateColor = () => {
   emit('update', props.assignment.id, { color: color.value });
 };
 
-const assignPorter = () => {
-  if (selectedPorterId.value) {
-    areaCoverStore.assignPorter(props.assignment.id, selectedPorterId.value);
-  }
+const updatePorterTime = (porterAssignment) => {
+  areaCoverStore.updatePorterAssignment(porterAssignment.id, {
+    start_time: porterAssignment.start_time_display + ':00',
+    end_time: porterAssignment.end_time_display + ':00'
+  });
 };
 
-const removePorter = () => {
-  areaCoverStore.removePorter(props.assignment.id);
+const addPorterAssignment = async () => {
+  if (!newPorterAssignment.value.porter_id || 
+      !newPorterAssignment.value.start_time || 
+      !newPorterAssignment.value.end_time) {
+    return;
+  }
+  
+  await areaCoverStore.addPorterAssignment(
+    props.assignment.id,
+    newPorterAssignment.value.porter_id,
+    newPorterAssignment.value.start_time + ':00',
+    newPorterAssignment.value.end_time + ':00'
+  );
+  
+  // Reset form
+  newPorterAssignment.value = {
+    porter_id: '',
+    start_time: '',
+    end_time: ''
+  };
+  
+  showAddPorter.value = false;
+};
+
+const removePorterAssignment = async (porterAssignmentId) => {
+  if (confirm('Are you sure you want to remove this porter assignment?')) {
+    await areaCoverStore.removePorterAssignment(porterAssignmentId);
+  }
 };
 
 const confirmRemove = () => {
@@ -182,6 +313,7 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 @use '../../assets/scss/mixins' as mix;
+@use 'sass:color';
 
 // Modal styles
 .modal-overlay {
@@ -201,7 +333,7 @@ onMounted(async () => {
   background-color: white;
   border-radius: mix.radius('lg');
   width: 90%;
-  max-width: 500px;
+  max-width: 550px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -246,6 +378,16 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+// Section title
+.section-title {
+  font-weight: 600;
+  font-size: mix.font-size('md');
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 // Department info
@@ -320,67 +462,163 @@ onMounted(async () => {
   }
 }
 
-// Porter assignment
-.porter-assignment {
+// Porter assignments
+.porter-assignments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  padding: 12px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: mix.radius('md');
+}
+
+.porter-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.porter-assignment-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: mix.radius('md');
+  background-color: white;
   
-  label {
-    font-size: mix.font-size('sm');
-    font-weight: 500;
-    color: rgba(0, 0, 0, 0.7);
+  .porter-pill {
+    min-width: 120px;
+    margin-right: 12px;
+    
+    .porter-name {
+      display: inline-block;
+      background-color: rgba(66, 133, 244, 0.1);
+      color: mix.color('primary');
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: mix.font-size('sm');
+      font-weight: 500;
+      white-space: nowrap;
+    }
   }
   
-  .porter-selector {
+  .porter-times {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .time-group {
+      input[type="time"] {
+        padding: 4px 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: mix.radius('sm');
+        font-size: mix.font-size('sm');
+      }
+    }
+    
+    .time-separator {
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+  
+  .btn--icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.6);
+    
+    &:hover {
+      background-color: rgba(234, 67, 53, 0.1);
+      color: #EA4335;
+    }
+  }
+}
+
+.add-porter {
+  margin-top: 8px;
+}
+
+.add-porter-button {
+  display: flex;
+  justify-content: center;
+}
+
+.add-porter-form {
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: mix.radius('md');
+  background-color: rgba(0, 0, 0, 0.02);
+  
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    
     select {
-      width: 100%;
+      flex: 1;
+      min-width: 150px;
       padding: 6px 8px;
       border: 1px solid rgba(0, 0, 0, 0.2);
       border-radius: mix.radius('sm');
-      font-size: mix.font-size('md');
-      
-      &:focus {
-        outline: none;
-        border-color: mix.color('primary');
-        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-      }
-    }
-  }
-  
-  .porter-pill {
-    display: inline-flex;
-    align-items: center;
-    background-color: mix.color('primary');
-    color: white;
-    border-radius: 100px;
-    padding: 4px 8px 4px 12px;
-    gap: 8px;
-    
-    .porter-name {
-      font-weight: 500;
       font-size: mix.font-size('sm');
     }
     
-    .porter-remove {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background-color: rgba(255, 255, 255, 0.2);
-      border: none;
-      font-size: 12px;
-      line-height: 1;
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .time-group {
+      width: 90px;
       
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.3);
+      input[type="time"] {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: mix.radius('sm');
+        font-size: mix.font-size('sm');
+      }
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .form-row {
+      flex-direction: column;
+      align-items: stretch;
+      
+      select, .time-group {
+        width: 100%;
+      }
+      
+      .action-buttons {
+        margin-top: 8px;
+        justify-content: flex-end;
       }
     }
   }
+}
+
+// Coverage gap indicator
+.coverage-gap-indicator {
+  background-color: rgba(234, 67, 53, 0.1);
+  color: #EA4335;
+  font-size: mix.font-size('xs');
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 100px;
 }
 
 // Button styles
@@ -397,7 +635,7 @@ onMounted(async () => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: rgba(66, 133, 244, 0.8);
+      background-color: color.adjust(mix.color('primary'), $lightness: -5%);
     }
   }
   
@@ -417,6 +655,11 @@ onMounted(async () => {
     &:hover:not(:disabled) {
       background-color: rgba(234, 67, 53, 0.2);
     }
+  }
+  
+  &--small {
+    padding: 4px 8px;
+    font-size: mix.font-size('sm');
   }
   
   &:disabled {

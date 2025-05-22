@@ -5,10 +5,12 @@ export const useAreaCoverStore = defineStore('areaCover', {
   state: () => ({
     dayAssignments: [],
     nightAssignments: [],
+    porterAssignments: [], // New state for porter assignments
     loading: {
       day: false,
       night: false,
-      save: false
+      save: false,
+      porters: false
     },
     error: null
   }),
@@ -31,6 +33,52 @@ export const useAreaCoverStore = defineStore('areaCover', {
     // Get assignment by ID
     getAssignmentById: (state) => (id) => {
       return [...state.dayAssignments, ...state.nightAssignments].find(a => a.id === id);
+    },
+    
+    // Get porter assignments for a specific area cover assignment
+    getPorterAssignmentsByAreaId: (state) => (areaCoverId) => {
+      return state.porterAssignments.filter(pa => pa.area_cover_assignment_id === areaCoverId);
+    },
+    
+    // Check for coverage gaps in a specific area cover assignment
+    hasCoverageGap: (state) => (areaCoverId) => {
+      const assignment = state.getAssignmentById(areaCoverId);
+      if (!assignment) return false;
+      
+      const porterAssignments = state.getPorterAssignmentsByAreaId(areaCoverId);
+      if (porterAssignments.length === 0) return true; // No porters means complete gap
+      
+      // Convert department times to minutes for easier comparison
+      const departmentStart = timeToMinutes(assignment.start_time);
+      const departmentEnd = timeToMinutes(assignment.end_time);
+      
+      // Sort porter assignments by start time
+      const sortedAssignments = [...porterAssignments].sort((a, b) => {
+        return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+      });
+      
+      // Check for gap at the beginning
+      if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
+        return true;
+      }
+      
+      // Check for gaps between porter assignments
+      for (let i = 0; i < sortedAssignments.length - 1; i++) {
+        const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+        const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+        
+        if (nextStart > currentEnd) {
+          return true;
+        }
+      }
+      
+      // Check for gap at the end
+      const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+      if (lastEnd < departmentEnd) {
+        return true;
+      }
+      
+      return false;
     },
     
     // Get departments that can be added to day shift (not already added)
@@ -94,11 +142,6 @@ export const useAreaCoverStore = defineStore('areaCover', {
               name,
               building_id,
               building:building_id(id, name)
-            ),
-            porter:porter_id(
-              id,
-              first_name,
-              last_name
             )
           `)
           .eq('shift_type', shiftType);
@@ -111,6 +154,12 @@ export const useAreaCoverStore = defineStore('areaCover', {
           this.nightAssignments = data || [];
         }
         
+        // Fetch porter assignments for these area covers
+        if (data && data.length > 0) {
+          const areaCoverIds = data.map(a => a.id);
+          await this.fetchPorterAssignments(areaCoverIds);
+        }
+        
         return data;
       } catch (error) {
         console.error(`Error fetching ${shiftType} assignments:`, error);
@@ -118,6 +167,39 @@ export const useAreaCoverStore = defineStore('areaCover', {
         return [];
       } finally {
         this.loading[shiftType] = false;
+      }
+    },
+    
+    // Fetch porter assignments for specified area cover assignments
+    async fetchPorterAssignments(areaCoverIds) {
+      if (!areaCoverIds || areaCoverIds.length === 0) return [];
+      
+      this.loading.porters = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('area_cover_porter_assignments')
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `)
+          .in('area_cover_assignment_id', areaCoverIds);
+        
+        if (error) throw error;
+        
+        this.porterAssignments = data || [];
+        return data;
+      } catch (error) {
+        console.error('Error fetching porter assignments:', error);
+        this.error = 'Failed to load porter assignments';
+        return [];
+      } finally {
+        this.loading.porters = false;
       }
     },
     
@@ -183,11 +265,6 @@ export const useAreaCoverStore = defineStore('areaCover', {
               name,
               building_id,
               building:building_id(id, name)
-            ),
-            porter:porter_id(
-              id,
-              first_name,
-              last_name
             )
           `);
         
@@ -248,6 +325,11 @@ export const useAreaCoverStore = defineStore('areaCover', {
           this.nightAssignments = this.nightAssignments.filter(a => a.id !== assignmentId);
         }
         
+        // Also remove all porter assignments for this area cover
+        this.porterAssignments = this.porterAssignments.filter(
+          pa => pa.area_cover_assignment_id !== assignmentId
+        );
+        
         return true;
       } catch (error) {
         console.error('Error removing department from area cover:', error);
@@ -258,14 +340,107 @@ export const useAreaCoverStore = defineStore('areaCover', {
       }
     },
     
-    // Assign porter to department
-    async assignPorter(assignmentId, porterId) {
-      return this.updateDepartment(assignmentId, { porter_id: porterId });
+    // Add porter assignment to an area cover
+    async addPorterAssignment(areaCoverId, porterId, startTime, endTime) {
+      this.loading.save = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('area_cover_porter_assignments')
+          .insert({
+            area_cover_assignment_id: areaCoverId,
+            porter_id: porterId,
+            start_time: startTime,
+            end_time: endTime
+          })
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          this.porterAssignments.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding porter assignment:', error);
+        this.error = 'Failed to add porter assignment';
+        return null;
+      } finally {
+        this.loading.save = false;
+      }
+    },
+    
+    // Update porter assignment
+    async updatePorterAssignment(porterAssignmentId, updates) {
+      this.loading.save = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('area_cover_porter_assignments')
+          .update(updates)
+          .eq('id', porterAssignmentId)
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const index = this.porterAssignments.findIndex(pa => pa.id === porterAssignmentId);
+          if (index !== -1) {
+            this.porterAssignments[index] = data[0];
+          }
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error updating porter assignment:', error);
+        this.error = 'Failed to update porter assignment';
+        return null;
+      } finally {
+        this.loading.save = false;
+      }
     },
     
     // Remove porter assignment
-    async removePorter(assignmentId) {
-      return this.updateDepartment(assignmentId, { porter_id: null });
+    async removePorterAssignment(porterAssignmentId) {
+      this.loading.save = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('area_cover_porter_assignments')
+          .delete()
+          .eq('id', porterAssignmentId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.porterAssignments = this.porterAssignments.filter(pa => pa.id !== porterAssignmentId);
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing porter assignment:', error);
+        this.error = 'Failed to remove porter assignment';
+        return false;
+      } finally {
+        this.loading.save = false;
+      }
     },
     
     // Initialize data
@@ -277,3 +452,11 @@ export const useAreaCoverStore = defineStore('areaCover', {
     }
   }
 });
+
+// Helper function to convert time string (HH:MM:SS) to minutes
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
