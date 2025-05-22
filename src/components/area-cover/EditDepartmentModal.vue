@@ -232,6 +232,18 @@ const hasLocalCoverageGap = computed(() => {
   const departmentStart = timeToMinutes(localStartTime.value + ':00');
   const departmentEnd = timeToMinutes(localEndTime.value + ':00');
   
+  // First check if any single porter covers the entire time period
+  const fullCoverageExists = localPorterAssignments.value.some(assignment => {
+    const porterStart = timeToMinutes(assignment.start_time_display + ':00');
+    const porterEnd = timeToMinutes(assignment.end_time_display + ':00');
+    return porterStart <= departmentStart && porterEnd >= departmentEnd;
+  });
+  
+  // If at least one porter provides full coverage, there's no gap
+  if (fullCoverageExists) {
+    return false;
+  }
+  
   // Sort porter assignments by start time
   const sortedAssignments = [...localPorterAssignments.value].sort((a, b) => {
     return timeToMinutes(a.start_time_display + ':00') - timeToMinutes(b.start_time_display + ':00');

@@ -52,6 +52,18 @@ export const useAreaCoverStore = defineStore('areaCover', {
       const departmentStart = timeToMinutes(assignment.start_time);
       const departmentEnd = timeToMinutes(assignment.end_time);
       
+      // First check if any single porter covers the entire time period
+      const fullCoverageExists = porterAssignments.some(assignment => {
+        const porterStart = timeToMinutes(assignment.start_time);
+        const porterEnd = timeToMinutes(assignment.end_time);
+        return porterStart <= departmentStart && porterEnd >= departmentEnd;
+      });
+      
+      // If at least one porter provides full coverage, there's no gap
+      if (fullCoverageExists) {
+        return false;
+      }
+      
       // Sort porter assignments by start time
       const sortedAssignments = [...porterAssignments].sort((a, b) => {
         return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
