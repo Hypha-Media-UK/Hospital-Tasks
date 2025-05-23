@@ -67,17 +67,16 @@
               </button>
             </div>
           </div>
-        </div>
-        
-        <!-- Area Coverage Section -->
-        <div class="card mb-4">
-          <div class="area-cover-header">
-            <h2 class="card__title">Area Coverage</h2>
+          
+          <!-- Area Coverage Section (Nested inside shift-info) -->
+          <div class="shift-area-coverage">
+            <h3 class="section-title">Area Coverage</h3>
+            <ShiftAreaCoverList 
+              :shift-id="shift.id" 
+              :shift-type="determineAreaCoverType(shift)"
+              :show-header="false"
+            />
           </div>
-          <ShiftAreaCoverList 
-            :shift-id="shift.id" 
-            :shift-type="determineAreaCoverType(shift)" 
-          />
         </div>
         
         <!-- Tasks Section -->
@@ -796,6 +795,19 @@ function isWeekend(date) {
 
 .shift-details {
   margin: 0.5rem 0;
+}
+
+.shift-area-coverage {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding-top: 1rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #333;
 }
 
 .confirmation-box {

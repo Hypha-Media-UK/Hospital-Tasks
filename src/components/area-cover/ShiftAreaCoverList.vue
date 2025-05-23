@@ -1,7 +1,7 @@
 <template>
   <div class="area-cover-shift-list">
     <div class="area-cover-shift-list__header">
-      <h4>{{ shiftTypeLabel }} Coverage</h4>
+      <h4 v-if="showHeader">{{ shiftTypeLabel }} Coverage</h4>
       <button class="btn btn--primary" @click="showDepartmentSelector = true">
         Add Department
       </button>
@@ -84,6 +84,10 @@ const props = defineProps({
     type: String,
     required: true,
     validator: (value) => ['day', 'night', 'week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(value)
+  },
+  showHeader: {
+    type: Boolean,
+    default: true
   }
 });
 
