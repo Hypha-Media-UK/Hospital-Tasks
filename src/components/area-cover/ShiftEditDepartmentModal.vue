@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay">
+  <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-container">
       <div class="modal-header">
         <h3 class="modal-title">
@@ -26,16 +26,6 @@
             id="end-time"
             v-model="formData.endTime"
             class="form-control"
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="color">Color</label>
-          <input 
-            type="color"
-            id="color"
-            v-model="formData.color"
-            class="form-control color-input"
           />
         </div>
         
@@ -113,7 +103,7 @@
     </div>
     
     <!-- Add/Edit Porter Modal -->
-    <div v-if="showPorterModal" class="nested-modal-overlay">
+    <div v-if="showPorterModal" class="nested-modal-overlay" @click.self="closePorterModal">
       <div class="nested-modal-container">
         <div class="modal-header">
           <h3 class="modal-title">
