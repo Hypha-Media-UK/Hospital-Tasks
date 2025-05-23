@@ -151,6 +151,39 @@ COMMENT ON TABLE "public"."shift_defaults" IS 'Stores default shift times and co
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."shift_tasks" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "shift_id" "uuid" NOT NULL,
+    "task_item_id" "uuid" NOT NULL,
+    "porter_id" "uuid",
+    "origin_department_id" "uuid",
+    "destination_department_id" "uuid",
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "shift_tasks_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'completed'::"text"])))
+);
+
+
+ALTER TABLE "public"."shift_tasks" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."shifts" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "supervisor_id" "uuid" NOT NULL,
+    "shift_type" "text" NOT NULL,
+    "start_time" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "end_time" timestamp with time zone,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    CONSTRAINT "shifts_shift_type_check" CHECK (("shift_type" = ANY (ARRAY['day'::"text", 'night'::"text"])))
+);
+
+
+ALTER TABLE "public"."shifts" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."staff" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "first_name" "text" NOT NULL,
@@ -267,6 +300,16 @@ ALTER TABLE ONLY "public"."shift_defaults"
 
 
 
+ALTER TABLE ONLY "public"."shift_tasks"
+    ADD CONSTRAINT "shift_tasks_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."shifts"
+    ADD CONSTRAINT "shifts_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."staff_department_assignments"
     ADD CONSTRAINT "staff_department_assignments_pkey" PRIMARY KEY ("id");
 
@@ -336,6 +379,42 @@ CREATE INDEX "departments_building_id_idx" ON "public"."departments" USING "btre
 
 
 
+CREATE INDEX "shift_tasks_destination_department_id_idx" ON "public"."shift_tasks" USING "btree" ("destination_department_id");
+
+
+
+CREATE INDEX "shift_tasks_origin_department_id_idx" ON "public"."shift_tasks" USING "btree" ("origin_department_id");
+
+
+
+CREATE INDEX "shift_tasks_porter_id_idx" ON "public"."shift_tasks" USING "btree" ("porter_id");
+
+
+
+CREATE INDEX "shift_tasks_shift_id_idx" ON "public"."shift_tasks" USING "btree" ("shift_id");
+
+
+
+CREATE INDEX "shift_tasks_status_idx" ON "public"."shift_tasks" USING "btree" ("status");
+
+
+
+CREATE INDEX "shift_tasks_task_item_id_idx" ON "public"."shift_tasks" USING "btree" ("task_item_id");
+
+
+
+CREATE INDEX "shifts_is_active_idx" ON "public"."shifts" USING "btree" ("is_active");
+
+
+
+CREATE INDEX "shifts_shift_type_idx" ON "public"."shifts" USING "btree" ("shift_type");
+
+
+
+CREATE INDEX "shifts_supervisor_id_idx" ON "public"."shifts" USING "btree" ("supervisor_id");
+
+
+
 CREATE INDEX "staff_department_id_idx" ON "public"."staff" USING "btree" ("department_id");
 
 
@@ -388,6 +467,14 @@ CREATE OR REPLACE TRIGGER "update_departments_updated_at" BEFORE UPDATE ON "publ
 
 
 
+CREATE OR REPLACE TRIGGER "update_shift_tasks_updated_at" BEFORE UPDATE ON "public"."shift_tasks" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_shifts_updated_at" BEFORE UPDATE ON "public"."shifts" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_staff_updated_at" BEFORE UPDATE ON "public"."staff" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
@@ -422,6 +509,36 @@ ALTER TABLE ONLY "public"."area_cover_porter_assignments"
 
 ALTER TABLE ONLY "public"."departments"
     ADD CONSTRAINT "departments_building_id_fkey" FOREIGN KEY ("building_id") REFERENCES "public"."buildings"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."shift_tasks"
+    ADD CONSTRAINT "shift_tasks_destination_department_id_fkey" FOREIGN KEY ("destination_department_id") REFERENCES "public"."departments"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."shift_tasks"
+    ADD CONSTRAINT "shift_tasks_origin_department_id_fkey" FOREIGN KEY ("origin_department_id") REFERENCES "public"."departments"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."shift_tasks"
+    ADD CONSTRAINT "shift_tasks_porter_id_fkey" FOREIGN KEY ("porter_id") REFERENCES "public"."staff"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."shift_tasks"
+    ADD CONSTRAINT "shift_tasks_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."shifts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."shift_tasks"
+    ADD CONSTRAINT "shift_tasks_task_item_id_fkey" FOREIGN KEY ("task_item_id") REFERENCES "public"."task_items"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."shifts"
+    ADD CONSTRAINT "shifts_supervisor_id_fkey" FOREIGN KEY ("supervisor_id") REFERENCES "public"."staff"("id") ON DELETE CASCADE;
 
 
 
@@ -469,11 +586,16 @@ CREATE POLICY "Allow authenticated users to manage shift defaults" ON "public"."
 
 
 
+CREATE POLICY "Allow authenticated users to manage shift tasks" ON "public"."shift_tasks" USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
+CREATE POLICY "Allow authenticated users to manage shifts" ON "public"."shifts" USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
 CREATE POLICY "Allow authenticated users to read all shift defaults" ON "public"."shift_defaults" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
-
-
-ALTER TABLE "public"."shift_defaults" ENABLE ROW LEVEL SECURITY;
 
 
 
@@ -686,6 +808,18 @@ GRANT ALL ON TABLE "public"."departments" TO "service_role";
 GRANT ALL ON TABLE "public"."shift_defaults" TO "anon";
 GRANT ALL ON TABLE "public"."shift_defaults" TO "authenticated";
 GRANT ALL ON TABLE "public"."shift_defaults" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."shift_tasks" TO "anon";
+GRANT ALL ON TABLE "public"."shift_tasks" TO "authenticated";
+GRANT ALL ON TABLE "public"."shift_tasks" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."shifts" TO "anon";
+GRANT ALL ON TABLE "public"."shifts" TO "authenticated";
+GRANT ALL ON TABLE "public"."shifts" TO "service_role";
 
 
 
@@ -903,8 +1037,8 @@ SET row_security = off;
 INSERT INTO "public"."buildings" ("id", "name", "address", "created_at", "updated_at") VALUES
 	('f47ac10b-58cc-4372-a567-0e02b2c3d479', 'Main Hospital', '123 Medical Drive', '2025-05-22 10:30:30.870153+00', '2025-05-22 10:30:30.870153+00'),
 	('f47ac10b-58cc-4372-a567-0e02b2c3d481', 'Research Center', '200 Science Boulevard', '2025-05-22 10:30:30.870153+00', '2025-05-22 10:30:30.870153+00'),
-	('f47ac10b-58cc-4372-a567-0e02b2c3d480', 'East Wings', '125 Medical Drive', '2025-05-22 10:30:30.870153+00', '2025-05-22 10:40:24.897331+00'),
-	('b4891ac9-bb9c-4c63-977d-038890607b98', 'Harstshead', NULL, '2025-05-22 10:41:06.907057+00', '2025-05-22 10:41:06.907057+00');
+	('b4891ac9-bb9c-4c63-977d-038890607b98', 'Harstshead', NULL, '2025-05-22 10:41:06.907057+00', '2025-05-22 10:41:06.907057+00'),
+	('f47ac10b-58cc-4372-a567-0e02b2c3d480', 'East Wingssss', '125 Medical Drive', '2025-05-22 10:30:30.870153+00', '2025-05-22 17:32:44.747658+00');
 
 
 --
@@ -918,7 +1052,8 @@ INSERT INTO "public"."departments" ("id", "building_id", "name", "is_frequent", 
 	('f47ac10b-58cc-4372-a567-0e02b2c3d488', 'f47ac10b-58cc-4372-a567-0e02b2c3d481', 'Laboratories', true, '2025-05-22 10:30:30.870153+00', '2025-05-22 10:30:30.870153+00'),
 	('f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d479', 'ICU', false, '2025-05-22 10:30:30.870153+00', '2025-05-22 10:35:49.358083+00'),
 	('f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d480', 'Cardiologyies', false, '2025-05-22 10:30:30.870153+00', '2025-05-22 10:40:47.84454+00'),
-	('831035d1-93e9-4683-af25-b40c2332b2fe', 'b4891ac9-bb9c-4c63-977d-038890607b98', 'EOU', false, '2025-05-22 10:41:18.749919+00', '2025-05-22 10:41:18.749919+00');
+	('831035d1-93e9-4683-af25-b40c2332b2fe', 'b4891ac9-bb9c-4c63-977d-038890607b98', 'EOU', false, '2025-05-22 10:41:18.749919+00', '2025-05-22 10:41:18.749919+00'),
+	('8c80c97d-010e-455e-bd7f-68dfccc27043', 'f47ac10b-58cc-4372-a567-0e02b2c3d480', 'SDEC', false, '2025-05-22 17:33:45.432994+00', '2025-05-22 17:33:45.432994+00');
 
 
 --
@@ -927,9 +1062,12 @@ INSERT INTO "public"."departments" ("id", "building_id", "name", "is_frequent", 
 
 INSERT INTO "public"."staff" ("id", "first_name", "last_name", "role", "created_at", "updated_at", "department_id") VALUES
 	('f45a46c3-2240-462f-9895-494965ecd1a8', 'Michael', 'Johnson', 'porter', '2025-05-22 12:37:46.596932+00', '2025-05-22 12:57:04.760181+00', 'f47ac10b-58cc-4372-a567-0e02b2c3d485'),
-	('b88b49d1-c394-491e-aaa7-cc196250f0e4', 'John', 'Smith', 'supervisor', '2025-05-22 12:36:39.488519+00', '2025-05-22 12:57:52.483121+00', 'f47ac10b-58cc-4372-a567-0e02b2c3d484'),
 	('ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'Porter', 'Two', 'porter', '2025-05-22 15:14:27.136064+00', '2025-05-22 15:14:27.136064+00', NULL),
-	('75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'Porter', 'Three', 'porter', '2025-05-22 15:14:47.797324+00', '2025-05-22 15:14:47.797324+00', NULL);
+	('75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'Porter', 'Three', 'porter', '2025-05-22 15:14:47.797324+00', '2025-05-22 15:14:47.797324+00', NULL),
+	('4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'Martin', 'Smith', 'supervisor', '2025-05-22 16:38:43.142566+00', '2025-05-22 16:38:43.142566+00', NULL),
+	('b88b49d1-c394-491e-aaa7-cc196250f0e4', 'Martin', 'Fearon', 'supervisor', '2025-05-22 12:36:39.488519+00', '2025-05-22 16:38:53.581199+00', 'f47ac10b-58cc-4372-a567-0e02b2c3d484'),
+	('358aa759-e11e-40b0-b886-37481c5eb6c0', 'Chris', 'Chrombie', 'supervisor', '2025-05-22 16:39:03.319212+00', '2025-05-22 16:39:03.319212+00', NULL),
+	('a9d969e3-d449-4005-a679-f63be07c6872', 'Luke', 'Clements', 'supervisor', '2025-05-22 16:39:16.282662+00', '2025-05-22 16:39:16.282662+00', NULL);
 
 
 --
@@ -965,9 +1103,14 @@ INSERT INTO "public"."shift_defaults" ("id", "shift_type", "start_time", "end_ti
 
 
 --
--- Data for Name: staff_department_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: shifts; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+INSERT INTO "public"."shifts" ("id", "supervisor_id", "shift_type", "start_time", "end_time", "is_active", "created_at", "updated_at") VALUES
+	('f47ac10b-58cc-4372-a567-0e02b2c3d490', 'b88b49d1-c394-491e-aaa7-cc196250f0e4', 'day', '2025-05-23 06:24:46.89275+00', NULL, true, '2025-05-23 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('f47ac10b-58cc-4372-a567-0e02b2c3d491', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'night', '2025-05-23 05:24:46.89275+00', NULL, true, '2025-05-23 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('f47ac10b-58cc-4372-a567-0e02b2c3d492', 'a9d969e3-d449-4005-a679-f63be07c6872', 'day', '2025-05-22 08:24:46.89275+00', '2025-05-22 16:24:46.89275+00', false, '2025-05-22 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('eca831e9-fa9f-4604-9526-0a6f70040f86', '358aa759-e11e-40b0-b886-37481c5eb6c0', 'day', '2025-05-23 08:47:36.33+00', NULL, true, '2025-05-23 08:47:36.411612+00', '2025-05-23 08:47:36.411612+00');
 
 
 --
@@ -996,6 +1139,28 @@ INSERT INTO "public"."task_items" ("id", "task_type_id", "name", "description", 
 	('e6068d5d-4bc5-4358-8bae-ed23759dc733', 'a97d8a74-0e16-4e1f-908e-96e935d91002', 'Oxygen F Size', NULL, '2025-05-22 11:25:09.159861+00', '2025-05-22 11:25:09.159861+00'),
 	('8058ea70-75c8-4e46-a56f-7490a48cd4f5', 'b864ed57-5547-404e-9459-1641a030974e', 'Bed (Complete)', NULL, '2025-05-22 12:00:44.450407+00', '2025-05-22 12:00:44.450407+00'),
 	('a9026cd2-92b9-4a53-acc6-4cdc0acdcf99', 'b864ed57-5547-404e-9459-1641a030974e', 'Bed Frame', NULL, '2025-05-22 12:00:52.076144+00', '2025-05-22 12:00:52.076144+00');
+
+
+--
+-- Data for Name: shift_tasks; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."shift_tasks" ("id", "shift_id", "task_item_id", "porter_id", "origin_department_id", "destination_department_id", "status", "created_at", "updated_at") VALUES
+	('a5638fbf-2bfe-4805-be92-13d3bdab7be0', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '68e8e006-79dc-4d5f-aed0-20755d53403b', 'f45a46c3-2240-462f-9895-494965ecd1a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'pending', '2025-05-23 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('724f2648-0b08-41a6-8321-91619e0dbabb', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '14446938-25cd-4655-ad84-dbb7db871f28', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'completed', '2025-05-23 07:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('6e25558d-f989-49ce-8d40-c5b69f1af256', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '532b14f0-042a-4ddf-bc7d-cb95ff298132', NULL, 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'pending', '2025-05-23 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('5e939454-7477-43e5-b5f3-65675d3e0ec7', 'f47ac10b-58cc-4372-a567-0e02b2c3d491', 'dfe98d58-f606-46f0-afb9-363dfe9a4d3a', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-23 06:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('919ef224-d90e-4aac-8e52-dfa25ada730a', 'f47ac10b-58cc-4372-a567-0e02b2c3d491', '0c90fbec-5d4c-46c0-b7dd-47fba327e3ed', NULL, 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'pending', '2025-05-23 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00'),
+	('0e7dce68-352e-413a-a061-20fb11aa1ab0', 'f47ac10b-58cc-4372-a567-0e02b2c3d492', '68e8e006-79dc-4d5f-aed0-20755d53403b', 'f45a46c3-2240-462f-9895-494965ecd1a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'completed', '2025-05-22 08:24:46.89275+00', '2025-05-22 09:24:46.89275+00'),
+	('4a06494e-1051-4006-b130-d72b4a6eebf1', 'f47ac10b-58cc-4372-a567-0e02b2c3d492', '516e8952-a09b-456b-926d-e78411490a6d', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', 'completed', '2025-05-22 08:24:46.89275+00', '2025-05-22 10:24:46.89275+00'),
+	('74f81abd-0b5b-465d-a979-fa6dce4c276d', 'f47ac10b-58cc-4372-a567-0e02b2c3d492', '14446938-25cd-4655-ad84-dbb7db871f28', NULL, 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'pending', '2025-05-22 12:24:46.89275+00', '2025-05-22 12:24:46.89275+00'),
+	('37ef35c9-6670-494d-871a-8eb16248720e', 'eca831e9-fa9f-4604-9526-0a6f70040f86', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', 'f45a46c3-2240-462f-9895-494965ecd1a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', 'pending', '2025-05-23 08:49:55.479887+00', '2025-05-23 08:50:01.281131+00');
+
+
+--
+-- Data for Name: staff_department_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
 
 
 --

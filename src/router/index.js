@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import ArchiveView from '../views/ArchiveView.vue';
 import SettingsView from '../views/SettingsView.vue';
+import ShiftManagementView from '../views/ShiftManagementView.vue';
 
 const routes = [
   {
@@ -18,6 +19,11 @@ const routes = [
     path: '/settings',
     name: 'settings',
     component: SettingsView
+  },
+  {
+    path: '/shift/:id',
+    name: 'shift',
+    component: ShiftManagementView
   }
 ];
 

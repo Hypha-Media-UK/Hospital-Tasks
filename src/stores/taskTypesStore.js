@@ -33,6 +33,10 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       return state.taskItems.filter(item => item.task_type_id === typeId);
     },
     
+    getTaskItemsByType: (state) => (typeId) => {
+      return state.taskItems.filter(item => item.task_type_id === typeId);
+    },
+    
     // Task Type Assignment Getters
     getTypeAssignmentsByTypeId: (state) => (typeId) => {
       return state.typeAssignments.filter(
@@ -279,6 +283,34 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         console.error('Error deleting task item:', error);
         this.error = 'Failed to delete task item';
         return false;
+      } finally {
+        this.loading.taskItems = false;
+      }
+    },
+    
+    // Fetch task items for a specific type
+    async fetchTaskItemsByType(typeId) {
+      this.loading.taskItems = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('task_items')
+          .select('*')
+          .eq('task_type_id', typeId)
+          .order('name');
+        
+        if (error) throw error;
+        
+        // Only update the items of this type, preserve others
+        const existingItems = this.taskItems.filter(item => item.task_type_id !== typeId);
+        this.taskItems = [...existingItems, ...(data || [])];
+        
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching task items by type:', error);
+        this.error = 'Failed to load task items';
+        return [];
       } finally {
         this.loading.taskItems = false;
       }
