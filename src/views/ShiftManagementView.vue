@@ -74,7 +74,7 @@
           <div class="tasks-header">
             <h2 class="card__title">Tasks</h2>
             <div v-if="shift.is_active" class="tasks-actions">
-              <button @click="showAddTaskModal = true" class="btn btn-primary">
+              <button @click="showAddTaskModal()" class="btn btn-primary">
                 Add Task
               </button>
             </div>
@@ -136,11 +136,11 @@
                 
                 <div class="task-actions">
                   <button 
-                    @click="assignPorter(task)" 
-                    class="btn btn-small btn-outline"
+                    @click="editTask(task)" 
+                    class="btn btn-small btn-primary"
                     :disabled="updatingTask"
                   >
-                    {{ task.porter ? 'Reassign' : 'Assign Porter' }}
+                    Edit
                   </button>
                   <button 
                     @click="markTaskCompleted(task.id)" 
@@ -192,6 +192,13 @@
                 
                 <div class="task-actions">
                   <button 
+                    @click="editTask(task)" 
+                    class="btn btn-small btn-primary"
+                    :disabled="updatingTask"
+                  >
+                    Edit
+                  </button>
+                  <button 
                     @click="markTaskPending(task.id)" 
                     class="btn btn-small btn-outline"
                     :disabled="updatingTask"
@@ -205,124 +212,126 @@
         </div>
       </template>
       
-      <!-- Add Task Modal -->
-      <div v-if="showAddTaskModal" class="modal">
+      <!-- Add/Edit Task Modal -->
+      <div v-if="showTaskModal" class="modal">
         <div class="modal-content">
           <div class="modal-header">
-            <h2>Add New Task</h2>
-            <button @click="showAddTaskModal = false" class="close-button">&times;</button>
+            <h2>{{ isEditingTask ? 'Edit Task' : 'Add New Task' }}</h2>
+            <button @click="closeTaskModal" class="close-button">&times;</button>
           </div>
           
           <div class="modal-body">
-            <div class="form-group">
-              <label for="taskType">Task Type</label>
-              <select id="taskType" v-model="newTask.taskTypeId" class="form-control" @change="loadTaskItems">
-                <option value="">Select a task type</option>
-                <option v-for="type in taskTypes" :key="type.id" :value="type.id">
-                  {{ type.name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="taskItem">Task Item</label>
-              <select 
-                id="taskItem" 
-                v-model="newTask.taskItemId" 
-                class="form-control"
-                :disabled="!newTask.taskTypeId || loadingTaskItems"
-              >
-                <option value="">{{ loadingTaskItems ? 'Loading items...' : 'Select a task item' }}</option>
-                <option v-for="item in taskItems" :key="item.id" :value="item.id">
-                  {{ item.name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="originDepartment">Origin Department</label>
-              <select id="originDepartment" v-model="newTask.originDepartmentId" class="form-control">
-                <option value="">Select origin department (optional)</option>
-                <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                  {{ dept.name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="destinationDepartment">Destination Department</label>
-              <select id="destinationDepartment" v-model="newTask.destinationDepartmentId" class="form-control">
-                <option value="">Select destination department (optional)</option>
-                <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                  {{ dept.name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="porter">Assign Porter</label>
-              <select id="porter" v-model="newTask.porterId" class="form-control">
-                <option value="">Select porter (optional)</option>
-                <option v-for="porter in porters" :key="porter.id" :value="porter.id">
-                  {{ porter.first_name }} {{ porter.last_name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="form-group">
-              <label for="status">Status</label>
-              <select id="status" v-model="newTask.status" class="form-control">
-                <option value="pending">Pending</option>
-                <option value="completed">Completed</option>
-              </select>
+            <div class="form-grid">
+              <!-- Left Column -->
+              <div class="form-group">
+                <label for="taskType">Task Type</label>
+                <select 
+                  id="taskType" 
+                  v-model="taskForm.taskTypeId" 
+                  class="form-control" 
+                  @change="loadTaskItems"
+                  :disabled="isEditingTask"
+                >
+                  <option value="">Select a task type</option>
+                  <option v-for="type in taskTypes" :key="type.id" :value="type.id">
+                    {{ type.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="taskItem">Task Item</label>
+                <select 
+                  id="taskItem" 
+                  v-model="taskForm.taskItemId" 
+                  class="form-control"
+                  :disabled="!taskForm.taskTypeId || loadingTaskItems || isEditingTask"
+                >
+                  <option value="">{{ loadingTaskItems ? 'Loading items...' : 'Select a task item' }}</option>
+                  <option v-for="item in taskItems" :key="item.id" :value="item.id">
+                    {{ item.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label>Status</label>
+                <div class="status-buttons">
+                  <button 
+                    type="button"
+                    @click="taskForm.status = 'pending'"
+                    class="status-btn" 
+                    :class="{ active: taskForm.status === 'pending' }"
+                  >
+                    Pending
+                  </button>
+                  <button 
+                    type="button"
+                    @click="taskForm.status = 'completed'"
+                    class="status-btn" 
+                    :class="{ active: taskForm.status === 'completed' }"
+                  >
+                    Completed
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Right Column -->
+              <div class="form-group">
+                <label for="originDepartment">Origin Department</label>
+                <select id="originDepartment" v-model="taskForm.originDepartmentId" class="form-control">
+                  <option value="">Select origin department (optional)</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="destinationDepartment">Destination Department</label>
+                <select id="destinationDepartment" v-model="taskForm.destinationDepartmentId" class="form-control">
+                  <option value="">Select destination department (optional)</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="porter">Assign Porter</label>
+                <select id="porter" v-model="taskForm.porterId" class="form-control">
+                  <option value="">Select porter (optional)</option>
+                  <option v-for="porter in porters" :key="porter.id" :value="porter.id">
+                    {{ porter.first_name }} {{ porter.last_name }}
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
           
           <div class="modal-footer">
-            <button @click="addTask" class="btn btn-primary" :disabled="!canAddTask || addingTask">
-              {{ addingTask ? 'Adding...' : 'Add Task' }}
+            <button 
+              @click="saveTask" 
+              class="btn btn-primary" 
+              :disabled="!canSaveTask || processingTask"
+            >
+              {{ processingTask ? (isEditingTask ? 'Updating...' : 'Adding...') : (isEditingTask ? 'Update Task' : 'Add Task') }}
             </button>
-            <button @click="showAddTaskModal = false" class="btn btn-secondary" :disabled="addingTask">
+            <button 
+              @click="closeTaskModal" 
+              class="btn btn-secondary" 
+              :disabled="processingTask"
+            >
               Cancel
             </button>
           </div>
           
-          <div v-if="addTaskError" class="error-message">
-            {{ addTaskError }}
+          <div v-if="taskFormError" class="error-message">
+            {{ taskFormError }}
           </div>
         </div>
       </div>
       
-      <!-- Assign Porter Modal -->
-      <div v-if="showAssignPorterModal" class="modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2>Assign Porter</h2>
-            <button @click="showAssignPorterModal = false" class="close-button">&times;</button>
-          </div>
-          
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="assignPorter">Select Porter</label>
-              <select id="assignPorter" v-model="selectedPorterId" class="form-control">
-                <option value="">Select porter</option>
-                <option v-for="porter in porters" :key="porter.id" :value="porter.id">
-                  {{ porter.first_name }} {{ porter.last_name }}
-                </option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="modal-footer">
-            <button @click="confirmAssignPorter" class="btn btn-primary" :disabled="!selectedPorterId || assigningPorter">
-              {{ assigningPorter ? 'Assigning...' : 'Assign' }}
-            </button>
-            <button @click="showAssignPorterModal = false" class="btn btn-secondary" :disabled="assigningPorter">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -347,19 +356,19 @@ const loading = ref(true);
 const activeTab = ref('pending');
 const showEndShiftConfirm = ref(false);
 const endingShift = ref(false);
-const showAddTaskModal = ref(false);
 const loadingTaskItems = ref(false);
-const addingTask = ref(false);
-const addTaskError = ref('');
 const updatingTask = ref(false);
-const showAssignPorterModal = ref(false);
-const assigningPorter = ref(false);
-const selectedPorterId = ref('');
-const selectedTaskId = ref('');
 const taskItems = ref([]);
 
-// New task form data
-const newTask = ref({
+// Task modal state
+const showTaskModal = ref(false);
+const isEditingTask = ref(false);
+const editingTaskId = ref(null);
+const processingTask = ref(false);
+const taskFormError = ref('');
+
+// Task form data
+const taskForm = ref({
   taskTypeId: '',
   taskItemId: '',
   originDepartmentId: '',
@@ -375,7 +384,14 @@ const completedTasks = computed(() => shiftsStore.completedTasks);
 const porters = computed(() => staffStore.sortedPorters);
 const taskTypes = computed(() => taskTypesStore.taskTypes);
 const departments = computed(() => locationsStore.departments);
-const canAddTask = computed(() => newTask.value.taskItemId);
+const canSaveTask = computed(() => {
+  // For a new task, we need a task item
+  if (!isEditingTask.value) {
+    return taskForm.value.taskItemId;
+  }
+  // For editing, we always allow saving since the form is pre-populated
+  return true;
+});
 
 // Load data on component mount
 onMounted(async () => {
@@ -445,59 +461,45 @@ async function endShift() {
   }
 }
 
-async function loadTaskItems() {
-  if (!newTask.value.taskTypeId) {
-    taskItems.value = [];
-    return;
-  }
-  
-  loadingTaskItems.value = true;
-  
-  try {
-    await taskTypesStore.fetchTaskItemsByType(newTask.value.taskTypeId);
-    taskItems.value = taskTypesStore.getTaskItemsByType(newTask.value.taskTypeId);
-  } catch (error) {
-    console.error('Error loading task items:', error);
-  } finally {
-    loadingTaskItems.value = false;
-  }
+// Show add task modal
+function showAddTaskModal() {
+  isEditingTask.value = false;
+  editingTaskId.value = null;
+  resetTaskForm();
+  showTaskModal.value = true;
 }
 
-async function addTask() {
-  if (!canAddTask.value || addingTask.value) return;
+// Edit task
+function editTask(task) {
+  isEditingTask.value = true;
+  editingTaskId.value = task.id;
   
-  addingTask.value = true;
-  addTaskError.value = '';
+  // Set up the form with the current task data
+  taskForm.value = {
+    taskTypeId: task.task_item.task_type_id,
+    taskItemId: task.task_item_id,
+    originDepartmentId: task.origin_department_id || '',
+    destinationDepartmentId: task.destination_department_id || '',
+    porterId: task.porter_id || '',
+    status: task.status
+  };
   
-  try {
-    // Transform form data to match the API requirements
-    const taskData = {
-      taskItemId: newTask.value.taskItemId,
-      porterId: newTask.value.porterId || null,
-      originDepartmentId: newTask.value.originDepartmentId || null,
-      destinationDepartmentId: newTask.value.destinationDepartmentId || null,
-      status: newTask.value.status
-    };
-    
-    const result = await shiftsStore.addTaskToShift(shift.value.id, taskData);
-    
-    if (result) {
-      // Reset form and close modal
-      resetTaskForm();
-      showAddTaskModal.value = false;
-    } else {
-      addTaskError.value = shiftsStore.error || 'Failed to add task';
-    }
-  } catch (error) {
-    console.error('Error adding task:', error);
-    addTaskError.value = 'An unexpected error occurred';
-  } finally {
-    addingTask.value = false;
-  }
+  // Load task items for this task type
+  loadTaskItems();
+  
+  // Show the modal
+  showTaskModal.value = true;
 }
 
+// Close task modal
+function closeTaskModal() {
+  showTaskModal.value = false;
+  resetTaskForm();
+}
+
+// Reset task form
 function resetTaskForm() {
-  newTask.value = {
+  taskForm.value = {
     taskTypeId: '',
     taskItemId: '',
     originDepartmentId: '',
@@ -506,6 +508,68 @@ function resetTaskForm() {
     status: 'pending'
   };
   taskItems.value = [];
+  taskFormError.value = '';
+}
+
+// Load task items for a task type
+async function loadTaskItems() {
+  if (!taskForm.value.taskTypeId) {
+    taskItems.value = [];
+    return;
+  }
+  
+  loadingTaskItems.value = true;
+  
+  try {
+    await taskTypesStore.fetchTaskItemsByType(taskForm.value.taskTypeId);
+    taskItems.value = taskTypesStore.getTaskItemsByType(taskForm.value.taskTypeId);
+  } catch (error) {
+    console.error('Error loading task items:', error);
+  } finally {
+    loadingTaskItems.value = false;
+  }
+}
+
+// Save task (add or update)
+async function saveTask() {
+  if (!canSaveTask.value || processingTask.value) return;
+  
+  processingTask.value = true;
+  taskFormError.value = '';
+  
+  try {
+    // Transform form data to match the API requirements
+    const taskData = {
+      taskItemId: taskForm.value.taskItemId,
+      porterId: taskForm.value.porterId || null,
+      originDepartmentId: taskForm.value.originDepartmentId || null,
+      destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
+      status: taskForm.value.status
+    };
+    
+    let result;
+    
+    if (isEditingTask.value) {
+      // Update existing task
+      result = await shiftsStore.updateTask(editingTaskId.value, taskData);
+    } else {
+      // Add new task
+      result = await shiftsStore.addTaskToShift(shift.value.id, taskData);
+    }
+    
+    if (result) {
+      // Reset form and close modal
+      resetTaskForm();
+      showTaskModal.value = false;
+    } else {
+      taskFormError.value = shiftsStore.error || `Failed to ${isEditingTask.value ? 'update' : 'add'} task`;
+    }
+  } catch (error) {
+    console.error(`Error ${isEditingTask.value ? 'updating' : 'adding'} task:`, error);
+    taskFormError.value = 'An unexpected error occurred';
+  } finally {
+    processingTask.value = false;
+  }
 }
 
 async function markTaskCompleted(taskId) {
@@ -536,26 +600,6 @@ async function markTaskPending(taskId) {
   }
 }
 
-function assignPorter(task) {
-  selectedTaskId.value = task.id;
-  selectedPorterId.value = task.porter ? task.porter.id : '';
-  showAssignPorterModal.value = true;
-}
-
-async function confirmAssignPorter() {
-  if (!selectedTaskId.value || assigningPorter.value) return;
-  
-  assigningPorter.value = true;
-  
-  try {
-    await shiftsStore.assignPorterToTask(selectedTaskId.value, selectedPorterId.value || null);
-    showAssignPorterModal.value = false;
-  } catch (error) {
-    console.error('Error assigning porter:', error);
-  } finally {
-    assigningPorter.value = false;
-  }
-}
 
 // Format date and time (e.g., "May 23, 2025, 9:30 AM")
 function formatDateTime(dateString) {
@@ -876,6 +920,16 @@ function calculateDuration(startTimeString) {
   }
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  
+  @media (max-width: 500px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-group {
   margin-bottom: 1rem;
   
@@ -891,6 +945,31 @@ function calculateDuration(startTimeString) {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
+  }
+}
+
+.status-buttons {
+  display: flex;
+  gap: 0.5rem;
+  
+  .status-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f8f8f8;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &.active {
+      background-color: #4285F4;
+      color: white;
+      border-color: #4285F4;
+    }
+    
+    &:hover:not(.active) {
+      background-color: #e8e8e8;
+    }
   }
 }
 

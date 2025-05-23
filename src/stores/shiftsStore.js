@@ -364,6 +364,51 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
+    // Update an existing task
+    async updateTask(taskId, taskData) {
+      this.loading.updateTask = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_tasks')
+          .update({
+            task_item_id: taskData.taskItemId,
+            porter_id: taskData.porterId || null,
+            origin_department_id: taskData.originDepartmentId || null,
+            destination_department_id: taskData.destinationDepartmentId || null,
+            status: taskData.status
+          })
+          .eq('id', taskId)
+          .select(`
+            *,
+            task_item:task_item_id(id, name, description, task_type_id),
+            porter:porter_id(id, first_name, last_name),
+            origin_department:origin_department_id(id, name, building_id),
+            destination_department:destination_department_id(id, name, building_id)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Update the task in shiftTasks array
+          const index = this.shiftTasks.findIndex(task => task.id === taskId);
+          if (index !== -1) {
+            this.shiftTasks[index] = data[0];
+          }
+          return data[0];
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error updating task:', error);
+        this.error = 'Failed to update task';
+        return null;
+      } finally {
+        this.loading.updateTask = false;
+      }
+    },
+    
     // Clear current shift and tasks
     clearCurrentShift() {
       this.currentShift = null;
