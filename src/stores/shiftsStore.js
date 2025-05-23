@@ -1,6 +1,35 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
 
+// Helper function to determine if a date is on a weekend
+function isWeekend(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+}
+
+// Helper function to determine if a time is during day shift hours
+function isDayShift(date, dayStart, dayEnd) {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const timeInMinutes = hours * 60 + minutes;
+  
+  const [dayStartHours, dayStartMinutes] = dayStart.split(':').map(Number);
+  const [dayEndHours, dayEndMinutes] = dayEnd.split(':').map(Number);
+  
+  const dayStartInMinutes = dayStartHours * 60 + dayStartMinutes;
+  const dayEndInMinutes = dayEndHours * 60 + dayEndMinutes;
+  
+  return timeInMinutes >= dayStartInMinutes && timeInMinutes < dayEndInMinutes;
+}
+
+// Helper function to convert time string (HH:MM:SS) to minutes
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
+
 export const useShiftsStore = defineStore('shifts', {
   state: () => ({
     activeShifts: [],
@@ -78,58 +107,63 @@ export const useShiftsStore = defineStore('shifts', {
     
     // Check for coverage gaps in a specific area cover assignment
     hasAreaCoverageGap: (state) => (areaCoverId) => {
-      const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
-      if (!assignment) return false;
-      
-      const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
-        pa => pa.shift_area_cover_assignment_id === areaCoverId
-      );
-      
-      if (porterAssignments.length === 0) return true; // No porters means complete gap
-      
-      // Convert department times to minutes for easier comparison
-      const departmentStart = timeToMinutes(assignment.start_time);
-      const departmentEnd = timeToMinutes(assignment.end_time);
-      
-      // First check if any single porter covers the entire time period
-      const fullCoverageExists = porterAssignments.some(assignment => {
-        const porterStart = timeToMinutes(assignment.start_time);
-        const porterEnd = timeToMinutes(assignment.end_time);
-        return porterStart <= departmentStart && porterEnd >= departmentEnd;
-      });
-      
-      // If at least one porter provides full coverage, there's no gap
-      if (fullCoverageExists) {
-        return false;
-      }
-      
-      // Sort porter assignments by start time
-      const sortedAssignments = [...porterAssignments].sort((a, b) => {
-        return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
-      });
-      
-      // Check for gap at the beginning
-      if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
-        return true;
-      }
-      
-      // Check for gaps between porter assignments
-      for (let i = 0; i < sortedAssignments.length - 1; i++) {
-        const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
-        const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+      try {
+        const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
+        if (!assignment) return false;
         
-        if (nextStart > currentEnd) {
+        const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
+          pa => pa.shift_area_cover_assignment_id === areaCoverId
+        );
+        
+        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        
+        // Convert department times to minutes for easier comparison
+        const departmentStart = timeToMinutes(assignment.start_time);
+        const departmentEnd = timeToMinutes(assignment.end_time);
+        
+        // First check if any single porter covers the entire time period
+        const fullCoverageExists = porterAssignments.some(assignment => {
+          const porterStart = timeToMinutes(assignment.start_time);
+          const porterEnd = timeToMinutes(assignment.end_time);
+          return porterStart <= departmentStart && porterEnd >= departmentEnd;
+        });
+        
+        // If at least one porter provides full coverage, there's no gap
+        if (fullCoverageExists) {
+          return false;
+        }
+        
+        // Sort porter assignments by start time
+        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+        });
+        
+        // Check for gap at the beginning
+        if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
           return true;
         }
+        
+        // Check for gaps between porter assignments
+        for (let i = 0; i < sortedAssignments.length - 1; i++) {
+          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+          
+          if (nextStart > currentEnd) {
+            return true;
+          }
+        }
+        
+        // Check for gap at the end
+        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+        if (lastEnd < departmentEnd) {
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasAreaCoverageGap:', error);
+        return false;
       }
-      
-      // Check for gap at the end
-      const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
-      if (lastEnd < departmentEnd) {
-        return true;
-      }
-      
-      return false;
     }
   },
   
@@ -586,6 +620,20 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
+    // Map new shift types to legacy shift types
+    mapToLegacyShiftType(shiftType) {
+      switch(shiftType) {
+        case 'week_day':
+        case 'weekend_day':
+          return 'day';
+        case 'week_night':
+        case 'weekend_night':
+          return 'night';
+        default:
+          return shiftType;
+      }
+    },
+    
     // Initialize area cover for a new shift
     async initializeShiftAreaCover(shiftId, shiftType) {
       this.loading.areaCover = true;
@@ -603,8 +651,11 @@ export const useShiftsStore = defineStore('shifts', {
           throw new Error('Shift not found');
         }
         
-        // Fetch default area cover assignments based on shift type
-        const { data: defaultAssignments, error: fetchError } = await supabase
+        // Map the new shift types to legacy types if needed
+        const legacyShiftType = this.mapToLegacyShiftType(shiftType);
+        
+        // Try to fetch with the specific shift type first
+        let { data: defaultAssignments, error: fetchError } = await supabase
           .from('area_cover_assignments')
           .select(`
             department_id,
@@ -614,9 +665,24 @@ export const useShiftsStore = defineStore('shifts', {
           `)
           .eq('shift_type', shiftType);
         
-        if (fetchError) throw fetchError;
+        // If no assignments found with the specific type, try with the legacy type
+        if (!defaultAssignments || defaultAssignments.length === 0) {
+          const { data: legacyAssignments, error: legacyFetchError } = await supabase
+            .from('area_cover_assignments')
+            .select(`
+              department_id,
+              start_time,
+              end_time,
+              color
+            `)
+            .eq('shift_type', legacyShiftType);
+          
+          if (!legacyFetchError) {
+            defaultAssignments = legacyAssignments;
+          }
+        }
         
-        // If no default assignments, return empty array
+        // If no default assignments found with either type, return empty array
         if (!defaultAssignments || defaultAssignments.length === 0) {
           return [];
         }
@@ -887,11 +953,3 @@ export const useShiftsStore = defineStore('shifts', {
     }
   }
 });
-
-// Helper function to convert time string (HH:MM:SS) to minutes
-function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
-}

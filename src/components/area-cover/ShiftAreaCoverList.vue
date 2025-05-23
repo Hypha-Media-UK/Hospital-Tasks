@@ -83,7 +83,7 @@ const props = defineProps({
   shiftType: {
     type: String,
     required: true,
-    validator: (value) => ['day', 'night'].includes(value)
+    validator: (value) => ['day', 'night', 'week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(value)
   }
 });
 
@@ -94,7 +94,20 @@ const showDepartmentSelector = ref(false);
 
 // Computed properties
 const shiftTypeLabel = computed(() => {
-  return props.shiftType === 'day' ? 'Day' : 'Night';
+  switch (props.shiftType) {
+    case 'day': 
+    case 'week_day':
+      return 'Day';
+    case 'night':
+    case 'week_night':
+      return 'Night';
+    case 'weekend_day':
+      return 'Weekend Day';
+    case 'weekend_night':
+      return 'Weekend Night';
+    default:
+      return 'Shift';
+  }
 });
 
 const assignments = computed(() => {

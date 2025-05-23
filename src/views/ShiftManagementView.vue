@@ -74,7 +74,10 @@
           <div class="area-cover-header">
             <h2 class="card__title">Area Coverage</h2>
           </div>
-          <ShiftAreaCoverTabs :shift-id="shift.id" />
+          <ShiftAreaCoverList 
+            :shift-id="shift.id" 
+            :shift-type="determineAreaCoverType(shift)" 
+          />
         </div>
         
         <!-- Tasks Section -->
@@ -381,7 +384,8 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
-import ShiftAreaCoverTabs from '../components/area-cover/ShiftAreaCoverTabs.vue';
+import { useSettingsStore } from '../stores/settingsStore';
+import ShiftAreaCoverList from '../components/area-cover/ShiftAreaCoverList.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -389,6 +393,7 @@ const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const taskTypesStore = useTaskTypesStore();
 const locationsStore = useLocationsStore();
+const settingsStore = useSettingsStore();
 
 // Local state
 const loading = ref(true);
@@ -718,6 +723,33 @@ function calculateDuration(startTimeString) {
   } else {
     return `${diffHrs}h ${diffMins}m`;
   }
+}
+
+// Determine the appropriate area cover type for a shift
+function determineAreaCoverType(shift) {
+  if (!shift) return 'week_day'; // Default to week_day if no shift
+  
+  // Get the shift start time
+  const shiftStart = new Date(shift.start_time);
+  
+  // Determine if it's a weekend
+  const isWeekendDay = isWeekend(shiftStart);
+  
+  // Get shift type from the shift
+  const isDaytime = shift.shift_type === 'day';
+  
+  // Combine to get the appropriate area cover type
+  if (isWeekendDay) {
+    return isDaytime ? 'weekend_day' : 'weekend_night';
+  } else {
+    return isDaytime ? 'week_day' : 'week_night';
+  }
+}
+
+// Helper function to determine if a date is on a weekend
+function isWeekend(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
 </script>
 

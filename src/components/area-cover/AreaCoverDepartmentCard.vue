@@ -56,7 +56,12 @@ const porterAssignments = computed(() => {
 
 // Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
-  return areaCoverStore.hasCoverageGap(props.assignment.id);
+  try {
+    return areaCoverStore.hasCoverageGap(props.assignment.id);
+  } catch (error) {
+    console.error('Error checking coverage gap:', error);
+    return false;
+  }
 });
 
 // Forward events from modal to parent

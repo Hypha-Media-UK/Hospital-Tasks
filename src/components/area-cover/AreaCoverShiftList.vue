@@ -79,7 +79,7 @@ const props = defineProps({
   shiftType: {
     type: String,
     required: true,
-    validator: (value) => ['day', 'night'].includes(value)
+    validator: (value) => ['week_day', 'week_night', 'weekend_day', 'weekend_night', 'day', 'night'].includes(value)
   }
 });
 
@@ -90,13 +90,19 @@ const showDepartmentSelector = ref(false);
 
 // Computed properties
 const shiftTypeLabel = computed(() => {
-  return props.shiftType === 'day' ? 'Day' : 'Night';
+  switch (props.shiftType) {
+    case 'week_day': return 'Week Day';
+    case 'week_night': return 'Week Night';
+    case 'weekend_day': return 'Weekend Day';
+    case 'weekend_night': return 'Weekend Night';
+    case 'day': return 'Day'; // Legacy support
+    case 'night': return 'Night'; // Legacy support
+    default: return '';
+  }
 });
 
 const assignments = computed(() => {
-  return props.shiftType === 'day' 
-    ? areaCoverStore.sortedDayAssignments 
-    : areaCoverStore.sortedNightAssignments;
+  return areaCoverStore.getSortedAssignmentsByType(props.shiftType);
 });
 
 // Get departments from locationsStore directly instead of relying on rootGetters
@@ -113,10 +119,29 @@ const availableDepartments = computed(() => {
     });
   });
   
-  // Filter out departments that are already assigned
-  const assignedDeptIds = props.shiftType === 'day'
-    ? areaCoverStore.dayAssignments.map(a => a.department_id)
-    : areaCoverStore.nightAssignments.map(a => a.department_id);
+  // Get assigned department IDs based on shift type
+  let assignedDeptIds = [];
+  switch (props.shiftType) {
+    case 'week_day':
+      assignedDeptIds = areaCoverStore.weekDayAssignments.map(a => a.department_id);
+      break;
+    case 'week_night':
+      assignedDeptIds = areaCoverStore.weekNightAssignments.map(a => a.department_id);
+      break;
+    case 'weekend_day':
+      assignedDeptIds = areaCoverStore.weekendDayAssignments.map(a => a.department_id);
+      break;
+    case 'weekend_night':
+      assignedDeptIds = areaCoverStore.weekendNightAssignments.map(a => a.department_id);
+      break;
+    // Legacy support
+    case 'day':
+      assignedDeptIds = areaCoverStore.weekDayAssignments.map(a => a.department_id);
+      break;
+    case 'night':
+      assignedDeptIds = areaCoverStore.weekNightAssignments.map(a => a.department_id);
+      break;
+  }
   
   return allDepartments.filter(dept => !assignedDeptIds.includes(dept.id));
 });
@@ -180,9 +205,9 @@ const handleRemove = (assignmentId) => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  if (!areaCoverStore[props.shiftType + 'Assignments'].length) {
-    await areaCoverStore.fetchAssignments(props.shiftType);
-  }
+  // Safely fetch assignments for the shift type
+  // We'll always fetch since checking property existence is complicated by camelCase vs snake_case
+  await areaCoverStore.fetchAssignments(props.shiftType);
   
   if (!locationsStore.buildings.length) {
     await locationsStore.initialize();

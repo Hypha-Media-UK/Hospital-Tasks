@@ -103,23 +103,45 @@
           </div>
           
           <div class="form-actions">
-            <button 
-              @click="createShift('day')" 
-              class="btn btn-primary"
-              :disabled="!selectedSupervisor || creating"
-              :style="{ backgroundColor: '#4285F4' }"
-            >
-              Start Day Shift
-            </button>
+            <div class="shift-buttons">
+              <button 
+                @click="createShift('week_day')" 
+                class="btn btn-primary"
+                :disabled="!selectedSupervisor || creating"
+                :style="{ backgroundColor: '#4285F4' }"
+              >
+                Start Week Day Shift
+              </button>
+              
+              <button 
+                @click="createShift('week_night')" 
+                class="btn btn-secondary"
+                :disabled="!selectedSupervisor || creating"
+                :style="{ backgroundColor: '#673AB7' }"
+              >
+                Start Week Night Shift
+              </button>
+            </div>
             
-            <button 
-              @click="createShift('night')" 
-              class="btn btn-secondary"
-              :disabled="!selectedSupervisor || creating"
-              :style="{ backgroundColor: '#673AB7' }"
-            >
-              Start Night Shift
-            </button>
+            <div class="shift-buttons">
+              <button 
+                @click="createShift('weekend_day')" 
+                class="btn btn-primary"
+                :disabled="!selectedSupervisor || creating"
+                :style="{ backgroundColor: '#34A853' }"
+              >
+                Start Weekend Day Shift
+              </button>
+              
+              <button 
+                @click="createShift('weekend_night')" 
+                class="btn btn-secondary"
+                :disabled="!selectedSupervisor || creating"
+                :style="{ backgroundColor: '#EA4335' }"
+              >
+                Start Weekend Night Shift
+              </button>
+            </div>
           </div>
           
           <div v-if="error" class="error-message">
@@ -178,13 +200,18 @@ async function createShift(shiftType) {
   error.value = '';
   
   try {
-    const newShift = await shiftsStore.createShift(selectedSupervisor.value, shiftType);
+    // Convert the new shift type (week_day, week_night, etc.) to legacy type (day, night)
+    // for compatibility with existing database tables
+    const legacyShiftType = shiftType.includes('day') ? 'day' : 'night';
+    
+    const newShift = await shiftsStore.createShift(selectedSupervisor.value, legacyShiftType);
     if (newShift) {
-      // Navigate to shift management view for the new shift
-      router.push(`/shift/${newShift.id}`);
-      
+      // Use the shift type directly as area cover type
       // Initialize area cover assignments for the new shift
       await shiftsStore.initializeShiftAreaCover(newShift.id, shiftType);
+      
+      // Navigate to the shift management view for the new shift
+      router.push(`/shift/${newShift.id}`);
     } else {
       error.value = 'Failed to create shift';
     }
@@ -194,6 +221,27 @@ async function createShift(shiftType) {
   } finally {
     creating.value = false;
   }
+}
+
+// Helper function to determine if a date is on a weekend
+function isWeekend(date) {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+}
+
+// Helper function to determine if a time is during day shift hours
+function isDayShift(date, dayStart, dayEnd) {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const timeInMinutes = hours * 60 + minutes;
+  
+  const [dayStartHours, dayStartMinutes] = dayStart.split(':').map(Number);
+  const [dayEndHours, dayEndMinutes] = dayEnd.split(':').map(Number);
+  
+  const dayStartInMinutes = dayStartHours * 60 + dayStartMinutes;
+  const dayEndInMinutes = dayEndHours * 60 + dayEndMinutes;
+  
+  return timeInMinutes >= dayStartInMinutes && timeInMinutes < dayEndInMinutes;
 }
 
 // View a shift
@@ -316,8 +364,15 @@ function calculateDuration(startTimeString) {
   
   .form-actions {
     display: flex;
+    flex-direction: column;
     gap: 1rem;
     margin-top: 1.5rem;
+    
+    .shift-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
     
     button {
       padding: 0.5rem 1rem;
@@ -327,6 +382,8 @@ function calculateDuration(startTimeString) {
       font-weight: bold;
       cursor: pointer;
       transition: opacity 0.2s;
+      flex: 1;
+      min-width: 150px;
       
       &:disabled {
         opacity: 0.6;

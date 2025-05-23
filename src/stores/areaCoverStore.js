@@ -3,12 +3,16 @@ import { supabase } from '../services/supabase';
 
 export const useAreaCoverStore = defineStore('areaCover', {
   state: () => ({
-    dayAssignments: [],
-    nightAssignments: [],
-    porterAssignments: [], // New state for porter assignments
+    weekDayAssignments: [],
+    weekNightAssignments: [],
+    weekendDayAssignments: [],
+    weekendNightAssignments: [],
+    porterAssignments: [], // Porter assignments
     loading: {
-      day: false,
-      night: false,
+      week_day: false,
+      week_night: false,
+      weekend_day: false,
+      weekend_night: false,
       save: false,
       porters: false
     },
@@ -16,23 +20,65 @@ export const useAreaCoverStore = defineStore('areaCover', {
   }),
   
   getters: {
-    // Get day assignments sorted by department name
-    sortedDayAssignments: (state) => {
-      return [...state.dayAssignments].sort((a, b) => {
+    // Get week day assignments sorted by department name
+    sortedWeekDayAssignments: (state) => {
+      return [...state.weekDayAssignments].sort((a, b) => {
         return a.department.name.localeCompare(b.department.name);
       });
     },
     
-    // Get night assignments sorted by department name
-    sortedNightAssignments: (state) => {
-      return [...state.nightAssignments].sort((a, b) => {
+    // Get week night assignments sorted by department name
+    sortedWeekNightAssignments: (state) => {
+      return [...state.weekNightAssignments].sort((a, b) => {
+        return a.department.name.localeCompare(b.department.name);
+      });
+    },
+    
+    // Get weekend day assignments sorted by department name
+    sortedWeekendDayAssignments: (state) => {
+      return [...state.weekendDayAssignments].sort((a, b) => {
+        return a.department.name.localeCompare(b.department.name);
+      });
+    },
+    
+    // Get weekend night assignments sorted by department name
+    sortedWeekendNightAssignments: (state) => {
+      return [...state.weekendNightAssignments].sort((a, b) => {
+        return a.department.name.localeCompare(b.department.name);
+      });
+    },
+    
+    // Get assignments for any shift type
+    getSortedAssignmentsByType: (state) => (shiftType) => {
+      let assignments;
+      switch(shiftType) {
+        case 'week_day':
+          assignments = state.weekDayAssignments;
+          break;
+        case 'week_night':
+          assignments = state.weekNightAssignments;
+          break;
+        case 'weekend_day':
+          assignments = state.weekendDayAssignments;
+          break;
+        case 'weekend_night':
+          assignments = state.weekendNightAssignments;
+          break;
+        default:
+          assignments = [];
+      }
+      
+      return [...assignments].sort((a, b) => {
         return a.department.name.localeCompare(b.department.name);
       });
     },
     
     // Get assignment by ID
     getAssignmentById: (state) => (id) => {
-      return [...state.dayAssignments, ...state.nightAssignments].find(a => a.id === id);
+      return [...state.weekDayAssignments, 
+              ...state.weekNightAssignments, 
+              ...state.weekendDayAssignments, 
+              ...state.weekendNightAssignments].find(a => a.id === id);
     },
     
     // Get porter assignments for a specific area cover assignment
@@ -42,55 +88,66 @@ export const useAreaCoverStore = defineStore('areaCover', {
     
     // Check for coverage gaps in a specific area cover assignment
     hasCoverageGap: (state) => (areaCoverId) => {
-      const assignment = state.getAssignmentById(areaCoverId);
-      if (!assignment) return false;
-      
-      const porterAssignments = state.getPorterAssignmentsByAreaId(areaCoverId);
-      if (porterAssignments.length === 0) return true; // No porters means complete gap
-      
-      // Convert department times to minutes for easier comparison
-      const departmentStart = timeToMinutes(assignment.start_time);
-      const departmentEnd = timeToMinutes(assignment.end_time);
-      
-      // First check if any single porter covers the entire time period
-      const fullCoverageExists = porterAssignments.some(assignment => {
-        const porterStart = timeToMinutes(assignment.start_time);
-        const porterEnd = timeToMinutes(assignment.end_time);
-        return porterStart <= departmentStart && porterEnd >= departmentEnd;
-      });
-      
-      // If at least one porter provides full coverage, there's no gap
-      if (fullCoverageExists) {
-        return false;
-      }
-      
-      // Sort porter assignments by start time
-      const sortedAssignments = [...porterAssignments].sort((a, b) => {
-        return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
-      });
-      
-      // Check for gap at the beginning
-      if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
-        return true;
-      }
-      
-      // Check for gaps between porter assignments
-      for (let i = 0; i < sortedAssignments.length - 1; i++) {
-        const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
-        const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+      try {
+        // Find the assignment directly from state arrays instead of using another getter
+        const assignment = [...state.weekDayAssignments, 
+                           ...state.weekNightAssignments, 
+                           ...state.weekendDayAssignments, 
+                           ...state.weekendNightAssignments].find(a => a.id === areaCoverId);
         
-        if (nextStart > currentEnd) {
+        if (!assignment) return false;
+        
+        // Directly access porter assignments from state instead of using another getter
+        const porterAssignments = state.porterAssignments.filter(pa => pa.area_cover_assignment_id === areaCoverId);
+        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        
+        // Convert department times to minutes for easier comparison
+        const departmentStart = timeToMinutes(assignment.start_time);
+        const departmentEnd = timeToMinutes(assignment.end_time);
+      
+        // First check if any single porter covers the entire time period
+        const fullCoverageExists = porterAssignments.some(assignment => {
+          const porterStart = timeToMinutes(assignment.start_time);
+          const porterEnd = timeToMinutes(assignment.end_time);
+          return porterStart <= departmentStart && porterEnd >= departmentEnd;
+        });
+        
+        // If at least one porter provides full coverage, there's no gap
+        if (fullCoverageExists) {
+          return false;
+        }
+        
+        // Sort porter assignments by start time
+        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+        });
+        
+        // Check for gap at the beginning
+        if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
           return true;
         }
+        
+        // Check for gaps between porter assignments
+        for (let i = 0; i < sortedAssignments.length - 1; i++) {
+          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+          
+          if (nextStart > currentEnd) {
+            return true;
+          }
+        }
+        
+        // Check for gap at the end
+        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+        if (lastEnd < departmentEnd) {
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasCoverageGap:', error);
+        return false;
       }
-      
-      // Check for gap at the end
-      const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
-      if (lastEnd < departmentEnd) {
-        return true;
-      }
-      
-      return false;
     },
     
     // Get departments that can be added to day shift (not already added)
@@ -160,10 +217,27 @@ export const useAreaCoverStore = defineStore('areaCover', {
         
         if (error) throw error;
         
-        if (shiftType === 'day') {
-          this.dayAssignments = data || [];
-        } else {
-          this.nightAssignments = data || [];
+        // Update the appropriate state array based on shift type
+        switch(shiftType) {
+          case 'week_day':
+            this.weekDayAssignments = data || [];
+            break;
+          case 'week_night':
+            this.weekNightAssignments = data || [];
+            break;
+          case 'weekend_day':
+            this.weekendDayAssignments = data || [];
+            break;
+          case 'weekend_night':
+            this.weekendNightAssignments = data || [];
+            break;
+          // Legacy support for old shift types
+          case 'day':
+            this.weekDayAssignments = data || [];
+            break;
+          case 'night':
+            this.weekNightAssignments = data || [];
+            break;
         }
         
         // Fetch porter assignments for these area covers
@@ -243,10 +317,27 @@ export const useAreaCoverStore = defineStore('areaCover', {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          if (shiftType === 'day') {
-            this.dayAssignments.push(data[0]);
-          } else {
-            this.nightAssignments.push(data[0]);
+          // Update the appropriate state array based on shift type
+          switch(shiftType) {
+            case 'week_day':
+              this.weekDayAssignments.push(data[0]);
+              break;
+            case 'week_night':
+              this.weekNightAssignments.push(data[0]);
+              break;
+            case 'weekend_day':
+              this.weekendDayAssignments.push(data[0]);
+              break;
+            case 'weekend_night':
+              this.weekendNightAssignments.push(data[0]);
+              break;
+            // Legacy support
+            case 'day':
+              this.weekDayAssignments.push(data[0]);
+              break;
+            case 'night':
+              this.weekNightAssignments.push(data[0]);
+              break;
           }
         }
         
@@ -286,16 +377,57 @@ export const useAreaCoverStore = defineStore('areaCover', {
           const updatedAssignment = data[0];
           const shiftType = updatedAssignment.shift_type;
           
-          if (shiftType === 'day') {
-            const index = this.dayAssignments.findIndex(a => a.id === assignmentId);
-            if (index !== -1) {
-              this.dayAssignments[index] = updatedAssignment;
-            }
-          } else {
-            const index = this.nightAssignments.findIndex(a => a.id === assignmentId);
-            if (index !== -1) {
-              this.nightAssignments[index] = updatedAssignment;
-            }
+          // Update the appropriate state array based on shift type
+          switch(shiftType) {
+            case 'week_day':
+              {
+                const index = this.weekDayAssignments.findIndex(a => a.id === assignmentId);
+                if (index !== -1) {
+                  this.weekDayAssignments[index] = updatedAssignment;
+                }
+              }
+              break;
+            case 'week_night':
+              {
+                const index = this.weekNightAssignments.findIndex(a => a.id === assignmentId);
+                if (index !== -1) {
+                  this.weekNightAssignments[index] = updatedAssignment;
+                }
+              }
+              break;
+            case 'weekend_day':
+              {
+                const index = this.weekendDayAssignments.findIndex(a => a.id === assignmentId);
+                if (index !== -1) {
+                  this.weekendDayAssignments[index] = updatedAssignment;
+                }
+              }
+              break;
+            case 'weekend_night':
+              {
+                const index = this.weekendNightAssignments.findIndex(a => a.id === assignmentId);
+                if (index !== -1) {
+                  this.weekendNightAssignments[index] = updatedAssignment;
+                }
+              }
+              break;
+            // Legacy support
+            case 'day':
+              {
+                const index = this.weekDayAssignments.findIndex(a => a.id === assignmentId);
+                if (index !== -1) {
+                  this.weekDayAssignments[index] = updatedAssignment;
+                }
+              }
+              break;
+            case 'night':
+              {
+                const index = this.weekNightAssignments.findIndex(a => a.id === assignmentId);
+                if (index !== -1) {
+                  this.weekNightAssignments[index] = updatedAssignment;
+                }
+              }
+              break;
           }
         }
         
@@ -315,8 +447,12 @@ export const useAreaCoverStore = defineStore('areaCover', {
       this.error = null;
       
       try {
-        // Find the assignment to determine its shift type
-        const assignment = this.getAssignmentById(assignmentId);
+        // Find the assignment among all assignments
+        const assignment = [...this.weekDayAssignments, 
+                           ...this.weekNightAssignments,
+                           ...this.weekendDayAssignments,
+                           ...this.weekendNightAssignments].find(a => a.id === assignmentId);
+        
         if (!assignment) {
           throw new Error('Assignment not found');
         }
@@ -330,11 +466,27 @@ export const useAreaCoverStore = defineStore('areaCover', {
         
         if (error) throw error;
         
-        // Remove from local state
-        if (shiftType === 'day') {
-          this.dayAssignments = this.dayAssignments.filter(a => a.id !== assignmentId);
-        } else {
-          this.nightAssignments = this.nightAssignments.filter(a => a.id !== assignmentId);
+        // Remove from local state based on shift type
+        switch(shiftType) {
+          case 'week_day':
+            this.weekDayAssignments = this.weekDayAssignments.filter(a => a.id !== assignmentId);
+            break;
+          case 'week_night':
+            this.weekNightAssignments = this.weekNightAssignments.filter(a => a.id !== assignmentId);
+            break;
+          case 'weekend_day':
+            this.weekendDayAssignments = this.weekendDayAssignments.filter(a => a.id !== assignmentId);
+            break;
+          case 'weekend_night':
+            this.weekendNightAssignments = this.weekendNightAssignments.filter(a => a.id !== assignmentId);
+            break;
+          // Legacy support
+          case 'day':
+            this.weekDayAssignments = this.weekDayAssignments.filter(a => a.id !== assignmentId);
+            break;
+          case 'night':
+            this.weekNightAssignments = this.weekNightAssignments.filter(a => a.id !== assignmentId);
+            break;
         }
         
         // Also remove all porter assignments for this area cover
@@ -458,8 +610,10 @@ export const useAreaCoverStore = defineStore('areaCover', {
     // Initialize data
     async initialize() {
       await Promise.all([
-        this.fetchAssignments('day'),
-        this.fetchAssignments('night')
+        this.fetchAssignments('week_day'),
+        this.fetchAssignments('week_night'),
+        this.fetchAssignments('weekend_day'),
+        this.fetchAssignments('weekend_night')
       ]);
     }
   }
