@@ -182,6 +182,9 @@ async function createShift(shiftType) {
     if (newShift) {
       // Navigate to shift management view for the new shift
       router.push(`/shift/${newShift.id}`);
+      
+      // Initialize area cover assignments for the new shift
+      await shiftsStore.initializeShiftAreaCover(newShift.id, shiftType);
     } else {
       error.value = 'Failed to create shift';
     }

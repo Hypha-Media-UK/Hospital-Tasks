@@ -69,6 +69,14 @@
           </div>
         </div>
         
+        <!-- Area Coverage Section -->
+        <div class="card mb-4">
+          <div class="area-cover-header">
+            <h2 class="card__title">Area Coverage</h2>
+          </div>
+          <ShiftAreaCoverTabs :shift-id="shift.id" />
+        </div>
+        
         <!-- Tasks Section -->
         <div class="card">
           <div class="tasks-header">
@@ -373,6 +381,7 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
+import ShiftAreaCoverTabs from '../components/area-cover/ShiftAreaCoverTabs.vue';
 
 const route = useRoute();
 const router = useRouter();

@@ -7,6 +7,8 @@ export const useShiftsStore = defineStore('shifts', {
     archivedShifts: [],
     currentShift: null,
     shiftTasks: [],
+    shiftAreaCoverAssignments: [], // Shift-specific area cover assignments
+    shiftAreaCoverPorterAssignments: [], // Porter assignments for shift area cover
     loading: {
       activeShifts: false,
       archivedShifts: false,
@@ -14,7 +16,8 @@ export const useShiftsStore = defineStore('shifts', {
       shiftTasks: false,
       createShift: false,
       endShift: false,
-      updateTask: false
+      updateTask: false,
+      areaCover: false // Loading state for area cover operations
     },
     error: null
   }),
@@ -38,6 +41,95 @@ export const useShiftsStore = defineStore('shifts', {
     // Get completed tasks for current shift
     completedTasks: (state) => {
       return state.shiftTasks.filter(task => task.status === 'completed');
+    },
+    
+    // Get area cover assignments for current shift sorted by department name
+    sortedAreaCoverAssignments: (state) => {
+      return [...state.shiftAreaCoverAssignments].sort((a, b) => {
+        return a.department.name.localeCompare(b.department.name);
+      });
+    },
+    
+    // Get area cover assignments for day shift
+    shiftDayAreaCoverAssignments: (state) => {
+      return state.shiftAreaCoverAssignments.filter(assignment => 
+        assignment.shift_type === 'day'
+      );
+    },
+    
+    // Get area cover assignments for night shift
+    shiftNightAreaCoverAssignments: (state) => {
+      return state.shiftAreaCoverAssignments.filter(assignment => 
+        assignment.shift_type === 'night'
+      );
+    },
+    
+    // Get area cover assignment by ID
+    getAreaCoverAssignmentById: (state) => (id) => {
+      return state.shiftAreaCoverAssignments.find(a => a.id === id);
+    },
+    
+    // Get porter assignments for a specific area cover assignment
+    getPorterAssignmentsByAreaId: (state) => (areaCoverId) => {
+      return state.shiftAreaCoverPorterAssignments.filter(
+        pa => pa.shift_area_cover_assignment_id === areaCoverId
+      );
+    },
+    
+    // Check for coverage gaps in a specific area cover assignment
+    hasAreaCoverageGap: (state) => (areaCoverId) => {
+      const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
+      if (!assignment) return false;
+      
+      const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
+        pa => pa.shift_area_cover_assignment_id === areaCoverId
+      );
+      
+      if (porterAssignments.length === 0) return true; // No porters means complete gap
+      
+      // Convert department times to minutes for easier comparison
+      const departmentStart = timeToMinutes(assignment.start_time);
+      const departmentEnd = timeToMinutes(assignment.end_time);
+      
+      // First check if any single porter covers the entire time period
+      const fullCoverageExists = porterAssignments.some(assignment => {
+        const porterStart = timeToMinutes(assignment.start_time);
+        const porterEnd = timeToMinutes(assignment.end_time);
+        return porterStart <= departmentStart && porterEnd >= departmentEnd;
+      });
+      
+      // If at least one porter provides full coverage, there's no gap
+      if (fullCoverageExists) {
+        return false;
+      }
+      
+      // Sort porter assignments by start time
+      const sortedAssignments = [...porterAssignments].sort((a, b) => {
+        return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+      });
+      
+      // Check for gap at the beginning
+      if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
+        return true;
+      }
+      
+      // Check for gaps between porter assignments
+      for (let i = 0; i < sortedAssignments.length - 1; i++) {
+        const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+        const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+        
+        if (nextStart > currentEnd) {
+          return true;
+        }
+      }
+      
+      // Check for gap at the end
+      const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+      if (lastEnd < departmentEnd) {
+        return true;
+      }
+      
+      return false;
     }
   },
   
@@ -418,6 +510,388 @@ export const useShiftsStore = defineStore('shifts', {
     // Initialize store data
     async initialize() {
       await this.fetchActiveShifts();
+    },
+    
+    // Area Cover Management
+    
+    // Fetch area cover assignments for a specific shift
+    async fetchShiftAreaCover(shiftId) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_assignments')
+          .select(`
+            *,
+            department:department_id(
+              id,
+              name,
+              building_id,
+              building:building_id(id, name)
+            )
+          `)
+          .eq('shift_id', shiftId);
+        
+        if (error) throw error;
+        
+        this.shiftAreaCoverAssignments = data || [];
+        
+        // Fetch porter assignments for these area covers
+        if (data && data.length > 0) {
+          const areaCoverIds = data.map(a => a.id);
+          await this.fetchShiftAreaCoverPorterAssignments(areaCoverIds);
+        }
+        
+        return this.shiftAreaCoverAssignments;
+      } catch (error) {
+        console.error('Error fetching shift area cover:', error);
+        this.error = 'Failed to load area cover assignments';
+        return [];
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Fetch porter assignments for shift area cover
+    async fetchShiftAreaCoverPorterAssignments(areaCoverIds) {
+      if (!areaCoverIds || areaCoverIds.length === 0) return [];
+      
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_porter_assignments')
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `)
+          .in('shift_area_cover_assignment_id', areaCoverIds);
+        
+        if (error) throw error;
+        
+        this.shiftAreaCoverPorterAssignments = data || [];
+        return data;
+      } catch (error) {
+        console.error('Error fetching shift area cover porter assignments:', error);
+        this.error = 'Failed to load porter assignments';
+        return [];
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Initialize area cover for a new shift
+    async initializeShiftAreaCover(shiftId, shiftType) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        // Get the shift info to verify it exists and is the right type
+        const { data: shiftData } = await supabase
+          .from('shifts')
+          .select('id, shift_type')
+          .eq('id', shiftId)
+          .single();
+        
+        if (!shiftData) {
+          throw new Error('Shift not found');
+        }
+        
+        // Fetch default area cover assignments based on shift type
+        const { data: defaultAssignments, error: fetchError } = await supabase
+          .from('area_cover_assignments')
+          .select(`
+            department_id,
+            start_time,
+            end_time,
+            color
+          `)
+          .eq('shift_type', shiftType);
+        
+        if (fetchError) throw fetchError;
+        
+        // If no default assignments, return empty array
+        if (!defaultAssignments || defaultAssignments.length === 0) {
+          return [];
+        }
+        
+        // Insert the shift-specific area cover assignments
+        const newAssignments = defaultAssignments.map(assignment => ({
+          shift_id: shiftId,
+          department_id: assignment.department_id,
+          start_time: assignment.start_time,
+          end_time: assignment.end_time,
+          color: assignment.color
+        }));
+        
+        const { data: insertedData, error: insertError } = await supabase
+          .from('shift_area_cover_assignments')
+          .insert(newAssignments)
+          .select(`
+            *,
+            department:department_id(
+              id,
+              name,
+              building_id,
+              building:building_id(id, name)
+            )
+          `);
+        
+        if (insertError) throw insertError;
+        
+        this.shiftAreaCoverAssignments = insertedData || [];
+        return insertedData;
+      } catch (error) {
+        console.error('Error initializing shift area cover:', error);
+        this.error = 'Failed to initialize area cover for this shift';
+        return [];
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Add department to shift area cover
+    async addShiftAreaCover(shiftId, departmentId, startTime, endTime, color = '#4285F4') {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data: shift } = await supabase
+          .from('shifts')
+          .select('shift_type')
+          .eq('id', shiftId)
+          .single();
+        
+        if (!shift) {
+          throw new Error('Shift not found');
+        }
+        
+        const { data, error } = await supabase
+          .from('shift_area_cover_assignments')
+          .insert({
+            shift_id: shiftId,
+            department_id: departmentId,
+            start_time: startTime,
+            end_time: endTime,
+            color: color
+          })
+          .select(`
+            *,
+            department:department_id(
+              id,
+              name,
+              building_id,
+              building:building_id(id, name)
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          this.shiftAreaCoverAssignments.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding department to shift area cover:', error);
+        this.error = 'Failed to add department to area cover';
+        return null;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Update shift area cover assignment
+    async updateShiftAreaCover(assignmentId, updates) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_assignments')
+          .update(updates)
+          .eq('id', assignmentId)
+          .select(`
+            *,
+            department:department_id(
+              id,
+              name,
+              building_id,
+              building:building_id(id, name)
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const index = this.shiftAreaCoverAssignments.findIndex(a => a.id === assignmentId);
+          if (index !== -1) {
+            this.shiftAreaCoverAssignments[index] = data[0];
+          }
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error updating shift area cover assignment:', error);
+        this.error = 'Failed to update area cover assignment';
+        return null;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Remove department from shift area cover
+    async removeShiftAreaCover(assignmentId) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('shift_area_cover_assignments')
+          .delete()
+          .eq('id', assignmentId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.shiftAreaCoverAssignments = this.shiftAreaCoverAssignments.filter(
+          a => a.id !== assignmentId
+        );
+        
+        // Also remove all porter assignments for this area cover
+        this.shiftAreaCoverPorterAssignments = this.shiftAreaCoverPorterAssignments.filter(
+          pa => pa.shift_area_cover_assignment_id !== assignmentId
+        );
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing department from shift area cover:', error);
+        this.error = 'Failed to remove department from area cover';
+        return false;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Add porter assignment to shift area cover
+    async addShiftAreaCoverPorter(areaCoverId, porterId, startTime, endTime) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_porter_assignments')
+          .insert({
+            shift_area_cover_assignment_id: areaCoverId,
+            porter_id: porterId,
+            start_time: startTime,
+            end_time: endTime
+          })
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          this.shiftAreaCoverPorterAssignments.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding porter assignment to shift area cover:', error);
+        this.error = 'Failed to add porter assignment';
+        return null;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Update porter assignment for shift area cover
+    async updateShiftAreaCoverPorter(porterAssignmentId, updates) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_porter_assignments')
+          .update(updates)
+          .eq('id', porterAssignmentId)
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const index = this.shiftAreaCoverPorterAssignments.findIndex(
+            pa => pa.id === porterAssignmentId
+          );
+          if (index !== -1) {
+            this.shiftAreaCoverPorterAssignments[index] = data[0];
+          }
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error updating porter assignment for shift area cover:', error);
+        this.error = 'Failed to update porter assignment';
+        return null;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Remove porter assignment from shift area cover
+    async removeShiftAreaCoverPorter(porterAssignmentId) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('shift_area_cover_porter_assignments')
+          .delete()
+          .eq('id', porterAssignmentId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.shiftAreaCoverPorterAssignments = this.shiftAreaCoverPorterAssignments.filter(
+          pa => pa.id !== porterAssignmentId
+        );
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing porter assignment from shift area cover:', error);
+        this.error = 'Failed to remove porter assignment';
+        return false;
+      } finally {
+        this.loading.areaCover = false;
+      }
     }
   }
 });
+
+// Helper function to convert time string (HH:MM:SS) to minutes
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
