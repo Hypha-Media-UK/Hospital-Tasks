@@ -285,7 +285,8 @@
                 </select>
               </div>
               
-              <div class="form-group">
+              <!-- Status buttons moved to footer for new tasks, but kept here for editing -->
+              <div v-if="isEditingTask" class="form-group">
                 <label>Status</label>
                 <div class="status-buttons">
                   <button 
@@ -309,21 +310,50 @@
             </div>
           </div>
           
+          <!-- Different footer for new vs edit task -->
           <div class="modal-footer">
-            <button 
-              @click="saveTask" 
-              class="btn btn-primary" 
-              :disabled="!canSaveTask || processingTask"
-            >
-              {{ processingTask ? (isEditingTask ? 'Updating...' : 'Adding...') : (isEditingTask ? 'Update Task' : 'Add Task') }}
-            </button>
-            <button 
-              @click="closeTaskModal" 
-              class="btn btn-secondary" 
-              :disabled="processingTask"
-            >
-              Cancel
-            </button>
+            <!-- Edit mode: Update | Cancel -->
+            <template v-if="isEditingTask">
+              <button 
+                @click="closeTaskModal" 
+                class="btn btn-secondary" 
+                :disabled="processingTask"
+              >
+                Cancel
+              </button>
+              <button 
+                @click="saveTask()" 
+                class="btn btn-primary" 
+                :disabled="!canSaveTask || processingTask"
+              >
+                {{ processingTask ? 'Updating...' : 'Update Task' }}
+              </button>
+            </template>
+            
+            <!-- Add mode: Cancel | Pending | Completed -->
+            <template v-else>
+              <button 
+                @click="closeTaskModal" 
+                class="btn btn-secondary" 
+                :disabled="processingTask"
+              >
+                Cancel
+              </button>
+              <button 
+                @click="saveTaskWithStatus('pending')" 
+                class="btn pending-btn" 
+                :disabled="!canSaveTask || processingTask"
+              >
+                {{ processingTask && taskForm.status === 'pending' ? 'Saving...' : 'Pending' }}
+              </button>
+              <button 
+                @click="saveTaskWithStatus('completed')" 
+                class="btn completed-btn" 
+                :disabled="!canSaveTask || processingTask"
+              >
+                {{ processingTask && taskForm.status === 'completed' ? 'Saving...' : 'Completed' }}
+              </button>
+            </template>
           </div>
           
           <div v-if="taskFormError" class="error-message">
@@ -600,6 +630,45 @@ async function markTaskPending(taskId) {
   }
 }
 
+// Save task with specific status
+async function saveTaskWithStatus(status) {
+  if (!canSaveTask.value || processingTask.value) return;
+  
+  // Set the status
+  taskForm.value.status = status;
+  
+  // Process the save
+  processingTask.value = true;
+  taskFormError.value = '';
+  
+  try {
+    // Transform form data to match the API requirements
+    const taskData = {
+      taskItemId: taskForm.value.taskItemId,
+      porterId: taskForm.value.porterId || null,
+      originDepartmentId: taskForm.value.originDepartmentId || null,
+      destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
+      status: taskForm.value.status
+    };
+    
+    // Add new task
+    const result = await shiftsStore.addTaskToShift(shift.value.id, taskData);
+    
+    if (result) {
+      // Reset form and close modal
+      resetTaskForm();
+      showTaskModal.value = false;
+    } else {
+      taskFormError.value = shiftsStore.error || 'Failed to add task';
+    }
+  } catch (error) {
+    console.error('Error adding task:', error);
+    taskFormError.value = 'An unexpected error occurred';
+  } finally {
+    processingTask.value = false;
+  }
+}
+
 
 // Format date and time (e.g., "May 23, 2025, 9:30 AM")
 function formatDateTime(dateString) {
@@ -854,6 +923,24 @@ function calculateDuration(startTimeString) {
     
     &:hover:not(:disabled) {
       background-color: #f5f5f5;
+    }
+  }
+  
+  &.pending-btn {
+    background-color: #FBBC05;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: darken(#FBBC05, 10%);
+    }
+  }
+  
+  &.completed-btn {
+    background-color: #34A853;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: darken(#34A853, 10%);
     }
   }
   
