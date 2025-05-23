@@ -240,6 +240,27 @@
               </div>
               
               <div class="form-group">
+                <label for="originDepartment">Origin Department</label>
+                <select id="originDepartment" v-model="taskForm.originDepartmentId" class="form-control">
+                  <option value="">Select origin department (optional)</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="porter">Assign Porter</label>
+                <select id="porter" v-model="taskForm.porterId" class="form-control">
+                  <option value="">Select porter (optional)</option>
+                  <option v-for="porter in porters" :key="porter.id" :value="porter.id">
+                    {{ porter.first_name }} {{ porter.last_name }}
+                  </option>
+                </select>
+              </div>
+              
+              <!-- Right Column -->
+              <div class="form-group">
                 <label for="taskItem">Task Item</label>
                 <select 
                   id="taskItem" 
@@ -255,39 +276,6 @@
               </div>
               
               <div class="form-group">
-                <label>Status</label>
-                <div class="status-buttons">
-                  <button 
-                    type="button"
-                    @click="taskForm.status = 'pending'"
-                    class="status-btn" 
-                    :class="{ active: taskForm.status === 'pending' }"
-                  >
-                    Pending
-                  </button>
-                  <button 
-                    type="button"
-                    @click="taskForm.status = 'completed'"
-                    class="status-btn" 
-                    :class="{ active: taskForm.status === 'completed' }"
-                  >
-                    Completed
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Right Column -->
-              <div class="form-group">
-                <label for="originDepartment">Origin Department</label>
-                <select id="originDepartment" v-model="taskForm.originDepartmentId" class="form-control">
-                  <option value="">Select origin department (optional)</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                    {{ dept.name }}
-                  </option>
-                </select>
-              </div>
-              
-              <div class="form-group">
                 <label for="destinationDepartment">Destination Department</label>
                 <select id="destinationDepartment" v-model="taskForm.destinationDepartmentId" class="form-control">
                   <option value="">Select destination department (optional)</option>
@@ -298,13 +286,25 @@
               </div>
               
               <div class="form-group">
-                <label for="porter">Assign Porter</label>
-                <select id="porter" v-model="taskForm.porterId" class="form-control">
-                  <option value="">Select porter (optional)</option>
-                  <option v-for="porter in porters" :key="porter.id" :value="porter.id">
-                    {{ porter.first_name }} {{ porter.last_name }}
-                  </option>
-                </select>
+                <label>Status</label>
+                <div class="status-buttons">
+                  <button 
+                    type="button"
+                    @click="taskForm.status = 'pending'"
+                    class="status-btn pending-btn" 
+                    :class="{ active: taskForm.status === 'pending' }"
+                  >
+                    Pending
+                  </button>
+                  <button 
+                    type="button"
+                    @click="taskForm.status = 'completed'"
+                    class="status-btn completed-btn" 
+                    :class="{ active: taskForm.status === 'completed' }"
+                  >
+                    Completed
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -961,10 +961,20 @@ function calculateDuration(startTimeString) {
     cursor: pointer;
     transition: all 0.2s;
     
-    &.active {
-      background-color: #4285F4;
-      color: white;
-      border-color: #4285F4;
+    &.pending-btn {
+      &.active {
+        background-color: #FBBC05;
+        color: white;
+        border-color: #FBBC05;
+      }
+    }
+    
+    &.completed-btn {
+      &.active {
+        background-color: #34A853;
+        color: white;
+        border-color: #34A853;
+      }
     }
     
     &:hover:not(.active) {
