@@ -68,6 +68,11 @@
             </div>
           </div>
           
+          <!-- Porter Pool Section (Now inside shift-info) -->
+          <div class="shift-porter-pool-container">
+            <ShiftPorterPool :shift-id="shift.id" />
+          </div>
+          
           <!-- Area Coverage Section (Nested inside shift-info) -->
           <div class="shift-area-coverage">
             <h3 class="section-title">Area Coverage</h3>
@@ -77,11 +82,6 @@
               :show-header="false"
             />
           </div>
-        </div>
-        
-        <!-- Porter Pool Section -->
-        <div class="card mb-4">
-          <ShiftPorterPool :shift-id="shift.id" />
         </div>
         
         <!-- Tasks Section -->
@@ -1096,6 +1096,12 @@ function isWeekend(date) {
 
 .shift-details {
   margin: 0.5rem 0;
+}
+
+.shift-porter-pool-container {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding-top: 1rem;
 }
 
 .shift-area-coverage {
