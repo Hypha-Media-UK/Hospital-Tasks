@@ -25,7 +25,7 @@
           <div class="porter-card__assignments">
             <div v-if="getPorterAssignments(entry.porter_id).length > 0" class="assignments-list">
               <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" class="assignment-item">
-                {{ assignment.department.name }} ({{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }})
+                {{ assignment.department?.name || 'Unknown Department' }} ({{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }})
               </div>
             </div>
             <div v-else class="no-assignments">
@@ -182,6 +182,9 @@ onMounted(async () => {
   if (areaCoverStore.weekDayAssignments.length === 0) {
     await areaCoverStore.initialize();
   }
+  
+  // Also load area cover assignments for this shift
+  await shiftsStore.fetchShiftAreaCover(props.shiftId);
 });
 </script>
 
