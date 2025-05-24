@@ -986,6 +986,32 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        // First, get the assignment to know which porter to add back to the pool
+        const { data: assignment, error: fetchError } = await supabase
+          .from('shift_area_cover_porter_assignments')
+          .select(`
+            porter_id,
+            shift_area_cover_assignment_id
+          `)
+          .eq('id', porterAssignmentId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        if (!assignment) {
+          throw new Error('Porter assignment not found');
+        }
+        
+        // Get the shift ID from the area cover assignment
+        const { data: areaCover, error: areaCoverError } = await supabase
+          .from('shift_area_cover_assignments')
+          .select('shift_id')
+          .eq('id', assignment.shift_area_cover_assignment_id)
+          .single();
+        
+        if (areaCoverError) throw areaCoverError;
+        
+        // Delete the porter assignment
         const { error } = await supabase
           .from('shift_area_cover_porter_assignments')
           .delete()
@@ -997,6 +1023,33 @@ export const useShiftsStore = defineStore('shifts', {
         this.shiftAreaCoverPorterAssignments = this.shiftAreaCoverPorterAssignments.filter(
           pa => pa.id !== porterAssignmentId
         );
+        
+        // Add the porter back to the shift pool
+        if (areaCover && assignment.porter_id) {
+          // Check if the porter is already in the pool
+          const alreadyInPool = this.shiftPorterPool.some(p => p.porter_id === assignment.porter_id);
+          
+          if (!alreadyInPool) {
+            // Add porter back to the shift pool
+            const { data: porterData, error: porterError } = await supabase
+              .from('shift_porter_pool')
+              .insert({
+                shift_id: areaCover.shift_id,
+                porter_id: assignment.porter_id
+              })
+              .select(`
+                *,
+                porter:porter_id(id, first_name, last_name, role)
+              `);
+            
+            if (!porterError && porterData && porterData.length > 0) {
+              // Add to local state
+              this.shiftPorterPool.push(porterData[0]);
+            } else if (porterError) {
+              console.error('Error adding porter back to shift pool:', porterError);
+            }
+          }
+        }
         
         return true;
       } catch (error) {
