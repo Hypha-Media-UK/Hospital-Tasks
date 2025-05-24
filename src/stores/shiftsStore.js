@@ -377,7 +377,7 @@ export const useShiftsStore = defineStore('shifts', {
           return null;
         }
         
-        // Create timestamps for the task
+        // Create timestamps for the task (if not already provided)
         const now = new Date();
         const nowISOString = now.toISOString();
         
@@ -389,20 +389,23 @@ export const useShiftsStore = defineStore('shifts', {
         const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
         const timeCompletedISOString = timeCompleted.toISOString();
         
+        // Use provided time values or default ones
+        const taskInsertData = {
+          shift_id: shiftId,
+          task_item_id: taskData.taskItemId,
+          porter_id: taskData.porterId || null,
+          origin_department_id: taskData.originDepartmentId || null,
+          destination_department_id: taskData.destinationDepartmentId || null,
+          status: taskData.status || 'pending',
+          time_received: taskData.time_received || nowISOString,
+          time_allocated: taskData.time_allocated || timeAllocatedISOString,
+          time_completed: taskData.time_completed || timeCompletedISOString
+        };
+        
         // Proceed with adding the task
         const { data, error } = await supabase
           .from('shift_tasks')
-          .insert({
-            shift_id: shiftId,
-            task_item_id: taskData.taskItemId,
-            porter_id: taskData.porterId || null,
-            origin_department_id: taskData.originDepartmentId || null,
-            destination_department_id: taskData.destinationDepartmentId || null,
-            status: taskData.status || 'pending',
-            time_received: nowISOString,
-            time_allocated: timeAllocatedISOString,
-            time_completed: timeCompletedISOString
-          })
+          .insert(taskInsertData)
           .select(`
             *,
             task_item:task_item_id(id, name, description, task_type_id),
@@ -474,7 +477,11 @@ export const useShiftsStore = defineStore('shifts', {
         }
         
         // If we're changing from pending to completed (completing a task)
-        // we use the current time as the completion time
+        // we keep the expected completion time already stored in the task
+        else if (existingTask.status === 'pending' && status === 'completed') {
+          // No time field updates needed - we keep the existing time_completed value
+          console.log('Completing task - using existing expected completion time');
+        }
         
         // Update the task with the new status and any time changes
         const { data, error } = await supabase
@@ -555,15 +562,31 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        // Build update object with required fields
+        const updateObj = {
+          task_item_id: taskData.taskItemId,
+          porter_id: taskData.porterId || null,
+          origin_department_id: taskData.originDepartmentId || null,
+          destination_department_id: taskData.destinationDepartmentId || null,
+          status: taskData.status
+        };
+        
+        // Add time fields if they are provided
+        if (taskData.time_received) {
+          updateObj.time_received = taskData.time_received;
+        }
+        
+        if (taskData.time_allocated) {
+          updateObj.time_allocated = taskData.time_allocated;
+        }
+        
+        if (taskData.time_completed) {
+          updateObj.time_completed = taskData.time_completed;
+        }
+        
         const { data, error } = await supabase
           .from('shift_tasks')
-          .update({
-            task_item_id: taskData.taskItemId,
-            porter_id: taskData.porterId || null,
-            origin_department_id: taskData.originDepartmentId || null,
-            destination_department_id: taskData.destinationDepartmentId || null,
-            status: taskData.status
-          })
+          .update(updateObj)
           .eq('id', taskId)
           .select(`
             *,

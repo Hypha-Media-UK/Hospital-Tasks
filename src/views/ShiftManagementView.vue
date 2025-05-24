@@ -215,7 +215,7 @@
                       <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
                     </div>
                     <div class="meta-item">
-                      <strong>Completed:</strong> {{ formatTime(task.updated_at) }}
+                      <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
                     </div>
                   </div>
                 </div>
