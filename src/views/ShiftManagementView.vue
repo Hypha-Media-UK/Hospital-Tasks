@@ -534,6 +534,14 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 });
 
+// Watch for task item changes to auto-populate department fields
+watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
+  if (newTaskItemId) {
+    // Check for item-specific department assignments and auto-populate
+    checkTaskItemDepartmentAssignments(newTaskItemId);
+  }
+});
+
 // Methods
 function navigateToHome() {
   router.push('/');
@@ -642,10 +650,52 @@ async function loadTaskItems() {
   try {
     await taskTypesStore.fetchTaskItemsByType(taskForm.value.taskTypeId);
     taskItems.value = taskTypesStore.getTaskItemsByType(taskForm.value.taskTypeId);
+    
+    // Check for task type department assignments and auto-populate
+    checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
   } catch (error) {
     console.error('Error loading task items:', error);
   } finally {
     loadingTaskItems.value = false;
+  }
+}
+
+// Check for department assignments for a task type and auto-populate form fields
+function checkTaskTypeDepartmentAssignments(taskTypeId) {
+  if (!taskTypeId) return;
+  
+  // Only apply default departments if fields are empty
+  const assignments = taskTypesStore.getTypeAssignmentsByTypeId(taskTypeId);
+  
+  // Look for origin department
+  const originAssignment = assignments.find(a => a.is_origin);
+  if (originAssignment && !taskForm.value.originDepartmentId) {
+    taskForm.value.originDepartmentId = originAssignment.department_id;
+  }
+  
+  // Look for destination department
+  const destinationAssignment = assignments.find(a => a.is_destination);
+  if (destinationAssignment && !taskForm.value.destinationDepartmentId) {
+    taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
+  }
+}
+
+// Check for department assignments for a task item and auto-populate form fields
+function checkTaskItemDepartmentAssignments(taskItemId) {
+  if (!taskItemId) return;
+  
+  const assignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
+  
+  // Look for origin department
+  const originAssignment = assignments.find(a => a.is_origin);
+  if (originAssignment) {
+    taskForm.value.originDepartmentId = originAssignment.department_id;
+  }
+  
+  // Look for destination department
+  const destinationAssignment = assignments.find(a => a.is_destination);
+  if (destinationAssignment) {
+    taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
   }
 }
 
