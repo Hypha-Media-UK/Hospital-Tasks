@@ -1459,12 +1459,27 @@ function isWeekend(date) {
 
 /* Animation for auto-populated fields */
 @keyframes field-glow {
-  0% { box-shadow: 0 0 0 rgba(251, 188, 5, 0); }
-  50% { box-shadow: 0 0 8px rgba(251, 188, 5, 0.6); }
-  100% { box-shadow: 0 0 0 rgba(251, 188, 5, 0); }
+  0% { 
+    box-shadow: 0 0 0 rgba(33, 150, 243, 0); 
+    background-color: white;
+    border-color: #ccc;
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(33, 150, 243, 0.8); 
+    background-color: rgba(33, 150, 243, 0.1);
+    border-color: #2196F3;
+    transform: scale(1.03);
+  }
+  100% { 
+    box-shadow: 0 0 0 rgba(33, 150, 243, 0); 
+    background-color: white;
+    border-color: #ccc;
+    transform: scale(1);
+  }
 }
 
 .field-auto-populated {
-  animation: field-glow 1.5s ease-in-out;
+  animation: field-glow 2s ease-in-out;
 }
 </style>
