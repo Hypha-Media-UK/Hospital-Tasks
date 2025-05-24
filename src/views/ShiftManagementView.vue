@@ -67,177 +67,49 @@
               </button>
             </div>
           </div>
-          
-          <!-- Porter Pool Section (Now inside shift-info) -->
-          <div class="shift-porter-pool-container">
-            <ShiftPorterPool :shift-id="shift.id" />
-          </div>
-          
-          <!-- Area Coverage Section (Nested inside shift-info) -->
-          <div class="shift-area-coverage">
-            <h3 class="section-title">Area Coverage</h3>
-            <ShiftAreaCoverList 
-              :shift-id="shift.id" 
-              :shift-type="determineAreaCoverType(shift)"
-              :show-header="false"
-            />
-          </div>
         </div>
         
-        <!-- Tasks Section -->
+        <!-- Add Task Button (Outside tabs) -->
+        <div class="action-bar mb-4">
+          <button 
+            v-if="shift.is_active" 
+            @click="showAddTaskModal()" 
+            class="btn btn-primary"
+          >
+            Add Task
+          </button>
+        </div>
+        
+        <!-- Tabs Section -->
         <div class="card">
-          <div class="tasks-header">
-            <h2 class="card__title">Tasks</h2>
-            <div v-if="shift.is_active" class="tasks-actions">
-              <button @click="showAddTaskModal()" class="btn btn-primary">
-                Add Task
-              </button>
-            </div>
-          </div>
-          
-          <!-- Task Tabs -->
-          <div class="task-tabs">
-            <button 
-              @click="activeTab = 'pending'" 
-              class="tab-button" 
-              :class="{ active: activeTab === 'pending' }"
-            >
-              Pending ({{ pendingTasks.length }})
-            </button>
-            <button 
-              @click="activeTab = 'completed'" 
-              class="tab-button" 
-              :class="{ active: activeTab === 'completed' }"
-            >
-              Completed ({{ completedTasks.length }})
-            </button>
-          </div>
-          
-          <!-- Tasks List -->
-          <div class="tasks-container">
-            <!-- Pending Tasks -->
-            <div v-if="activeTab === 'pending'" class="tasks-list">
-              <div v-if="pendingTasks.length === 0" class="empty-state">
-                <p>No pending tasks.</p>
-              </div>
-              
-              <div 
-                v-for="task in pendingTasks" 
-                :key="task.id" 
-                class="task-item"
-              >
-                <div class="task-details">
-                  <h3 class="task-name">{{ task.task_item.name }}</h3>
-                  <p v-if="task.task_item.description" class="task-description">
-                    {{ task.task_item.description }}
-                  </p>
-                  
-                  <div class="task-meta">
-                    <div v-if="task.origin_department" class="meta-item">
-                      <strong>From:</strong> {{ task.origin_department.name }}
-                    </div>
-                    <div v-if="task.destination_department" class="meta-item">
-                      <strong>To:</strong> {{ task.destination_department.name }}
-                    </div>
-                    <div class="meta-item">
-                      <strong>Porter:</strong> 
-                      <span v-if="task.porter">
-                        {{ task.porter.first_name }} {{ task.porter.last_name }}
-                      </span>
-                      <span v-else class="not-assigned">Not assigned</span>
-                    </div>
-                    <div class="meta-item">
-                      <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                    </div>
-                    <div class="meta-item">
-                      <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
-                    </div>
-                    <div class="meta-item">
-                      <strong>Expected completion:</strong> {{ formatTime(task.time_completed) }}
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="task-actions">
-                  <button 
-                    @click="editTask(task)" 
-                    class="btn btn-small btn-primary"
-                    :disabled="updatingTask"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    @click="markTaskCompleted(task.id)" 
-                    class="btn btn-small btn-success"
-                    :disabled="updatingTask"
-                  >
-                    Mark Completed
-                  </button>
-                </div>
-              </div>
+          <div class="tabs">
+            <div class="tabs__header">
+              <TabHeader 
+                v-for="tab in tabs" 
+                :key="tab.id"
+                :label="tab.label"
+                :isActive="activeTabId === tab.id"
+                :badge-count="tab.id === 'tasks' ? totalTasksCount : 0"
+                @click="setActiveTab(tab.id)"
+              />
             </div>
             
-            <!-- Completed Tasks -->
-            <div v-if="activeTab === 'completed'" class="tasks-list">
-              <div v-if="completedTasks.length === 0" class="empty-state">
-                <p>No completed tasks.</p>
-              </div>
-              
-              <div 
-                v-for="task in completedTasks" 
-                :key="task.id" 
-                class="task-item completed"
-              >
-                <div class="task-details">
-                  <h3 class="task-name">{{ task.task_item.name }}</h3>
-                  <p v-if="task.task_item.description" class="task-description">
-                    {{ task.task_item.description }}
-                  </p>
-                  
-                  <div class="task-meta">
-                    <div v-if="task.origin_department" class="meta-item">
-                      <strong>From:</strong> {{ task.origin_department.name }}
-                    </div>
-                    <div v-if="task.destination_department" class="meta-item">
-                      <strong>To:</strong> {{ task.destination_department.name }}
-                    </div>
-                    <div class="meta-item">
-                      <strong>Porter:</strong> 
-                      <span v-if="task.porter">
-                        {{ task.porter.first_name }} {{ task.porter.last_name }}
-                      </span>
-                      <span v-else class="not-assigned">Not assigned</span>
-                    </div>
-                    <div class="meta-item">
-                      <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                    </div>
-                    <div class="meta-item">
-                      <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
-                    </div>
-                    <div class="meta-item">
-                      <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="task-actions">
-                  <button 
-                    @click="editTask(task)" 
-                    class="btn btn-small btn-primary"
-                    :disabled="updatingTask"
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    @click="markTaskPending(task.id)" 
-                    class="btn btn-small btn-outline"
-                    :disabled="updatingTask"
-                  >
-                    Mark Pending
-                  </button>
-                </div>
-              </div>
-            </div>
+            <TabContent :activeTab="activeTabId">
+              <template #shiftSetup>
+                <ShiftSetupTabContent 
+                  :shift-id="shift.id" 
+                  :shift-type="determineAreaCoverType(shift)"
+                />
+              </template>
+              <template #tasks>
+                <TasksTabContent 
+                  :shift-id="shift.id"
+                  @edit-task="editTask"
+                  @mark-task-completed="markTaskCompleted"
+                  @mark-task-pending="markTaskPending"
+                />
+              </template>
+            </TabContent>
           </div>
         </div>
       </template>
@@ -446,8 +318,10 @@ import { useStaffStore } from '../stores/staffStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import ShiftAreaCoverList from '../components/area-cover/ShiftAreaCoverList.vue';
-import ShiftPorterPool from '../components/ShiftPorterPool.vue';
+import TabHeader from '../components/tabs/TabHeader.vue';
+import TabContent from '../components/tabs/TabContent.vue';
+import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabContent.vue';
+import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -459,7 +333,12 @@ const settingsStore = useSettingsStore();
 
 // Local state
 const loading = ref(true);
-const activeTab = ref('pending');
+const activeTab = ref('pending'); // For task list tabs (pending/completed)
+const activeTabId = ref('shiftSetup'); // For main view tabs (shift setup/tasks)
+const tabs = [
+  { id: 'shiftSetup', label: 'Shift Setup' },
+  { id: 'tasks', label: 'Tasks' }
+];
 const showEndShiftConfirm = ref(false);
 const endingShift = ref(false);
 const loadingTaskItems = ref(false);
@@ -495,6 +374,7 @@ const taskForm = ref({
 const shift = computed(() => shiftsStore.currentShift);
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
+const totalTasksCount = computed(() => pendingTasks.value.length + completedTasks.value.length);
 const porters = computed(() => {
   // Only show porters from the shift pool
   return shiftsStore.shiftPorterPool.map(p => p.porter);
@@ -556,7 +436,11 @@ watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
   }
 });
 
-// Methods
+  // Methods
+function setActiveTab(tabId) {
+  activeTabId.value = tabId;
+}
+
 function navigateToHome() {
   router.push('/');
 }

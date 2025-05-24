@@ -5,6 +5,9 @@
     @click="$emit('click')"
   >
     {{ label }}
+    <span v-if="badgeCount > 0" class="tab-header__badge">
+      {{ badgeCount }}
+    </span>
   </button>
 </template>
 
@@ -17,6 +20,10 @@ defineProps({
   isActive: {
     type: Boolean,
     default: false
+  },
+  badgeCount: {
+    type: Number,
+    default: 0
   }
 });
 
@@ -53,6 +60,23 @@ defineEmits(['click']);
   
   &:hover:not(.tab-header--active) {
     color: color.adjust(mix.color('text'), $lightness: -15%);
+  }
+  
+  &__badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background-color: #EA4335;
+    color: white;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    font-weight: bold;
   }
 }
 </style>
