@@ -822,35 +822,72 @@ function formatDateTime(dateString) {
 }
 
 // Format time (e.g., "9:30 AM" or "09:30") without the date based on app settings
-function formatTime(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+function formatTime(timeString) {
+  if (!timeString) return '';
   
-  // Use 24h or 12h format based on settings
-  if (settingsStore.appSettings.timeFormat === '24h') {
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+  // Check if the input is already in HH:MM format
+  if (typeof timeString === 'string' && /^\d{1,2}:\d{2}$/.test(timeString)) {
+    // Already in the right format, just format according to settings
+    const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // Use 24h or 12h format based on settings
+    if (settingsStore.appSettings.timeFormat === '24h') {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    } else {
+      // Convert to 12h format
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const hours12 = hours % 12 || 12;
+      return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+    }
   } else {
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
-    });
+    // For backward compatibility - if it's still a date string
+    try {
+      const date = new Date(timeString);
+      
+      // Use 24h or 12h format based on settings
+      if (settingsStore.appSettings.timeFormat === '24h') {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      } else {
+        return date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        });
+      }
+    } catch (e) {
+      console.error('Error formatting time:', e);
+      return timeString || '';
+    }
   }
 }
 
 // Format time for time input (HH:MM)
-function formatDateTimeForInput(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+function formatDateTimeForInput(timeString) {
+  if (!timeString) return '';
   
-  // Get time parts
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  
-  // Format for time input (HH:MM)
-  return `${hours}:${minutes}`;
+  // Check if the input is already in HH:MM format
+  if (typeof timeString === 'string' && /^\d{1,2}:\d{2}$/.test(timeString)) {
+    // Already in the right format, ensure it's padded correctly for the input
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  } else {
+    // For backward compatibility - if it's still a date string
+    try {
+      const date = new Date(timeString);
+      
+      // Get time parts
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      // Format for time input (HH:MM)
+      return `${hours}:${minutes}`;
+    } catch (e) {
+      console.error('Error formatting time for input:', e);
+      return timeString || '';
+    }
+  }
 }
 
 // Calculate duration since start time

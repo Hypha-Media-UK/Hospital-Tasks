@@ -77,6 +77,18 @@ SET default_tablespace = '';
 SET default_table_access_method = "heap";
 
 
+CREATE TABLE IF NOT EXISTS "public"."app_settings" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "timezone" "text" DEFAULT 'UTC'::"text" NOT NULL,
+    "time_format" "text" DEFAULT '24h'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."app_settings" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."area_cover_assignments" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "department_id" "uuid" NOT NULL,
@@ -202,14 +214,37 @@ CREATE TABLE IF NOT EXISTS "public"."shift_tasks" (
     "status" "text" DEFAULT 'pending'::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "time_received" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "time_allocated" timestamp with time zone DEFAULT ("now"() + '00:01:00'::interval) NOT NULL,
-    "time_completed" timestamp with time zone DEFAULT ("now"() + '00:20:00'::interval) NOT NULL,
+    "time_received" "text" DEFAULT '00:00'::"text" NOT NULL,
+    "time_allocated" "text" DEFAULT '00:01'::"text" NOT NULL,
+    "time_completed" "text" DEFAULT '00:20'::"text" NOT NULL,
     CONSTRAINT "shift_tasks_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'completed'::"text"])))
 );
 
 
 ALTER TABLE "public"."shift_tasks" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."shift_tasks" IS 'Task tracking table with time fields as text to avoid timezone issues';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."shift_tasks_backup" (
+    "id" "uuid",
+    "shift_id" "uuid",
+    "task_item_id" "uuid",
+    "porter_id" "uuid",
+    "origin_department_id" "uuid",
+    "destination_department_id" "uuid",
+    "status" "text",
+    "created_at" timestamp with time zone,
+    "updated_at" timestamp with time zone,
+    "time_received" timestamp with time zone,
+    "time_allocated" timestamp with time zone,
+    "time_completed" timestamp with time zone
+);
+
+
+ALTER TABLE "public"."shift_tasks_backup" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."shifts" (
@@ -302,6 +337,11 @@ CREATE TABLE IF NOT EXISTS "public"."task_types" (
 
 
 ALTER TABLE "public"."task_types" OWNER TO "postgres";
+
+
+ALTER TABLE ONLY "public"."app_settings"
+    ADD CONSTRAINT "app_settings_pkey" PRIMARY KEY ("id");
+
 
 
 ALTER TABLE ONLY "public"."area_cover_assignments"
@@ -537,6 +577,10 @@ CREATE INDEX "task_type_dept_assign_dept_id_idx" ON "public"."task_type_departme
 
 
 CREATE INDEX "task_type_dept_assign_task_type_id_idx" ON "public"."task_type_department_assignments" USING "btree" ("task_type_id");
+
+
+
+CREATE OR REPLACE TRIGGER "update_app_settings_updated_at" BEFORE UPDATE ON "public"."app_settings" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -904,6 +948,12 @@ GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."app_settings" TO "anon";
+GRANT ALL ON TABLE "public"."app_settings" TO "authenticated";
+GRANT ALL ON TABLE "public"."app_settings" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."area_cover_assignments" TO "anon";
 GRANT ALL ON TABLE "public"."area_cover_assignments" TO "authenticated";
 GRANT ALL ON TABLE "public"."area_cover_assignments" TO "service_role";
@@ -955,6 +1005,12 @@ GRANT ALL ON TABLE "public"."shift_porter_pool" TO "service_role";
 GRANT ALL ON TABLE "public"."shift_tasks" TO "anon";
 GRANT ALL ON TABLE "public"."shift_tasks" TO "authenticated";
 GRANT ALL ON TABLE "public"."shift_tasks" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."shift_tasks_backup" TO "anon";
+GRANT ALL ON TABLE "public"."shift_tasks_backup" TO "authenticated";
+GRANT ALL ON TABLE "public"."shift_tasks_backup" TO "service_role";
 
 
 
@@ -1172,6 +1228,17 @@ SET row_security = off;
 
 
 --
+-- Data for Name: app_settings; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."app_settings" ("id", "timezone", "time_format", "created_at", "updated_at") VALUES
+	('d0457585-be03-44a4-a2c2-1669c6a9a7fc', 'UTC', '24h', '2025-05-24 11:53:29.67357+00', '2025-05-24 11:53:29.67357+00'),
+	('76c2f394-4c47-4010-b0bd-b687398a495d', 'UTC', '12h', '2025-05-24 11:57:56.481832+00', '2025-05-24 11:57:56.215+00'),
+	('63f99fa6-34e0-4ca5-b4a4-458d859d2766', 'GMT', '24h', '2025-05-24 11:58:53.469637+00', '2025-05-24 11:58:53.352+00'),
+	('22639f07-209d-41e6-b3e3-f569b6c4db96', 'GMT', '24h', '2025-05-24 12:03:15.409004+00', '2025-05-24 12:03:15.198+00');
+
+
+--
 -- Data for Name: buildings; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1262,8 +1329,9 @@ INSERT INTO "public"."shifts" ("id", "supervisor_id", "shift_type", "start_time"
 	('e57acaf6-f171-42c5-958d-24ac48479180', 'a9d969e3-d449-4005-a679-f63be07c6872', 'day', '2025-05-23 14:34:47.539+00', '2025-05-24 07:20:34.33+00', false, '2025-05-23 14:34:47.882072+00', '2025-05-24 07:20:34.467963+00'),
 	('2e765b10-6ff6-4a88-8ede-ba75777e0323', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-23 14:17:14.666+00', '2025-05-24 07:20:37.996+00', false, '2025-05-23 14:17:14.961879+00', '2025-05-24 07:20:38.132798+00'),
 	('ac4d504d-8fe0-4706-b4fc-1ce9e84c483d', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-24 07:20:48.416+00', '2025-05-24 08:03:52.225+00', false, '2025-05-24 07:20:48.591102+00', '2025-05-24 08:03:52.333276+00'),
-	('a124a872-d2d7-4324-b88a-780f82796906', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-24 08:03:56.76+00', NULL, true, '2025-05-24 08:03:56.829536+00', '2025-05-24 08:03:56.829536+00'),
-	('caad639d-cb8f-4fbe-a791-bdfdb2828abd', '358aa759-e11e-40b0-b886-37481c5eb6c0', 'day', '2025-05-24 11:39:30.792+00', NULL, true, '2025-05-24 11:39:30.915414+00', '2025-05-24 11:39:30.915414+00');
+	('caad639d-cb8f-4fbe-a791-bdfdb2828abd', '358aa759-e11e-40b0-b886-37481c5eb6c0', 'day', '2025-05-24 11:39:30.792+00', '2025-05-24 12:00:31.806+00', false, '2025-05-24 11:39:30.915414+00', '2025-05-24 12:00:31.920146+00'),
+	('a124a872-d2d7-4324-b88a-780f82796906', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-24 08:03:56.76+00', '2025-05-24 12:00:35.671+00', false, '2025-05-24 08:03:56.829536+00', '2025-05-24 12:00:35.770161+00'),
+	('0a0e958b-fe1a-4b28-96ba-cead157a49e5', '676e6634-937d-4c65-a165-55ad78b9dde4', 'day', '2025-05-24 12:01:18.191+00', NULL, true, '2025-05-24 12:01:18.268028+00', '2025-05-24 12:01:18.268028+00');
 
 
 --
@@ -1338,7 +1406,10 @@ INSERT INTO "public"."shift_area_cover_assignments" ("id", "shift_id", "departme
 	('508e3676-8006-4fa0-9346-bb601c4edfbb', 'a124a872-d2d7-4324-b88a-780f82796906', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#f143f4', '2025-05-24 08:03:57.034351+00', '2025-05-24 08:03:57.034351+00'),
 	('26c17d92-7891-4169-b3c5-de6ae7ffccaa', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', '09:00:00', '17:00:00', '#EA4335', '2025-05-24 11:39:31.139467+00', '2025-05-24 11:39:31.139467+00'),
 	('3c636e8f-4c4f-410e-9d42-f291a95c89e1', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', '08:00:00', '16:00:00', '#4285F4', '2025-05-24 11:39:31.139467+00', '2025-05-24 11:39:31.139467+00'),
-	('1ff6eb61-bbc9-4b98-aee0-4410feecaf7f', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#f143f4', '2025-05-24 11:39:31.139467+00', '2025-05-24 11:39:31.139467+00');
+	('1ff6eb61-bbc9-4b98-aee0-4410feecaf7f', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#f143f4', '2025-05-24 11:39:31.139467+00', '2025-05-24 11:39:31.139467+00'),
+	('76f4af59-c757-45d5-a221-e6b848160aef', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', '09:00:00', '17:00:00', '#EA4335', '2025-05-24 12:01:18.469243+00', '2025-05-24 12:01:18.469243+00'),
+	('e3e40de1-d3b9-485c-a941-2aac1b9fa05e', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', '08:00:00', '16:00:00', '#4285F4', '2025-05-24 12:01:18.469243+00', '2025-05-24 12:01:18.469243+00'),
+	('19e2ff41-5359-4460-95e7-235887d879f8', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#f143f4', '2025-05-24 12:01:18.469243+00', '2025-05-24 12:01:18.469243+00');
 
 
 --
@@ -1361,8 +1432,9 @@ INSERT INTO "public"."shift_area_cover_porter_assignments" ("id", "shift_area_co
 	('bc1944b0-ce64-4d9e-b47a-7a2d13e3a286', '508e3676-8006-4fa0-9346-bb601c4edfbb', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '09:00:00', '14:00:00', '2025-05-24 08:03:57.183028+00', '2025-05-24 08:03:57.183028+00'),
 	('40b975de-7823-43b8-a954-a2c8e3b4e68b', '508e3676-8006-4fa0-9346-bb601c4edfbb', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '15:59:00', '2025-05-24 08:03:57.183028+00', '2025-05-24 08:03:57.183028+00'),
 	('007ee1b2-0479-4b83-98f7-a74eeaee8107', '1ff6eb61-bbc9-4b98-aee0-4410feecaf7f', 'f45a46c3-2240-462f-9895-494965ecd1a8', '08:00:00', '09:00:00', '2025-05-24 11:39:31.312348+00', '2025-05-24 11:39:31.312348+00'),
-	('06860476-cbdc-476c-967f-82213ae8ef4c', '1ff6eb61-bbc9-4b98-aee0-4410feecaf7f', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '09:00:00', '14:00:00', '2025-05-24 11:39:31.312348+00', '2025-05-24 11:39:31.312348+00'),
-	('2dd6916b-f30e-4cfb-ad00-a525b0f842a7', '1ff6eb61-bbc9-4b98-aee0-4410feecaf7f', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '15:59:00', '2025-05-24 11:39:31.312348+00', '2025-05-24 11:39:31.312348+00');
+	('2dd6916b-f30e-4cfb-ad00-a525b0f842a7', '1ff6eb61-bbc9-4b98-aee0-4410feecaf7f', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '15:59:00', '2025-05-24 11:39:31.312348+00', '2025-05-24 11:39:31.312348+00'),
+	('431cdb2c-7122-4d6d-b81f-a304690fca6b', '19e2ff41-5359-4460-95e7-235887d879f8', 'f45a46c3-2240-462f-9895-494965ecd1a8', '08:00:00', '09:00:00', '2025-05-24 12:01:18.607521+00', '2025-05-24 12:01:18.607521+00'),
+	('523f0ef2-9ad9-4a9c-a489-178721ad2b51', '19e2ff41-5359-4460-95e7-235887d879f8', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '15:59:00', '2025-05-24 12:01:18.607521+00', '2025-05-24 12:01:18.607521+00');
 
 
 --
@@ -1374,8 +1446,8 @@ INSERT INTO "public"."shift_defaults" ("id", "shift_type", "start_time", "end_ti
 	('01373b67-60e9-4422-a1ae-a8e72d119014', 'week_night', '20:00:00', '08:00:00', '#673AB7', '2025-05-23 13:34:38.657478+00', '2025-05-23 13:34:38.657478+00'),
 	('2b13f0ba-98fc-4013-9953-0da1418e8ea0', 'weekend_day', '08:00:00', '16:00:00', '#34A853', '2025-05-23 13:34:38.657478+00', '2025-05-23 13:34:38.657478+00'),
 	('524485d0-141a-4574-808b-93410f62ca94', 'weekend_night', '20:00:00', '08:00:00', '#EA4335', '2025-05-23 13:34:38.657478+00', '2025-05-23 13:34:38.657478+00'),
-	('f6a391c3-2e65-4b33-ad43-76857a81aa4d', 'night', '20:00:00', '08:00:00', '#673AB7', '2025-05-22 16:22:03.801345+00', '2025-05-23 14:00:29.815+00'),
-	('8472931e-f2fd-4827-a444-ab4827e706d2', 'day', '08:00:00', '16:00:00', '#4285F4', '2025-05-22 16:22:03.801345+00', '2025-05-23 14:00:29.814+00');
+	('f6a391c3-2e65-4b33-ad43-76857a81aa4d', 'night', '20:00:00', '08:00:00', '#673AB7', '2025-05-22 16:22:03.801345+00', '2025-05-24 12:03:12.557+00'),
+	('8472931e-f2fd-4827-a444-ab4827e706d2', 'day', '08:00:00', '16:00:00', '#4285F4', '2025-05-22 16:22:03.801345+00', '2025-05-24 12:03:12.556+00');
 
 
 --
@@ -1398,7 +1470,8 @@ INSERT INTO "public"."shift_porter_pool" ("id", "shift_id", "porter_id", "create
 	('d3de37a7-e645-4de5-a555-1de055a78416', 'ac4d504d-8fe0-4706-b4fc-1ce9e84c483d', '786d6d23-69b9-433e-92ed-938806cb10a8', '2025-05-24 07:21:04.162494+00', '2025-05-24 07:21:04.162494+00'),
 	('5ba33927-dc22-4fa4-b2a0-c622f1f49cbc', 'ac4d504d-8fe0-4706-b4fc-1ce9e84c483d', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '2025-05-24 07:21:26.513749+00', '2025-05-24 07:21:26.513749+00'),
 	('51388dc5-4621-468a-af67-7feb1b181e4e', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '786d6d23-69b9-433e-92ed-938806cb10a8', '2025-05-24 11:39:36.173387+00', '2025-05-24 11:39:36.173387+00'),
-	('4fa2a8ca-460f-4d82-b581-6a82f45fc0b5', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '2025-05-24 11:39:43.389099+00', '2025-05-24 11:39:43.389099+00');
+	('4fa2a8ca-460f-4d82-b581-6a82f45fc0b5', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '2025-05-24 11:39:43.389099+00', '2025-05-24 11:39:43.389099+00'),
+	('1a1d446c-e72f-4549-8b8c-fc69ec0a95e2', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '2025-05-24 12:01:30.231141+00', '2025-05-24 12:01:30.231141+00');
 
 
 --
@@ -1434,6 +1507,36 @@ INSERT INTO "public"."task_items" ("id", "task_type_id", "name", "description", 
 --
 
 INSERT INTO "public"."shift_tasks" ("id", "shift_id", "task_item_id", "porter_id", "origin_department_id", "destination_department_id", "status", "created_at", "updated_at", "time_received", "time_allocated", "time_completed") VALUES
+	('724f2648-0b08-41a6-8321-91619e0dbabb', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '14446938-25cd-4655-ad84-dbb7db871f28', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'completed', '2025-05-23 07:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('5e939454-7477-43e5-b5f3-65675d3e0ec7', 'f47ac10b-58cc-4372-a567-0e02b2c3d491', 'dfe98d58-f606-46f0-afb9-363dfe9a4d3a', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-23 06:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('919ef224-d90e-4aac-8e52-dfa25ada730a', 'f47ac10b-58cc-4372-a567-0e02b2c3d491', '0c90fbec-5d4c-46c0-b7dd-47fba327e3ed', NULL, 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'pending', '2025-05-23 08:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('0e7dce68-352e-413a-a061-20fb11aa1ab0', 'f47ac10b-58cc-4372-a567-0e02b2c3d492', '68e8e006-79dc-4d5f-aed0-20755d53403b', 'f45a46c3-2240-462f-9895-494965ecd1a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'completed', '2025-05-22 08:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('4a06494e-1051-4006-b130-d72b4a6eebf1', 'f47ac10b-58cc-4372-a567-0e02b2c3d492', '516e8952-a09b-456b-926d-e78411490a6d', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', 'completed', '2025-05-22 08:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('74f81abd-0b5b-465d-a979-fa6dce4c276d', 'f47ac10b-58cc-4372-a567-0e02b2c3d492', '14446938-25cd-4655-ad84-dbb7db871f28', NULL, 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'pending', '2025-05-22 12:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('37ef35c9-6670-494d-871a-8eb16248720e', 'eca831e9-fa9f-4604-9526-0a6f70040f86', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', 'f45a46c3-2240-462f-9895-494965ecd1a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', 'pending', '2025-05-23 08:49:55.479887+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('a5638fbf-2bfe-4805-be92-13d3bdab7be0', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '68e8e006-79dc-4d5f-aed0-20755d53403b', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'completed', '2025-05-23 08:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('6e25558d-f989-49ce-8d40-c5b69f1af256', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '532b14f0-042a-4ddf-bc7d-cb95ff298132', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'pending', '2025-05-23 08:24:46.89275+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('8f16befe-a495-4b05-840d-cc077a569ad3', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'completed', '2025-05-23 09:21:47.358281+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('b57eb494-5648-4d1d-b783-aa48eced023a', 'e57acaf6-f171-42c5-958d-24ac48479180', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', 'completed', '2025-05-23 14:35:11.683807+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('1b91132f-6967-47a1-9b13-7d020244f6e6', 'e57acaf6-f171-42c5-958d-24ac48479180', '0c90fbec-5d4c-46c0-b7dd-47fba327e3ed', '786d6d23-69b9-433e-92ed-938806cb10a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'completed', '2025-05-23 14:38:42.170724+00', '2025-05-24 12:12:41.391289+00', '07:33', '07:34', '07:53'),
+	('ded0260e-9b51-4554-beb0-70e6bdf39b32', 'ac4d504d-8fe0-4706-b4fc-1ce9e84c483d', 'a9026cd2-92b9-4a53-acc6-4cdc0acdcf99', 'f45a46c3-2240-462f-9895-494965ecd1a8', '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', 'completed', '2025-05-24 07:41:55.150134+00', '2025-05-24 12:12:41.391289+00', '07:41', '07:42', '08:01'),
+	('9f9e0389-b2cb-4a87-a05b-b70c31459283', 'a124a872-d2d7-4324-b88a-780f82796906', 'dfe98d58-f606-46f0-afb9-363dfe9a4d3a', NULL, '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', 'completed', '2025-05-24 08:26:33.109324+00', '2025-05-24 12:12:41.391289+00', '08:26', '08:27', '08:46'),
+	('591b8b57-fce6-4b8e-922e-1252774f6039', 'a124a872-d2d7-4324-b88a-780f82796906', 'dfe98d58-f606-46f0-afb9-363dfe9a4d3a', NULL, '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'completed', '2025-05-24 08:31:54.281264+00', '2025-05-24 12:12:41.391289+00', '08:31', '08:32', '08:51'),
+	('9557e947-094b-42c3-ab99-4078c02672f6', 'a124a872-d2d7-4324-b88a-780f82796906', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', NULL, '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', 'completed', '2025-05-24 11:38:53.866848+00', '2025-05-24 12:12:41.391289+00', '11:38', '11:39', '11:58'),
+	('b2240b4c-9d10-48f3-b7e8-97972bed7ca5', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', '786d6d23-69b9-433e-92ed-938806cb10a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', 'completed', '2025-05-24 11:40:04.592475+00', '2025-05-24 12:12:41.391289+00', '11:40', '11:41', '12:00'),
+	('d369e166-cdd0-4dd0-a4c1-8b3966b36cbc', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '532b14f0-042a-4ddf-bc7d-cb95ff298132', '786d6d23-69b9-433e-92ed-938806cb10a8', '831035d1-93e9-4683-af25-b40c2332b2fe', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'completed', '2025-05-24 11:44:41.776885+00', '2025-05-24 12:12:41.391289+00', '12:44', '12:45', '13:04'),
+	('888222cb-1712-48dc-8b83-ae7cf10be5f1', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'e6068d5d-4bc5-4358-8bae-ed23759dc733', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', 'completed', '2025-05-24 11:46:19.958128+00', '2025-05-24 12:12:41.391289+00', '12:46', '12:47', '13:06'),
+	('81a498e7-d3a2-40f7-8b98-1dd90d9d3a94', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '14446938-25cd-4655-ad84-dbb7db871f28', '786d6d23-69b9-433e-92ed-938806cb10a8', '8c80c97d-010e-455e-bd7f-68dfccc27043', '831035d1-93e9-4683-af25-b40c2332b2fe', 'pending', '2025-05-24 11:59:45.542291+00', '2025-05-24 12:12:41.391289+00', '12:59', '13:00', '13:19'),
+	('6c5c9af5-1445-4da6-8786-b9672940cf9b', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', '14446938-25cd-4655-ad84-dbb7db871f28', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-24 12:01:54.700136+00', '2025-05-24 12:12:41.391289+00', '13:01', '13:02', '13:21'),
+	('58b9596f-48ab-464b-99c4-755bbd3b8b76', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', 'e6068d5d-4bc5-4358-8bae-ed23759dc733', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-24 12:03:36.890857+00', '2025-05-24 12:12:41.391289+00', '13:03', '13:04', '13:23'),
+	('baaeabdc-be7f-44f5-902b-2f4f15a8bd1a', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'completed', '2025-05-24 12:18:21.395119+00', '2025-05-24 12:18:21.395119+00', '2025-05-24T13:18:00', '2025-05-24T13:19:00', '2025-05-24T13:38:00');
+
+
+--
+-- Data for Name: shift_tasks_backup; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."shift_tasks_backup" ("id", "shift_id", "task_item_id", "porter_id", "origin_department_id", "destination_department_id", "status", "created_at", "updated_at", "time_received", "time_allocated", "time_completed") VALUES
 	('724f2648-0b08-41a6-8321-91619e0dbabb', 'f47ac10b-58cc-4372-a567-0e02b2c3d490', '14446938-25cd-4655-ad84-dbb7db871f28', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'completed', '2025-05-23 07:24:46.89275+00', '2025-05-23 08:24:46.89275+00', '2025-05-24 07:33:36.53481+00', '2025-05-24 07:34:36.53481+00', '2025-05-24 07:53:36.53481+00'),
 	('5e939454-7477-43e5-b5f3-65675d3e0ec7', 'f47ac10b-58cc-4372-a567-0e02b2c3d491', 'dfe98d58-f606-46f0-afb9-363dfe9a4d3a', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'f47ac10b-58cc-4372-a567-0e02b2c3d485', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-23 06:24:46.89275+00', '2025-05-23 08:24:46.89275+00', '2025-05-24 07:33:36.53481+00', '2025-05-24 07:34:36.53481+00', '2025-05-24 07:53:36.53481+00'),
 	('919ef224-d90e-4aac-8e52-dfa25ada730a', 'f47ac10b-58cc-4372-a567-0e02b2c3d491', '0c90fbec-5d4c-46c0-b7dd-47fba327e3ed', NULL, 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'pending', '2025-05-23 08:24:46.89275+00', '2025-05-23 08:24:46.89275+00', '2025-05-24 07:33:36.53481+00', '2025-05-24 07:34:36.53481+00', '2025-05-24 07:53:36.53481+00'),
@@ -1451,7 +1554,11 @@ INSERT INTO "public"."shift_tasks" ("id", "shift_id", "task_item_id", "porter_id
 	('591b8b57-fce6-4b8e-922e-1252774f6039', 'a124a872-d2d7-4324-b88a-780f82796906', 'dfe98d58-f606-46f0-afb9-363dfe9a4d3a', NULL, '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', 'completed', '2025-05-24 08:31:54.281264+00', '2025-05-24 08:31:54.281264+00', '2025-05-24 08:31:54.241+00', '2025-05-24 08:32:54.241+00', '2025-05-24 08:51:54.241+00'),
 	('9557e947-094b-42c3-ab99-4078c02672f6', 'a124a872-d2d7-4324-b88a-780f82796906', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', NULL, '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', 'completed', '2025-05-24 11:38:53.866848+00', '2025-05-24 11:38:53.866848+00', '2025-05-24 11:38:53.786+00', '2025-05-24 11:39:53.786+00', '2025-05-24 11:58:53.786+00'),
 	('b2240b4c-9d10-48f3-b7e8-97972bed7ca5', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '8058ea70-75c8-4e46-a56f-7490a48cd4f5', '786d6d23-69b9-433e-92ed-938806cb10a8', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', 'completed', '2025-05-24 11:40:04.592475+00', '2025-05-24 11:40:04.592475+00', '2025-05-24 11:40:04.499+00', '2025-05-24 11:41:04.499+00', '2025-05-24 12:00:04.499+00'),
-	('d369e166-cdd0-4dd0-a4c1-8b3966b36cbc', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '532b14f0-042a-4ddf-bc7d-cb95ff298132', '786d6d23-69b9-433e-92ed-938806cb10a8', '831035d1-93e9-4683-af25-b40c2332b2fe', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'completed', '2025-05-24 11:44:41.776885+00', '2025-05-24 11:44:41.776885+00', '2025-05-24 12:44:00+00', '2025-05-24 12:45:00+00', '2025-05-24 13:04:00+00');
+	('d369e166-cdd0-4dd0-a4c1-8b3966b36cbc', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '532b14f0-042a-4ddf-bc7d-cb95ff298132', '786d6d23-69b9-433e-92ed-938806cb10a8', '831035d1-93e9-4683-af25-b40c2332b2fe', 'f47ac10b-58cc-4372-a567-0e02b2c3d486', 'completed', '2025-05-24 11:44:41.776885+00', '2025-05-24 11:44:41.776885+00', '2025-05-24 12:44:00+00', '2025-05-24 12:45:00+00', '2025-05-24 13:04:00+00'),
+	('888222cb-1712-48dc-8b83-ae7cf10be5f1', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', 'e6068d5d-4bc5-4358-8bae-ed23759dc733', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '81c30d93-8712-405c-ac5e-509d48fd9af9', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', 'completed', '2025-05-24 11:46:19.958128+00', '2025-05-24 11:46:19.958128+00', '2025-05-24 12:46:00+00', '2025-05-24 12:47:00+00', '2025-05-24 13:06:00+00'),
+	('81a498e7-d3a2-40f7-8b98-1dd90d9d3a94', 'caad639d-cb8f-4fbe-a791-bdfdb2828abd', '14446938-25cd-4655-ad84-dbb7db871f28', '786d6d23-69b9-433e-92ed-938806cb10a8', '8c80c97d-010e-455e-bd7f-68dfccc27043', '831035d1-93e9-4683-af25-b40c2332b2fe', 'pending', '2025-05-24 11:59:45.542291+00', '2025-05-24 11:59:45.542291+00', '2025-05-24 12:59:00+00', '2025-05-24 13:00:00+00', '2025-05-24 13:19:00+00'),
+	('6c5c9af5-1445-4da6-8786-b9672940cf9b', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', '14446938-25cd-4655-ad84-dbb7db871f28', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d487', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-24 12:01:54.700136+00', '2025-05-24 12:01:54.700136+00', '2025-05-24 13:01:00+00', '2025-05-24 13:02:00+00', '2025-05-24 13:21:00+00'),
+	('58b9596f-48ab-464b-99c4-755bbd3b8b76', '0a0e958b-fe1a-4b28-96ba-cead157a49e5', 'e6068d5d-4bc5-4358-8bae-ed23759dc733', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'f47ac10b-58cc-4372-a567-0e02b2c3d488', '831035d1-93e9-4683-af25-b40c2332b2fe', 'completed', '2025-05-24 12:03:36.890857+00', '2025-05-24 12:03:36.890857+00', '2025-05-24 13:03:00+00', '2025-05-24 13:04:00+00', '2025-05-24 13:23:00+00');
 
 
 --

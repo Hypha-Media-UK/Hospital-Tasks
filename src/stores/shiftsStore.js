@@ -377,17 +377,23 @@ export const useShiftsStore = defineStore('shifts', {
           return null;
         }
         
-        // Create timestamps for the task (if not already provided)
+        // Create default time strings for the task if not provided
         const now = new Date();
-        const nowISOString = now.toISOString();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const nowTimeString = `${hours}:${minutes}`;
         
         // Calculate time_allocated (+1 minute from now)
-        const timeAllocated = new Date(now.getTime() + 60000); // 60000 ms = 1 minute
-        const timeAllocatedISOString = timeAllocated.toISOString();
+        const allocatedMinutes = now.getMinutes() + 1;
+        const allocatedHours = now.getHours() + Math.floor(allocatedMinutes / 60);
+        const normalizedAllocatedMinutes = allocatedMinutes % 60;
+        const allocatedTimeString = `${String(allocatedHours % 24).padStart(2, '0')}:${String(normalizedAllocatedMinutes).padStart(2, '0')}`;
         
         // Calculate time_completed (+20 minutes from now)
-        const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
-        const timeCompletedISOString = timeCompleted.toISOString();
+        const completedMinutes = now.getMinutes() + 20;
+        const completedHours = now.getHours() + Math.floor(completedMinutes / 60);
+        const normalizedCompletedMinutes = completedMinutes % 60;
+        const completedTimeString = `${String(completedHours % 24).padStart(2, '0')}:${String(normalizedCompletedMinutes).padStart(2, '0')}`;
         
         // Use provided time values or default ones
         const taskInsertData = {
@@ -397,9 +403,9 @@ export const useShiftsStore = defineStore('shifts', {
           origin_department_id: taskData.originDepartmentId || null,
           destination_department_id: taskData.destinationDepartmentId || null,
           status: taskData.status || 'pending',
-          time_received: taskData.time_received || nowISOString,
-          time_allocated: taskData.time_allocated || timeAllocatedISOString,
-          time_completed: taskData.time_completed || timeCompletedISOString
+          time_received: taskData.time_received || nowTimeString,
+          time_allocated: taskData.time_allocated || allocatedTimeString,
+          time_completed: taskData.time_completed || completedTimeString
         };
         
         // Proceed with adding the task
@@ -460,17 +466,21 @@ export const useShiftsStore = defineStore('shifts', {
         else if (status === 'pending' && existingTask.status === 'pending') {
           // Get current time
           const now = new Date();
-          const nowISOString = now.toISOString();
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          const nowTimeString = `${hours}:${minutes}`;
           
           // Calculate time_completed (+20 minutes from now)
-          const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
-          const timeCompletedISOString = timeCompleted.toISOString();
+          const completedMinutes = now.getMinutes() + 20;
+          const completedHours = now.getHours() + Math.floor(completedMinutes / 60);
+          const normalizedCompletedMinutes = completedMinutes % 60;
+          const completedTimeString = `${String(completedHours % 24).padStart(2, '0')}:${String(normalizedCompletedMinutes).padStart(2, '0')}`;
           
           // Update timestamps, but keep the original time_received
           updates = {
             ...updates,
-            time_allocated: nowISOString,
-            time_completed: timeCompletedISOString
+            time_allocated: nowTimeString,
+            time_completed: completedTimeString
           };
           
           console.log('Reopening pending task - updating time_allocated and time_completed');
@@ -571,17 +581,41 @@ export const useShiftsStore = defineStore('shifts', {
           status: taskData.status
         };
         
-        // Add time fields if they are provided
+        // Extract just the time part (HH:MM) from any time values provided
+        // This handles both the old-style ISO dates and new-style direct time inputs
         if (taskData.time_received) {
-          updateObj.time_received = taskData.time_received;
+          // Check if we received a full datetime string (old format)
+          if (taskData.time_received.includes('T')) {
+            const date = new Date(taskData.time_received);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            updateObj.time_received = `${hours}:${minutes}`;
+          } else {
+            // Otherwise, use the provided time string directly (likely already in HH:MM format)
+            updateObj.time_received = taskData.time_received;
+          }
         }
         
         if (taskData.time_allocated) {
-          updateObj.time_allocated = taskData.time_allocated;
+          if (taskData.time_allocated.includes('T')) {
+            const date = new Date(taskData.time_allocated);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            updateObj.time_allocated = `${hours}:${minutes}`;
+          } else {
+            updateObj.time_allocated = taskData.time_allocated;
+          }
         }
         
         if (taskData.time_completed) {
-          updateObj.time_completed = taskData.time_completed;
+          if (taskData.time_completed.includes('T')) {
+            const date = new Date(taskData.time_completed);
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            updateObj.time_completed = `${hours}:${minutes}`;
+          } else {
+            updateObj.time_completed = taskData.time_completed;
+          }
         }
         
         const { data, error } = await supabase
