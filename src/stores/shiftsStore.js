@@ -660,6 +660,7 @@ export const useShiftsStore = defineStore('shifts', {
         let { data: defaultAssignments, error: fetchError } = await supabase
           .from('area_cover_assignments')
           .select(`
+            id,
             department_id,
             start_time,
             end_time,
@@ -672,6 +673,7 @@ export const useShiftsStore = defineStore('shifts', {
           const { data: legacyAssignments, error: legacyFetchError } = await supabase
             .from('area_cover_assignments')
             .select(`
+              id,
               department_id,
               start_time,
               end_time,
@@ -714,6 +716,58 @@ export const useShiftsStore = defineStore('shifts', {
         if (insertError) throw insertError;
         
         this.shiftAreaCoverAssignments = insertedData || [];
+        
+        // Create a mapping from original area_cover_assignments.id to the new shift_area_cover_assignments.id
+        const areaCoverIdMapping = {};
+        for (let i = 0; i < defaultAssignments.length; i++) {
+          const originalId = defaultAssignments[i].id;
+          const newId = insertedData[i].id;
+          areaCoverIdMapping[originalId] = newId;
+        }
+        
+        // Fetch porter assignments for the original area covers
+        const originalAreaCoverIds = defaultAssignments.map(a => a.id);
+        if (originalAreaCoverIds.length > 0) {
+          const { data: porterAssignments, error: porterFetchError } = await supabase
+            .from('area_cover_porter_assignments')
+            .select(`
+              area_cover_assignment_id,
+              porter_id,
+              start_time,
+              end_time
+            `)
+            .in('area_cover_assignment_id', originalAreaCoverIds);
+          
+          if (porterFetchError) throw porterFetchError;
+          
+          // Create shift-specific porter assignments
+          if (porterAssignments && porterAssignments.length > 0) {
+            const newPorterAssignments = porterAssignments.map(pa => ({
+              shift_area_cover_assignment_id: areaCoverIdMapping[pa.area_cover_assignment_id],
+              porter_id: pa.porter_id,
+              start_time: pa.start_time,
+              end_time: pa.end_time
+            }));
+            
+            const { data: insertedPorterData, error: porterInsertError } = await supabase
+              .from('shift_area_cover_porter_assignments')
+              .insert(newPorterAssignments)
+              .select(`
+                *,
+                porter:porter_id(
+                  id,
+                  first_name,
+                  last_name
+                )
+              `);
+            
+            if (porterInsertError) throw porterInsertError;
+            
+            // Update local state with the new porter assignments
+            this.shiftAreaCoverPorterAssignments = insertedPorterData || [];
+          }
+        }
+        
         return insertedData;
       } catch (error) {
         console.error('Error initializing shift area cover:', error);
