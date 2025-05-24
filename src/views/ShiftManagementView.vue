@@ -69,16 +69,7 @@
           </div>
         </div>
         
-        <!-- Add Task Button (Outside tabs) -->
-        <div class="action-bar mb-4">
-          <button 
-            v-if="shift.is_active" 
-            @click="showAddTaskModal()" 
-            class="btn btn-primary"
-          >
-            Add Task
-          </button>
-        </div>
+        <!-- Removed the old action bar and moved Add Task button to floating action button -->
         
         <!-- Tabs Section -->
         <div class="card">
@@ -306,6 +297,15 @@
         </div>
       </div>
       
+      <!-- Floating Action Button for Adding Tasks -->
+      <button 
+        v-if="shift && shift.is_active" 
+        @click="showAddTaskModal" 
+        class="floating-action-button"
+        title="Add Task"
+      >
+        <span class="plus-icon">+</span>
+      </button>
     </div>
   </div>
 </template>
@@ -1371,5 +1371,41 @@ function isWeekend(date) {
 
 .field-auto-populated {
   animation: field-glow 2s ease-in-out;
+}
+
+/* Floating Action Button */
+.floating-action-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #4285F4;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+  z-index: 900;
+  
+  &:hover {
+    transform: scale(1.05);
+    background-color: darken(#4285F4, 10%);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  .plus-icon {
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 1;
+  }
 }
 </style>
