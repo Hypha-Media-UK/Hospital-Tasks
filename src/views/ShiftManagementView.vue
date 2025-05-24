@@ -342,7 +342,7 @@
               <div class="form-group">
                 <label for="timeReceived">Time Received</label>
                 <input 
-                  type="datetime-local" 
+                  type="time" 
                   id="timeReceived" 
                   v-model="taskForm.timeReceived" 
                   class="form-control"
@@ -352,7 +352,7 @@
               <div class="form-group">
                 <label for="timeAllocated">Time Allocated</label>
                 <input 
-                  type="datetime-local" 
+                  type="time" 
                   id="timeAllocated" 
                   v-model="taskForm.timeAllocated" 
                   class="form-control"
@@ -362,7 +362,7 @@
               <div class="form-group">
                 <label for="timeCompleted">Expected Completion Time</label>
                 <input 
-                  type="datetime-local" 
+                  type="time" 
                   id="timeCompleted" 
                   v-model="taskForm.timeCompleted" 
                   class="form-control"
@@ -605,6 +605,15 @@ function closeTaskModal() {
 
 // Reset task form
 function resetTaskForm() {
+  // Get current time
+  const now = new Date();
+  
+  // Calculate time_allocated (+1 minute from now)
+  const timeAllocated = new Date(now.getTime() + 60000); // 60000 ms = 1 minute
+  
+  // Calculate time_completed (+20 minutes from now)
+  const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
+  
   taskForm.value = {
     taskTypeId: '',
     taskItemId: '',
@@ -612,9 +621,9 @@ function resetTaskForm() {
     destinationDepartmentId: '',
     porterId: '',
     status: 'pending',
-    timeReceived: '',
-    timeAllocated: '',
-    timeCompleted: ''
+    timeReceived: formatDateTimeForInput(now),
+    timeAllocated: formatDateTimeForInput(timeAllocated),
+    timeCompleted: formatDateTimeForInput(timeCompleted)
   };
   taskItems.value = [];
   taskFormError.value = '';
@@ -647,17 +656,41 @@ async function saveTask() {
   taskFormError.value = '';
   
   try {
+    // For time inputs, we need to create proper datetime objects with the current date
+    // but using the times from the form
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
     // Transform form data to match the API requirements
     const taskData = {
       taskItemId: taskForm.value.taskItemId,
       porterId: taskForm.value.porterId || null,
       originDepartmentId: taskForm.value.originDepartmentId || null,
       destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
-      status: taskForm.value.status,
-      time_received: taskForm.value.timeReceived || null,
-      time_allocated: taskForm.value.timeAllocated || null,
-      time_completed: taskForm.value.timeCompleted || null
+      status: taskForm.value.status
     };
+    
+    // Only include time fields if they are provided
+    if (taskForm.value.timeReceived) {
+      // Use original date with new time for editing
+      const originalDate = isEditingTask.value && editingTask.value.time_received 
+        ? new Date(editingTask.value.time_received).toISOString().split('T')[0]
+        : currentDate;
+      taskData.time_received = `${originalDate}T${taskForm.value.timeReceived}:00`;
+    }
+    
+    if (taskForm.value.timeAllocated) {
+      const originalDate = isEditingTask.value && editingTask.value.time_allocated
+        ? new Date(editingTask.value.time_allocated).toISOString().split('T')[0]
+        : currentDate;
+      taskData.time_allocated = `${originalDate}T${taskForm.value.timeAllocated}:00`;
+    }
+    
+    if (taskForm.value.timeCompleted) {
+      const originalDate = isEditingTask.value && editingTask.value.time_completed
+        ? new Date(editingTask.value.time_completed).toISOString().split('T')[0]
+        : currentDate;
+      taskData.time_completed = `${originalDate}T${taskForm.value.timeCompleted}:00`;
+    }
     
     let result;
     
@@ -724,17 +757,31 @@ async function saveTaskWithStatus(status) {
   taskFormError.value = '';
   
   try {
+    // For time inputs, we need to create proper datetime objects with the current date
+    // but using the times from the form
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    
     // Transform form data to match the API requirements
     const taskData = {
       taskItemId: taskForm.value.taskItemId,
       porterId: taskForm.value.porterId || null,
       originDepartmentId: taskForm.value.originDepartmentId || null,
       destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
-      status: taskForm.value.status,
-      time_received: taskForm.value.timeReceived || null,
-      time_allocated: taskForm.value.timeAllocated || null,
-      time_completed: taskForm.value.timeCompleted || null
+      status: taskForm.value.status
     };
+    
+    // Only include time fields if they are provided
+    if (taskForm.value.timeReceived) {
+      taskData.time_received = `${currentDate}T${taskForm.value.timeReceived}:00`;
+    }
+    
+    if (taskForm.value.timeAllocated) {
+      taskData.time_allocated = `${currentDate}T${taskForm.value.timeAllocated}:00`;
+    }
+    
+    if (taskForm.value.timeCompleted) {
+      taskData.time_completed = `${currentDate}T${taskForm.value.timeCompleted}:00`;
+    }
     
     // Add new task
     const result = await shiftsStore.addTaskToShift(shift.value.id, taskData);
@@ -769,29 +816,24 @@ function formatDateTime(dateString) {
   });
 }
 
-// Format time (e.g., "9:30 AM")
+// Format time (e.g., "9:30 AM") without the date
 function formatTime(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-// Format date for datetime-local input (YYYY-MM-DDThh:mm)
+// Format time for time input (HH:MM)
 function formatDateTimeForInput(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
-  
-  // Get date parts
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
   
   // Get time parts
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   
-  // Format for datetime-local input
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  // Format for time input (HH:MM)
+  return `${hours}:${minutes}`;
 }
 
 // Calculate duration since start time

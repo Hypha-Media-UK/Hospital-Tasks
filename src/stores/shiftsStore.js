@@ -435,7 +435,7 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
-        // First, get the current task to check if we're reopening a pending task
+        // First, get the current task to check the current status
         const { data: existingTask, error: fetchError } = await supabase
           .from('shift_tasks')
           .select('*')
@@ -446,8 +446,15 @@ export const useShiftsStore = defineStore('shifts', {
         
         let updates = { status };
         
-        // If we're changing from completed to pending, update time fields
+        // If we're changing from completed to pending (reopening a completed task)
+        // we keep all the original times as they were
         if (existingTask.status === 'completed' && status === 'pending') {
+          // No time field updates needed - we keep the original times
+          console.log('Reopening completed task - keeping original times');
+        }
+        // If we're marking a task as pending (but it wasn't completed)
+        // we need to update the time_allocated and time_completed fields
+        else if (status === 'pending' && existingTask.status === 'pending') {
           // Get current time
           const now = new Date();
           const nowISOString = now.toISOString();
@@ -462,7 +469,12 @@ export const useShiftsStore = defineStore('shifts', {
             time_allocated: nowISOString,
             time_completed: timeCompletedISOString
           };
+          
+          console.log('Reopening pending task - updating time_allocated and time_completed');
         }
+        
+        // If we're changing from pending to completed (completing a task)
+        // we use the current time as the completion time
         
         // Update the task with the new status and any time changes
         const { data, error } = await supabase
