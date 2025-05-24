@@ -234,14 +234,25 @@ const porterAssignments = computed(() => {
 });
 
 const availablePorters = computed(() => {
+  // Get porters from the shift pool
+  const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
+  
   // If editing an existing assignment, include the current porter
   if (editingPorterAssignment.value && porterForm.value.porterId) {
-    return staffStore.porters;
+    // Check if the current porter is in the shift pool
+    const currentPorterInPool = shiftPorters.some(p => p.id === porterForm.value.porterId);
+    
+    // If not in pool, add them to the available porters list
+    if (!currentPorterInPool) {
+      const currentPorter = staffStore.porters.find(p => p.id === porterForm.value.porterId);
+      if (currentPorter) {
+        return [...shiftPorters, currentPorter];
+      }
+    }
   }
   
-  // For new assignments, filter out porters already assigned to this department
-  // at the same time period (for simplicity, we'll just show all porters)
-  return staffStore.porters;
+  // Return porters from the shift pool
+  return shiftPorters;
 });
 
 const canSavePorter = computed(() => {

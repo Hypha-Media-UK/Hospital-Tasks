@@ -79,6 +79,11 @@
           </div>
         </div>
         
+        <!-- Porter Pool Section -->
+        <div class="card mb-4">
+          <ShiftPorterPool :shift-id="shift.id" />
+        </div>
+        
         <!-- Tasks Section -->
         <div class="card">
           <div class="tasks-header">
@@ -385,6 +390,7 @@ import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import ShiftAreaCoverList from '../components/area-cover/ShiftAreaCoverList.vue';
+import ShiftPorterPool from '../components/ShiftPorterPool.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -424,7 +430,10 @@ const taskForm = ref({
 const shift = computed(() => shiftsStore.currentShift);
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
-const porters = computed(() => staffStore.sortedPorters);
+const porters = computed(() => {
+  // Only show porters from the shift pool
+  return shiftsStore.shiftPorterPool.map(p => p.porter);
+});
 const taskTypes = computed(() => taskTypesStore.taskTypes);
 const departments = computed(() => locationsStore.departments);
 const canSaveTask = computed(() => {

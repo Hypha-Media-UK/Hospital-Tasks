@@ -38,6 +38,7 @@ export const useShiftsStore = defineStore('shifts', {
     shiftTasks: [],
     shiftAreaCoverAssignments: [], // Shift-specific area cover assignments
     shiftAreaCoverPorterAssignments: [], // Porter assignments for shift area cover
+    shiftPorterPool: [], // Porters assigned to the current shift
     loading: {
       activeShifts: false,
       archivedShifts: false,
@@ -46,7 +47,8 @@ export const useShiftsStore = defineStore('shifts', {
       createShift: false,
       endShift: false,
       updateTask: false,
-      areaCover: false // Loading state for area cover operations
+      areaCover: false, // Loading state for area cover operations
+      porterPool: false // Loading state for porter pool operations
     },
     error: null
   }),
@@ -949,6 +951,94 @@ export const useShiftsStore = defineStore('shifts', {
         return false;
       } finally {
         this.loading.areaCover = false;
+      }
+    },
+    
+    // Porter Pool Management
+    
+    // Fetch porters in a shift's pool
+    async fetchShiftPorterPool(shiftId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_porter_pool')
+          .select(`
+            *,
+            porter:porter_id(id, first_name, last_name, role)
+          `)
+          .eq('shift_id', shiftId);
+        
+        if (error) throw error;
+        
+        this.shiftPorterPool = data || [];
+        return data;
+      } catch (error) {
+        console.error('Error fetching shift porter pool:', error);
+        this.error = 'Failed to load shift porters';
+        return [];
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+    
+    // Add porter to shift pool
+    async addPorterToShift(shiftId, porterId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_porter_pool')
+          .insert({
+            shift_id: shiftId,
+            porter_id: porterId
+          })
+          .select(`
+            *,
+            porter:porter_id(id, first_name, last_name, role)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          this.shiftPorterPool.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding porter to shift:', error);
+        this.error = 'Failed to add porter to shift';
+        return null;
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+    
+    // Remove porter from shift pool
+    async removePorterFromShift(porterPoolId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('shift_porter_pool')
+          .delete()
+          .eq('id', porterPoolId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.shiftPorterPool = this.shiftPorterPool.filter(p => p.id !== porterPoolId);
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing porter from shift:', error);
+        this.error = 'Failed to remove porter from shift';
+        return false;
+      } finally {
+        this.loading.porterPool = false;
       }
     }
   }
