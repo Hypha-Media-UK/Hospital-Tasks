@@ -329,6 +329,7 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         if (error) throw error;
         
         this.typeAssignments = data || [];
+        console.log('Loaded task type assignments:', this.typeAssignments);
       } catch (error) {
         console.error('Error fetching type assignments:', error);
         this.error = 'Failed to load department assignments for task types';
@@ -396,6 +397,7 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         if (error) throw error;
         
         this.itemAssignments = data || [];
+        console.log('Loaded task item assignments:', this.itemAssignments);
       } catch (error) {
         console.error('Error fetching item assignments:', error);
         this.error = 'Failed to load department assignments for task items';

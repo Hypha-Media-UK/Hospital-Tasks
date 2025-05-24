@@ -284,26 +284,36 @@
                 </select>
               </div>
               
-              <!-- From | To -->
-              <div class="form-group">
-                <label for="originDepartment">From</label>
-                <select id="originDepartment" v-model="taskForm.originDepartmentId" class="form-control">
-                  <option value="">Select origin department (optional)</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                    {{ dept.name }}
-                  </option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="destinationDepartment">To</label>
-                <select id="destinationDepartment" v-model="taskForm.destinationDepartmentId" class="form-control">
-                  <option value="">Select destination department (optional)</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                    {{ dept.name }}
-                  </option>
-                </select>
-              </div>
+<!-- From | To -->
+<div class="form-group">
+  <label for="originDepartment">From</label>
+  <select 
+    id="originDepartment" 
+    v-model="taskForm.originDepartmentId" 
+    class="form-control"
+    :class="{ 'field-auto-populated': originFieldAutoPopulated }"
+  >
+    <option value="">Select origin department (optional)</option>
+    <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+      {{ dept.name }}
+    </option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="destinationDepartment">To</label>
+  <select 
+    id="destinationDepartment" 
+    v-model="taskForm.destinationDepartmentId" 
+    class="form-control"
+    :class="{ 'field-auto-populated': destinationFieldAutoPopulated }"
+  >
+    <option value="">Select destination department (optional)</option>
+    <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+      {{ dept.name }}
+    </option>
+  </select>
+</div>
               
               <!-- Received | Porter -->
               <div class="form-group">
@@ -464,6 +474,10 @@ const editingTask = ref(null);
 const processingTask = ref(false);
 const taskFormError = ref('');
 
+// Track fields auto-population for visual feedback
+const originFieldAutoPopulated = ref(false);
+const destinationFieldAutoPopulated = ref(false);
+
 // Task form data
 const taskForm = ref({
   taskTypeId: '',
@@ -573,10 +587,15 @@ async function endShift() {
 }
 
 // Show add task modal
-function showAddTaskModal() {
+async function showAddTaskModal() {
   isEditingTask.value = false;
   editingTaskId.value = null;
   resetTaskForm();
+  
+  // Make sure all task type assignments are loaded
+  await taskTypesStore.fetchTypeAssignments();
+  await taskTypesStore.fetchItemAssignments();
+  
   showTaskModal.value = true;
 }
 
@@ -664,19 +683,42 @@ async function loadTaskItems() {
 function checkTaskTypeDepartmentAssignments(taskTypeId) {
   if (!taskTypeId) return;
   
+  console.log('Checking task type assignments for type ID:', taskTypeId);
+  
+  // Get the task type name for better logging
+  const taskType = taskTypesStore.taskTypes.find(t => t.id === taskTypeId);
+  console.log('Task type name:', taskType?.name);
+  
   // Only apply default departments if fields are empty
   const assignments = taskTypesStore.getTypeAssignmentsByTypeId(taskTypeId);
+  console.log('Found assignments for this task type:', assignments);
   
   // Look for origin department
   const originAssignment = assignments.find(a => a.is_origin);
+  console.log('Origin assignment:', originAssignment);
+  
   if (originAssignment && !taskForm.value.originDepartmentId) {
+    console.log('Setting origin department ID to:', originAssignment.department_id);
     taskForm.value.originDepartmentId = originAssignment.department_id;
+    originFieldAutoPopulated.value = true;
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      originFieldAutoPopulated.value = false;
+    }, 1500);
   }
   
   // Look for destination department
   const destinationAssignment = assignments.find(a => a.is_destination);
+  console.log('Destination assignment:', destinationAssignment);
+  
   if (destinationAssignment && !taskForm.value.destinationDepartmentId) {
+    console.log('Setting destination department ID to:', destinationAssignment.department_id);
     taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
+    destinationFieldAutoPopulated.value = true;
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      destinationFieldAutoPopulated.value = false;
+    }, 1500);
   }
 }
 
@@ -684,18 +726,41 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
 function checkTaskItemDepartmentAssignments(taskItemId) {
   if (!taskItemId) return;
   
+  console.log('Checking task item assignments for item ID:', taskItemId);
+  
+  // Get the task item name for better logging
+  const taskItem = taskItems.value.find(i => i.id === taskItemId);
+  console.log('Task item name:', taskItem?.name);
+  
   const assignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
+  console.log('Found assignments for this task item:', assignments);
   
   // Look for origin department
   const originAssignment = assignments.find(a => a.is_origin);
+  console.log('Origin assignment:', originAssignment);
+  
   if (originAssignment) {
+    console.log('Setting origin department ID to:', originAssignment.department_id);
     taskForm.value.originDepartmentId = originAssignment.department_id;
+    originFieldAutoPopulated.value = true;
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      originFieldAutoPopulated.value = false;
+    }, 1500);
   }
   
   // Look for destination department
   const destinationAssignment = assignments.find(a => a.is_destination);
+  console.log('Destination assignment:', destinationAssignment);
+  
   if (destinationAssignment) {
+    console.log('Setting destination department ID to:', destinationAssignment.department_id);
     taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
+    destinationFieldAutoPopulated.value = true;
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      destinationFieldAutoPopulated.value = false;
+    }, 1500);
   }
 }
 
@@ -1390,5 +1455,16 @@ function isWeekend(date) {
   border-radius: 4px;
   color: #dc3545;
   font-size: 0.9rem;
+}
+
+/* Animation for auto-populated fields */
+@keyframes field-glow {
+  0% { box-shadow: 0 0 0 rgba(251, 188, 5, 0); }
+  50% { box-shadow: 0 0 8px rgba(251, 188, 5, 0.6); }
+  100% { box-shadow: 0 0 0 rgba(251, 188, 5, 0); }
+}
+
+.field-auto-populated {
+  animation: field-glow 1.5s ease-in-out;
 }
 </style>
