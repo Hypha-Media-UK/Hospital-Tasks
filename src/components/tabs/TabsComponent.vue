@@ -20,6 +20,9 @@
       <template #taskTypes>
         <TaskTypesTabContent />
       </template>
+      <template #supportServices>
+        <SupportServicesTabContent />
+      </template>
       <template #settings>
         <SettingsTabContent />
       </template>
@@ -35,6 +38,7 @@ import TabContent from './TabContent.vue';
 import StaffTabContent from './tab-contents/StaffTabContent.vue';
 import LocationsTabContent from './tab-contents/LocationsTabContent.vue';
 import TaskTypesTabContent from './tab-contents/TaskTypesTabContent.vue';
+import SupportServicesTabContent from './tab-contents/SupportServicesTabContent.vue';
 import SettingsTabContent from './tab-contents/SettingsTabContent.vue';
 
 const route = useRoute();
@@ -43,6 +47,7 @@ const tabs = [
   { id: 'staff', label: 'Staff' },
   { id: 'locations', label: 'Locations' },
   { id: 'taskTypes', label: 'Task Types' },
+  { id: 'supportServices', label: 'Support Services' },
   { id: 'settings', label: 'Settings' }
 ];
 
@@ -69,12 +74,12 @@ function setActiveTab(tabId) {
 .tabs {
   &__header {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     margin-bottom: 16px;
     
     @media (max-width: 600px) {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(2, auto);
     }
   }

@@ -204,6 +204,35 @@ CREATE TABLE IF NOT EXISTS "public"."shift_porter_pool" (
 ALTER TABLE "public"."shift_porter_pool" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."shift_support_service_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "shift_id" "uuid" NOT NULL,
+    "support_service_id" "uuid" NOT NULL,
+    "start_time" time without time zone NOT NULL,
+    "end_time" time without time zone NOT NULL,
+    "color" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."shift_support_service_assignments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."shift_support_service_porter_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "shift_support_service_assignment_id" "uuid" NOT NULL,
+    "porter_id" "uuid" NOT NULL,
+    "start_time" time without time zone NOT NULL,
+    "end_time" time without time zone NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."shift_support_service_porter_assignments" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."shift_tasks" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "shift_id" "uuid" NOT NULL,
@@ -286,6 +315,31 @@ CREATE TABLE IF NOT EXISTS "public"."staff_department_assignments" (
 
 
 ALTER TABLE "public"."staff_department_assignments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."support_service_porter_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "support_service_id" "uuid" NOT NULL,
+    "porter_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."support_service_porter_assignments" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."support_services" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."support_services" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."task_item_department_assignments" (
@@ -409,6 +463,26 @@ ALTER TABLE ONLY "public"."shift_porter_pool"
 
 
 
+ALTER TABLE ONLY "public"."shift_support_service_assignments"
+    ADD CONSTRAINT "shift_support_service_assignments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."shift_support_service_assignments"
+    ADD CONSTRAINT "shift_support_service_assignments_shift_service_key" UNIQUE ("shift_id", "support_service_id");
+
+
+
+ALTER TABLE ONLY "public"."shift_support_service_porter_assignments"
+    ADD CONSTRAINT "shift_support_service_porter_assignments_assignment_porter_key" UNIQUE ("shift_support_service_assignment_id", "porter_id");
+
+
+
+ALTER TABLE ONLY "public"."shift_support_service_porter_assignments"
+    ADD CONSTRAINT "shift_support_service_porter_assignments_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."shift_tasks"
     ADD CONSTRAINT "shift_tasks_pkey" PRIMARY KEY ("id");
 
@@ -431,6 +505,26 @@ ALTER TABLE ONLY "public"."staff_department_assignments"
 
 ALTER TABLE ONLY "public"."staff"
     ADD CONSTRAINT "staff_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."support_service_porter_assignments"
+    ADD CONSTRAINT "support_service_porter_assignments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."support_service_porter_assignments"
+    ADD CONSTRAINT "support_service_porter_assignments_service_porter_key" UNIQUE ("support_service_id", "porter_id");
+
+
+
+ALTER TABLE ONLY "public"."support_services"
+    ADD CONSTRAINT "support_services_name_key" UNIQUE ("name");
+
+
+
+ALTER TABLE ONLY "public"."support_services"
+    ADD CONSTRAINT "support_services_pkey" PRIMARY KEY ("id");
 
 
 
@@ -508,6 +602,22 @@ CREATE INDEX "shift_porter_pool_shift_id_idx" ON "public"."shift_porter_pool" US
 
 
 
+CREATE INDEX "shift_support_service_assignments_service_id_idx" ON "public"."shift_support_service_assignments" USING "btree" ("support_service_id");
+
+
+
+CREATE INDEX "shift_support_service_assignments_shift_id_idx" ON "public"."shift_support_service_assignments" USING "btree" ("shift_id");
+
+
+
+CREATE INDEX "shift_support_service_porter_assignments_assignment_id_idx" ON "public"."shift_support_service_porter_assignments" USING "btree" ("shift_support_service_assignment_id");
+
+
+
+CREATE INDEX "shift_support_service_porter_assignments_porter_id_idx" ON "public"."shift_support_service_porter_assignments" USING "btree" ("porter_id");
+
+
+
 CREATE INDEX "shift_tasks_destination_department_id_idx" ON "public"."shift_tasks" USING "btree" ("destination_department_id");
 
 
@@ -560,6 +670,18 @@ CREATE INDEX "staff_role_idx" ON "public"."staff" USING "btree" ("role");
 
 
 
+CREATE INDEX "support_service_porter_assignments_porter_id_idx" ON "public"."support_service_porter_assignments" USING "btree" ("porter_id");
+
+
+
+CREATE INDEX "support_service_porter_assignments_service_id_idx" ON "public"."support_service_porter_assignments" USING "btree" ("support_service_id");
+
+
+
+CREATE INDEX "support_services_is_active_idx" ON "public"."support_services" USING "btree" ("is_active");
+
+
+
 CREATE INDEX "task_item_dept_assign_dept_id_idx" ON "public"."task_item_department_assignments" USING "btree" ("department_id");
 
 
@@ -604,6 +726,14 @@ CREATE OR REPLACE TRIGGER "update_shift_porter_pool_updated_at" BEFORE UPDATE ON
 
 
 
+CREATE OR REPLACE TRIGGER "update_shift_support_service_assignments_updated_at" BEFORE UPDATE ON "public"."shift_support_service_assignments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_shift_support_service_porter_assignments_updated_at" BEFORE UPDATE ON "public"."shift_support_service_porter_assignments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_shift_tasks_updated_at" BEFORE UPDATE ON "public"."shift_tasks" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
@@ -613,6 +743,14 @@ CREATE OR REPLACE TRIGGER "update_shifts_updated_at" BEFORE UPDATE ON "public"."
 
 
 CREATE OR REPLACE TRIGGER "update_staff_updated_at" BEFORE UPDATE ON "public"."staff" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_support_service_porter_assignments_updated_at" BEFORE UPDATE ON "public"."support_service_porter_assignments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_support_services_updated_at" BEFORE UPDATE ON "public"."support_services" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -679,6 +817,26 @@ ALTER TABLE ONLY "public"."shift_porter_pool"
 
 
 
+ALTER TABLE ONLY "public"."shift_support_service_assignments"
+    ADD CONSTRAINT "shift_support_service_assignments_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."shifts"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."shift_support_service_assignments"
+    ADD CONSTRAINT "shift_support_service_assignments_support_service_id_fkey" FOREIGN KEY ("support_service_id") REFERENCES "public"."support_services"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."shift_support_service_porter_assignments"
+    ADD CONSTRAINT "shift_support_service_porter_assignments_assignment_id_fkey" FOREIGN KEY ("shift_support_service_assignment_id") REFERENCES "public"."shift_support_service_assignments"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."shift_support_service_porter_assignments"
+    ADD CONSTRAINT "shift_support_service_porter_assignments_porter_id_fkey" FOREIGN KEY ("porter_id") REFERENCES "public"."staff"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."shift_tasks"
     ADD CONSTRAINT "shift_tasks_destination_department_id_fkey" FOREIGN KEY ("destination_department_id") REFERENCES "public"."departments"("id") ON DELETE SET NULL;
 
@@ -721,6 +879,16 @@ ALTER TABLE ONLY "public"."staff_department_assignments"
 
 ALTER TABLE ONLY "public"."staff"
     ADD CONSTRAINT "staff_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "public"."departments"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."support_service_porter_assignments"
+    ADD CONSTRAINT "support_service_porter_assignments_porter_id_fkey" FOREIGN KEY ("porter_id") REFERENCES "public"."staff"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."support_service_porter_assignments"
+    ADD CONSTRAINT "support_service_porter_assignments_support_service_id_fkey" FOREIGN KEY ("support_service_id") REFERENCES "public"."support_services"("id") ON DELETE CASCADE;
 
 
 
@@ -1002,6 +1170,18 @@ GRANT ALL ON TABLE "public"."shift_porter_pool" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."shift_support_service_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."shift_support_service_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."shift_support_service_assignments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."shift_support_service_porter_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."shift_support_service_porter_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."shift_support_service_porter_assignments" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."shift_tasks" TO "anon";
 GRANT ALL ON TABLE "public"."shift_tasks" TO "authenticated";
 GRANT ALL ON TABLE "public"."shift_tasks" TO "service_role";
@@ -1029,6 +1209,18 @@ GRANT ALL ON TABLE "public"."staff" TO "service_role";
 GRANT ALL ON TABLE "public"."staff_department_assignments" TO "anon";
 GRANT ALL ON TABLE "public"."staff_department_assignments" TO "authenticated";
 GRANT ALL ON TABLE "public"."staff_department_assignments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."support_service_porter_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."support_service_porter_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."support_service_porter_assignments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."support_services" TO "anon";
+GRANT ALL ON TABLE "public"."support_services" TO "authenticated";
+GRANT ALL ON TABLE "public"."support_services" TO "service_role";
 
 
 
@@ -1549,6 +1741,31 @@ INSERT INTO "public"."shift_porter_pool" ("id", "shift_id", "porter_id", "create
 
 
 --
+-- Data for Name: support_services; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."support_services" ("id", "name", "description", "is_active", "created_at", "updated_at") VALUES
+	('30c5c045-a442-4ec8-b285-c7bc010f4d83', 'Laundry', 'Porter support for laundry services', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
+	('ce940139-6ae7-49de-a62a-0d6ba9397928', 'Post', 'Internal mail and document delivery', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
+	('0b5c7062-1285-4427-8387-b1b4e14eedc9', 'Pharmacy', 'Medication delivery service', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
+	('ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', 'District Drivers', 'External transport services', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
+	('7cfa1ddf-61b0-489e-ad23-b924cf995419', 'Adhoc', 'Miscellaneous tasks requiring porter assistance', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
+	('26c0891b-56c0-4346-8d53-de906aaa64c2', 'Medical Records', 'Patient records transport service', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00');
+
+
+--
+-- Data for Name: shift_support_service_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: shift_support_service_porter_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
 -- Data for Name: task_types; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -1652,6 +1869,12 @@ INSERT INTO "public"."shift_tasks_backup" ("id", "shift_id", "task_item_id", "po
 
 --
 -- Data for Name: staff_department_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: support_service_porter_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 
