@@ -252,7 +252,7 @@
           
           <div class="modal-body">
             <div class="form-grid">
-              <!-- Left Column -->
+              <!-- Task Type | Task Item -->
               <div class="form-group">
                 <label for="taskType">Task Type</label>
                 <select 
@@ -270,27 +270,6 @@
               </div>
               
               <div class="form-group">
-                <label for="originDepartment">Origin Department</label>
-                <select id="originDepartment" v-model="taskForm.originDepartmentId" class="form-control">
-                  <option value="">Select origin department (optional)</option>
-                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                    {{ dept.name }}
-                  </option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="porter">Assign Porter</label>
-                <select id="porter" v-model="taskForm.porterId" class="form-control">
-                  <option value="">Select porter (optional)</option>
-                  <option v-for="porter in porters" :key="porter.id" :value="porter.id">
-                    {{ porter.first_name }} {{ porter.last_name }}
-                  </option>
-                </select>
-              </div>
-              
-              <!-- Right Column -->
-              <div class="form-group">
                 <label for="taskItem">Task Item</label>
                 <select 
                   id="taskItem" 
@@ -305,14 +284,67 @@
                 </select>
               </div>
               
+              <!-- From | To -->
               <div class="form-group">
-                <label for="destinationDepartment">Destination Department</label>
+                <label for="originDepartment">From</label>
+                <select id="originDepartment" v-model="taskForm.originDepartmentId" class="form-control">
+                  <option value="">Select origin department (optional)</option>
+                  <option v-for="dept in departments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="destinationDepartment">To</label>
                 <select id="destinationDepartment" v-model="taskForm.destinationDepartmentId" class="form-control">
                   <option value="">Select destination department (optional)</option>
                   <option v-for="dept in departments" :key="dept.id" :value="dept.id">
                     {{ dept.name }}
                   </option>
                 </select>
+              </div>
+              
+              <!-- Received | Porter -->
+              <div class="form-group">
+                <label for="timeReceived">Received</label>
+                <input 
+                  type="time" 
+                  id="timeReceived" 
+                  v-model="taskForm.timeReceived" 
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="porter">Porter</label>
+                <select id="porter" v-model="taskForm.porterId" class="form-control">
+                  <option value="">Select porter (optional)</option>
+                  <option v-for="porter in porters" :key="porter.id" :value="porter.id">
+                    {{ porter.first_name }} {{ porter.last_name }}
+                  </option>
+                </select>
+              </div>
+              
+              <!-- Allocated | Exp. Completion -->
+              <div class="form-group">
+                <label for="timeAllocated">Allocated</label>
+                <input 
+                  type="time" 
+                  id="timeAllocated" 
+                  v-model="taskForm.timeAllocated" 
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="timeCompleted">Exp. Completion</label>
+                <input 
+                  type="time" 
+                  id="timeCompleted" 
+                  v-model="taskForm.timeCompleted" 
+                  class="form-control"
+                />
               </div>
               
               <!-- Status buttons moved to footer for new tasks, but kept here for editing -->
@@ -336,37 +368,6 @@
                     Completed
                   </button>
                 </div>
-              </div>
-              
-              <!-- Time fields for task (editable) -->
-              <div class="form-group">
-                <label for="timeReceived">Time Received</label>
-                <input 
-                  type="time" 
-                  id="timeReceived" 
-                  v-model="taskForm.timeReceived" 
-                  class="form-control"
-                />
-              </div>
-              
-              <div class="form-group">
-                <label for="timeAllocated">Time Allocated</label>
-                <input 
-                  type="time" 
-                  id="timeAllocated" 
-                  v-model="taskForm.timeAllocated" 
-                  class="form-control"
-                />
-              </div>
-              
-              <div class="form-group">
-                <label for="timeCompleted">Expected Completion Time</label>
-                <input 
-                  type="time" 
-                  id="timeCompleted" 
-                  v-model="taskForm.timeCompleted" 
-                  class="form-control"
-                />
               </div>
             </div>
           </div>
