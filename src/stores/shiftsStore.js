@@ -907,6 +907,20 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        // First, get the shift ID from the area cover assignment
+        const { data: areaCover, error: areaCoverError } = await supabase
+          .from('shift_area_cover_assignments')
+          .select('shift_id')
+          .eq('id', areaCoverId)
+          .single();
+        
+        if (areaCoverError) throw areaCoverError;
+        
+        if (!areaCover) {
+          throw new Error('Area cover assignment not found');
+        }
+        
+        // Add the porter to the department assignment
         const { data, error } = await supabase
           .from('shift_area_cover_porter_assignments')
           .insert({
@@ -927,7 +941,29 @@ export const useShiftsStore = defineStore('shifts', {
         if (error) throw error;
         
         if (data && data.length > 0) {
+          // Add to local state
           this.shiftAreaCoverPorterAssignments.push(data[0]);
+          
+          // Now remove the porter from the shift porter pool if they're in it
+          // First find the porter pool entry
+          const porterPoolEntry = this.shiftPorterPool.find(
+            p => p.porter_id === porterId && p.shift_id === areaCover.shift_id
+          );
+          
+          if (porterPoolEntry) {
+            // Remove from database
+            const { error: removeError } = await supabase
+              .from('shift_porter_pool')
+              .delete()
+              .eq('id', porterPoolEntry.id);
+            
+            if (removeError) {
+              console.error('Error removing porter from shift pool:', removeError);
+            } else {
+              // Remove from local state
+              this.shiftPorterPool = this.shiftPorterPool.filter(p => p.id !== porterPoolEntry.id);
+            }
+          }
         }
         
         return data?.[0] || null;
