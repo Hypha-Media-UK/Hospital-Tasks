@@ -146,6 +146,15 @@
                       </span>
                       <span v-else class="not-assigned">Not assigned</span>
                     </div>
+                    <div class="meta-item">
+                      <strong>Received:</strong> {{ formatTime(task.time_received) }}
+                    </div>
+                    <div class="meta-item">
+                      <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
+                    </div>
+                    <div class="meta-item">
+                      <strong>Expected completion:</strong> {{ formatTime(task.time_completed) }}
+                    </div>
                   </div>
                 </div>
                 
@@ -198,6 +207,12 @@
                         {{ task.porter.first_name }} {{ task.porter.last_name }}
                       </span>
                       <span v-else class="not-assigned">Not assigned</span>
+                    </div>
+                    <div class="meta-item">
+                      <strong>Received:</strong> {{ formatTime(task.time_received) }}
+                    </div>
+                    <div class="meta-item">
+                      <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
                     </div>
                     <div class="meta-item">
                       <strong>Completed:</strong> {{ formatTime(task.updated_at) }}
@@ -322,6 +337,37 @@
                   </button>
                 </div>
               </div>
+              
+              <!-- Time fields for task (editable) -->
+              <div class="form-group">
+                <label for="timeReceived">Time Received</label>
+                <input 
+                  type="datetime-local" 
+                  id="timeReceived" 
+                  v-model="taskForm.timeReceived" 
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="timeAllocated">Time Allocated</label>
+                <input 
+                  type="datetime-local" 
+                  id="timeAllocated" 
+                  v-model="taskForm.timeAllocated" 
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label for="timeCompleted">Expected Completion Time</label>
+                <input 
+                  type="datetime-local" 
+                  id="timeCompleted" 
+                  v-model="taskForm.timeCompleted" 
+                  class="form-control"
+                />
+              </div>
             </div>
           </div>
           
@@ -413,6 +459,7 @@ const taskItems = ref([]);
 const showTaskModal = ref(false);
 const isEditingTask = ref(false);
 const editingTaskId = ref(null);
+const editingTask = ref(null);
 const processingTask = ref(false);
 const taskFormError = ref('');
 
@@ -423,7 +470,10 @@ const taskForm = ref({
   originDepartmentId: '',
   destinationDepartmentId: '',
   porterId: '',
-  status: 'pending'
+  status: 'pending',
+  timeReceived: '',
+  timeAllocated: '',
+  timeCompleted: ''
 });
 
 // Computed properties
@@ -525,6 +575,7 @@ function showAddTaskModal() {
 function editTask(task) {
   isEditingTask.value = true;
   editingTaskId.value = task.id;
+  editingTask.value = task; // Store the full task object for time fields display
   
   // Set up the form with the current task data
   taskForm.value = {
@@ -533,7 +584,10 @@ function editTask(task) {
     originDepartmentId: task.origin_department_id || '',
     destinationDepartmentId: task.destination_department_id || '',
     porterId: task.porter_id || '',
-    status: task.status
+    status: task.status,
+    timeReceived: task.time_received ? formatDateTimeForInput(task.time_received) : '',
+    timeAllocated: task.time_allocated ? formatDateTimeForInput(task.time_allocated) : '',
+    timeCompleted: task.time_completed ? formatDateTimeForInput(task.time_completed) : ''
   };
   
   // Load task items for this task type
@@ -557,7 +611,10 @@ function resetTaskForm() {
     originDepartmentId: '',
     destinationDepartmentId: '',
     porterId: '',
-    status: 'pending'
+    status: 'pending',
+    timeReceived: '',
+    timeAllocated: '',
+    timeCompleted: ''
   };
   taskItems.value = [];
   taskFormError.value = '';
@@ -596,7 +653,10 @@ async function saveTask() {
       porterId: taskForm.value.porterId || null,
       originDepartmentId: taskForm.value.originDepartmentId || null,
       destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
-      status: taskForm.value.status
+      status: taskForm.value.status,
+      time_received: taskForm.value.timeReceived || null,
+      time_allocated: taskForm.value.timeAllocated || null,
+      time_completed: taskForm.value.timeCompleted || null
     };
     
     let result;
@@ -670,7 +730,10 @@ async function saveTaskWithStatus(status) {
       porterId: taskForm.value.porterId || null,
       originDepartmentId: taskForm.value.originDepartmentId || null,
       destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
-      status: taskForm.value.status
+      status: taskForm.value.status,
+      time_received: taskForm.value.timeReceived || null,
+      time_allocated: taskForm.value.timeAllocated || null,
+      time_completed: taskForm.value.timeCompleted || null
     };
     
     // Add new task
@@ -711,6 +774,24 @@ function formatTime(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// Format date for datetime-local input (YYYY-MM-DDThh:mm)
+function formatDateTimeForInput(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  
+  // Get date parts
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  // Get time parts
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  // Format for datetime-local input
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 // Calculate duration since start time
@@ -1128,6 +1209,29 @@ function isWeekend(date) {
     
     &:hover:not(.active) {
       background-color: #e8e8e8;
+    }
+  }
+}
+
+.time-info {
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  
+  h4 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: #495057;
+    font-size: 0.95rem;
+  }
+  
+  .time-info-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    
+    &:last-child {
+      margin-bottom: 0;
     }
   }
 }

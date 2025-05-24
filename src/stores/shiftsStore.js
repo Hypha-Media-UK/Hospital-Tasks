@@ -377,6 +377,18 @@ export const useShiftsStore = defineStore('shifts', {
           return null;
         }
         
+        // Create timestamps for the task
+        const now = new Date();
+        const nowISOString = now.toISOString();
+        
+        // Calculate time_allocated (+1 minute from now)
+        const timeAllocated = new Date(now.getTime() + 60000); // 60000 ms = 1 minute
+        const timeAllocatedISOString = timeAllocated.toISOString();
+        
+        // Calculate time_completed (+20 minutes from now)
+        const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
+        const timeCompletedISOString = timeCompleted.toISOString();
+        
         // Proceed with adding the task
         const { data, error } = await supabase
           .from('shift_tasks')
@@ -386,7 +398,10 @@ export const useShiftsStore = defineStore('shifts', {
             porter_id: taskData.porterId || null,
             origin_department_id: taskData.originDepartmentId || null,
             destination_department_id: taskData.destinationDepartmentId || null,
-            status: taskData.status || 'pending'
+            status: taskData.status || 'pending',
+            time_received: nowISOString,
+            time_allocated: timeAllocatedISOString,
+            time_completed: timeCompletedISOString
           })
           .select(`
             *,
@@ -420,9 +435,39 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        // First, get the current task to check if we're reopening a pending task
+        const { data: existingTask, error: fetchError } = await supabase
+          .from('shift_tasks')
+          .select('*')
+          .eq('id', taskId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        let updates = { status };
+        
+        // If we're changing from completed to pending, update time fields
+        if (existingTask.status === 'completed' && status === 'pending') {
+          // Get current time
+          const now = new Date();
+          const nowISOString = now.toISOString();
+          
+          // Calculate time_completed (+20 minutes from now)
+          const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
+          const timeCompletedISOString = timeCompleted.toISOString();
+          
+          // Update timestamps, but keep the original time_received
+          updates = {
+            ...updates,
+            time_allocated: nowISOString,
+            time_completed: timeCompletedISOString
+          };
+        }
+        
+        // Update the task with the new status and any time changes
         const { data, error } = await supabase
           .from('shift_tasks')
-          .update({ status })
+          .update(updates)
           .eq('id', taskId)
           .select(`
             *,
