@@ -1,5 +1,10 @@
 <template>
   <div class="shift-porter-pool">
+    <!-- Loading Overlay -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading shift data...</div>
+    </div>
     <div class="shift-porter-pool__header">
       <h3 class="section-title">Shift Porters</h3>
       <button class="btn btn--primary" @click="showPorterSelector = true">
@@ -129,6 +134,7 @@ const areaCoverStore = useAreaCoverStore();
 const showPorterSelector = ref(false);
 const selectedPorters = ref([]);
 const addingPorters = ref(false);
+const isLoading = ref(true);
 
 // Computed properties
 const porterPool = computed(() => {
@@ -155,11 +161,15 @@ const availablePorters = computed(() => {
     .filter(a => a.porter_id)
     .map(a => a.porter_id);
   
-  // Return porters not in either list
-  return allPorters.filter(p => 
-    !poolPorterIds.includes(p.id) && 
-    !departmentPorterIds.includes(p.id)
-  );
+  // Get porters already assigned to departments in THIS shift
+  const shiftDepartmentPorterIds = shiftsStore.shiftAreaCoverPorterAssignments
+    .map(a => a.porter_id);
+  
+  // Combine all excluded porter IDs
+  const excludedPorterIds = [...new Set([...poolPorterIds, ...departmentPorterIds, ...shiftDepartmentPorterIds])];
+  
+  // Return porters not in the excluded list
+  return allPorters.filter(p => !excludedPorterIds.includes(p.id));
 });
 
 // Check if all porters are selected
@@ -242,26 +252,72 @@ watch(showPorterSelector, (isOpen) => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  // Load porter pool data
-  await shiftsStore.fetchShiftPorterPool(props.shiftId);
+  isLoading.value = true;
   
-  // Load porters if not already loaded
-  if (!staffStore.porters.length) {
-    await staffStore.fetchPorters();
+  try {
+    // Load data in sequence
+    await shiftsStore.fetchShiftPorterPool(props.shiftId);
+    
+    if (!staffStore.porters.length) {
+      await staffStore.fetchPorters();
+    }
+    
+    if (areaCoverStore.weekDayAssignments.length === 0) {
+      await areaCoverStore.initialize();
+    }
+    
+    // Ensure area cover assignments load last
+    await shiftsStore.fetchShiftAreaCover(props.shiftId);
+  } catch (error) {
+    console.error('Error loading shift data:', error);
+  } finally {
+    // Delay slightly to ensure computed values update
+    setTimeout(() => {
+      isLoading.value = false;
+    }, 300);
   }
-  
-  // Load area cover assignments if not already loaded
-  if (areaCoverStore.weekDayAssignments.length === 0) {
-    await areaCoverStore.initialize();
-  }
-  
-  // Also load area cover assignments for this shift
-  await shiftsStore.fetchShiftAreaCover(props.shiftId);
 });
 </script>
 
 <style lang="scss" scoped>
 @use '../assets/scss/mixins' as mix;
+
+.shift-porter-pool {
+  position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #4285F4;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 1rem;
+  color: #333;
+}
 
 .shift-porter-pool {
   &__header {
