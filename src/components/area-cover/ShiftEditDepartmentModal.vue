@@ -1,11 +1,11 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container">
+    <div class="modal-container" @click.stop>
       <div class="modal-header">
         <h3 class="modal-title">
           Edit {{ assignment.department.name }} Coverage
         </h3>
-        <button class="modal-close" @click="$emit('close')">&times;</button>
+        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
       
       <div class="modal-body">
@@ -86,7 +86,7 @@
           {{ saving ? 'Saving...' : 'Save Changes' }}
         </button>
         <button 
-          @click="$emit('close')" 
+          @click.stop="$emit('close')" 
           class="btn btn--secondary"
           :disabled="saving"
         >
@@ -104,12 +104,12 @@
     
     <!-- Add/Edit Porter Modal -->
     <div v-if="showPorterModal" class="nested-modal-overlay" @click.self="closePorterModal">
-      <div class="nested-modal-container">
+      <div class="nested-modal-container" @click.stop>
         <div class="modal-header">
           <h3 class="modal-title">
             {{ editingPorterAssignment ? 'Edit Porter Assignment' : 'Add Porter' }}
           </h3>
-          <button class="modal-close" @click="closePorterModal">&times;</button>
+          <button class="modal-close" @click.stop="closePorterModal">&times;</button>
         </div>
         
         <div class="modal-body">
@@ -162,7 +162,7 @@
             {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
           </button>
           <button 
-            @click="closePorterModal" 
+            @click.stop="closePorterModal" 
             class="btn btn--secondary"
             :disabled="savingPorter"
           >
