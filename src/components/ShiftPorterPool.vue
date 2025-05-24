@@ -50,7 +50,7 @@
     <div v-if="showPorterSelector" class="modal-overlay" @click.self="showPorterSelector = false">
       <div class="modal-container">
         <div class="modal-header">
-          <h3 class="modal-title">Add Porter to Shift</h3>
+          <h3 class="modal-title">Add Porters to Shift</h3>
           <button class="modal-close" @click="showPorterSelector = false">&times;</button>
         </div>
         
@@ -60,14 +60,31 @@
           </div>
           
           <div v-else class="porter-selector">
+            <div class="select-all-container">
+              <label class="checkbox-container">
+                <input 
+                  type="checkbox" 
+                  :checked="isAllSelected" 
+                  @change="toggleSelectAll"
+                >
+                <span class="checkmark"></span>
+                <span class="select-all-text">Select All Porters</span>
+              </label>
+              <span v-if="selectedPorters.length > 0" class="selected-count">
+                {{ selectedPorters.length }} porter{{ selectedPorters.length > 1 ? 's' : '' }} selected
+              </span>
+            </div>
+            
             <div v-for="porter in availablePorters" :key="porter.id" class="porter-item">
+              <label class="checkbox-container">
+                <input 
+                  type="checkbox" 
+                  :value="porter.id" 
+                  v-model="selectedPorters"
+                >
+                <span class="checkmark"></span>
+              </label>
               <div class="porter-name">{{ porter.first_name }} {{ porter.last_name }}</div>
-              <button 
-                class="btn btn--small btn--primary" 
-                @click="addPorter(porter.id)"
-              >
-                Add
-              </button>
             </div>
           </div>
         </div>
@@ -79,6 +96,13 @@
           >
             Cancel
           </button>
+          <button 
+            class="btn btn--primary" 
+            @click="addSelectedPorters"
+            :disabled="selectedPorters.length === 0 || addingPorters"
+          >
+            {{ addingPorters ? 'Adding...' : 'Add Selected Porters' }}
+          </button>
         </div>
       </div>
     </div>
@@ -86,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useAreaCoverStore } from '../stores/areaCoverStore';
@@ -103,6 +127,8 @@ const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
 
 const showPorterSelector = ref(false);
+const selectedPorters = ref([]);
+const addingPorters = ref(false);
 
 // Computed properties
 const porterPool = computed(() => {
@@ -136,10 +162,49 @@ const availablePorters = computed(() => {
   );
 });
 
+// Check if all porters are selected
+const isAllSelected = computed(() => {
+  return availablePorters.value.length > 0 && 
+         selectedPorters.value.length === availablePorters.value.length;
+});
+
 // Methods
 const addPorter = async (porterId) => {
   await shiftsStore.addPorterToShift(props.shiftId, porterId);
   showPorterSelector.value = false;
+};
+
+// Add multiple selected porters at once
+const addSelectedPorters = async () => {
+  if (selectedPorters.value.length === 0 || addingPorters.value) return;
+  
+  addingPorters.value = true;
+  
+  try {
+    // Process each porter sequentially
+    for (const porterId of selectedPorters.value) {
+      await shiftsStore.addPorterToShift(props.shiftId, porterId);
+    }
+    
+    // Reset selection and close modal
+    selectedPorters.value = [];
+    showPorterSelector.value = false;
+  } catch (error) {
+    console.error('Error adding porters to shift:', error);
+  } finally {
+    addingPorters.value = false;
+  }
+};
+
+// Toggle select all porters
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    // Deselect all
+    selectedPorters.value = [];
+  } else {
+    // Select all
+    selectedPorters.value = availablePorters.value.map(porter => porter.id);
+  }
 };
 
 const removePorter = async (porterPoolId) => {
@@ -167,6 +232,13 @@ const formatTime = (timeStr) => {
   
   return `${hours12}:${minutes} ${period}`;
 };
+
+// Reset selected porters when modal is closed
+watch(showPorterSelector, (isOpen) => {
+  if (!isOpen) {
+    selectedPorters.value = [];
+  }
+});
 
 // Lifecycle hooks
 onMounted(async () => {
@@ -333,9 +405,32 @@ onMounted(async () => {
   gap: 8px;
 }
 
-.porter-item {
+.select-all-container {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  
+  .select-all-text {
+    font-weight: 500;
+    margin-left: 8px;
+  }
+  
+  .selected-count {
+    font-size: 0.9rem;
+    color: #4285F4;
+    font-weight: 500;
+    padding: 2px 8px;
+    background-color: rgba(66, 133, 244, 0.1);
+    border-radius: 100px;
+  }
+}
+
+.porter-item {
+  display: flex;
   align-items: center;
   padding: 10px 12px;
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -343,6 +438,59 @@ onMounted(async () => {
   
   &:hover {
     background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  .porter-name {
+    margin-left: 8px;
+  }
+}
+
+/* Checkbox styling */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  
+  input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+  
+  .checkmark {
+    position: relative;
+    height: 20px;
+    width: 20px;
+    background-color: #fff;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    transition: all 0.2s;
+    
+    &:after {
+      content: "";
+      position: absolute;
+      display: none;
+      left: 6px;
+      top: 2px;
+      width: 5px;
+      height: 10px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+  
+  input:checked ~ .checkmark {
+    background-color: #4285F4;
+    border-color: #4285F4;
+  }
+  
+  input:checked ~ .checkmark:after {
+    display: block;
   }
 }
 
