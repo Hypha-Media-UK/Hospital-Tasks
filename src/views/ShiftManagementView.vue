@@ -807,21 +807,37 @@ async function saveTaskWithStatus(status) {
 function formatDateTime(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toLocaleString('en-US', { 
+  
+  // Format date part
+  const dateFormatted = date.toLocaleDateString('en-US', { 
     month: 'short', 
     day: 'numeric', 
-    year: 'numeric',
-    hour: 'numeric', 
-    minute: '2-digit', 
-    hour12: true 
+    year: 'numeric'
   });
+  
+  // Use settings for time formatting
+  const timeFormatted = formatTime(dateString);
+  
+  return `${dateFormatted}, ${timeFormatted}`;
 }
 
-// Format time (e.g., "9:30 AM") without the date
+// Format time (e.g., "9:30 AM" or "09:30") without the date based on app settings
 function formatTime(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  
+  // Use 24h or 12h format based on settings
+  if (settingsStore.appSettings.timeFormat === '24h') {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } else {
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+  }
 }
 
 // Format time for time input (HH:MM)

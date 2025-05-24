@@ -2,6 +2,11 @@
   <div class="settings-tab">
     <h3>App Settings</h3>
     
+    <!-- App Settings Section -->
+    <div class="settings-section app-settings-section">
+      <AppSettings />
+    </div>
+    
     <!-- Area Cover Section -->
     <div class="settings-section area-cover-section">
       <h4>Area Cover</h4>
@@ -23,6 +28,7 @@
 <script setup>
 import AreaCoverTabs from '../../area-cover/AreaCoverTabs.vue';
 import ShiftDefaultsSettings from '../../settings/ShiftDefaultsSettings.vue';
+import AppSettings from '../../settings/AppSettings.vue';
 import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { onMounted } from 'vue';

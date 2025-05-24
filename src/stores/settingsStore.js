@@ -15,16 +15,39 @@ export const useSettingsStore = defineStore('settings', {
         color: '#673AB7' // Default purple
       }
     },
+    appSettings: {
+      timezone: 'UTC',
+      timeFormat: '24h' // '12h' or '24h'
+    },
     loading: false,
     error: null
   }),
   
   actions: {
-    // Load settings from Supabase
+    // Load all settings from Supabase
     async loadSettings() {
       this.loading = true;
       this.error = null;
       
+      try {
+        // Load shift defaults
+        await this.loadShiftDefaults();
+        
+        // Load app settings
+        await this.loadAppSettings();
+        
+        return true;
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        // Don't show error to user for initial load - we'll use defaults
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Load shift defaults from Supabase
+    async loadShiftDefaults() {
       try {
         // Try to load from Supabase
         const { data, error } = await supabase
@@ -205,6 +228,153 @@ export const useSettingsStore = defineStore('settings', {
         ...this.shiftDefaults.night,
         ...nightDefaults
       };
+    },
+    
+    // Load app settings from Supabase
+    async loadAppSettings() {
+      try {
+        // Try to load from Supabase
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('*')
+          .limit(1)
+          .single();
+        
+        // Handle table not existing yet in development
+        if (error) {
+          if (error.message.includes('relation "app_settings" does not exist')) {
+            // Table doesn't exist yet, use defaults
+            return null;
+          } else if (error.code === 'PGRST116') {
+            // No rows found, use defaults
+            return null;
+          } else {
+            throw error;
+          }
+        }
+        
+        // Process data if it exists
+        if (data) {
+          this.appSettings = {
+            timezone: data.timezone || 'UTC',
+            timeFormat: data.time_format || '24h'
+          };
+        } else if (import.meta.env.DEV) {
+          // In development, try to load from localStorage as fallback
+          const savedSettings = localStorage.getItem('app_settings');
+          if (savedSettings) {
+            try {
+              const parsedSettings = JSON.parse(savedSettings);
+              this.appSettings = {
+                ...this.appSettings,
+                ...parsedSettings
+              };
+            } catch (e) {
+              console.warn('Error parsing localStorage app settings', e);
+            }
+          }
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error loading app settings:', error);
+        // Don't show error to user for initial load - we'll use defaults
+        return null;
+      }
+    },
+    
+    // Save app settings to Supabase
+    async saveAppSettings() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // For development, if the app_settings table doesn't exist yet, 
+        // we'll use localStorage as a fallback
+        if (import.meta.env.DEV) {
+          try {
+            // Try to save to Supabase first
+            const { data, error } = await supabase
+              .from('app_settings')
+              .upsert({
+                timezone: this.appSettings.timezone,
+                time_format: this.appSettings.timeFormat,
+                updated_at: new Date().toISOString()
+              })
+              .select();
+            
+            if (error) {
+              // If operation failed, check if it's because table doesn't exist
+              if (error.message.includes('relation "app_settings" does not exist')) {
+                // Save to localStorage instead
+                localStorage.setItem('app_settings', JSON.stringify(this.appSettings));
+                console.log('Saved app settings to localStorage:', this.appSettings);
+                return [{ id: 'local-storage' }]; // Return a fake result
+              }
+              
+              // If error is not related to missing table, throw it
+              throw error;
+            }
+            
+            return data;
+          } catch (err) {
+            console.warn('Falling back to localStorage for app settings:', err);
+            localStorage.setItem('app_settings', JSON.stringify(this.appSettings));
+            return [{ id: 'local-storage' }]; // Return a fake result
+          }
+        } else {
+          // Production mode - only use Supabase
+          const { data, error } = await supabase
+            .from('app_settings')
+            .upsert({
+              timezone: this.appSettings.timezone,
+              time_format: this.appSettings.timeFormat,
+              updated_at: new Date().toISOString()
+            })
+            .select();
+          
+          if (error) throw error;
+          
+          return data;
+        }
+      } catch (error) {
+        console.error('Error saving app settings:', error);
+        this.error = 'Failed to save app settings';
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Update app settings
+    updateAppSettings(settings) {
+      this.appSettings = {
+        ...this.appSettings,
+        ...settings
+      };
+    },
+    
+    // Format a datetime based on current app settings
+    formatDateTime(dateString) {
+      if (!dateString) return '';
+      
+      const date = new Date(dateString);
+      // Apply timezone conversion if needed
+      
+      // Return formatted time based on user preference
+      if (this.appSettings.timeFormat === '12h') {
+        return date.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        });
+      } else {
+        return date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: false 
+        });
+      }
     }
   }
 });
