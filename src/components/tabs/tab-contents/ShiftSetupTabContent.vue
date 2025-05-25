@@ -2,7 +2,7 @@
   <div class="shift-setup-tab">
     <!-- Shift Info Section -->
     <div class="card">
-      <!-- Porter Pool Section -->
+      <!-- Shift Porters Section -->
       <ShiftPorterPool :shift-id="shiftId" />
       
       <!-- Area Coverage Section -->
