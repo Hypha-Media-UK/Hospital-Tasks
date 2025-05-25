@@ -2,7 +2,43 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">{{ building.name }} Departments</h3>
+        <div class="modal-title-container">
+          <div v-if="isEditingBuildingName" class="building-name-edit">
+            <input 
+              v-model="editBuildingName" 
+              ref="buildingNameInput"
+              class="form-control"
+              @keyup.enter="saveBuildingName"
+              @keyup.esc="cancelEditBuildingName"
+              placeholder="Building name"
+            />
+            <div class="edit-actions">
+              <button 
+                class="btn btn-small btn-primary" 
+                @click="saveBuildingName"
+                :disabled="!editBuildingName.trim()"
+              >
+                Save
+              </button>
+              <button 
+                class="btn btn-small btn-secondary" 
+                @click="cancelEditBuildingName"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+          <div v-else class="modal-title">
+            <h3>{{ building.name }} Departments</h3>
+            <button 
+              @click="startEditBuildingName" 
+              class="btn-action edit-building-btn"
+              title="Edit building name"
+            >
+              <span class="icon">✏️</span>
+            </button>
+          </div>
+        </div>
         <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
       
@@ -113,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
 
 const props = defineProps({
@@ -127,10 +163,44 @@ const emit = defineEmits(['close']);
 
 const locationsStore = useLocationsStore();
 
+// Building edit state
+const isEditingBuildingName = ref(false);
+const editBuildingName = ref('');
+const buildingNameInput = ref(null);
+
 // Departments state
 const newDepartmentName = ref('');
 const editingDepartment = ref(null);
 const editDepartmentName = ref('');
+
+// Building name editing
+const startEditBuildingName = async () => {
+  editBuildingName.value = props.building.name;
+  isEditingBuildingName.value = true;
+  // Wait for the DOM to update before focusing the input
+  await nextTick();
+  buildingNameInput.value?.focus();
+};
+
+const saveBuildingName = async () => {
+  if (!editBuildingName.value.trim()) {
+    cancelEditBuildingName();
+    return;
+  }
+  
+  if (editBuildingName.value !== props.building.name) {
+    await locationsStore.updateBuilding(props.building.id, {
+      name: editBuildingName.value.trim()
+    });
+  }
+  
+  isEditingBuildingName.value = false;
+};
+
+const cancelEditBuildingName = () => {
+  isEditingBuildingName.value = false;
+  editBuildingName.value = '';
+};
 
 // Computed property to get departments for this building
 const departments = computed(() => {
@@ -238,10 +308,54 @@ const deleteDepartment = async (department) => {
   justify-content: space-between;
 }
 
+.modal-title-container {
+  display: flex;
+  flex: 1;
+  margin-right: 16px;
+}
+
 .modal-title {
-  margin: 0;
-  font-size: mix.font-size('lg');
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  h3 {
+    margin: 0;
+    font-size: mix.font-size('lg');
+    font-weight: 600;
+  }
+  
+  .edit-building-btn {
+    opacity: 0.7;
+    
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+.building-name-edit {
+  width: 100%;
+  
+  .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid mix.color('primary');
+    border-radius: mix.radius('md');
+    font-size: mix.font-size('md');
+    margin-bottom: 8px;
+    
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.1);
+    }
+  }
+  
+  .edit-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
 }
 
 .modal-close {

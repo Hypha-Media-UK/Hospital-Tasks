@@ -25,11 +25,6 @@
         
         <div v-if="activeTab === 'services'" class="locations-tabs__panel">
           <div class="settings-section">
-            <h4>Manage Support Services</h4>
-            <p class="section-description">
-              Manage support services that can be assigned to porters. These services are not tied to specific departments but require porter support.
-            </p>
-            
             <div class="error-message" v-if="supportServicesStore.error">
               {{ supportServicesStore.error }}
             </div>

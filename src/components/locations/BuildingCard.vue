@@ -14,38 +14,15 @@
       <button @click="viewDepartments" class="btn-view" title="View departments">
         <span class="icon">👁️</span>
       </button>
-      <button @click="editBuilding" class="btn-edit" title="Edit building">
-        <span class="icon">✏️</span>
-      </button>
       <button @click="confirmDelete" class="btn-delete" title="Delete building">
         <span class="icon">🗑️</span>
       </button>
-    </div>
-    
-    <!-- Edit Building Inline Form -->
-    <div v-if="isEditing" class="edit-form">
-      <input 
-        v-model="editName" 
-        ref="editInput"
-        class="edit-input"
-        @keyup.enter="saveBuilding"
-        @keyup.esc="cancelEdit"
-        placeholder="Building name"
-      />
-      <div class="edit-actions">
-        <button @click="saveBuilding" class="btn btn-primary" :disabled="!editName.trim()">
-          Save
-        </button>
-        <button @click="cancelEdit" class="btn btn-secondary">
-          Cancel
-        </button>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
 
 const props = defineProps({
@@ -58,9 +35,6 @@ const props = defineProps({
 const emit = defineEmits(['view-departments', 'deleted']);
 
 const locationsStore = useLocationsStore();
-const isEditing = ref(false);
-const editName = ref('');
-const editInput = ref(null);
 
 // Computed property to count departments
 const departmentCount = computed(() => {
@@ -72,37 +46,6 @@ const departmentCount = computed(() => {
 // View departments
 const viewDepartments = () => {
   emit('view-departments', props.building.id);
-};
-
-// Start editing the building name
-const editBuilding = async () => {
-  editName.value = props.building.name;
-  isEditing.value = true;
-  await nextTick();
-  editInput.value?.focus();
-};
-
-// Save building changes
-const saveBuilding = async () => {
-  if (!editName.value.trim()) {
-    // Don't allow empty names
-    editName.value = props.building.name;
-    isEditing.value = false;
-    return;
-  }
-  
-  if (editName.value !== props.building.name) {
-    await locationsStore.updateBuilding(props.building.id, {
-      name: editName.value.trim()
-    });
-  }
-  
-  isEditing.value = false;
-};
-
-// Cancel editing
-const cancelEdit = () => {
-  isEditing.value = false;
 };
 
 // Delete building with confirmation
@@ -181,39 +124,6 @@ const confirmDelete = async () => {
     }
   }
   
-  .edit-form {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: white;
-    border-radius: mix.radius('md');
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    z-index: 1;
-    
-    .edit-input {
-      flex: 1;
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid mix.color('primary');
-      border-radius: mix.radius('md');
-      font-size: mix.font-size('md');
-      margin-bottom: 16px;
-      
-      &:focus {
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
-      }
-    }
-    
-    .edit-actions {
-      display: flex;
-      gap: 8px;
-    }
-  }
 }
 
 .btn {
