@@ -4,12 +4,25 @@ import { supabase } from '../services/supabase';
 export const useSupportServicesStore = defineStore('supportServices', {
   state: () => ({
     supportServices: [],
+    serviceAssignments: {
+      week_day: [],
+      week_night: [],
+      weekend_day: [],
+      weekend_night: []
+    },
     servicePorterAssignments: {},
     loading: false,
+    loadingAssignments: false,
     error: null
   }),
   
   actions: {
+    // Initialize store data
+    async initialize() {
+      await this.loadSupportServices();
+      await this.loadAllServiceAssignments();
+    },
+    
     // Load all support services from Supabase
     async loadSupportServices() {
       this.loading = true;
@@ -32,6 +45,69 @@ export const useSupportServicesStore = defineStore('supportServices', {
       } finally {
         this.loading = false;
       }
+    },
+    
+    // Load support service assignments for a specific shift type
+    async loadServiceAssignments(shiftType) {
+      if (!['week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(shiftType)) {
+        console.error('Invalid shift type:', shiftType);
+        return [];
+      }
+      
+      this.loadingAssignments = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('support_service_assignments')
+          .select(`
+            *,
+            service:service_id(id, name, description),
+            porter_assignments:support_service_porter_assignments(
+              id,
+              porter_id,
+              start_time,
+              end_time,
+              porter:porter_id(id, first_name, last_name)
+            )
+          `)
+          .eq('shift_type', shiftType);
+        
+        if (error) throw error;
+        
+        // Format the data
+        const formattedData = data.map(assignment => ({
+          id: assignment.id,
+          service: assignment.service,
+          start_time: assignment.start_time,
+          end_time: assignment.end_time,
+          color: assignment.color,
+          shift_type: assignment.shift_type,
+          porter_assignments: assignment.porter_assignments || []
+        }));
+        
+        // Store in the appropriate state property
+        this.serviceAssignments[shiftType] = formattedData;
+        
+        return formattedData;
+      } catch (error) {
+        console.error(`Error loading ${shiftType} service assignments:`, error);
+        this.error = `Failed to load ${shiftType} service assignments`;
+        return [];
+      } finally {
+        this.loadingAssignments = false;
+      }
+    },
+    
+    // Load all service assignments for all shift types
+    async loadAllServiceAssignments() {
+      const shiftTypes = ['week_day', 'week_night', 'weekend_day', 'weekend_night'];
+      
+      for (const type of shiftTypes) {
+        await this.loadServiceAssignments(type);
+      }
+      
+      return this.serviceAssignments;
     },
     
     // Add a new support service
@@ -133,9 +209,300 @@ export const useSupportServicesStore = defineStore('supportServices', {
       }
     },
     
-    // Eventually, add methods for porter assignments
-    async loadPorterAssignments() {
-      // Future implementation to load porter assignments
+    // Add a new service assignment (for default settings)
+    async addServiceAssignment(serviceId, shiftType, startTime, endTime, color) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('support_service_assignments')
+          .insert({
+            service_id: serviceId,
+            shift_type: shiftType,
+            start_time: startTime,
+            end_time: endTime,
+            color: color || '#4285F4'
+          })
+          .select(`
+            *,
+            service:service_id(id, name, description)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Format the data to match our state structure
+          const formattedAssignment = {
+            id: data[0].id,
+            service: data[0].service,
+            start_time: data[0].start_time,
+            end_time: data[0].end_time,
+            color: data[0].color,
+            shift_type: data[0].shift_type,
+            porter_assignments: []
+          };
+          
+          // Add to the appropriate shift type array
+          this.serviceAssignments[shiftType].push(formattedAssignment);
+        }
+        
+        return data && data[0];
+      } catch (error) {
+        console.error('Error adding service assignment:', error);
+        this.error = 'Failed to add service assignment';
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Update a service assignment
+    async updateServiceAssignment(assignmentId, updates) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('support_service_assignments')
+          .update(updates)
+          .eq('id', assignmentId)
+          .select(`
+            *,
+            service:service_id(id, name, description)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Find and update the assignment in our state
+          const shiftType = data[0].shift_type;
+          const index = this.serviceAssignments[shiftType].findIndex(a => a.id === assignmentId);
+          
+          if (index !== -1) {
+            // Preserve porter_assignments when updating
+            const porterAssignments = this.serviceAssignments[shiftType][index].porter_assignments;
+            
+            // Update with new data
+            this.serviceAssignments[shiftType][index] = {
+              id: data[0].id,
+              service: data[0].service,
+              start_time: data[0].start_time,
+              end_time: data[0].end_time,
+              color: data[0].color,
+              shift_type: data[0].shift_type,
+              porter_assignments: porterAssignments
+            };
+          }
+        }
+        
+        return data && data[0];
+      } catch (error) {
+        console.error('Error updating service assignment:', error);
+        this.error = 'Failed to update service assignment';
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Remove a service assignment
+    async removeServiceAssignment(assignmentId) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // First, get the assignment to know which shift type it belongs to
+        const { data: assignmentData } = await supabase
+          .from('support_service_assignments')
+          .select('shift_type')
+          .eq('id', assignmentId)
+          .single();
+        
+        const shiftType = assignmentData?.shift_type;
+        
+        if (!shiftType) {
+          throw new Error('Assignment not found');
+        }
+        
+        // Now delete the assignment
+        const { error } = await supabase
+          .from('support_service_assignments')
+          .delete()
+          .eq('id', assignmentId);
+        
+        if (error) throw error;
+        
+        // Remove from our state
+        if (shiftType) {
+          this.serviceAssignments[shiftType] = this.serviceAssignments[shiftType].filter(
+            a => a.id !== assignmentId
+          );
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing service assignment:', error);
+        this.error = 'Failed to remove service assignment';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Add a porter to a service assignment
+    async addPorterToServiceAssignment(assignmentId, porterId, startTime, endTime) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('support_service_porter_assignments')
+          .insert({
+            support_service_assignment_id: assignmentId,
+            porter_id: porterId,
+            start_time: startTime,
+            end_time: endTime
+          })
+          .select(`
+            *,
+            porter:porter_id(id, first_name, last_name)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Find the assignment in our state to add the porter to it
+          for (const shiftType in this.serviceAssignments) {
+            const assignmentIndex = this.serviceAssignments[shiftType].findIndex(
+              a => a.id === assignmentId
+            );
+            
+            if (assignmentIndex !== -1) {
+              // Add the porter assignment
+              this.serviceAssignments[shiftType][assignmentIndex].porter_assignments.push(data[0]);
+              break;
+            }
+          }
+        }
+        
+        return data && data[0];
+      } catch (error) {
+        console.error('Error adding porter to service assignment:', error);
+        this.error = 'Failed to add porter to service';
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Update a porter assignment
+    async updatePorterAssignment(porterAssignmentId, updates) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('support_service_porter_assignments')
+          .update(updates)
+          .eq('id', porterAssignmentId)
+          .select(`
+            *,
+            porter:porter_id(id, first_name, last_name)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Find and update the porter assignment in our state
+          const assignmentId = data[0].support_service_assignment_id;
+          
+          // Iterate through shift types to find the assignment
+          for (const shiftType in this.serviceAssignments) {
+            const assignmentIndex = this.serviceAssignments[shiftType].findIndex(
+              a => a.id === assignmentId
+            );
+            
+            if (assignmentIndex !== -1) {
+              // Find and update the porter assignment
+              const porterAssignments = this.serviceAssignments[shiftType][assignmentIndex].porter_assignments;
+              const porterIndex = porterAssignments.findIndex(p => p.id === porterAssignmentId);
+              
+              if (porterIndex !== -1) {
+                porterAssignments[porterIndex] = data[0];
+              }
+              
+              break;
+            }
+          }
+        }
+        
+        return data && data[0];
+      } catch (error) {
+        console.error('Error updating porter assignment:', error);
+        this.error = 'Failed to update porter assignment';
+        return null;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Remove a porter from a service assignment
+    async removePorterAssignment(porterAssignmentId) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // First, get the assignment details
+        const { data: assignmentData } = await supabase
+          .from('support_service_porter_assignments')
+          .select('support_service_assignment_id')
+          .eq('id', porterAssignmentId)
+          .single();
+        
+        const serviceAssignmentId = assignmentData?.support_service_assignment_id;
+        
+        if (!serviceAssignmentId) {
+          throw new Error('Porter assignment not found');
+        }
+        
+        // Delete the porter assignment
+        const { error } = await supabase
+          .from('support_service_porter_assignments')
+          .delete()
+          .eq('id', porterAssignmentId);
+        
+        if (error) throw error;
+        
+        // Update our state
+        for (const shiftType in this.serviceAssignments) {
+          const assignmentIndex = this.serviceAssignments[shiftType].findIndex(
+            a => a.id === serviceAssignmentId
+          );
+          
+          if (assignmentIndex !== -1) {
+            // Filter out the removed porter assignment
+            this.serviceAssignments[shiftType][assignmentIndex].porter_assignments = 
+              this.serviceAssignments[shiftType][assignmentIndex].porter_assignments.filter(
+                p => p.id !== porterAssignmentId
+              );
+            break;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing porter assignment:', error);
+        this.error = 'Failed to remove porter assignment';
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    // Clear error
+    clearError() {
+      this.error = null;
     }
   }
 });

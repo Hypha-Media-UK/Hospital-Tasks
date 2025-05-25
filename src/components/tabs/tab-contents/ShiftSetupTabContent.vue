@@ -2,17 +2,19 @@
   <div class="shift-setup-tab">
     <!-- Shift Info Section -->
     <div class="card">
-      <!-- Shift Porters Section -->
-      <ShiftPorterPool :shift-id="shiftId" />
-      
-      <!-- Area Coverage Section -->
-      <div class="area-coverage-section">
-        <h3 class="section-title">Area Coverage</h3>
-        <ShiftAreaCoverList 
-          :shift-id="shiftId" 
-          :shift-type="shiftType"
-          :show-header="false"
-        />
+      <div class="shift-info-section">
+        <!-- Shift Porters Section -->
+        <ShiftPorterPool :shift-id="shiftId" />
+        
+        <!-- Area Coverage Section -->
+        <div class="area-coverage-section">
+          <h3 class="section-title">Area Coverage</h3>
+          <ShiftAreaCoverList 
+            :shift-id="shiftId" 
+            :shift-type="shiftType"
+            :show-header="false"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -57,5 +59,12 @@ const props = defineProps({
   margin-top: 24px;
   padding-top: 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Add some styling for the shift-info-section */
+.shift-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 </style>

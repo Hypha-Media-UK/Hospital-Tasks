@@ -2,17 +2,6 @@
   <div class="support-services-tab">
     <h3>Area Support</h3>
     
-    <!-- Area Cover Section -->
-    <div class="settings-section area-cover-section">
-      <h4>Area Cover</h4>
-      <p class="section-description">
-        Configure departments that need to be covered by porters during shifts. 
-        These settings will be used as defaults when creating new shifts.
-      </p>
-      
-      <AreaCoverTabs />
-    </div>
-    
     <!-- Support Services Section -->
     <div class="settings-section">
       <h4>Support Services</h4>
@@ -53,23 +42,17 @@
 
 <script setup>
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
-import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { onMounted, computed } from 'vue';
 import ServiceItem from '../../support-services/ServiceItem.vue';
 import AddServiceForm from '../../support-services/AddServiceForm.vue';
-import AreaCoverTabs from '../../area-cover/AreaCoverTabs.vue';
 
 const supportServicesStore = useSupportServicesStore();
-const areaCoverStore = useAreaCoverStore();
 
 const supportServices = computed(() => supportServicesStore.supportServices);
 const loading = computed(() => supportServicesStore.loading);
 
-// Load services and area cover data when component mounts
+// Load support services when component mounts
 onMounted(async () => {
-  // Initialize area cover
-  areaCoverStore.initialize();
-  
   // Load support services
   await supportServicesStore.loadSupportServices();
 });
@@ -89,6 +72,7 @@ async function removeService(serviceId) {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 @use '../../../assets/scss/mixins' as mix;
 
 .support-services-tab {
@@ -131,10 +115,6 @@ async function removeService(serviceId) {
       font-size: mix.font-size('lg');
       margin-bottom: 8px;
     }
-  }
-  
-  .area-cover-section {
-    margin-bottom: 32px;
   }
 }
 </style>
