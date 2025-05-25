@@ -7,17 +7,6 @@
       <AppSettings />
     </div>
     
-    <!-- Area Cover Section -->
-    <div class="settings-section area-cover-section">
-      <h4>Area Cover</h4>
-      <p class="section-description">
-        Configure departments that need to be covered by porters during shifts. 
-        These settings will be used as defaults when creating new shifts.
-      </p>
-      
-      <AreaCoverTabs />
-    </div>
-    
     <!-- Shift Defaults Section -->
     <div class="settings-section">
       <ShiftDefaultsSettings />
@@ -26,18 +15,14 @@
 </template>
 
 <script setup>
-import AreaCoverTabs from '../../area-cover/AreaCoverTabs.vue';
 import ShiftDefaultsSettings from '../../settings/ShiftDefaultsSettings.vue';
 import AppSettings from '../../settings/AppSettings.vue';
-import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { onMounted } from 'vue';
 
-const areaCoverStore = useAreaCoverStore();
 const settingsStore = useSettingsStore();
 
 onMounted(() => {
-  areaCoverStore.initialize();
   settingsStore.loadSettings();
 });
 </script>

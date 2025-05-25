@@ -47,7 +47,7 @@ const tabs = [
   { id: 'staff', label: 'Staff' },
   { id: 'locations', label: 'Locations' },
   { id: 'taskTypes', label: 'Task Types' },
-  { id: 'supportServices', label: 'Support Services' },
+  { id: 'supportServices', label: 'Area Support' },
   { id: 'settings', label: 'Settings' }
 ];
 

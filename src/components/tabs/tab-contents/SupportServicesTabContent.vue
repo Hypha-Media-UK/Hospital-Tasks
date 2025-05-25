@@ -1,35 +1,51 @@
 <template>
   <div class="support-services-tab">
-    <h3>Support Services</h3>
-    <p class="section-description">
-      Manage support services that can be assigned to porters. These services are not tied to specific departments but require porter support.
-    </p>
+    <h3>Area Support</h3>
     
-    <div class="error-message" v-if="supportServicesStore.error">
-      {{ supportServicesStore.error }}
+    <!-- Area Cover Section -->
+    <div class="settings-section area-cover-section">
+      <h4>Area Cover</h4>
+      <p class="section-description">
+        Configure departments that need to be covered by porters during shifts. 
+        These settings will be used as defaults when creating new shifts.
+      </p>
+      
+      <AreaCoverTabs />
     </div>
     
-    <!-- Add Service Form -->
-    <AddServiceForm @add="addService" />
+    <!-- Support Services Section -->
+    <div class="settings-section">
+      <h4>Support Services</h4>
+      <p class="section-description">
+        Manage support services that can be assigned to porters. These services are not tied to specific departments but require porter support.
+      </p>
     
-    <!-- Services List -->
-    <div class="support-services-list">
-      <div v-if="loading" class="loading-state">
-        Loading support services...
+      <div class="error-message" v-if="supportServicesStore.error">
+        {{ supportServicesStore.error }}
       </div>
       
-      <div v-else-if="supportServices.length === 0" class="empty-state">
-        No support services found. Add your first service using the button above.
-      </div>
+      <!-- Add Service Form -->
+      <AddServiceForm @add="addService" />
       
-      <div v-else class="services-grid">
-        <ServiceItem 
-          v-for="service in supportServices" 
-          :key="service.id"
-          :service="service"
-          @update="updateService"
-          @delete="removeService"
-        />
+      <!-- Services List -->
+      <div class="support-services-list">
+        <div v-if="loading" class="loading-state">
+          Loading support services...
+        </div>
+        
+        <div v-else-if="supportServices.length === 0" class="empty-state">
+          No support services found. Add your first service using the button above.
+        </div>
+        
+        <div v-else class="services-grid">
+          <ServiceItem 
+            v-for="service in supportServices" 
+            :key="service.id"
+            :service="service"
+            @update="updateService"
+            @delete="removeService"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -37,17 +53,24 @@
 
 <script setup>
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
+import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { onMounted, computed } from 'vue';
 import ServiceItem from '../../support-services/ServiceItem.vue';
 import AddServiceForm from '../../support-services/AddServiceForm.vue';
+import AreaCoverTabs from '../../area-cover/AreaCoverTabs.vue';
 
 const supportServicesStore = useSupportServicesStore();
+const areaCoverStore = useAreaCoverStore();
 
 const supportServices = computed(() => supportServicesStore.supportServices);
 const loading = computed(() => supportServicesStore.loading);
 
-// Load services when component mounts
+// Load services and area cover data when component mounts
 onMounted(async () => {
+  // Initialize area cover
+  areaCoverStore.initialize();
+  
+  // Load support services
   await supportServicesStore.loadSupportServices();
 });
 
@@ -99,6 +122,19 @@ async function removeService(serviceId) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 16px;
+  }
+  
+  .settings-section {
+    margin-bottom: 32px;
+    
+    h4 {
+      font-size: mix.font-size('lg');
+      margin-bottom: 8px;
+    }
+  }
+  
+  .area-cover-section {
+    margin-bottom: 32px;
   }
 }
 </style>
