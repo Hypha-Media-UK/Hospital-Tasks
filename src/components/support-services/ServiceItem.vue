@@ -6,10 +6,6 @@
       <div v-if="service.description" class="service-description">
         {{ service.description }}
       </div>
-      
-      <div class="service-status" :class="{ 'status-active': service.is_active, 'status-inactive': !service.is_active }">
-        {{ service.is_active ? 'Active' : 'Inactive' }}
-      </div>
     </div>
     
     <div class="service-actions">
@@ -51,15 +47,6 @@
             ></textarea>
           </div>
           
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input 
-                type="checkbox"
-                v-model="editForm.is_active"
-              />
-              <span class="checkbox-text">Active</span>
-            </label>
-          </div>
         </div>
         
         <div class="modal-footer">
@@ -129,7 +116,7 @@ async function saveChanges() {
       id: props.service.id,
       name: editForm.value.name,
       description: editForm.value.description || null,
-      is_active: editForm.value.is_active
+      is_active: true // Maintain the is_active state but default to true
     };
     
     // Emit update event
@@ -156,14 +143,18 @@ function confirmDelete() {
 @use '../../assets/scss/mixins' as mix;
 
 .service-item {
-  background-color: white;
+  background-color: #f9f9f9;
   border-radius: mix.radius('md');
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 16px;
   display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 100px;
   
   .service-details {
     flex: 1;
+    margin-bottom: 12px;
   }
   
   .service-name {
@@ -179,27 +170,8 @@ function confirmDelete() {
     color: rgba(0, 0, 0, 0.7);
   }
   
-  .service-status {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: mix.radius('sm');
-    font-size: mix.font-size('xs');
-    font-weight: 500;
-    
-    &.status-active {
-      background-color: rgba(52, 168, 83, 0.1);
-      color: #34A853;
-    }
-    
-    &.status-inactive {
-      background-color: rgba(234, 67, 53, 0.1);
-      color: #EA4335;
-    }
-  }
-  
   .service-actions {
     display: flex;
-    flex-direction: column;
     gap: 8px;
     
     button {
@@ -214,7 +186,7 @@ function confirmDelete() {
       }
       
       &.btn-edit:hover {
-        background-color: rgba(0, 0, 0, 0.05);
+        background-color: rgba(66, 133, 244, 0.1);
       }
       
       &.btn-delete:hover {

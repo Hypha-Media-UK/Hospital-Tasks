@@ -13,12 +13,6 @@
     
     <!-- Support Services Section -->
     <div class="settings-section support-services-section">
-      <h4>Support Services</h4>
-      <p class="section-description">
-        Configure support services that require porter coverage during shifts. 
-        These settings will be used as defaults when creating new shifts.
-      </p>
-      
       <SupportServicesTabs />
     </div>
     

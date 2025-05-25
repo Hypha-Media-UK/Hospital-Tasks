@@ -2,21 +2,21 @@
   <div class="task-type-card">
     <div class="task-type-details">
       <h3 class="task-type-name">{{ taskType.name }}</h3>
-      
-      <div class="task-type-stats">
-        <div class="item-count">
-          {{ itemCount }} {{ itemCount === 1 ? 'Item' : 'Items' }}
-        </div>
-      </div>
     </div>
     
-    <div class="task-type-actions">
-      <button @click="viewItems" class="btn-view" title="View task items">
-        <EditIcon size="16" />
-      </button>
-      <button @click="confirmDelete" class="btn-delete" title="Delete task type">
-        <TrashIcon size="16" />
-      </button>
+    <div class="task-type-card-footer">
+      <div class="task-type-actions">
+        <button @click="viewItems" class="btn-view" title="View task items">
+          <EditIcon size="16" />
+        </button>
+        <button @click="confirmDelete" class="btn-delete" title="Delete task type">
+          <TrashIcon size="16" />
+        </button>
+      </div>
+      
+      <div class="item-count">
+        {{ itemCount }} {{ itemCount === 1 ? 'Item' : 'Items' }}
+      </div>
     </div>
   </div>
 </template>
@@ -62,13 +62,14 @@ const confirmDelete = async () => {
 @use '../../assets/scss/mixins' as mix;
 
 .task-type-card {
-  background-color: white;
+  background-color: #f9f9f9;
   border-radius: mix.radius('md');
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 16px;
   display: flex;
   flex-direction: column;
   position: relative;
+  min-height: 100px;
   
   .task-type-details {
     flex: 1;
@@ -95,23 +96,40 @@ const confirmDelete = async () => {
     }
   }
   
-  .task-type-actions {
+  .task-type-card-footer {
     display: flex;
-    gap: 8px;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
     
-    button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 6px;
+    .item-count {
+      background-color: rgba(66, 133, 244, 0.1);
+      color: mix.color('primary');
       border-radius: mix.radius('sm');
+      padding: 4px 8px;
+      font-size: mix.font-size('xs');
+      font-weight: 500;
+      margin-left: auto;
+    }
+    
+    .task-type-actions {
+      display: flex;
+      gap: 8px;
       
-      &.btn-view:hover {
-        background-color: rgba(66, 133, 244, 0.1);
-      }
-      
-      &.btn-delete:hover {
-        background-color: rgba(234, 67, 53, 0.1);
+      button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: mix.radius('sm');
+        
+        &.btn-view:hover {
+          background-color: rgba(66, 133, 244, 0.1);
+        }
+        
+        &.btn-delete:hover {
+          background-color: rgba(234, 67, 53, 0.1);
+        }
       }
     }
   }
