@@ -22,7 +22,7 @@
                 v-for="shift in dayShifts" 
                 :key="shift.id" 
                 class="shift-card"
-                :style="{ borderColor: '#4285F4' }"
+                :style="{ borderColor: settingsStore.shiftDefaults.day.color }"
                 @click="viewShift(shift.id)"
               >
                 <div class="shift-card__header">
@@ -53,7 +53,7 @@
                 v-for="shift in nightShifts" 
                 :key="shift.id" 
                 class="shift-card"
-                :style="{ borderColor: '#673AB7' }"
+                :style="{ borderColor: settingsStore.shiftDefaults.night.color }"
                 @click="viewShift(shift.id)"
               >
                 <div class="shift-card__header">
@@ -108,7 +108,7 @@
                 @click="createShift('week_day')" 
                 class="btn btn-primary"
                 :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: '#4285F4' }"
+                :style="{ backgroundColor: settingsStore.shiftDefaults.day.color }"
               >
                 Start Week Day Shift
               </button>
@@ -117,7 +117,7 @@
                 @click="createShift('week_night')" 
                 class="btn btn-secondary"
                 :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: '#673AB7' }"
+                :style="{ backgroundColor: settingsStore.shiftDefaults.night.color }"
               >
                 Start Week Night Shift
               </button>

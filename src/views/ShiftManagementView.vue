@@ -407,7 +407,8 @@ onMounted(async () => {
     await Promise.all([
       staffStore.fetchPorters(),
       taskTypesStore.fetchTaskTypes(),
-      locationsStore.fetchDepartments()
+      locationsStore.fetchDepartments(),
+      settingsStore.loadSettings()
     ]);
   } catch (error) {
     console.error('Error loading shift data:', error);
@@ -948,7 +949,7 @@ function isWeekend(date) {
 }
 
 .shift-info {
-  border-left: 4px solid #4285F4;
+  border-left: 4px solid v-bind('shift && shift.shift_type === "day" ? settingsStore.shiftDefaults.day.color : settingsStore.shiftDefaults.night.color');
   
   &.archived-shift {
     border-left-color: #9e9e9e;
@@ -1381,7 +1382,7 @@ function isWeekend(date) {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background-color: #4285F4;
+  background-color: v-bind('shift && shift.shift_type === "day" ? settingsStore.shiftDefaults.day.color : settingsStore.shiftDefaults.night.color');
   color: white;
   border: none;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -1394,7 +1395,7 @@ function isWeekend(date) {
   
   &:hover {
     transform: scale(1.05);
-    background-color: darken(#4285F4, 10%);
+    filter: brightness(0.9);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
   }
   

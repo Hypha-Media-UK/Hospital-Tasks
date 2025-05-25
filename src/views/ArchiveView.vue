@@ -137,9 +137,11 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const router = useRouter();
 const shiftsStore = useShiftsStore();
+const settingsStore = useSettingsStore();
 
 // Local state
 const loading = ref(true);
@@ -206,10 +208,39 @@ watch([searchQuery, typeFilter], () => {
   // No need to reload data, just let the computed property handle filtering
 });
 
+// Helper function to convert hex to rgba
+function hexToRgba(hex, alpha = 1) {
+  if (!hex) return 'rgba(66, 133, 244, 0.15)'; // Default light blue if no color
+  
+  // Remove # if present
+  hex = hex.replace('#', '');
+  
+  // Parse r, g, b values
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Get tinted versions of the user-defined shift colors
+const dayShiftBgColor = computed(() => {
+  const hexColor = settingsStore.shiftDefaults.day.color;
+  return hexToRgba(hexColor, 0.15);
+});
+
+const nightShiftBgColor = computed(() => {
+  const hexColor = settingsStore.shiftDefaults.night.color;
+  return hexToRgba(hexColor, 0.15);
+});
+
 // Load data on component mount
 onMounted(async () => {
   loading.value = true;
-  await shiftsStore.fetchArchivedShifts();
+  await Promise.all([
+    shiftsStore.fetchArchivedShifts(),
+    settingsStore.loadSettings()
+  ]);
   loading.value = false;
 });
 
@@ -376,11 +407,13 @@ function calculateDuration(startTime, endTime) {
   
   tr {
     &.day-shift {
-      border-left: 3px solid #4285F4;
+      border-left: 3px solid v-bind('settingsStore.shiftDefaults.day.color');
+      background-color: v-bind('dayShiftBgColor');
     }
     
     &.night-shift {
-      border-left: 3px solid #673AB7;
+      border-left: 3px solid v-bind('settingsStore.shiftDefaults.night.color');
+      background-color: v-bind('nightShiftBgColor');
     }
     
     &:hover {
