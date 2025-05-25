@@ -150,49 +150,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
       }
     },
     
-    // Get departments that can be added to day shift (not already added)
-    availableDayDepartments: (state, getters, rootState, rootGetters) => {
-      const locationsStore = rootGetters['locations/buildingsWithDepartments'] ? 
-        { buildingsWithDepartments: rootGetters['locations/buildingsWithDepartments'] } : 
-        { buildingsWithDepartments: [] };
-      
-      // Create a flat list of all departments
-      const allDepartments = [];
-      locationsStore.buildingsWithDepartments.forEach(building => {
-        building.departments.forEach(dept => {
-          allDepartments.push({
-            ...dept,
-            building_name: building.name
-          });
-        });
-      });
-      
-      // Filter out departments that are already assigned to day shift
-      const assignedDeptIds = state.dayAssignments.map(a => a.department_id);
-      return allDepartments.filter(dept => !assignedDeptIds.includes(dept.id));
-    },
-    
-    // Get departments that can be added to night shift (not already added)
-    availableNightDepartments: (state, getters, rootState, rootGetters) => {
-      const locationsStore = rootGetters['locations/buildingsWithDepartments'] ? 
-        { buildingsWithDepartments: rootGetters['locations/buildingsWithDepartments'] } : 
-        { buildingsWithDepartments: [] };
-      
-      // Create a flat list of all departments
-      const allDepartments = [];
-      locationsStore.buildingsWithDepartments.forEach(building => {
-        building.departments.forEach(dept => {
-          allDepartments.push({
-            ...dept,
-            building_name: building.name
-          });
-        });
-      });
-      
-      // Filter out departments that are already assigned to night shift
-      const assignedDeptIds = state.nightAssignments.map(a => a.department_id);
-      return allDepartments.filter(dept => !assignedDeptIds.includes(dept.id));
-    }
+    // Removed legacy getters for day/night departments
   },
   
   actions: {
@@ -231,13 +189,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
           case 'weekend_night':
             this.weekendNightAssignments = data || [];
             break;
-          // Legacy support for old shift types
-          case 'day':
-            this.weekDayAssignments = data || [];
-            break;
-          case 'night':
-            this.weekNightAssignments = data || [];
-            break;
+          // Legacy support for old shift types has been removed
         }
         
         // Fetch porter assignments for these area covers
@@ -331,13 +283,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
             case 'weekend_night':
               this.weekendNightAssignments.push(data[0]);
               break;
-            // Legacy support
-            case 'day':
-              this.weekDayAssignments.push(data[0]);
-              break;
-            case 'night':
-              this.weekNightAssignments.push(data[0]);
-              break;
+            // Legacy support has been removed
           }
         }
         
@@ -411,23 +357,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
                 }
               }
               break;
-            // Legacy support
-            case 'day':
-              {
-                const index = this.weekDayAssignments.findIndex(a => a.id === assignmentId);
-                if (index !== -1) {
-                  this.weekDayAssignments[index] = updatedAssignment;
-                }
-              }
-              break;
-            case 'night':
-              {
-                const index = this.weekNightAssignments.findIndex(a => a.id === assignmentId);
-                if (index !== -1) {
-                  this.weekNightAssignments[index] = updatedAssignment;
-                }
-              }
-              break;
+            // Legacy support has been removed
           }
         }
         
@@ -480,13 +410,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
           case 'weekend_night':
             this.weekendNightAssignments = this.weekendNightAssignments.filter(a => a.id !== assignmentId);
             break;
-          // Legacy support
-          case 'day':
-            this.weekDayAssignments = this.weekDayAssignments.filter(a => a.id !== assignmentId);
-            break;
-          case 'night':
-            this.weekNightAssignments = this.weekNightAssignments.filter(a => a.id !== assignmentId);
-            break;
+          // Legacy support has been removed
         }
         
         // Also remove all porter assignments for this area cover

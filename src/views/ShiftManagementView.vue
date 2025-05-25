@@ -968,19 +968,19 @@ function determineAreaCoverType(shift) {
 
 // Get color for shift type
 function getShiftColor() {
-  if (!shift.value) return settingsStore.shiftDefaults.day.color;
+  if (!shift.value) return settingsStore.shiftDefaults.week_day.color;
   
   switch (shift.value.shift_type) {
     case 'week_day':
-      return settingsStore.shiftDefaults.day.color;
+      return settingsStore.shiftDefaults.week_day.color;
     case 'week_night':
-      return settingsStore.shiftDefaults.night.color;
+      return settingsStore.shiftDefaults.week_night.color;
     case 'weekend_day':
-      return '#34A853'; // Green color for weekend day
+      return settingsStore.shiftDefaults.weekend_day.color;
     case 'weekend_night':
-      return '#EA4335'; // Red color for weekend night
+      return settingsStore.shiftDefaults.weekend_night.color;
     default:
-      return settingsStore.shiftDefaults.day.color;
+      return settingsStore.shiftDefaults.week_day.color;
   }
 }
 

@@ -99,10 +99,8 @@ const showDepartmentSelector = ref(false);
 // Computed properties
 const shiftTypeLabel = computed(() => {
   switch (props.shiftType) {
-    case 'day': 
     case 'week_day':
       return 'Day';
-    case 'night':
     case 'week_night':
       return 'Night';
     case 'weekend_day':

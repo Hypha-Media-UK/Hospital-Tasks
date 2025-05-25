@@ -4,15 +4,26 @@ import { supabase } from '../services/supabase';
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     shiftDefaults: {
-      day: {
+      // Only using proper shift types
+      week_day: {
         startTime: '08:00',
         endTime: '16:00',
         color: '#4285F4' // Default blue
       },
-      night: {
+      week_night: {
         startTime: '20:00',
         endTime: '08:00',
         color: '#673AB7' // Default purple
+      },
+      weekend_day: {
+        startTime: '08:00',
+        endTime: '16:00',
+        color: '#34A853' // Default green
+      },
+      weekend_night: {
+        startTime: '20:00',
+        endTime: '08:00',
+        color: '#EA4335' // Default red
       }
     },
     appSettings: {
@@ -63,14 +74,9 @@ export const useSettingsStore = defineStore('settings', {
         if (data && data.length > 0) {
           // Process each shift type
           data.forEach(shift => {
-            if (shift.shift_type === 'day') {
-              this.shiftDefaults.day = {
-                startTime: shift.start_time.slice(0, 5),
-                endTime: shift.end_time.slice(0, 5),
-                color: shift.color
-              };
-            } else if (shift.shift_type === 'night') {
-              this.shiftDefaults.night = {
+            // Update the specific shift type if valid
+            if (this.shiftDefaults[shift.shift_type]) {
+              this.shiftDefaults[shift.shift_type] = {
                 startTime: shift.start_time.slice(0, 5),
                 endTime: shift.end_time.slice(0, 5),
                 color: shift.color
@@ -83,15 +89,16 @@ export const useSettingsStore = defineStore('settings', {
           if (savedDefaults) {
             try {
               const parsedDefaults = JSON.parse(savedDefaults);
+              // Map any legacy settings to their proper types
               if (parsedDefaults.day) {
-                this.shiftDefaults.day = {
-                  ...this.shiftDefaults.day,
+                this.shiftDefaults.week_day = {
+                  ...this.shiftDefaults.week_day,
                   ...parsedDefaults.day
                 };
               }
               if (parsedDefaults.night) {
-                this.shiftDefaults.night = {
-                  ...this.shiftDefaults.night,
+                this.shiftDefaults.week_night = {
+                  ...this.shiftDefaults.week_night,
                   ...parsedDefaults.night
                 };
               }
@@ -123,26 +130,27 @@ export const useSettingsStore = defineStore('settings', {
           try {
             // Try to save to Supabase first
             const results = await Promise.all([
-              // Update day shift
+              // Only update modern shift types
+              // Update week_day shift
               supabase
                 .from('shift_defaults')
                 .upsert({
-                  shift_type: 'day',
-                  start_time: this.shiftDefaults.day.startTime + ':00',
-                  end_time: this.shiftDefaults.day.endTime + ':00',
-                  color: this.shiftDefaults.day.color,
+                  shift_type: 'week_day',
+                  start_time: this.shiftDefaults.week_day.startTime + ':00',
+                  end_time: this.shiftDefaults.week_day.endTime + ':00',
+                  color: this.shiftDefaults.week_day.color,
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'shift_type' })
                 .select(),
                 
-              // Update night shift
+              // Update week_night shift
               supabase
                 .from('shift_defaults')
                 .upsert({
-                  shift_type: 'night',
-                  start_time: this.shiftDefaults.night.startTime + ':00',
-                  end_time: this.shiftDefaults.night.endTime + ':00',
-                  color: this.shiftDefaults.night.color,
+                  shift_type: 'week_night',
+                  start_time: this.shiftDefaults.week_night.startTime + ':00',
+                  end_time: this.shiftDefaults.week_night.endTime + ':00',
+                  color: this.shiftDefaults.week_night.color,
                   updated_at: new Date().toISOString()
                 }, { onConflict: 'shift_type' })
                 .select()
@@ -173,26 +181,50 @@ export const useSettingsStore = defineStore('settings', {
         } else {
           // Production mode - only use Supabase
           const results = await Promise.all([
-            // Update day shift
+            // Update week_day shift
             supabase
               .from('shift_defaults')
               .upsert({
-                shift_type: 'day',
-                start_time: this.shiftDefaults.day.startTime + ':00',
-                end_time: this.shiftDefaults.day.endTime + ':00',
-                color: this.shiftDefaults.day.color,
+                shift_type: 'week_day',
+                start_time: this.shiftDefaults.week_day.startTime + ':00',
+                end_time: this.shiftDefaults.week_day.endTime + ':00',
+                color: this.shiftDefaults.week_day.color,
                 updated_at: new Date().toISOString()
               }, { onConflict: 'shift_type' })
               .select(),
               
-            // Update night shift
+            // Update week_night shift
             supabase
               .from('shift_defaults')
               .upsert({
-                shift_type: 'night',
-                start_time: this.shiftDefaults.night.startTime + ':00',
-                end_time: this.shiftDefaults.night.endTime + ':00',
-                color: this.shiftDefaults.night.color,
+                shift_type: 'week_night',
+                start_time: this.shiftDefaults.week_night.startTime + ':00',
+                end_time: this.shiftDefaults.week_night.endTime + ':00',
+                color: this.shiftDefaults.week_night.color,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'shift_type' })
+              .select(),
+              
+            // Update weekend_day shift
+            supabase
+              .from('shift_defaults')
+              .upsert({
+                shift_type: 'weekend_day',
+                start_time: this.shiftDefaults.weekend_day.startTime + ':00',
+                end_time: this.shiftDefaults.weekend_day.endTime + ':00',
+                color: this.shiftDefaults.weekend_day.color,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'shift_type' })
+              .select(),
+              
+            // Update weekend_night shift
+            supabase
+              .from('shift_defaults')
+              .upsert({
+                shift_type: 'weekend_night',
+                start_time: this.shiftDefaults.weekend_night.startTime + ':00',
+                end_time: this.shiftDefaults.weekend_night.endTime + ':00',
+                color: this.shiftDefaults.weekend_night.color,
                 updated_at: new Date().toISOString()
               }, { onConflict: 'shift_type' })
               .select()
@@ -214,18 +246,18 @@ export const useSettingsStore = defineStore('settings', {
       }
     },
     
-    // Update day shift defaults
+    // Update week day shift defaults
     updateDayShiftDefaults(dayDefaults) {
-      this.shiftDefaults.day = {
-        ...this.shiftDefaults.day,
+      this.shiftDefaults.week_day = {
+        ...this.shiftDefaults.week_day,
         ...dayDefaults
       };
     },
     
-    // Update night shift defaults
+    // Update week night shift defaults
     updateNightShiftDefaults(nightDefaults) {
-      this.shiftDefaults.night = {
-        ...this.shiftDefaults.night,
+      this.shiftDefaults.week_night = {
+        ...this.shiftDefaults.week_night,
         ...nightDefaults
       };
     },

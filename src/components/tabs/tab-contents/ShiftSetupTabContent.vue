@@ -18,6 +18,16 @@
             :show-header="false"
           />
         </div>
+        
+        <!-- Support Services Section -->
+        <div class="support-services-section">
+          <h3 class="section-title">Service Coverage</h3>
+          <SupportServicesShiftList 
+            :shift-id="shiftId" 
+            :shift-type="shiftType"
+            :show-header="false"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -26,6 +36,7 @@
 <script setup>
 import ShiftPorterPool from '../../ShiftPorterPool.vue';
 import ShiftAreaCoverList from '../../area-cover/ShiftAreaCoverList.vue';
+import SupportServicesShiftList from '../../support-services/SupportServicesShiftList.vue';
 
 const props = defineProps({
   shiftId: {
@@ -58,7 +69,7 @@ const props = defineProps({
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.area-coverage-section {
+.area-coverage-section, .support-services-section {
   margin-top: 24px;
   padding-top: 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);

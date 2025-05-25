@@ -214,13 +214,19 @@ watch(() => props.shiftType, async () => {
 
 // Methods
 function initializeFormDefaults() {
-  // Set default times based on the shift type
-  if (props.shiftType.includes('day')) {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.day.startTime || '08:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.day.endTime || '16:00';
-  } else {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.night.startTime || '20:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.night.endTime || '08:00';
+  // Set default times based on the specific shift type
+  if (props.shiftType === 'week_day') {
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_day.startTime || '08:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_day.endTime || '16:00';
+  } else if (props.shiftType === 'week_night') {
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_night.startTime || '20:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_night.endTime || '08:00';
+  } else if (props.shiftType === 'weekend_day') {
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_day.startTime || '08:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_day.endTime || '16:00';
+  } else if (props.shiftType === 'weekend_night') {
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_night.startTime || '20:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_night.endTime || '08:00';
   }
 }
 

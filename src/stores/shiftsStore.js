@@ -7,20 +7,7 @@ function isWeekend(date) {
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
 
-// Helper function to determine if a time is during day shift hours
-function isDayShift(date, dayStart, dayEnd) {
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const timeInMinutes = hours * 60 + minutes;
-  
-  const [dayStartHours, dayStartMinutes] = dayStart.split(':').map(Number);
-  const [dayEndHours, dayEndMinutes] = dayEnd.split(':').map(Number);
-  
-  const dayStartInMinutes = dayStartHours * 60 + dayStartMinutes;
-  const dayEndInMinutes = dayEndHours * 60 + dayEndMinutes;
-  
-  return timeInMinutes >= dayStartInMinutes && timeInMinutes < dayEndInMinutes;
-}
+// Removed legacy isDayShift function
 
 // Helper function to convert time string (HH:MM:SS) to minutes
 function timeToMinutes(timeStr) {
@@ -58,14 +45,18 @@ export const useShiftsStore = defineStore('shifts', {
   }),
   
   getters: {
-    // Get active day shifts (all types containing 'day')
+    // Get active day shifts (week_day and weekend_day)
     activeDayShifts: (state) => {
-      return state.activeShifts.filter(shift => shift.shift_type.includes('day'));
+      return state.activeShifts.filter(shift => 
+        shift.shift_type === 'week_day' || shift.shift_type === 'weekend_day'
+      );
     },
     
-    // Get active night shifts (all types containing 'night')
+    // Get active night shifts (week_night and weekend_night)
     activeNightShifts: (state) => {
-      return state.activeShifts.filter(shift => shift.shift_type.includes('night'));
+      return state.activeShifts.filter(shift => 
+        shift.shift_type === 'week_night' || shift.shift_type === 'weekend_night'
+      );
     },
     
     // Get pending tasks for current shift
@@ -92,17 +83,17 @@ export const useShiftsStore = defineStore('shifts', {
       });
     },
     
-    // Get area cover assignments for day shifts (all types containing 'day')
+    // Get area cover assignments for day shifts (week_day and weekend_day)
     shiftDayAreaCoverAssignments: (state) => {
       return state.shiftAreaCoverAssignments.filter(assignment => 
-        assignment.shift_type && assignment.shift_type.includes('day')
+        assignment.shift_type === 'week_day' || assignment.shift_type === 'weekend_day'
       );
     },
     
-    // Get area cover assignments for night shifts (all types containing 'night')
+    // Get area cover assignments for night shifts (week_night and weekend_night)
     shiftNightAreaCoverAssignments: (state) => {
       return state.shiftAreaCoverAssignments.filter(assignment => 
-        assignment.shift_type && assignment.shift_type.includes('night')
+        assignment.shift_type === 'week_night' || assignment.shift_type === 'weekend_night'
       );
     },
     

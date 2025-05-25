@@ -3,29 +3,16 @@
     <div class="area-cover-tabs__header">
       <button 
         class="area-cover-tabs__tab" 
-        :class="{ 'area-cover-tabs__tab--active': activeTab === 'day' }"
-        @click="activeTab = 'day'"
-        v-if="shift.shift_type === 'day'"
+        :class="{ 'area-cover-tabs__tab--active': activeTab === shift.shift_type }"
+        @click="activeTab = shift.shift_type"
       >
-        Day Shift Coverage
-      </button>
-      <button 
-        class="area-cover-tabs__tab" 
-        :class="{ 'area-cover-tabs__tab--active': activeTab === 'night' }"
-        @click="activeTab = 'night'"
-        v-if="shift.shift_type === 'night'"
-      >
-        Night Shift Coverage
+        {{ shiftTypeLabel }} Coverage
       </button>
     </div>
     
     <div class="area-cover-tabs__content">
-      <div v-if="activeTab === 'day' && shift.shift_type === 'day'" class="area-cover-tabs__panel">
-        <ShiftAreaCoverList :shift-id="shift.id" shift-type="day" />
-      </div>
-      
-      <div v-if="activeTab === 'night' && shift.shift_type === 'night'" class="area-cover-tabs__panel">
-        <ShiftAreaCoverList :shift-id="shift.id" shift-type="night" />
+      <div class="area-cover-tabs__panel">
+        <ShiftAreaCoverList :shift-id="shift.id" :shift-type="shift.shift_type" />
       </div>
     </div>
   </div>
@@ -49,9 +36,27 @@ const activeTab = ref('');
 // Set the active tab based on the shift type
 const shift = computed(() => shiftsStore.currentShift);
 
+// Get a user-friendly label for the shift type
+const shiftTypeLabel = computed(() => {
+  if (!shift.value) return 'Shift';
+  
+  switch (shift.value.shift_type) {
+    case 'week_day':
+      return 'Week Day';
+    case 'week_night':
+      return 'Week Night';
+    case 'weekend_day':
+      return 'Weekend Day';
+    case 'weekend_night':
+      return 'Weekend Night';
+    default:
+      return 'Shift';
+  }
+});
+
 onMounted(() => {
   if (shift.value) {
-    activeTab.value = shift.value.shift_type; // 'day' or 'night'
+    activeTab.value = shift.value.shift_type;
   }
 });
 </script>

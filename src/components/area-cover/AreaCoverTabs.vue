@@ -33,22 +33,22 @@
     
     <div class="area-cover-tabs__content">
       <div v-if="activeTab === 'week_day'" class="area-cover-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.day) }}</div>
+        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.week_day) }}</div>
         <AreaCoverShiftList shift-type="week_day" />
       </div>
       
       <div v-if="activeTab === 'week_night'" class="area-cover-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.night) }}</div>
+        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.week_night) }}</div>
         <AreaCoverShiftList shift-type="week_night" />
       </div>
       
       <div v-if="activeTab === 'weekend_day'" class="area-cover-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.day) }}</div>
+        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.weekend_day) }}</div>
         <AreaCoverShiftList shift-type="weekend_day" />
       </div>
       
       <div v-if="activeTab === 'weekend_night'" class="area-cover-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.night) }}</div>
+        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.weekend_night) }}</div>
         <AreaCoverShiftList shift-type="weekend_night" />
       </div>
     </div>
@@ -65,7 +65,7 @@ const activeTab = ref('week_day');
 
 onMounted(async () => {
   // Load shift defaults if not already loaded
-  if (!settingsStore.shiftDefaults.day.startTime) {
+  if (!settingsStore.shiftDefaults.week_day.startTime) {
     await settingsStore.loadSettings();
   }
 });

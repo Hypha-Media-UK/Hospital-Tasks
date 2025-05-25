@@ -22,7 +22,7 @@
                 v-for="shift in dayShifts" 
                 :key="shift.id" 
                 class="shift-card"
-                :style="{ borderColor: settingsStore.shiftDefaults.day.color }"
+                :style="{ borderColor: getShiftColor(shift.shift_type) }"
                 @click="viewShift(shift.id)"
               >
                 <div class="shift-card__header">
@@ -53,7 +53,7 @@
                 v-for="shift in nightShifts" 
                 :key="shift.id" 
                 class="shift-card"
-                :style="{ borderColor: settingsStore.shiftDefaults.night.color }"
+                :style="{ borderColor: getShiftColor(shift.shift_type) }"
                 @click="viewShift(shift.id)"
               >
                 <div class="shift-card__header">
@@ -108,7 +108,7 @@
                 @click="createShift('week_day')" 
                 class="btn btn-primary"
                 :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: settingsStore.shiftDefaults.day.color }"
+                :style="{ backgroundColor: settingsStore.shiftDefaults.week_day.color }"
               >
                 Start Week Day Shift
               </button>
@@ -117,7 +117,7 @@
                 @click="createShift('week_night')" 
                 class="btn btn-secondary"
                 :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: settingsStore.shiftDefaults.night.color }"
+                :style="{ backgroundColor: settingsStore.shiftDefaults.week_night.color }"
               >
                 Start Week Night Shift
               </button>
@@ -230,19 +230,20 @@ function isWeekend(date) {
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
 }
 
-// Helper function to determine if a time is during day shift hours
-function isDayShift(date, dayStart, dayEnd) {
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const timeInMinutes = hours * 60 + minutes;
-  
-  const [dayStartHours, dayStartMinutes] = dayStart.split(':').map(Number);
-  const [dayEndHours, dayEndMinutes] = dayEnd.split(':').map(Number);
-  
-  const dayStartInMinutes = dayStartHours * 60 + dayStartMinutes;
-  const dayEndInMinutes = dayEndHours * 60 + dayEndMinutes;
-  
-  return timeInMinutes >= dayStartInMinutes && timeInMinutes < dayEndInMinutes;
+// Get the appropriate color for a shift type
+function getShiftColor(shiftType) {
+  switch (shiftType) {
+    case 'week_day':
+      return settingsStore.shiftDefaults.week_day.color;
+    case 'week_night':
+      return settingsStore.shiftDefaults.week_night.color;
+    case 'weekend_day':
+      return settingsStore.shiftDefaults.weekend_day.color;
+    case 'weekend_night':
+      return settingsStore.shiftDefaults.weekend_night.color;
+    default:
+      return '#4285F4'; // Default blue color
+  }
 }
 
 // View a shift
