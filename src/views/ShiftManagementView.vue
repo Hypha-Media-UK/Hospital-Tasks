@@ -939,6 +939,7 @@ function isWeekend(date) {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .mb-4 {
   margin-bottom: 1rem;
 }
@@ -1130,7 +1131,7 @@ function isWeekend(date) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.scale(#4285F4, $lightness: -10%);
     }
   }
   
@@ -1139,7 +1140,7 @@ function isWeekend(date) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#9e9e9e, 10%);
+      background-color: color.scale(#9e9e9e, $lightness: -10%);
     }
   }
   
@@ -1148,7 +1149,7 @@ function isWeekend(date) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#dc3545, 10%);
+      background-color: color.scale(#dc3545, $lightness: -10%);
     }
   }
   
@@ -1157,7 +1158,7 @@ function isWeekend(date) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#34A853, 10%);
+      background-color: color.scale(#34A853, $lightness: -10%);
     }
   }
   
@@ -1176,7 +1177,7 @@ function isWeekend(date) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#FBBC05, 10%);
+      background-color: color.scale(#FBBC05, $lightness: -10%);
     }
   }
   
@@ -1185,7 +1186,7 @@ function isWeekend(date) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#34A853, 10%);
+      background-color: color.scale(#34A853, $lightness: -10%);
     }
   }
   

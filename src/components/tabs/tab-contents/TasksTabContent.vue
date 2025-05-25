@@ -252,6 +252,7 @@ function formatTime(timeString) {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .task-tabs {
   display: flex;
   border-bottom: 1px solid #e0e0e0;
@@ -355,7 +356,7 @@ function formatTime(timeString) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.scale(#4285F4, $lightness: -10%);
     }
   }
   
@@ -364,7 +365,7 @@ function formatTime(timeString) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#34A853, 10%);
+      background-color: color.scale(#34A853, $lightness: -10%);
     }
   }
   

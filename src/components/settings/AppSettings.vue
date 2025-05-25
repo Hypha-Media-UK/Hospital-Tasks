@@ -146,6 +146,7 @@ async function saveSettings() {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .app-settings {
   margin-bottom: 32px;
   
@@ -234,7 +235,7 @@ async function saveSettings() {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.scale(#4285F4, $lightness: -10%);
     }
   }
 }

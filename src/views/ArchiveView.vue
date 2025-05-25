@@ -334,6 +334,7 @@ function calculateDuration(startTime, endTime) {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .loading-indicator, .empty-state {
   text-align: center;
   padding: 2rem;
@@ -445,7 +446,7 @@ function calculateDuration(startTime, endTime) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.scale(#4285F4, $lightness: -10%);
     }
   }
   
@@ -454,7 +455,7 @@ function calculateDuration(startTime, endTime) {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#dc3545, 10%);
+      background-color: color.scale(#dc3545, $lightness: -10%);
     }
     
     &.confirm-delete {

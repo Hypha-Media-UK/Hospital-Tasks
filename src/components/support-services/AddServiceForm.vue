@@ -99,6 +99,7 @@ async function submitForm() {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 @use '../../assets/scss/mixins' as mix;
 
 .add-service-form {
@@ -172,7 +173,7 @@ async function submitForm() {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.scale(#4285F4, $lightness: -10%);
     }
   }
   
@@ -181,7 +182,7 @@ async function submitForm() {
     color: #333;
     
     &:hover:not(:disabled) {
-      background-color: darken(#f1f1f1, 5%);
+      background-color: color.scale(#f1f1f1, $lightness: -5%);
     }
   }
   

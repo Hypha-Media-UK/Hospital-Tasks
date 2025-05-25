@@ -119,6 +119,7 @@ function confirmDelete() {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 @use '../../assets/scss/mixins' as mix;
 
 .service-item {
@@ -210,7 +211,7 @@ function confirmDelete() {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.scale(#4285F4, $lightness: -10%);
     }
   }
   
@@ -219,7 +220,7 @@ function confirmDelete() {
     color: #333;
     
     &:hover:not(:disabled) {
-      background-color: darken(#f1f1f1, 5%);
+      background-color: color.scale(#f1f1f1, $lightness: -5%);
     }
   }
   

@@ -387,6 +387,7 @@ watch(showAddPorterModal, (newValue) => {
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 @use '../../assets/scss/mixins' as mix;
 
 .modal-overlay, .nested-modal-overlay {
@@ -561,7 +562,7 @@ watch(showAddPorterModal, (newValue) => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#EA4335, 10%);
+      background-color: color.scale(#EA4335, $lightness: -10%);
     }
   }
   
