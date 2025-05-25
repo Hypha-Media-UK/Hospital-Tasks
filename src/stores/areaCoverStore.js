@@ -160,6 +160,8 @@ export const useAreaCoverStore = defineStore('areaCover', {
       this.error = null;
       
       try {
+        console.log(`Fetching area cover assignments for shift type: ${shiftType}`);
+        
         const { data, error } = await supabase
           .from('area_cover_assignments')
           .select(`
@@ -175,21 +177,32 @@ export const useAreaCoverStore = defineStore('areaCover', {
         
         if (error) throw error;
         
+        console.log(`Found ${data?.length || 0} assignments for ${shiftType}`);
+        if (data && data.length > 0) {
+          console.log(`First assignment department: ${data[0].department?.name}`);
+        }
+        
         // Update the appropriate state array based on shift type
         switch(shiftType) {
           case 'week_day':
             this.weekDayAssignments = data || [];
+            console.log(`Updated weekDayAssignments: ${this.weekDayAssignments.length} items`);
             break;
           case 'week_night':
             this.weekNightAssignments = data || [];
+            console.log(`Updated weekNightAssignments: ${this.weekNightAssignments.length} items`);
             break;
           case 'weekend_day':
             this.weekendDayAssignments = data || [];
+            console.log(`Updated weekendDayAssignments: ${this.weekendDayAssignments.length} items`);
             break;
           case 'weekend_night':
             this.weekendNightAssignments = data || [];
+            console.log(`Updated weekendNightAssignments: ${this.weekendNightAssignments.length} items`);
             break;
-          // Legacy support for old shift types has been removed
+          default:
+            console.error(`Unknown shift type: ${shiftType}, cannot update assignments`);
+            break;
         }
         
         // Fetch porter assignments for these area covers
@@ -535,21 +548,65 @@ export const useAreaCoverStore = defineStore('areaCover', {
     async initialize() {
       console.log('Initializing area cover store...');
       
-      // Fetch all assignment types in parallel
-      const results = await Promise.all([
-        this.fetchAssignments('week_day'),
-        this.fetchAssignments('week_night'),
-        this.fetchAssignments('weekend_day'),
-        this.fetchAssignments('weekend_night')
-      ]);
+      // Check if we already have assignments loaded
+      const hasWeekDay = this.weekDayAssignments && this.weekDayAssignments.length > 0;
+      const hasWeekNight = this.weekNightAssignments && this.weekNightAssignments.length > 0;
+      const hasWeekendDay = this.weekendDayAssignments && this.weekendDayAssignments.length > 0;
+      const hasWeekendNight = this.weekendNightAssignments && this.weekendNightAssignments.length > 0;
+      
+      console.log(`Before initialization:
+        - week_day: ${this.weekDayAssignments?.length || 0} assignments
+        - week_night: ${this.weekNightAssignments?.length || 0} assignments
+        - weekend_day: ${this.weekendDayAssignments?.length || 0} assignments
+        - weekend_night: ${this.weekendNightAssignments?.length || 0} assignments`);
+        
+      // Fetch any missing assignment types
+      const promises = [];
+      
+      if (!hasWeekDay) {
+        console.log('Fetching week_day assignments...');
+        promises.push(this.fetchAssignments('week_day'));
+      }
+      
+      if (!hasWeekNight) {
+        console.log('Fetching week_night assignments...');
+        promises.push(this.fetchAssignments('week_night'));
+      }
+      
+      if (!hasWeekendDay) {
+        console.log('Fetching weekend_day assignments...');
+        promises.push(this.fetchAssignments('weekend_day'));
+      }
+      
+      if (!hasWeekendNight) {
+        console.log('Fetching weekend_night assignments...');
+        promises.push(this.fetchAssignments('weekend_night'));
+      }
+      
+      // If we have any promises, wait for them
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      } else {
+        console.log('All assignments already loaded, skipping fetch');
+      }
       
       console.log(`Area cover store initialized with:
-        - week_day: ${this.weekDayAssignments.length} assignments
-        - week_night: ${this.weekNightAssignments.length} assignments
-        - weekend_day: ${this.weekendDayAssignments.length} assignments
-        - weekend_night: ${this.weekendNightAssignments.length} assignments`);
+        - week_day: ${this.weekDayAssignments?.length || 0} assignments
+        - week_night: ${this.weekNightAssignments?.length || 0} assignments
+        - weekend_day: ${this.weekendDayAssignments?.length || 0} assignments
+        - weekend_night: ${this.weekendNightAssignments?.length || 0} assignments`);
       
-      return results;
+      // Print details of week_day assignments for debugging
+      if (this.weekDayAssignments?.length > 0) {
+        console.log('Week day assignments details:');
+        this.weekDayAssignments.forEach(assignment => {
+          console.log(`- Department: ${assignment.department?.name || 'Unknown'} (ID: ${assignment.department_id})`);
+        });
+      } else {
+        console.log('No week_day assignments found! This is likely the root cause of the issue.');
+      }
+      
+      return this.weekDayAssignments;
     },
     
     // Ensure specific shift type assignments are loaded

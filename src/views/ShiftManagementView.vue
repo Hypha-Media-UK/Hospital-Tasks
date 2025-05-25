@@ -406,14 +406,68 @@ onMounted(async () => {
       // Load shift tasks
       await shiftsStore.fetchShiftTasks(shiftId);
       
-      // Load area cover assignments for this shift
-      console.log('Loading area cover assignments for shift:', shiftId);
-      await shiftsStore.fetchShiftAreaCover(shiftId);
-      console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
+    // Load area cover assignments for this shift
+    console.log('Loading area cover assignments for shift:', shiftId);
+    await shiftsStore.fetchShiftAreaCover(shiftId);
+    console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
+    
+    // Log all area cover assignments in detail
+    if (shiftsStore.shiftAreaCoverAssignments.length > 0) {
+      console.log('Area cover assignments details:');
+      shiftsStore.shiftAreaCoverAssignments.forEach(assignment => {
+        console.log(`- Department: ${assignment.department?.name || 'Unknown'} (ID: ${assignment.department_id})`);
+        console.log(`  Time: ${assignment.start_time} - ${assignment.end_time}`);
+        console.log(`  For shift: ${assignment.shift_id}`);
+      });
+    } else {
+      console.log('No area cover assignments were loaded!');
       
-      // Load porter pool
-      await shiftsStore.fetchShiftPorterPool(shiftId);
-      console.log(`Loaded ${shiftsStore.shiftPorterPool.length} porters in pool`);
+      // Check the defaults in the area cover store
+      const { useAreaCoverStore } = await import('../stores/areaCoverStore');
+      const areaCoverStore = useAreaCoverStore();
+      await areaCoverStore.initialize();
+      
+      // Log the shift type
+      console.log('Current shift type:', shift.value.shift_type);
+      
+      // Check if defaults exist for this shift type
+      const shiftType = shift.value.shift_type;
+      const defaultAssignments = areaCoverStore[`${shiftType}Assignments`] || [];
+      console.log(`Found ${defaultAssignments.length} default ${shiftType} assignments`);
+      
+      if (defaultAssignments.length > 0) {
+        console.log('Default assignments:');
+        defaultAssignments.forEach(assignment => {
+          console.log(`- Department: ${assignment.department?.name || 'Unknown'} (ID: ${assignment.department_id})`);
+        });
+        
+        // Try to re-initialize the area cover from defaults
+        console.log('Attempting to re-initialize area cover from defaults...');
+        await shiftsStore.setupShiftAreaCoverFromDefaults(shiftId, shiftType);
+        
+        // Check if it worked
+        await shiftsStore.fetchShiftAreaCover(shiftId);
+        console.log(`After re-init: ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
+      }
+    }
+    
+    // Load support service assignments for this shift
+    console.log('Loading support service assignments for shift:', shiftId);
+    await shiftsStore.fetchShiftSupportServices(shiftId);
+    console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
+    
+    // Log all support service assignments in detail
+    if (shiftsStore.shiftSupportServiceAssignments.length > 0) {
+      console.log('Support service assignments details:');
+      shiftsStore.shiftSupportServiceAssignments.forEach(assignment => {
+        console.log(`- Service: ${assignment.service?.name || 'Unknown'} (ID: ${assignment.service_id})`);
+        console.log(`  Time: ${assignment.start_time} - ${assignment.end_time}`);
+      });
+    }
+    
+    // Load porter pool
+    await shiftsStore.fetchShiftPorterPool(shiftId);
+    console.log(`Loaded ${shiftsStore.shiftPorterPool.length} porters in pool`);
     }
     
     // Load supporting data for task management

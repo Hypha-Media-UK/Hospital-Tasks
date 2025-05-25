@@ -383,8 +383,32 @@ export const useShiftsStore = defineStore('shifts', {
         // Add the new shift to activeShifts array
         this.activeShifts.unshift(newShift);
         
+        // First, directly verify that there are default assignments for this shift type
+        const { useAreaCoverStore } = await import('./areaCoverStore');
+        const areaCoverStore = useAreaCoverStore();
+        await areaCoverStore.initialize();
+        
+        // Log the state of area cover assignments
+        console.log(`BEFORE SETUP - Area cover store state for ${shiftType}:`, 
+          areaCoverStore[`${shiftType}Assignments`]?.length || 0, 'assignments');
+        
+        if (areaCoverStore[`${shiftType}Assignments`]?.length > 0) {
+          console.log('Default assignments exist:', 
+            areaCoverStore[`${shiftType}Assignments`].map(a => 
+              `${a.department?.name || 'Unknown'} (ID: ${a.department_id})`));
+        } else {
+          console.log('NO DEFAULT ASSIGNMENTS FOUND IN THE STORE!');
+          console.log('This indicates the database is missing entries for this shift type.');
+        }
+        
         // Copy area cover assignments from settings based on shift type
-        await this.setupShiftAreaCoverFromDefaults(newShift.id, shiftType);
+        console.log(`Calling setupShiftAreaCoverFromDefaults(${newShift.id}, ${shiftType})`);
+        const result = await this.setupShiftAreaCoverFromDefaults(newShift.id, shiftType);
+        console.log('Setup result:', result);
+        
+        // Verify the assignments were added
+        const assignments = await this.fetchShiftAreaCover(newShift.id);
+        console.log(`After setup, found ${assignments.length} area cover assignments for shift ${newShift.id}`);
         
         return newShift;
       }
@@ -424,18 +448,44 @@ export const useShiftsStore = defineStore('shifts', {
         const areaCoverType = shiftType;
         console.log(`Setting up area coverage for new ${areaCoverType} shift`);
         
-        // Make sure we have the default assignments loaded
-        if (!areaCoverStore[`${areaCoverType}Assignments`]?.length) {
+        // Make sure we have the default assignments loaded - different naming conventions
+        // week_day -> weekDayAssignments, week_night -> weekNightAssignments, etc.
+        // Convert shift_type to store property name
+        let storePropertyName;
+        switch(areaCoverType) {
+          case 'week_day':
+            storePropertyName = 'weekDayAssignments';
+            break;
+          case 'week_night':
+            storePropertyName = 'weekNightAssignments';
+            break;
+          case 'weekend_day':
+            storePropertyName = 'weekendDayAssignments';
+            break;
+          case 'weekend_night':
+            storePropertyName = 'weekendNightAssignments';
+            break;
+          default:
+            storePropertyName = null;
+        }
+        
+        console.log(`Looking for assignments in areaCoverStore.${storePropertyName}`);
+        
+        // If the store doesn't have assignments for this type, fetch them
+        if (!areaCoverStore[storePropertyName]?.length) {
+          console.log(`No assignments found in store.${storePropertyName}, fetching...`);
           await areaCoverStore.fetchAssignments(areaCoverType);
         }
         
         // Get the default assignments for this shift type
-        const defaultAssignments = areaCoverStore[`${areaCoverType}Assignments`] || [];
+        const defaultAssignments = areaCoverStore[storePropertyName] || [];
         
         console.log(`Found ${defaultAssignments.length} default assignments to copy`);
+        console.log('Default assignments:', JSON.stringify(defaultAssignments));
         
         // Copy each default assignment to the new shift
         for (const assignment of defaultAssignments) {
+          console.log(`Adding assignment for department ${assignment.department_id} to shift ${shiftId}`);
           await this.addShiftAreaCover(
             shiftId,
             assignment.department_id,
@@ -444,6 +494,10 @@ export const useShiftsStore = defineStore('shifts', {
             assignment.color
           );
         }
+        
+        // Verify the assignments were added
+        const assignments = await this.fetchShiftAreaCover(shiftId);
+        console.log(`After adding, shift has ${assignments.length} area cover assignments`);
         
         // Setup support services as well
         await this.setupShiftSupportServicesFromDefaults(shiftId, shiftType);
@@ -858,6 +912,29 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        console.log(`fetchShiftAreaCover called for shift ID: ${shiftId}`);
+        
+        // Check if the shift exists first
+        const { data: shiftData, error: shiftError } = await supabase
+          .from('shifts')
+          .select('id, shift_type')
+          .eq('id', shiftId)
+          .single();
+        
+        if (shiftError) {
+          console.error('Error checking shift:', shiftError);
+          throw shiftError;
+        }
+        
+        if (!shiftData) {
+          console.error(`No shift found with ID: ${shiftId}`);
+          return [];
+        }
+        
+        console.log(`Found shift: ${shiftData.id}, type: ${shiftData.shift_type}`);
+        
+        // Query shift area cover assignments
+        console.log(`Fetching area cover assignments for shift: ${shiftId}`);
         const { data, error } = await supabase
           .from('shift_area_cover_assignments')
           .select(`
@@ -871,7 +948,15 @@ export const useShiftsStore = defineStore('shifts', {
           `)
           .eq('shift_id', shiftId);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching shift area cover assignments:', error);
+          throw error;
+        }
+        
+        console.log(`Retrieved ${data?.length || 0} area cover assignments for shift ${shiftId}`);
+        if (data && data.length > 0) {
+          console.log('First assignment:', JSON.stringify(data[0]));
+        }
         
         this.shiftAreaCoverAssignments = data || [];
         
@@ -897,6 +982,8 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        console.log(`Adding area cover assignment: shift=${shiftId}, dept=${departmentId}, time=${startTime}-${endTime}`);
+        
         const { data, error } = await supabase
           .from('shift_area_cover_assignments')
           .insert({
@@ -916,12 +1003,18 @@ export const useShiftsStore = defineStore('shifts', {
             )
           `);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error in addShiftAreaCover:', error);
+          throw error;
+        }
         
         if (data && data.length > 0) {
+          console.log(`Successfully added area cover assignment: ${data[0].id} for department ${data[0].department_id}`);
           // Add to shiftAreaCoverAssignments array
           this.shiftAreaCoverAssignments.push(data[0]);
           return data[0];
+        } else {
+          console.warn('No data returned from addShiftAreaCover insert operation');
         }
         
         return null;

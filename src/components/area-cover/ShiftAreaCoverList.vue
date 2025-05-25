@@ -113,9 +113,15 @@ const shiftTypeLabel = computed(() => {
 });
 
 const assignments = computed(() => {
-  return shiftsStore.shiftAreaCoverAssignments.filter(
+  console.log(`Computing assignments - shiftId=${props.shiftId}, totalAssignments=${shiftsStore.shiftAreaCoverAssignments.length}`);
+  console.log('All shiftAreaCoverAssignments:', JSON.stringify(shiftsStore.shiftAreaCoverAssignments));
+  
+  const filteredAssignments = shiftsStore.shiftAreaCoverAssignments.filter(
     assignment => assignment.shift_id === props.shiftId
   );
+  
+  console.log(`After filtering by shift_id ${props.shiftId}, found ${filteredAssignments.length} assignments`);
+  return filteredAssignments;
 });
 
 const availableDepartments = computed(() => {
@@ -163,13 +169,19 @@ const buildingsWithAvailableDepartments = computed(() => {
 
 // Methods
 const addDepartment = async (departmentId) => {
-  // Default times based on shift type
+  // Default times based on specific shift type from settings
   let startTime, endTime;
   
-  if (props.shiftType.includes('day')) {
+  if (props.shiftType === 'week_day') {
     startTime = '08:00:00';
     endTime = '16:00:00';
-  } else {
+  } else if (props.shiftType === 'week_night') {
+    startTime = '20:00:00';
+    endTime = '04:00:00';
+  } else if (props.shiftType === 'weekend_day') {
+    startTime = '08:00:00';
+    endTime = '16:00:00';
+  } else if (props.shiftType === 'weekend_night') {
     startTime = '20:00:00';
     endTime = '04:00:00';
   }
@@ -204,24 +216,47 @@ onMounted(async () => {
     await locationsStore.initialize();
   }
   
+  // Initialize areaCoverStore - we're directly importing and initializing here to ensure it's always loaded
+  const { useAreaCoverStore } = await import('../../stores/areaCoverStore');
+  const areaCoverStore = useAreaCoverStore();
+  
+  // Always ensure the specific shift type assignments are loaded
+  console.log(`Ensuring ${props.shiftType} assignments are loaded...`);
+  await areaCoverStore.ensureAssignmentsLoaded(props.shiftType);
+  
   console.log('Checking if shift is being initialized with default assignments...');
   // Check if this is a new shift without assignments yet
   if (!shiftsStore.shiftAreaCoverAssignments || 
       !shiftsStore.shiftAreaCoverAssignments.find(a => a.shift_id === props.shiftId)) {
     
-    console.log('This appears to be a new shift, attempting to force initialization of area cover');
+    console.log('This appears to be a new shift, initializing area cover from defaults');
+    console.log(`ShiftID: ${props.shiftId}, ShiftType: ${props.shiftType}`);
     
-    // Import areaCoverStore directly to ensure type-specific assignments are available
+    // Let's verify defaults exist in the area cover store
     const { useAreaCoverStore } = await import('../../stores/areaCoverStore');
     const areaCoverStore = useAreaCoverStore();
+    await areaCoverStore.initialize();
     
-    // Ensure assignments for this shift type are loaded
-    console.log(`Ensuring ${props.shiftType} assignments are loaded...`);
-    await areaCoverStore.ensureAssignmentsLoaded(props.shiftType);
+    // Verify that we have defaults for this shift type
+    const defaultAssignments = areaCoverStore[`${props.shiftType}Assignments`];
+    console.log(`Found ${defaultAssignments?.length || 0} default assignments for ${props.shiftType}`);
     
-    // If this is a new shift, we may need to initialize the area cover
-    console.log('Re-initializing shift area cover from defaults if needed');
+    if (defaultAssignments && defaultAssignments.length > 0) {
+      console.log('Default assignments found, details:');
+      defaultAssignments.forEach(assignment => {
+        console.log(`- Department: ${assignment.department?.name}, ID: ${assignment.department_id}`);
+      });
+    } else {
+      console.log('No default assignments found for this shift type!');
+    }
+    
+    // If this is a new shift, we need to initialize the area cover
     await shiftsStore.setupShiftAreaCoverFromDefaults(props.shiftId, props.shiftType);
+    
+    // Verify it worked by refetching
+    await shiftsStore.fetchShiftAreaCover(props.shiftId);
+    console.log(`After initialization, found ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
+    console.log(`Filtered for this shift: ${shiftsStore.shiftAreaCoverAssignments.filter(a => a.shift_id === props.shiftId).length}`);
   }
   
   // Always fetch area cover assignments to ensure we have fresh data
