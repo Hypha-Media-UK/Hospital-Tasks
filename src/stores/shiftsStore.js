@@ -48,7 +48,8 @@ export const useShiftsStore = defineStore('shifts', {
       endShift: false,
       updateTask: false,
       areaCover: false, // Loading state for area cover operations
-      porterPool: false // Loading state for porter pool operations
+      porterPool: false, // Loading state for porter pool operations
+      deleteShift: false
     },
     error: null
   }),
@@ -1296,6 +1297,33 @@ export const useShiftsStore = defineStore('shifts', {
         return false;
       } finally {
         this.loading.porterPool = false;
+      }
+    },
+    
+    // Delete a shift permanently
+    async deleteShift(shiftId) {
+      this.loading.deleteShift = true;
+      this.error = null;
+      
+      try {
+        // Delete the shift
+        const { error } = await supabase
+          .from('shifts')
+          .delete()
+          .eq('id', shiftId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.archivedShifts = this.archivedShifts.filter(shift => shift.id !== shiftId);
+        
+        return true;
+      } catch (error) {
+        console.error('Error deleting shift:', error);
+        this.error = 'Failed to delete shift';
+        return false;
+      } finally {
+        this.loading.deleteShift = false;
       }
     }
   }

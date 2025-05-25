@@ -99,9 +99,29 @@
                   <td>{{ formatDateTime(shift.end_time) }}</td>
                   <td>{{ calculateDuration(shift.start_time, shift.end_time) }}</td>
                   <td>
-                    <button @click="viewShift(shift.id)" class="btn btn-primary btn-small">
-                      View
-                    </button>
+                    <div class="action-buttons">
+                      <button @click="viewShift(shift.id)" class="btn btn-primary btn-small">
+                        View
+                      </button>
+                      
+                      <button 
+                        v-if="!confirmingDelete[shift.id]" 
+                        @click="confirmDelete(shift.id)" 
+                        class="btn btn-danger btn-small"
+                        :disabled="isDeleting[shift.id]"
+                      >
+                        Delete
+                      </button>
+                      
+                      <button 
+                        v-else
+                        @click="deleteShift(shift.id)" 
+                        class="btn btn-danger btn-small confirm-delete"
+                        :disabled="isDeleting[shift.id]"
+                      >
+                        {{ isDeleting[shift.id] ? 'Deleting...' : 'Sure?' }}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -127,6 +147,8 @@ const searchQuery = ref('');
 const typeFilter = ref('all');
 const sortField = ref('end_time');
 const sortDirection = ref('desc');
+const confirmingDelete = ref({}); // Object to track shifts in delete confirmation state
+const isDeleting = ref({}); // Object to track shifts being deleted
 
 // Computed properties
 const archivedShifts = computed(() => shiftsStore.archivedShifts);
@@ -205,6 +227,50 @@ function changeSortField(field) {
 
 function viewShift(shiftId) {
   router.push(`/shift/${shiftId}`);
+}
+
+function confirmDelete(shiftId) {
+  // Set this shift to confirmation state
+  confirmingDelete.value = {
+    ...confirmingDelete.value,
+    [shiftId]: true
+  };
+  
+  // Auto-reset confirmation after a timeout (3 seconds)
+  setTimeout(() => {
+    if (confirmingDelete.value[shiftId]) {
+      confirmingDelete.value = {
+        ...confirmingDelete.value,
+        [shiftId]: false
+      };
+    }
+  }, 3000);
+}
+
+async function deleteShift(shiftId) {
+  if (isDeleting.value[shiftId]) return;
+  
+  isDeleting.value = {
+    ...isDeleting.value,
+    [shiftId]: true
+  };
+  
+  try {
+    const success = await shiftsStore.deleteShift(shiftId);
+    if (!success) {
+      // Reset confirmation state for this shift
+      confirmingDelete.value = {
+        ...confirmingDelete.value,
+        [shiftId]: false
+      };
+    }
+  } finally {
+    // Reset deleting state for this shift
+    isDeleting.value = {
+      ...isDeleting.value,
+      [shiftId]: false
+    };
+  }
 }
 
 // Format date and time (e.g., "May 23, 2025, 9:30 AM")
@@ -323,6 +389,11 @@ function calculateDuration(startTime, endTime) {
   }
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .btn {
   padding: 0.5rem 1rem;
   border: none;
@@ -345,9 +416,37 @@ function calculateDuration(startTime, endTime) {
     }
   }
   
+  &-danger {
+    background-color: #dc3545;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: darken(#dc3545, 10%);
+    }
+    
+    &.confirm-delete {
+      animation: pulse 1.5s infinite;
+    }
+  }
+  
   &-small {
     padding: 0.25rem 0.5rem;
     font-size: 0.9rem;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 </style>
