@@ -1,11 +1,11 @@
 <template>
   <div class="task-types-tab">
-    <TaskTypesList />
+    <TaskTypesCardList />
   </div>
 </template>
 
 <script setup>
-import TaskTypesList from '../../task-types/TaskTypesList.vue';
+import TaskTypesCardList from '../../task-types/TaskTypesCardList.vue';
 </script>
 
 <style lang="scss" scoped>
