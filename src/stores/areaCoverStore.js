@@ -609,12 +609,57 @@ export const useAreaCoverStore = defineStore('areaCover', {
     
     // Initialize data
     async initialize() {
-      await Promise.all([
+      console.log('Initializing area cover store...');
+      
+      // Fetch all assignment types in parallel
+      const results = await Promise.all([
         this.fetchAssignments('week_day'),
         this.fetchAssignments('week_night'),
         this.fetchAssignments('weekend_day'),
         this.fetchAssignments('weekend_night')
       ]);
+      
+      console.log(`Area cover store initialized with:
+        - week_day: ${this.weekDayAssignments.length} assignments
+        - week_night: ${this.weekNightAssignments.length} assignments
+        - weekend_day: ${this.weekendDayAssignments.length} assignments
+        - weekend_night: ${this.weekendNightAssignments.length} assignments`);
+      
+      return results;
+    },
+    
+    // Ensure specific shift type assignments are loaded
+    async ensureAssignmentsLoaded(shiftType) {
+      console.log(`Ensuring ${shiftType} assignments are loaded...`);
+      
+      // Check if assignments are already loaded
+      let assignmentsArray;
+      switch(shiftType) {
+        case 'week_day':
+          assignmentsArray = this.weekDayAssignments;
+          break;
+        case 'week_night':
+          assignmentsArray = this.weekNightAssignments;
+          break;
+        case 'weekend_day':
+          assignmentsArray = this.weekendDayAssignments;
+          break;
+        case 'weekend_night':
+          assignmentsArray = this.weekendNightAssignments;
+          break;
+        default:
+          console.warn(`Unknown shift type: ${shiftType}`);
+          return [];
+      }
+      
+      // If assignments are not loaded yet, fetch them
+      if (!assignmentsArray.length) {
+        console.log(`No ${shiftType} assignments found, fetching from database...`);
+        return await this.fetchAssignments(shiftType);
+      }
+      
+      console.log(`${assignmentsArray.length} ${shiftType} assignments already loaded`);
+      return assignmentsArray;
     }
   }
 });

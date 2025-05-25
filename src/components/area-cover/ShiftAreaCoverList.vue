@@ -83,7 +83,7 @@ const props = defineProps({
   shiftType: {
     type: String,
     required: true,
-    validator: (value) => ['day', 'night', 'week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(value)
+    validator: (value) => ['week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(value)
   },
   showHeader: {
     type: Boolean,
@@ -168,7 +168,7 @@ const addDepartment = async (departmentId) => {
   // Default times based on shift type
   let startTime, endTime;
   
-  if (props.shiftType === 'day') {
+  if (props.shiftType.includes('day')) {
     startTime = '08:00:00';
     endTime = '16:00:00';
   } else {
@@ -198,13 +198,41 @@ const handleRemove = (assignmentId) => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  if (!shiftsStore.shiftAreaCoverAssignments.length) {
-    await shiftsStore.fetchShiftAreaCover(props.shiftId);
-  }
+  console.log(`ShiftAreaCoverList mounted for shift ${props.shiftId} with type ${props.shiftType}`);
   
+  // First, initialize the locations store if needed
   if (!locationsStore.buildings.length) {
+    console.log('Initializing locations store first');
     await locationsStore.initialize();
   }
+  
+  console.log('Checking if shift is being initialized with default assignments...');
+  // Check if this is a new shift without assignments yet
+  if (!shiftsStore.shiftAreaCoverAssignments || 
+      !shiftsStore.shiftAreaCoverAssignments.find(a => a.shift_id === props.shiftId)) {
+    
+    console.log('This appears to be a new shift, attempting to force initialization of area cover');
+    
+    // Import areaCoverStore directly to ensure type-specific assignments are available
+    const { useAreaCoverStore } = await import('../../stores/areaCoverStore');
+    const areaCoverStore = useAreaCoverStore();
+    
+    // Ensure assignments for this shift type are loaded
+    console.log(`Ensuring ${props.shiftType} assignments are loaded...`);
+    await areaCoverStore.ensureAssignmentsLoaded(props.shiftType);
+    
+    // If this is a new shift, we may need to initialize the area cover
+    console.log('Re-initializing shift area cover from defaults if needed');
+    await shiftsStore.setupShiftAreaCoverFromDefaults(props.shiftId, props.shiftType);
+  }
+  
+  // Always fetch area cover assignments to ensure we have fresh data
+  console.log('Fetching shift area cover assignments');
+  await shiftsStore.fetchShiftAreaCover(props.shiftId);
+  
+  console.log(`After fetching, found ${shiftsStore.shiftAreaCoverAssignments.length} assignments`);
+  console.log(`Filtered assignments for this shift: ${assignments.value.length}`);
+  console.log('Available departments:', availableDepartments.value.length);
 });
 </script>
 

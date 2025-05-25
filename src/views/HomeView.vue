@@ -200,15 +200,16 @@ async function createShift(shiftType) {
   error.value = '';
   
   try {
-    // Convert the new shift type (week_day, week_night, etc.) to legacy type (day, night)
-    // for compatibility with existing database tables
-    const legacyShiftType = shiftType.includes('day') ? 'day' : 'night';
+    console.log(`Creating new shift: type=${shiftType}`);
     
-    const newShift = await shiftsStore.createShift(selectedSupervisor.value, legacyShiftType);
+    // Use specific shift type directly - no conversion needed
+    const newShift = await shiftsStore.createShift(
+      selectedSupervisor.value, 
+      shiftType
+    );
     if (newShift) {
-      // Use the shift type directly as area cover type
-      // Initialize area cover assignments for the new shift
-      await shiftsStore.initializeShiftAreaCover(newShift.id, shiftType);
+      // The setupShiftAreaCoverFromDefaults function takes care of initializing default assignments
+      // No need for additional initialization as it's handled in createShift
       
       // Navigate to the shift management view for the new shift
       router.push(`/shift/${newShift.id}`);

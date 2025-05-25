@@ -6,7 +6,6 @@
       <div class="loading-text">Loading shift data...</div>
     </div>
     <div class="shift-porter-pool__header">
-      <h3 class="section-title">Shift Porters</h3>
       <button class="btn btn--primary" @click="showPorterSelector = true">
         Add Porter
       </button>

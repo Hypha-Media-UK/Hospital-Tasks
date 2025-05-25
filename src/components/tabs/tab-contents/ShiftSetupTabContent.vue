@@ -4,7 +4,10 @@
     <div class="card">
       <div class="shift-info-section">
         <!-- Shift Porters Section -->
-        <ShiftPorterPool :shift-id="shiftId" />
+        <div class="shift-porter-section">
+          <h3 class="section-title">Shift Porters</h3>
+          <ShiftPorterPool :shift-id="shiftId" />
+        </div>
         
         <!-- Area Coverage Section -->
         <div class="area-coverage-section">

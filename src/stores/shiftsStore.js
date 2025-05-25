@@ -58,14 +58,14 @@ export const useShiftsStore = defineStore('shifts', {
   }),
   
   getters: {
-    // Get active day shifts
+    // Get active day shifts (all types containing 'day')
     activeDayShifts: (state) => {
-      return state.activeShifts.filter(shift => shift.shift_type === 'day');
+      return state.activeShifts.filter(shift => shift.shift_type.includes('day'));
     },
     
-    // Get active night shifts
+    // Get active night shifts (all types containing 'night')
     activeNightShifts: (state) => {
-      return state.activeShifts.filter(shift => shift.shift_type === 'night');
+      return state.activeShifts.filter(shift => shift.shift_type.includes('night'));
     },
     
     // Get pending tasks for current shift
@@ -92,17 +92,17 @@ export const useShiftsStore = defineStore('shifts', {
       });
     },
     
-    // Get area cover assignments for day shift
+    // Get area cover assignments for day shifts (all types containing 'day')
     shiftDayAreaCoverAssignments: (state) => {
       return state.shiftAreaCoverAssignments.filter(assignment => 
-        assignment.shift_type === 'day'
+        assignment.shift_type && assignment.shift_type.includes('day')
       );
     },
     
-    // Get area cover assignments for night shift
+    // Get area cover assignments for night shifts (all types containing 'night')
     shiftNightAreaCoverAssignments: (state) => {
       return state.shiftAreaCoverAssignments.filter(assignment => 
-        assignment.shift_type === 'night'
+        assignment.shift_type && assignment.shift_type.includes('night')
       );
     },
     
@@ -365,37 +365,150 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
-    // Create a new shift
-    async createShift(supervisorId, shiftType) {
-      this.loading.createShift = true;
-      this.error = null;
+  // Create a new shift
+  async createShift(supervisorId, shiftType) {
+    this.loading.createShift = true;
+    this.error = null;
+    
+    try {
+      console.log(`shiftsStore.createShift called with supervisor: ${supervisorId}, type: ${shiftType}`);
       
-      try {
-        const { data, error } = await supabase
-          .from('shifts')
-          .insert({
-            supervisor_id: supervisorId,
-            shift_type: shiftType,
-            start_time: new Date().toISOString(),
-            is_active: true
-          })
-          .select();
+      const { data, error } = await supabase
+        .from('shifts')
+        .insert({
+          supervisor_id: supervisorId,
+          shift_type: shiftType, // Using specific shift type (week_day, week_night, etc.)
+          start_time: new Date().toISOString(),
+          is_active: true
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const newShift = data[0];
+        console.log(`Created new shift with ID: ${newShift.id}, type: ${newShift.shift_type}`);
         
-        if (error) throw error;
+        // Add the new shift to activeShifts array
+        this.activeShifts.unshift(newShift);
         
-        if (data && data.length > 0) {
-          // Add the new shift to activeShifts array
-          this.activeShifts.unshift(data[0]);
-          return data[0];
-        }
+        // Copy area cover assignments from settings based on shift type
+        await this.setupShiftAreaCoverFromDefaults(newShift.id, shiftType);
         
-        return null;
+        return newShift;
+      }
+      
+      return null;
       } catch (error) {
         console.error('Error creating shift:', error);
         this.error = 'Failed to create shift';
         return null;
       } finally {
         this.loading.createShift = false;
+      }
+    },
+    
+    // Copy area cover assignments from defaults to a new shift
+    async setupShiftAreaCoverFromDefaults(shiftId, shiftType) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        console.log(`Setting up area coverage for shift ID: ${shiftId}, type: ${shiftType}`);
+        
+        // Import areaCoverStore
+        const { useAreaCoverStore } = await import('./areaCoverStore');
+        const areaCoverStore = useAreaCoverStore();
+        
+        // Initialize the store
+        await areaCoverStore.initialize();
+        
+        // Ensure the shift type is valid
+        if (!['week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(shiftType)) {
+          console.error(`Invalid shift type: ${shiftType}. Must be one of: week_day, week_night, weekend_day, weekend_night`);
+          return false;
+        }
+        
+        // Use the provided shift type directly
+        const areaCoverType = shiftType;
+        console.log(`Setting up area coverage for new ${areaCoverType} shift`);
+        
+        // Make sure we have the default assignments loaded
+        if (!areaCoverStore[`${areaCoverType}Assignments`]?.length) {
+          await areaCoverStore.fetchAssignments(areaCoverType);
+        }
+        
+        // Get the default assignments for this shift type
+        const defaultAssignments = areaCoverStore[`${areaCoverType}Assignments`] || [];
+        
+        console.log(`Found ${defaultAssignments.length} default assignments to copy`);
+        
+        // Copy each default assignment to the new shift
+        for (const assignment of defaultAssignments) {
+          await this.addShiftAreaCover(
+            shiftId,
+            assignment.department_id,
+            assignment.start_time,
+            assignment.end_time,
+            assignment.color
+          );
+        }
+        
+        // Setup support services as well
+        await this.setupShiftSupportServicesFromDefaults(shiftId, shiftType);
+        
+        return true;
+      } catch (error) {
+        console.error('Error setting up shift area cover from defaults:', error);
+        this.error = 'Failed to set up default area coverage';
+        return false;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Copy support service assignments from defaults to a new shift
+    async setupShiftSupportServicesFromDefaults(shiftId, shiftType) {
+      this.loading.supportServices = true;
+      this.error = null;
+      
+      try {
+        // Import supportServicesStore
+        const { useSupportServicesStore } = await import('./supportServicesStore');
+        const supportServicesStore = useSupportServicesStore();
+        
+        // Use the provided shift type directly - no conversion needed
+        const serviceType = shiftType;
+        
+        console.log(`Setting up support services for new ${serviceType} shift`);
+        
+        // Make sure we have the default assignments loaded
+        await supportServicesStore.loadAllServiceAssignments();
+        
+        // Get the default assignments for this shift type
+        const defaultServiceAssignments = supportServicesStore.serviceAssignments[serviceType] || [];
+        
+        console.log(`Found ${defaultServiceAssignments.length} default service assignments to copy`);
+        
+        // Copy each default service assignment to the new shift
+        // (Note: we need to add addShiftSupportService method)
+        for (const assignment of defaultServiceAssignments) {
+          await this.addShiftSupportService(
+            shiftId,
+            assignment.service.id,
+            assignment.start_time,
+            assignment.end_time,
+            assignment.color
+          );
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error setting up shift support services from defaults:', error);
+        this.error = 'Failed to set up default support services';
+        return false;
+      } finally {
+        this.loading.supportServices = false;
       }
     },
     
@@ -787,6 +900,123 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
+    // Add an area cover assignment to a shift
+    async addShiftAreaCover(shiftId, departmentId, startTime, endTime, color = '#4285F4') {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_assignments')
+          .insert({
+            shift_id: shiftId,
+            department_id: departmentId,
+            start_time: startTime,
+            end_time: endTime,
+            color: color
+          })
+          .select(`
+            *,
+            department:department_id(
+              id,
+              name,
+              building_id,
+              building:building_id(id, name)
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Add to shiftAreaCoverAssignments array
+          this.shiftAreaCoverAssignments.push(data[0]);
+          return data[0];
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error adding area cover to shift:', error);
+        this.error = 'Failed to add department to shift';
+        return null;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Update a shift area cover assignment
+    async updateShiftAreaCover(assignmentId, updates) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_area_cover_assignments')
+          .update(updates)
+          .eq('id', assignmentId)
+          .select(`
+            *,
+            department:department_id(
+              id,
+              name,
+              building_id,
+              building:building_id(id, name)
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Update the assignment in shiftAreaCoverAssignments array
+          const index = this.shiftAreaCoverAssignments.findIndex(a => a.id === assignmentId);
+          if (index !== -1) {
+            this.shiftAreaCoverAssignments[index] = data[0];
+          }
+          return data[0];
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error updating area cover assignment:', error);
+        this.error = 'Failed to update area cover assignment';
+        return null;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Remove a department from shift area cover
+    async removeShiftAreaCover(assignmentId) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('shift_area_cover_assignments')
+          .delete()
+          .eq('id', assignmentId);
+        
+        if (error) throw error;
+        
+        // Remove from shiftAreaCoverAssignments array
+        this.shiftAreaCoverAssignments = this.shiftAreaCoverAssignments.filter(
+          a => a.id !== assignmentId
+        );
+        
+        // Also remove all porter assignments for this area cover
+        this.shiftAreaCoverPorterAssignments = this.shiftAreaCoverPorterAssignments.filter(
+          pa => pa.shift_area_cover_assignment_id !== assignmentId
+        );
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing department from shift area cover:', error);
+        this.error = 'Failed to remove department from shift';
+        return false;
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
     // Fetch porter assignments for shift area cover
     async fetchShiftAreaCoverPorterAssignments(areaCoverIds) {
       if (!areaCoverIds || areaCoverIds.length === 0) return [];
@@ -918,6 +1148,139 @@ export const useShiftsStore = defineStore('shifts', {
       } finally {
         this.loading.porterPool = false;
       }
+    },
+    
+    // Support Services Management
+    
+    // Fetch support service assignments for a specific shift
+    async fetchShiftSupportServices(shiftId) {
+      this.loading.supportServices = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_support_service_assignments')
+          .select(`
+            *,
+            service:service_id(
+              id,
+              name,
+              description
+            )
+          `)
+          .eq('shift_id', shiftId);
+        
+        if (error) throw error;
+        
+        this.shiftSupportServiceAssignments = data || [];
+        
+        // Fetch porter assignments for these services
+        if (data && data.length > 0) {
+          const serviceIds = data.map(a => a.id);
+          await this.fetchShiftSupportServicePorterAssignments(serviceIds);
+        }
+        
+        return this.shiftSupportServiceAssignments;
+      } catch (error) {
+        console.error('Error fetching shift support services:', error);
+        this.error = 'Failed to load support service assignments';
+        return [];
+      } finally {
+        this.loading.supportServices = false;
+      }
+    },
+    
+    // Add a support service assignment to a shift
+    async addShiftSupportService(shiftId, serviceId, startTime, endTime, color = '#4285F4') {
+      this.loading.supportServices = true;
+      this.error = null;
+      
+      try {
+        // Check if this service is already assigned to the shift to avoid 409 errors
+        const { data: existingAssignments } = await supabase
+          .from('shift_support_service_assignments')
+          .select('id')
+          .eq('shift_id', shiftId)
+          .eq('service_id', serviceId);
+          
+        // If service is already assigned to this shift, skip adding it
+        if (existingAssignments && existingAssignments.length > 0) {
+          console.log(`Service ${serviceId} already assigned to shift ${shiftId}, skipping`);
+          return existingAssignments[0];
+        }
+        
+        const { data, error } = await supabase
+          .from('shift_support_service_assignments')
+          .insert({
+            shift_id: shiftId,
+            service_id: serviceId,
+            start_time: startTime,
+            end_time: endTime,
+            color: color
+          })
+          .select(`
+            *,
+            service:service_id(
+              id,
+              name,
+              description
+            )
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Add to shiftSupportServiceAssignments array
+          this.shiftSupportServiceAssignments.push(data[0]);
+          return data[0];
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('Error adding support service to shift:', error);
+        this.error = 'Failed to add support service to shift';
+        return null;
+      } finally {
+        this.loading.supportServices = false;
+      }
+    },
+    
+    // Fetch porter assignments for shift support services
+    async fetchShiftSupportServicePorterAssignments(serviceIds) {
+      if (!serviceIds || serviceIds.length === 0) return [];
+      
+      this.loading.supportServices = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_support_service_porter_assignments')
+          .select(`
+            *,
+            porter:porter_id(
+              id,
+              first_name,
+              last_name
+            )
+          `)
+          .in('shift_support_service_assignment_id', serviceIds);
+        
+        if (error) throw error;
+        
+        this.shiftSupportServicePorterAssignments = data || [];
+        return data;
+      } catch (error) {
+        console.error('Error fetching porter assignments for support services:', error);
+        this.error = 'Failed to load porter assignments';
+        return [];
+      } finally {
+        this.loading.supportServices = false;
+      }
+    },
+    
+    // Alias for backward compatibility
+    initializeShiftAreaCover(shiftId, shiftType) {
+      return this.setupShiftAreaCoverFromDefaults(shiftId, shiftType);
     }
   }
 });

@@ -19,7 +19,7 @@
           <div class="shift-header">
             <div>
               <h2>
-                {{ shift.shift_type === 'day' ? 'Day' : 'Night' }} Shift
+                {{ getShiftTypeDisplayName() }}
                 <span v-if="!shift.is_active" class="archived-badge">Archived</span>
               </h2>
               <p class="shift-details">
@@ -393,14 +393,27 @@ const canSaveTask = computed(() => {
 // Load data on component mount
 onMounted(async () => {
   loading.value = true;
+  console.log('ShiftManagementView mounted - loading shift data');
   
   try {
     const shiftId = route.params.id;
     
     // Load shift and its tasks
     await shiftsStore.fetchShiftById(shiftId);
+    console.log('Shift loaded:', shiftsStore.currentShift?.id);
+    
     if (shiftsStore.currentShift) {
+      // Load shift tasks
       await shiftsStore.fetchShiftTasks(shiftId);
+      
+      // Load area cover assignments for this shift
+      console.log('Loading area cover assignments for shift:', shiftId);
+      await shiftsStore.fetchShiftAreaCover(shiftId);
+      console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
+      
+      // Load porter pool
+      await shiftsStore.fetchShiftPorterPool(shiftId);
+      console.log(`Loaded ${shiftsStore.shiftPorterPool.length} porters in pool`);
     }
     
     // Load supporting data for task management
@@ -414,6 +427,7 @@ onMounted(async () => {
     console.error('Error loading shift data:', error);
   } finally {
     loading.value = false;
+    console.log('ShiftManagementView loading complete');
   }
 });
 
@@ -910,24 +924,63 @@ function calculateDuration(startTimeString) {
   }
 }
 
+// Get display name for shift type
+function getShiftTypeDisplayName() {
+  if (!shift.value) return 'Shift';
+  
+  switch (shift.value.shift_type) {
+    case 'week_day':
+      return 'Week Day Shift';
+    case 'week_night':
+      return 'Week Night Shift';
+    case 'weekend_day':
+      return 'Weekend Day Shift';
+    case 'weekend_night':
+      return 'Weekend Night Shift';
+    default:
+      return 'Shift';
+  }
+}
+
 // Determine the appropriate area cover type for a shift
 function determineAreaCoverType(shift) {
   if (!shift) return 'week_day'; // Default to week_day if no shift
+  
+  console.log('Determining area cover type for shift:', shift.id, 'type:', shift.shift_type);
   
   // Get the shift start time
   const shiftStart = new Date(shift.start_time);
   
   // Determine if it's a weekend
   const isWeekendDay = isWeekend(shiftStart);
+  console.log('Is weekend day?', isWeekendDay);
   
-  // Get shift type from the shift
-  const isDaytime = shift.shift_type === 'day';
+  // Use the specific shift type directly
+  const shiftType = shift.shift_type;
   
-  // Combine to get the appropriate area cover type
-  if (isWeekendDay) {
-    return isDaytime ? 'weekend_day' : 'weekend_night';
-  } else {
-    return isDaytime ? 'week_day' : 'week_night';
+  // No need to convert, just use the shift type directly
+  console.log('Using shift type directly:', shiftType);
+  return shiftType;
+  
+  console.log('Determined area cover type:', areaCoverType);
+  return areaCoverType;
+}
+
+// Get color for shift type
+function getShiftColor() {
+  if (!shift.value) return settingsStore.shiftDefaults.day.color;
+  
+  switch (shift.value.shift_type) {
+    case 'week_day':
+      return settingsStore.shiftDefaults.day.color;
+    case 'week_night':
+      return settingsStore.shiftDefaults.night.color;
+    case 'weekend_day':
+      return '#34A853'; // Green color for weekend day
+    case 'weekend_night':
+      return '#EA4335'; // Red color for weekend night
+    default:
+      return settingsStore.shiftDefaults.day.color;
   }
 }
 
@@ -950,7 +1003,7 @@ function isWeekend(date) {
 }
 
 .shift-info {
-  border-left: 4px solid v-bind('shift && shift.shift_type === "day" ? settingsStore.shiftDefaults.day.color : settingsStore.shiftDefaults.night.color');
+  border-left: 4px solid v-bind('getShiftColor()');
   
   &.archived-shift {
     border-left-color: #9e9e9e;
@@ -1383,7 +1436,7 @@ function isWeekend(date) {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background-color: v-bind('shift && shift.shift_type === "day" ? settingsStore.shiftDefaults.day.color : settingsStore.shiftDefaults.night.color');
+  background-color: v-bind('getShiftColor()');
   color: white;
   border: none;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);

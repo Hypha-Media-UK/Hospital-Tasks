@@ -207,7 +207,7 @@ ALTER TABLE "public"."shift_porter_pool" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."shift_support_service_assignments" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "shift_id" "uuid" NOT NULL,
-    "support_service_id" "uuid" NOT NULL,
+    "service_id" "uuid" NOT NULL,
     "start_time" time without time zone NOT NULL,
     "end_time" time without time zone NOT NULL,
     "color" "text",
@@ -317,10 +317,28 @@ CREATE TABLE IF NOT EXISTS "public"."staff_department_assignments" (
 ALTER TABLE "public"."staff_department_assignments" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."support_service_assignments" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "service_id" "uuid" NOT NULL,
+    "start_time" time without time zone NOT NULL,
+    "end_time" time without time zone NOT NULL,
+    "color" "text",
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "shift_type" "text",
+    CONSTRAINT "support_service_shift_type_check" CHECK (("shift_type" = ANY (ARRAY['week_day'::"text", 'week_night'::"text", 'weekend_day'::"text", 'weekend_night'::"text"])))
+);
+
+
+ALTER TABLE "public"."support_service_assignments" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."support_service_porter_assignments" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
-    "support_service_id" "uuid" NOT NULL,
+    "support_service_assignment_id" "uuid" NOT NULL,
     "porter_id" "uuid" NOT NULL,
+    "start_time" time without time zone NOT NULL,
+    "end_time" time without time zone NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"()
 );
@@ -469,12 +487,12 @@ ALTER TABLE ONLY "public"."shift_support_service_assignments"
 
 
 ALTER TABLE ONLY "public"."shift_support_service_assignments"
-    ADD CONSTRAINT "shift_support_service_assignments_shift_service_key" UNIQUE ("shift_id", "support_service_id");
+    ADD CONSTRAINT "shift_support_service_assignments_shift_id_service_id_key" UNIQUE ("shift_id", "service_id");
 
 
 
 ALTER TABLE ONLY "public"."shift_support_service_porter_assignments"
-    ADD CONSTRAINT "shift_support_service_porter_assignments_assignment_porter_key" UNIQUE ("shift_support_service_assignment_id", "porter_id");
+    ADD CONSTRAINT "shift_support_service_porter__shift_support_service_assignm_key" UNIQUE ("shift_support_service_assignment_id", "porter_id");
 
 
 
@@ -508,13 +526,18 @@ ALTER TABLE ONLY "public"."staff"
 
 
 
+ALTER TABLE ONLY "public"."support_service_assignments"
+    ADD CONSTRAINT "support_service_assignments_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."support_service_porter_assignments"
+    ADD CONSTRAINT "support_service_porter_assign_support_service_assignment_id_key" UNIQUE ("support_service_assignment_id", "porter_id");
+
+
+
 ALTER TABLE ONLY "public"."support_service_porter_assignments"
     ADD CONSTRAINT "support_service_porter_assignments_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."support_service_porter_assignments"
-    ADD CONSTRAINT "support_service_porter_assignments_service_porter_key" UNIQUE ("support_service_id", "porter_id");
 
 
 
@@ -602,7 +625,7 @@ CREATE INDEX "shift_porter_pool_shift_id_idx" ON "public"."shift_porter_pool" US
 
 
 
-CREATE INDEX "shift_support_service_assignments_service_id_idx" ON "public"."shift_support_service_assignments" USING "btree" ("support_service_id");
+CREATE INDEX "shift_support_service_assignments_service_id_idx" ON "public"."shift_support_service_assignments" USING "btree" ("service_id");
 
 
 
@@ -670,11 +693,15 @@ CREATE INDEX "staff_role_idx" ON "public"."staff" USING "btree" ("role");
 
 
 
+CREATE INDEX "support_service_assignments_service_id_idx" ON "public"."support_service_assignments" USING "btree" ("service_id");
+
+
+
 CREATE INDEX "support_service_porter_assignments_porter_id_idx" ON "public"."support_service_porter_assignments" USING "btree" ("porter_id");
 
 
 
-CREATE INDEX "support_service_porter_assignments_service_id_idx" ON "public"."support_service_porter_assignments" USING "btree" ("support_service_id");
+CREATE INDEX "support_service_porter_assignments_service_id_idx" ON "public"."support_service_porter_assignments" USING "btree" ("support_service_assignment_id");
 
 
 
@@ -743,6 +770,10 @@ CREATE OR REPLACE TRIGGER "update_shifts_updated_at" BEFORE UPDATE ON "public"."
 
 
 CREATE OR REPLACE TRIGGER "update_staff_updated_at" BEFORE UPDATE ON "public"."staff" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_support_service_assignments_updated_at" BEFORE UPDATE ON "public"."support_service_assignments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at_column"();
 
 
 
@@ -818,17 +849,17 @@ ALTER TABLE ONLY "public"."shift_porter_pool"
 
 
 ALTER TABLE ONLY "public"."shift_support_service_assignments"
-    ADD CONSTRAINT "shift_support_service_assignments_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."shifts"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "shift_support_service_assignments_service_id_fkey" FOREIGN KEY ("service_id") REFERENCES "public"."support_services"("id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."shift_support_service_assignments"
-    ADD CONSTRAINT "shift_support_service_assignments_support_service_id_fkey" FOREIGN KEY ("support_service_id") REFERENCES "public"."support_services"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "shift_support_service_assignments_shift_id_fkey" FOREIGN KEY ("shift_id") REFERENCES "public"."shifts"("id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."shift_support_service_porter_assignments"
-    ADD CONSTRAINT "shift_support_service_porter_assignments_assignment_id_fkey" FOREIGN KEY ("shift_support_service_assignment_id") REFERENCES "public"."shift_support_service_assignments"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "shift_support_service_porter__shift_support_service_assign_fkey" FOREIGN KEY ("shift_support_service_assignment_id") REFERENCES "public"."shift_support_service_assignments"("id") ON DELETE CASCADE;
 
 
 
@@ -882,13 +913,18 @@ ALTER TABLE ONLY "public"."staff"
 
 
 
+ALTER TABLE ONLY "public"."support_service_assignments"
+    ADD CONSTRAINT "support_service_assignments_service_id_fkey" FOREIGN KEY ("service_id") REFERENCES "public"."support_services"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."support_service_porter_assignments"
+    ADD CONSTRAINT "support_service_porter_assign_support_service_assignment_i_fkey" FOREIGN KEY ("support_service_assignment_id") REFERENCES "public"."support_service_assignments"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."support_service_porter_assignments"
     ADD CONSTRAINT "support_service_porter_assignments_porter_id_fkey" FOREIGN KEY ("porter_id") REFERENCES "public"."staff"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."support_service_porter_assignments"
-    ADD CONSTRAINT "support_service_porter_assignments_support_service_id_fkey" FOREIGN KEY ("support_service_id") REFERENCES "public"."support_services"("id") ON DELETE CASCADE;
 
 
 
@@ -1212,6 +1248,12 @@ GRANT ALL ON TABLE "public"."staff_department_assignments" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."support_service_assignments" TO "anon";
+GRANT ALL ON TABLE "public"."support_service_assignments" TO "authenticated";
+GRANT ALL ON TABLE "public"."support_service_assignments" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."support_service_porter_assignments" TO "anon";
 GRANT ALL ON TABLE "public"."support_service_porter_assignments" TO "authenticated";
 GRANT ALL ON TABLE "public"."support_service_porter_assignments" TO "service_role";
@@ -1440,11 +1482,11 @@ INSERT INTO "public"."buildings" ("id", "name", "address", "created_at", "update
 	('5e80f040-98ba-4969-9e69-99149664ecac', 'Stores', NULL, '2025-05-24 12:21:43.496202+00', '2025-05-24 12:21:43.496202+00'),
 	('e85c40e7-6f29-4e22-9787-6ed289c36429', 'Charlesworth Building', NULL, '2025-05-24 12:20:54.129832+00', '2025-05-24 14:01:55.535889+00'),
 	('f47ac10b-58cc-4372-a567-0e02b2c3d479', 'Ladysmith Building', '123 Medical Drive', '2025-05-22 10:30:30.870153+00', '2025-05-24 15:10:52.043497+00'),
-	('e5f1f6d5-d277-4981-bffa-ff8d8b8c8eef', 'Bereavment Centre', NULL, '2025-05-24 15:12:37.764027+00', '2025-05-24 15:12:37.764027+00'),
 	('f47ac10b-58cc-4372-a567-0e02b2c3d481', 'Werneth House', '200 Science Boulevard', '2025-05-22 10:30:30.870153+00', '2025-05-24 15:15:47.821777+00'),
 	('69fc7835-337f-4155-946f-e5831a123cbe', 'Stamford Unit', NULL, '2025-05-24 15:31:30.919629+00', '2025-05-24 15:31:30.919629+00'),
 	('23271f2b-4336-4a4a-99a2-49d8d5770cfc', 'Portland Building', NULL, '2025-05-24 15:33:42.930237+00', '2025-05-24 15:33:42.930237+00'),
-	('e02f0b82-4bfc-4579-911a-ec20d4dbbf30', 'Renal Unit', NULL, '2025-05-24 15:34:16.907485+00', '2025-05-24 15:34:16.907485+00');
+	('e02f0b82-4bfc-4579-911a-ec20d4dbbf30', 'Renal Unit', NULL, '2025-05-24 15:34:16.907485+00', '2025-05-24 15:34:16.907485+00'),
+	('e5f1f6d5-d277-4981-bffa-ff8d8b8c8eef', 'Bereavement Centre', NULL, '2025-05-24 15:12:37.764027+00', '2025-05-25 09:15:35.971868+00');
 
 
 --
@@ -1522,14 +1564,12 @@ INSERT INTO "public"."departments" ("id", "building_id", "name", "is_frequent", 
 --
 
 INSERT INTO "public"."staff" ("id", "first_name", "last_name", "role", "created_at", "updated_at", "department_id") VALUES
-	('ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'Porter', 'Two', 'porter', '2025-05-22 15:14:27.136064+00', '2025-05-22 15:14:27.136064+00', NULL),
 	('75ff4301-3c45-44c5-bd93-1b3a471baaeb', 'Porter', 'Three', 'porter', '2025-05-22 15:14:47.797324+00', '2025-05-22 15:14:47.797324+00', NULL),
 	('4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'Martin', 'Smith', 'supervisor', '2025-05-22 16:38:43.142566+00', '2025-05-22 16:38:43.142566+00', NULL),
 	('b88b49d1-c394-491e-aaa7-cc196250f0e4', 'Martin', 'Fearon', 'supervisor', '2025-05-22 12:36:39.488519+00', '2025-05-22 16:38:53.581199+00', 'f47ac10b-58cc-4372-a567-0e02b2c3d484'),
 	('358aa759-e11e-40b0-b886-37481c5eb6c0', 'Chris', 'Chrombie', 'supervisor', '2025-05-22 16:39:03.319212+00', '2025-05-22 16:39:03.319212+00', NULL),
 	('a9d969e3-d449-4005-a679-f63be07c6872', 'Luke', 'Clements', 'supervisor', '2025-05-22 16:39:16.282662+00', '2025-05-22 16:39:16.282662+00', NULL),
 	('786d6d23-69b9-433e-92ed-938806cb10a8', 'Porter', 'Four', 'porter', '2025-05-23 14:15:42.030594+00', '2025-05-23 14:15:42.030594+00', NULL),
-	('676e6634-937d-4c65-a165-55ad78b9dde4', 'Ami', 'Horrocks', 'supervisor', '2025-05-23 14:36:19.660696+00', '2025-05-24 15:04:39.590487+00', NULL),
 	('2e74429e-2aab-4bed-a979-6ccbdef74596', 'Porter', 'Six', 'porter', '2025-05-24 15:27:50.974195+00', '2025-05-24 15:27:50.974195+00', NULL),
 	('ab2ba72f-ff0e-450d-a6a7-acf4d80fc235', 'Porter', 'Seven', 'porter', '2025-05-24 15:28:02.842334+00', '2025-05-24 15:28:02.842334+00', NULL),
 	('78bf0e75-7640-49fb-9d4e-b59e0b3ecf43', 'Porter', 'Eight', 'porter', '2025-05-24 15:28:08.999647+00', '2025-05-24 15:28:08.999647+00', NULL),
@@ -1546,7 +1586,8 @@ INSERT INTO "public"."staff" ("id", "first_name", "last_name", "role", "created_
 	('8eaa9194-b164-4cb4-a15c-956299ff28c5', 'Porter', 'Seventeen', 'porter', '2025-05-24 15:46:56.110419+00', '2025-05-24 15:46:56.110419+00', NULL),
 	('e55b1013-7e79-4e38-913e-c53de591f85c', 'Porter', 'Eighteen', 'porter', '2025-05-24 15:47:03.70938+00', '2025-05-24 15:47:03.70938+00', NULL),
 	('4e87f01b-5196-47c4-b424-4cfdbe7fb385', 'Porter', 'Nineteen', 'porter', '2025-05-24 15:47:12.658077+00', '2025-05-24 15:47:12.658077+00', NULL),
-	('69766d05-49d7-4e7c-8734-e3dc8949bf91', 'Porter', 'Twenty', 'porter', '2025-05-24 15:47:22.720752+00', '2025-05-24 15:47:22.720752+00', NULL);
+	('69766d05-49d7-4e7c-8734-e3dc8949bf91', 'Porter', 'Twenty', 'porter', '2025-05-24 15:47:22.720752+00', '2025-05-24 15:47:22.720752+00', NULL),
+	('ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', 'Porter', 'Two', 'porter', '2025-05-22 15:14:27.136064+00', '2025-05-25 09:56:14.035659+00', '1bd33204-7a54-4146-9a82-9344a1ee7b3a');
 
 
 --
@@ -1556,13 +1597,12 @@ INSERT INTO "public"."staff" ("id", "first_name", "last_name", "role", "created_
 INSERT INTO "public"."area_cover_assignments" ("id", "department_id", "porter_id", "start_time", "end_time", "color", "created_at", "updated_at", "shift_type") VALUES
 	('a2787626-bc01-411b-a2ca-a50d2c63ced6', '1bd33204-7a54-4146-9a82-9344a1ee7b3a', NULL, '08:00:00', '20:00:00', '#4285F4', '2025-05-24 15:30:45.762708+00', '2025-05-24 15:37:35.40178+00', 'week_day'),
 	('c3c5f876-957f-4c82-98ef-0f1ab17ed640', '81c30d93-8712-405c-ac5e-509d48fd9af9', NULL, '11:00:00', '18:00:00', '#4285F4', '2025-05-24 15:30:53.446376+00', '2025-05-24 15:38:28.471112+00', 'week_day'),
-	('8c7bca61-81c3-4fa9-a259-fa780b55471f', 'df3d8d2a-dee5-4a21-a362-401236a2a1cb', NULL, '07:00:00', '18:30:00', '#4285F4', '2025-05-24 15:31:03.287986+00', '2025-05-24 15:40:22.116165+00', 'week_day'),
 	('fec7a8ae-9f68-4623-8454-bc0c3ad361b7', 'f9d3bbce-8644-4075-8b80-457777f6d16c', NULL, '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:40:43.644087+00', '2025-05-24 15:40:43.644087+00', 'week_day'),
 	('4030ddba-717e-498d-92fc-cf401ef4d908', '8269f3d0-fb22-415c-b235-7cf00c96f3b9', NULL, '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:40:52.51208+00', '2025-05-24 15:40:52.51208+00', 'week_day'),
-	('089d9780-7c76-4a90-90fc-38bb51296b99', '5bcc07fe-8ec9-43e4-acc5-4b44799cda03', NULL, '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:41:06.887434+00', '2025-05-24 15:41:06.887434+00', 'week_day'),
 	('1d4a326e-8401-4e31-b1ec-fa810b68fd1a', '1bd33204-7a54-4146-9a82-9344a1ee7b3a', NULL, '20:00:00', '08:00:00', '#4285F4', '2025-05-24 15:42:29.23697+00', '2025-05-24 15:43:46.486541+00', 'week_night'),
 	('2100396b-f96d-4a7c-9d1b-006775df4ef7', '1bd33204-7a54-4146-9a82-9344a1ee7b3a', NULL, '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:44:23.448158+00', '2025-05-24 15:44:43.398907+00', 'weekend_night'),
-	('06213b7c-812e-4f48-a79d-ecbc9a87d30a', '1bd33204-7a54-4146-9a82-9344a1ee7b3a', NULL, '08:00:00', '20:00:00', '#4285F4', '2025-05-24 15:45:03.686512+00', '2025-05-24 15:45:40.587037+00', 'weekend_day');
+	('06213b7c-812e-4f48-a79d-ecbc9a87d30a', '1bd33204-7a54-4146-9a82-9344a1ee7b3a', NULL, '08:00:00', '20:00:00', '#4285F4', '2025-05-24 15:45:03.686512+00', '2025-05-24 15:45:40.587037+00', 'weekend_day'),
+	('8c1d80d9-68f3-4bc2-a578-5707de26e00f', '5bcc07fe-8ec9-43e4-acc5-4b44799cda03', NULL, '20:00:00', '04:00:00', '#4285F4', '2025-05-25 09:56:41.356955+00', '2025-05-25 09:56:41.356955+00', 'week_night');
 
 
 --
@@ -1574,8 +1614,6 @@ INSERT INTO "public"."area_cover_porter_assignments" ("id", "area_cover_assignme
 	('e4c07ff1-64c6-4c07-8da2-3ba9112a599b', 'a2787626-bc01-411b-a2ca-a50d2c63ced6', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '09:00:00', '17:00:00', '2025-05-24 15:37:35.56537+00', '2025-05-24 15:37:35.56537+00'),
 	('60466424-d660-40a8-8d7f-ad1c3bf3000f', 'a2787626-bc01-411b-a2ca-a50d2c63ced6', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '22:00:00', '2025-05-24 15:37:35.634775+00', '2025-05-24 15:37:35.634775+00'),
 	('c59ce969-2868-41f3-af34-dd5ad7d68db0', 'c3c5f876-957f-4c82-98ef-0f1ab17ed640', '786d6d23-69b9-433e-92ed-938806cb10a8', '11:00:00', '18:00:00', '2025-05-24 15:38:28.555892+00', '2025-05-24 15:38:28.555892+00'),
-	('27f67fa6-0ae5-4142-a4cc-9a643283d908', '8c7bca61-81c3-4fa9-a259-fa780b55471f', '8da75157-4cc6-4da6-84f5-6dee3a9fce27', '07:00:00', '15:00:00', '2025-05-24 15:40:22.184915+00', '2025-05-24 15:40:22.184915+00'),
-	('39c6abb8-0a5b-4e08-a992-d03c337eec96', '8c7bca61-81c3-4fa9-a259-fa780b55471f', '2524b1c5-45e1-4f15-bf3b-984354f22cdc', '15:00:00', '18:30:00', '2025-05-24 15:40:22.278146+00', '2025-05-24 15:40:22.278146+00'),
 	('f6aad801-364c-43fb-a26e-4f05c1fed813', '1d4a326e-8401-4e31-b1ec-fa810b68fd1a', '2e74429e-2aab-4bed-a979-6ccbdef74596', '20:00:00', '08:00:00', '2025-05-24 15:43:46.55611+00', '2025-05-24 15:43:46.55611+00'),
 	('8aa2abd0-2367-4238-a331-cea351b1b5eb', '2100396b-f96d-4a7c-9d1b-006775df4ef7', 'ecc67de0-fecc-4c93-b9da-445c3cef4ea4', '20:00:00', '08:00:00', '2025-05-24 15:44:43.562482+00', '2025-05-24 15:44:43.562482+00'),
 	('692ea937-c08b-4913-91e3-a5b2aa5e13ae', '06213b7c-812e-4f48-a79d-ecbc9a87d30a', 'f304fa99-8e00-48d0-a616-d156b0f7484d', '08:00:00', '20:00:00', '2025-05-24 15:45:40.664042+00', '2025-05-24 15:45:40.664042+00');
@@ -1590,7 +1628,16 @@ INSERT INTO "public"."shifts" ("id", "supervisor_id", "shift_type", "start_time"
 	('f47ac10b-58cc-4372-a567-0e02b2c3d490', 'b88b49d1-c394-491e-aaa7-cc196250f0e4', 'day', '2025-05-23 06:24:46.89275+00', '2025-05-23 14:15:59.682+00', false, '2025-05-23 08:24:46.89275+00', '2025-05-23 14:16:00.001677+00'),
 	('eca831e9-fa9f-4604-9526-0a6f70040f86', '358aa759-e11e-40b0-b886-37481c5eb6c0', 'day', '2025-05-23 08:47:36.33+00', '2025-05-23 14:16:03.596+00', false, '2025-05-23 08:47:36.411612+00', '2025-05-23 14:16:03.931319+00'),
 	('17b46dce-3af4-4e96-8bfc-d8145e3c3a0c', 'a9d969e3-d449-4005-a679-f63be07c6872', 'night', '2025-05-23 13:17:58.966+00', '2025-05-23 14:16:51.017+00', false, '2025-05-23 13:17:59.136287+00', '2025-05-23 14:16:51.36234+00'),
-	('c65b6404-3d39-4647-8275-602b1a373c41', '676e6634-937d-4c65-a165-55ad78b9dde4', 'day', '2025-05-24 15:56:08.912+00', NULL, true, '2025-05-24 15:56:09.082193+00', '2025-05-24 15:56:09.082193+00');
+	('f9f8c607-d370-4ed8-94f0-dcee9f9be460', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-25 11:21:45.9+00', '2025-05-25 11:38:07.735+00', false, '2025-05-25 11:21:45.975115+00', '2025-05-25 11:38:07.816939+00'),
+	('cc6d807e-7cb1-4e6f-8084-7068760d1a3c', '358aa759-e11e-40b0-b886-37481c5eb6c0', 'day', '2025-05-25 11:38:16.276+00', '2025-05-25 11:40:04.32+00', false, '2025-05-25 11:38:16.337621+00', '2025-05-25 11:40:04.386618+00'),
+	('ab70f869-2f17-41d3-be95-19f0eaae29cd', 'a9d969e3-d449-4005-a679-f63be07c6872', 'day', '2025-05-25 11:41:09.381+00', '2025-05-25 11:43:49.437+00', false, '2025-05-25 11:41:09.436332+00', '2025-05-25 11:43:49.576113+00'),
+	('8279b300-d6f1-4447-b963-c25afdd7e9bb', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-25 11:40:15.909+00', '2025-05-25 11:43:52.778+00', false, '2025-05-25 11:40:15.956583+00', '2025-05-25 11:43:52.858268+00'),
+	('de3ec1ce-1a8c-488d-adef-e60463c7f14d', 'b88b49d1-c394-491e-aaa7-cc196250f0e4', 'day', '2025-05-25 11:44:11.049+00', '2025-05-25 11:53:12.845+00', false, '2025-05-25 11:44:11.100457+00', '2025-05-25 11:53:12.937922+00'),
+	('6177c26f-e16a-4b5b-86e1-8c862a863ae6', '358aa759-e11e-40b0-b886-37481c5eb6c0', 'day', '2025-05-25 11:53:17.915+00', NULL, true, '2025-05-25 11:53:17.955365+00', '2025-05-25 11:53:17.955365+00'),
+	('a909dabd-1865-472f-b914-cc916f1ff4e2', 'a9d969e3-d449-4005-a679-f63be07c6872', 'day', '2025-05-25 11:55:00.193+00', NULL, true, '2025-05-25 11:55:00.262735+00', '2025-05-25 11:55:00.262735+00'),
+	('be77bf3d-252a-4611-a3e4-f1055116adc5', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-25 12:02:52.119+00', NULL, true, '2025-05-25 12:02:52.188814+00', '2025-05-25 12:02:52.188814+00'),
+	('63b0c33e-6859-4000-961d-2ff98d4a97a1', '4ee5cc9a-fa83-4455-8df9-a6c620570a17', 'day', '2025-05-25 12:08:39.778+00', NULL, true, '2025-05-25 12:08:39.858848+00', '2025-05-25 12:08:39.858848+00'),
+	('83ae47bc-571a-4301-b305-5bd0172d2baa', 'a9d969e3-d449-4005-a679-f63be07c6872', 'night', '2025-05-25 12:08:49.159+00', NULL, true, '2025-05-25 12:08:49.215181+00', '2025-05-25 12:08:49.215181+00');
 
 
 --
@@ -1604,26 +1651,13 @@ INSERT INTO "public"."shift_area_cover_assignments" ("id", "shift_id", "departme
 	('7c495d1b-cfc1-4f79-87df-f11dd0e828c5', 'eca831e9-fa9f-4604-9526-0a6f70040f86', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', '07:30:00', '15:30:00', '#FBBC05', '2025-05-23 12:43:11.927251+00', '2025-05-23 12:43:11.927251+00'),
 	('84aacfe3-2fae-4969-9b30-b21501a35384', 'eca831e9-fa9f-4604-9526-0a6f70040f86', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#4285F4', '2025-05-23 12:43:11.927251+00', '2025-05-23 12:43:11.927251+00'),
 	('b2ad2268-c8c5-4680-a679-d86a0af9d6b3', '17b46dce-3af4-4e96-8bfc-d8145e3c3a0c', 'f47ac10b-58cc-4372-a567-0e02b2c3d483', '07:30:00', '15:30:00', '#FBBC05', '2025-05-23 13:17:59.288837+00', '2025-05-23 13:17:59.288837+00'),
-	('b767566b-5d75-4ccb-86ae-0efef2a4dd16', '17b46dce-3af4-4e96-8bfc-d8145e3c3a0c', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#4285F4', '2025-05-23 13:17:59.288837+00', '2025-05-23 13:17:59.288837+00'),
-	('8c35024e-3756-40e9-a427-2ea330cca87b', 'c65b6404-3d39-4647-8275-602b1a373c41', '1bd33204-7a54-4146-9a82-9344a1ee7b3a', '08:00:00', '20:00:00', '#4285F4', '2025-05-24 15:56:09.626514+00', '2025-05-24 15:56:09.626514+00'),
-	('4e9494f1-8afd-4a21-a266-b71f744cb063', 'c65b6404-3d39-4647-8275-602b1a373c41', '81c30d93-8712-405c-ac5e-509d48fd9af9', '11:00:00', '18:00:00', '#4285F4', '2025-05-24 15:56:09.626514+00', '2025-05-24 15:56:09.626514+00'),
-	('b043ad30-a7fa-4945-9b8a-fac724ed264f', 'c65b6404-3d39-4647-8275-602b1a373c41', 'df3d8d2a-dee5-4a21-a362-401236a2a1cb', '07:00:00', '18:30:00', '#4285F4', '2025-05-24 15:56:09.626514+00', '2025-05-24 15:56:09.626514+00'),
-	('8b0cbc5f-2303-46b4-ad13-e1d92cbc948c', 'c65b6404-3d39-4647-8275-602b1a373c41', 'f9d3bbce-8644-4075-8b80-457777f6d16c', '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:56:09.626514+00', '2025-05-24 15:56:09.626514+00'),
-	('d51d0cf6-4eb2-4a89-acff-453cfdd6527b', 'c65b6404-3d39-4647-8275-602b1a373c41', '8269f3d0-fb22-415c-b235-7cf00c96f3b9', '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:56:09.626514+00', '2025-05-24 15:56:09.626514+00'),
-	('7f719324-2a4f-482b-bc6f-568c43c9d8d1', 'c65b6404-3d39-4647-8275-602b1a373c41', '5bcc07fe-8ec9-43e4-acc5-4b44799cda03', '20:00:00', '04:00:00', '#4285F4', '2025-05-24 15:56:09.626514+00', '2025-05-24 15:56:09.626514+00');
+	('b767566b-5d75-4ccb-86ae-0efef2a4dd16', '17b46dce-3af4-4e96-8bfc-d8145e3c3a0c', 'f47ac10b-58cc-4372-a567-0e02b2c3d484', '08:00:00', '16:00:00', '#4285F4', '2025-05-23 13:17:59.288837+00', '2025-05-23 13:17:59.288837+00');
 
 
 --
 -- Data for Name: shift_area_cover_porter_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."shift_area_cover_porter_assignments" ("id", "shift_area_cover_assignment_id", "porter_id", "start_time", "end_time", "created_at", "updated_at") VALUES
-	('24b4942a-e9f6-4e9e-8251-5c9fdfa13447', '8c35024e-3756-40e9-a427-2ea330cca87b', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '09:00:00', '17:00:00', '2025-05-24 15:56:10.110562+00', '2025-05-24 15:56:10.110562+00'),
-	('547eff4c-5c15-479a-97ee-d80e59451026', '8c35024e-3756-40e9-a427-2ea330cca87b', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '14:00:00', '22:00:00', '2025-05-24 15:56:10.110562+00', '2025-05-24 15:56:10.110562+00'),
-	('c8a9842c-20e1-4a69-a343-8be64f349433', '4e9494f1-8afd-4a21-a266-b71f744cb063', '786d6d23-69b9-433e-92ed-938806cb10a8', '11:00:00', '18:00:00', '2025-05-24 15:56:10.110562+00', '2025-05-24 15:56:10.110562+00'),
-	('d4dcb432-74d9-4969-bf28-ec6f69553995', 'b043ad30-a7fa-4945-9b8a-fac724ed264f', '8da75157-4cc6-4da6-84f5-6dee3a9fce27', '07:00:00', '15:00:00', '2025-05-24 15:56:10.110562+00', '2025-05-24 15:56:10.110562+00'),
-	('112779e6-d371-44bb-b986-68fe24a6183b', 'b043ad30-a7fa-4945-9b8a-fac724ed264f', '2524b1c5-45e1-4f15-bf3b-984354f22cdc', '15:00:00', '18:30:00', '2025-05-24 15:56:10.110562+00', '2025-05-24 15:56:10.110562+00'),
-	('cd1a6644-765d-48c6-bce4-4ff3ea1db276', '8b0cbc5f-2303-46b4-ad13-e1d92cbc948c', '7c20aec3-bf78-4ef9-b35e-429e41ac739b', '20:00:00', '04:00:00', '2025-05-24 17:13:45.603276+00', '2025-05-24 17:13:45.603276+00');
 
 
 --
@@ -1644,10 +1678,7 @@ INSERT INTO "public"."shift_defaults" ("id", "shift_type", "start_time", "end_ti
 --
 
 INSERT INTO "public"."shift_porter_pool" ("id", "shift_id", "porter_id", "created_at", "updated_at") VALUES
-	('eccf6da1-6fad-4759-a6ef-ad3f00acaae7', 'c65b6404-3d39-4647-8275-602b1a373c41', '12055968-78d3-4404-a05f-10e039217936', '2025-05-24 17:13:57.736347+00', '2025-05-24 17:13:57.736347+00'),
-	('4d2ccad8-ba7e-4e25-b67a-84dd6652c3a1', 'c65b6404-3d39-4647-8275-602b1a373c41', 'ecc67de0-fecc-4c93-b9da-445c3cef4ea4', '2025-05-25 06:00:37.883424+00', '2025-05-25 06:00:37.883424+00'),
-	('20929992-ad03-4374-ba75-83ddb437cf5e', 'c65b6404-3d39-4647-8275-602b1a373c41', '4fb21c6f-2f5b-4f6e-b727-239a3391092a', '2025-05-25 06:00:37.949469+00', '2025-05-25 06:00:37.949469+00'),
-	('1232676e-fbf5-41ab-9c76-24d16b90e4d9', 'c65b6404-3d39-4647-8275-602b1a373c41', 'ab2ba72f-ff0e-450d-a6a7-acf4d80fc235', '2025-05-25 06:00:38.006116+00', '2025-05-25 06:00:38.006116+00');
+	('29186471-3b2d-483f-ad12-88377f097095', 'f9f8c607-d370-4ed8-94f0-dcee9f9be460', 'ab2ba72f-ff0e-450d-a6a7-acf4d80fc235', '2025-05-25 11:30:14.12603+00', '2025-05-25 11:30:14.12603+00');
 
 
 --
@@ -1655,18 +1686,39 @@ INSERT INTO "public"."shift_porter_pool" ("id", "shift_id", "porter_id", "create
 --
 
 INSERT INTO "public"."support_services" ("id", "name", "description", "is_active", "created_at", "updated_at") VALUES
-	('30c5c045-a442-4ec8-b285-c7bc010f4d83', 'Laundry', 'Porter support for laundry services', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
-	('ce940139-6ae7-49de-a62a-0d6ba9397928', 'Post', 'Internal mail and document delivery', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
-	('0b5c7062-1285-4427-8387-b1b4e14eedc9', 'Pharmacy', 'Medication delivery service', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
-	('ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', 'District Drivers', 'External transport services', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
-	('7cfa1ddf-61b0-489e-ad23-b924cf995419', 'Adhoc', 'Miscellaneous tasks requiring porter assistance', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00'),
-	('26c0891b-56c0-4346-8d53-de906aaa64c2', 'Medical Records', 'Patient records transport service', true, '2025-05-24 17:29:06.44278+00', '2025-05-24 17:29:06.44278+00');
+	('30c5c045-a442-4ec8-b285-c7bc010f4d83', 'Laundry', 'Porter support for laundry services', true, '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('ce940139-6ae7-49de-a62a-0d6ba9397928', 'Post', 'Internal mail and document delivery', true, '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('0b5c7062-1285-4427-8387-b1b4e14eedc9', 'Pharmacy', 'Medication delivery service', true, '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', 'District Drivers', 'External transport services', true, '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('7cfa1ddf-61b0-489e-ad23-b924cf995419', 'Adhoc', 'Miscellaneous tasks requiring porter assistance', true, '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('26c0891b-56c0-4346-8d53-de906aaa64c2', 'Medical Records', 'Patient records transport service', true, '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00');
 
 
 --
 -- Data for Name: shift_support_service_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+INSERT INTO "public"."shift_support_service_assignments" ("id", "shift_id", "service_id", "start_time", "end_time", "color", "created_at", "updated_at") VALUES
+	('10447215-8d92-431a-a305-22a859c41b2e', 'cc6d807e-7cb1-4e6f-8084-7068760d1a3c', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 11:38:16.784215+00', '2025-05-25 11:38:16.784215+00'),
+	('7d45ab7c-4f05-417c-bfa5-2537d7d8224f', 'cc6d807e-7cb1-4e6f-8084-7068760d1a3c', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 11:38:16.830641+00', '2025-05-25 11:38:16.830641+00'),
+	('86255359-e74f-470e-98a2-9c74fa195b07', '8279b300-d6f1-4447-b963-c25afdd7e9bb', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 11:40:16.3072+00', '2025-05-25 11:40:16.3072+00'),
+	('5b92bdbe-b26f-4654-a97f-b78dc111aab6', '8279b300-d6f1-4447-b963-c25afdd7e9bb', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 11:40:16.356004+00', '2025-05-25 11:40:16.356004+00'),
+	('1f1d8677-dfcc-4559-abb8-45938a4feb51', 'ab70f869-2f17-41d3-be95-19f0eaae29cd', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 11:41:09.796748+00', '2025-05-25 11:41:09.796748+00'),
+	('0e5f48ed-39d8-447c-b4d0-25f84f3971a9', 'ab70f869-2f17-41d3-be95-19f0eaae29cd', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 11:41:09.850955+00', '2025-05-25 11:41:09.850955+00'),
+	('43d1d58d-3c39-4162-8437-fa793f349e76', 'de3ec1ce-1a8c-488d-adef-e60463c7f14d', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 11:44:11.427823+00', '2025-05-25 11:44:11.427823+00'),
+	('adc5d761-6bb0-45b3-9657-e3b6a86cf774', 'de3ec1ce-1a8c-488d-adef-e60463c7f14d', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 11:44:11.475061+00', '2025-05-25 11:44:11.475061+00'),
+	('ade62461-fa8b-4dd3-a71e-d9373a8bfe5b', '6177c26f-e16a-4b5b-86e1-8c862a863ae6', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 11:53:18.278759+00', '2025-05-25 11:53:18.278759+00'),
+	('a0e0c281-3952-4a3a-8932-726a46f4160b', '6177c26f-e16a-4b5b-86e1-8c862a863ae6', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 11:53:18.318341+00', '2025-05-25 11:53:18.318341+00'),
+	('b3ec1739-0072-44bc-8056-565c338ae817', 'a909dabd-1865-472f-b914-cc916f1ff4e2', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 11:55:00.658858+00', '2025-05-25 11:55:00.658858+00'),
+	('6a1c40a2-bf77-4bb7-bfa8-67f56b6a80f8', 'a909dabd-1865-472f-b914-cc916f1ff4e2', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 11:55:00.702113+00', '2025-05-25 11:55:00.702113+00'),
+	('3eea6e64-3fdc-49a5-9b85-6fd933e74a92', 'be77bf3d-252a-4611-a3e4-f1055116adc5', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 12:02:52.557344+00', '2025-05-25 12:02:52.557344+00'),
+	('af85c4c6-f2d9-49ce-ad15-d3e571da59cb', 'be77bf3d-252a-4611-a3e4-f1055116adc5', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 12:02:52.604491+00', '2025-05-25 12:02:52.604491+00'),
+	('621a9409-a345-4ded-8f02-4bda6daeb3cd', 'be77bf3d-252a-4611-a3e4-f1055116adc5', '7cfa1ddf-61b0-489e-ad23-b924cf995419', '20:00:00', '08:00:00', '#673AB7', '2025-05-25 12:05:44.821841+00', '2025-05-25 12:05:44.821841+00'),
+	('5271b47a-b6ca-4e46-bf3f-d1b223d0c680', '63b0c33e-6859-4000-961d-2ff98d4a97a1', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 12:08:40.353072+00', '2025-05-25 12:08:40.353072+00'),
+	('c6863582-578d-4ae6-b7b9-554afb549fb0', '63b0c33e-6859-4000-961d-2ff98d4a97a1', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 12:08:40.400314+00', '2025-05-25 12:08:40.400314+00'),
+	('e6fbf7fd-c2ba-478c-87b8-e5533ab858a1', '63b0c33e-6859-4000-961d-2ff98d4a97a1', '7cfa1ddf-61b0-489e-ad23-b924cf995419', '20:00:00', '08:00:00', '#673AB7', '2025-05-25 12:08:41.251543+00', '2025-05-25 12:08:41.251543+00'),
+	('7492c3fb-4191-4c83-9d10-5ec46f36924e', '83ae47bc-571a-4301-b305-5bd0172d2baa', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '20:00:00', '04:00:00', '#4285F4', '2025-05-25 12:08:49.606777+00', '2025-05-25 12:08:49.606777+00'),
+	('141894c9-6f0e-4476-b117-42d1f19cb43c', '83ae47bc-571a-4301-b305-5bd0172d2baa', '7cfa1ddf-61b0-489e-ad23-b924cf995419', '20:00:00', '08:00:00', '#673AB7', '2025-05-25 12:08:49.646279+00', '2025-05-25 12:08:49.646279+00');
 
 
 --
@@ -1713,7 +1765,8 @@ INSERT INTO "public"."task_items" ("id", "task_type_id", "name", "description", 
 	('b55609c2-9be4-4851-ad2c-dfc199795298', '9299c8d0-e0a2-432b-9f96-7334d1f7d276', 'Platelets', NULL, '2025-05-24 15:24:05.948941+00', '2025-05-24 15:24:05.948941+00'),
 	('b8fed973-ab36-4d31-801a-7ebbde95413a', 'e89d20b1-1edc-4689-aaf5-ea809fdc9569', 'Bed (Complete)', NULL, '2025-05-24 15:27:01.862194+00', '2025-05-24 15:27:01.862194+00'),
 	('81e0d17c-740a-4a00-9727-81d222f96234', 'e89d20b1-1edc-4689-aaf5-ea809fdc9569', 'Bed Frame', NULL, '2025-05-24 15:27:10.580403+00', '2025-05-24 15:27:10.580403+00'),
-	('deab62e1-ae79-4f77-ab65-0a04c1f040a1', 'e89d20b1-1edc-4689-aaf5-ea809fdc9569', 'Mattress', NULL, '2025-05-24 15:27:17.680461+00', '2025-05-24 15:27:17.680461+00');
+	('deab62e1-ae79-4f77-ab65-0a04c1f040a1', 'e89d20b1-1edc-4689-aaf5-ea809fdc9569', 'Mattress', NULL, '2025-05-24 15:27:17.680461+00', '2025-05-24 15:27:17.680461+00'),
+	('1933a5d4-e02d-4301-b580-a0fdbdbfb21d', 'f286fc68-33ba-4c5a-98b8-ed7f24f8f59c', 'Walk', NULL, '2025-05-25 09:51:59.07475+00', '2025-05-25 09:51:59.07475+00');
 
 
 --
@@ -1765,9 +1818,30 @@ INSERT INTO "public"."shift_tasks_backup" ("id", "shift_id", "task_item_id", "po
 
 
 --
+-- Data for Name: support_service_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."support_service_assignments" ("id", "service_id", "start_time", "end_time", "color", "created_at", "updated_at", "shift_type") VALUES
+	('be438b48-ecae-48ac-a9ff-b63a7f45a061', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'week_day'),
+	('e3eab35f-e5b5-4001-a8f5-733314f7587e', 'ce940139-6ae7-49de-a62a-0d6ba9397928', '08:00:00', '16:00:00', '#34A853', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'week_day'),
+	('1d48c9d1-e14e-4e61-a26f-24397f874980', '0b5c7062-1285-4427-8387-b1b4e14eedc9', '09:00:00', '17:00:00', '#FBBC05', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'week_day'),
+	('e4a761cc-ad70-4925-8295-35c3fec29cc4', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '20:00:00', '04:00:00', '#4285F4', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'week_night'),
+	('f864cc63-5b10-4679-8355-1c1bde5ffda0', '0b5c7062-1285-4427-8387-b1b4e14eedc9', '20:00:00', '04:00:00', '#FBBC05', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'week_night'),
+	('56356547-809d-4c8f-9bbd-bd78398d1d7a', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '08:00:00', '16:00:00', '#4285F4', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'weekend_day'),
+	('a8445e2f-ded7-45dd-a696-6b5b257764ad', 'ca184e50-8bfa-4d61-b950-c1ba8e65a7a7', '09:00:00', '17:00:00', '#EA4335', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'weekend_day'),
+	('2c67f62c-5bf4-4805-9ac3-e5e5a451bd85', '30c5c045-a442-4ec8-b285-c7bc010f4d83', '20:00:00', '04:00:00', '#4285F4', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'weekend_night'),
+	('f9596013-1567-4c31-ae8e-ebb8737e0802', '7cfa1ddf-61b0-489e-ad23-b924cf995419', '20:00:00', '08:00:00', '#673AB7', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00', 'weekend_night'),
+	('fe1bac4b-c18e-49b8-bdec-d30b021d548f', '26c0891b-56c0-4346-8d53-de906aaa64c2', '08:00:00', '20:00:00', '#4285F4', '2025-05-25 08:42:33.868676+00', '2025-05-25 08:42:33.868676+00', 'week_day');
+
+
+--
 -- Data for Name: support_service_porter_assignments; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+INSERT INTO "public"."support_service_porter_assignments" ("id", "support_service_assignment_id", "porter_id", "start_time", "end_time", "created_at", "updated_at") VALUES
+	('9f3f4498-fb40-43f0-9e74-378254b94049', 'be438b48-ecae-48ac-a9ff-b63a7f45a061', '12055968-78d3-4404-a05f-10e039217936', '08:00:00', '16:00:00', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('96a6ade7-9968-49db-b70e-ccc213a9ea85', 'e3eab35f-e5b5-4001-a8f5-733314f7587e', 'ad9b079b-07fc-4ece-99b1-a33b0b8a97bc', '08:00:00', '16:00:00', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00'),
+	('ab4496a1-cae5-4950-970f-76c54bd8a2be', '1d48c9d1-e14e-4e61-a26f-24397f874980', '75ff4301-3c45-44c5-bd93-1b3a471baaeb', '09:00:00', '17:00:00', '2025-05-25 06:50:10.906802+00', '2025-05-25 06:50:10.906802+00');
 
 
 --
