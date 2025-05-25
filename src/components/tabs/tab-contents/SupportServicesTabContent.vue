@@ -1,7 +1,5 @@
 <template>
   <div class="support-services-tab">
-    <h3>Area Support</h3>
-    
     <!-- Area Cover Settings Section -->
     <div class="settings-section area-cover-section">
       <h4>Area Coverage</h4>

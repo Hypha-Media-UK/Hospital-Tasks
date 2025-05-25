@@ -1,7 +1,5 @@
 <template>
   <div class="settings-tab">
-    <h3>App Settings</h3>
-    
     <!-- App Settings Section -->
     <div class="settings-section app-settings-section">
       <AppSettings />

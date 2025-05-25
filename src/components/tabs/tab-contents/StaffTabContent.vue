@@ -1,7 +1,5 @@
 <template>
   <div class="staff-tab">
-    <h3>Staff Management</h3>
-    
     <div class="staff-tabs">
       <div class="staff-tabs__header">
         <button 

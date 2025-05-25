@@ -1,7 +1,5 @@
 <template>
   <div class="locations-tab">
-    <h3>Locations Management</h3>
-    
     <div class="locations-tabs">
       <div class="locations-tabs__header">
         <button 

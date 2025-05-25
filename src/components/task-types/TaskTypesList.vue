@@ -1,7 +1,6 @@
 <template>
   <div class="task-types-list">
     <div class="task-types-list__header">
-      <h2 class="task-types-list__title">Task Types</h2>
       <button 
         class="btn btn--primary"
         @click="showAddForm = true"
@@ -109,7 +108,7 @@ onMounted(async () => {
   &__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-bottom: 24px;
   }
   
