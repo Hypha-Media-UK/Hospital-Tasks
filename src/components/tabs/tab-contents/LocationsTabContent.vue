@@ -20,7 +20,7 @@
       
       <div class="locations-tabs__content">
         <div v-if="activeTab === 'departments'" class="locations-tabs__panel">
-          <BuildingsList />
+          <BuildingsCardList />
         </div>
         
         <div v-if="activeTab === 'services'" class="locations-tabs__panel">
@@ -77,7 +77,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watchEffect } from 'vue';
-import BuildingsList from '../../locations/BuildingsList.vue';
+import BuildingsCardList from '../../locations/BuildingsCardList.vue';
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import ServiceItem from '../../support-services/ServiceItem.vue';
 import AddServiceModal from '../../support-services/AddServiceModal.vue';
