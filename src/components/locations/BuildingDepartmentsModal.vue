@@ -35,7 +35,7 @@
               class="btn-action edit-building-btn"
               title="Edit building name"
             >
-              <span class="icon">✏️</span>
+              <EditIcon size="16" />
             </button>
           </div>
         </div>
@@ -116,21 +116,21 @@
                     :class="{ 'btn-active': department.is_frequent }"
                     title="Toggle frequent status"
                   >
-                    <span class="icon">⭐</span>
+                    <StarIcon size="16" />
                   </button>
                   <button 
                     @click="editDepartment(department)"
                     class="btn-action"
                     title="Edit department"
                   >
-                    <span class="icon">✏️</span>
+                    <EditIcon size="16" />
                   </button>
                   <button 
                     @click="deleteDepartment(department)"
                     class="btn-action"
                     title="Delete department"
                   >
-                    <span class="icon">🗑️</span>
+                    <TrashIcon size="16" />
                   </button>
                 </div>
               </div>
@@ -151,6 +151,9 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
+import EditIcon from '../icons/EditIcon.vue';
+import TrashIcon from '../icons/TrashIcon.vue';
+import StarIcon from '../icons/StarIcon.vue';
 
 const props = defineProps({
   building: {

@@ -14,10 +14,10 @@
     
     <div class="service-actions">
       <button @click="openEditModal" class="btn-edit" title="Edit service">
-        <span class="icon">✏️</span>
+        <EditIcon size="16" />
       </button>
       <button @click="confirmDelete" class="btn-delete" title="Delete service">
-        <span class="icon">🗑️</span>
+        <TrashIcon size="16" />
       </button>
     </div>
     
@@ -84,6 +84,8 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import EditIcon from '../icons/EditIcon.vue';
+import TrashIcon from '../icons/TrashIcon.vue';
 
 // Props and emits
 const props = defineProps({

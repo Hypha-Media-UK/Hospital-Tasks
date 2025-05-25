@@ -12,10 +12,10 @@
     
     <div class="building-actions">
       <button @click="viewDepartments" class="btn-view" title="View departments">
-        <span class="icon">👁️</span>
+        <EditIcon size="16" />
       </button>
       <button @click="confirmDelete" class="btn-delete" title="Delete building">
-        <span class="icon">🗑️</span>
+        <TrashIcon size="16" />
       </button>
     </div>
   </div>
@@ -24,6 +24,8 @@
 <script setup>
 import { computed } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
+import EditIcon from '../icons/EditIcon.vue';
+import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
   building: {
