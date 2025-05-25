@@ -24,91 +24,22 @@
       <SupportServicesTabs />
     </div>
     
-    <!-- Original Support Services Management -->
-    <div class="settings-section">
-      <h4>Manage Support Services</h4>
-      <p class="section-description">
-        Manage support services that can be assigned to porters. These services are not tied to specific departments but require porter support.
-      </p>
-      
-      <div class="error-message" v-if="supportServicesStore.error">
-        {{ supportServicesStore.error }}
-      </div>
-      
-      <!-- Add Service Button -->
-      <div class="button-container">
-        <button class="btn btn--primary" @click="showAddServiceModal = true">
-          Add Service
-        </button>
-      </div>
-      
-      <!-- Services List -->
-      <div class="support-services-list">
-        <div v-if="loading" class="loading-state">
-          Loading support services...
-        </div>
-        
-        <div v-else-if="supportServices.length === 0" class="empty-state">
-          No support services found. Add your first service using the button above.
-        </div>
-        
-        <div v-else class="services-grid">
-          <ServiceItem 
-            v-for="service in supportServices" 
-            :key="service.id"
-            :service="service"
-            @update="updateService"
-            @delete="removeService"
-          />
-        </div>
-      </div>
-    </div>
   </div>
-  
-  <!-- Add Service Modal -->
-  <AddServiceModal
-    v-if="showAddServiceModal"
-    @add="addService"
-    @close="showAddServiceModal = false"
-  />
 </template>
 
 <script setup>
-import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import { useAreaCoverStore } from '../../../stores/areaCoverStore';
-import { onMounted, computed, ref } from 'vue';
-import ServiceItem from '../../support-services/ServiceItem.vue';
-import AddServiceModal from '../../support-services/AddServiceModal.vue';
+import { onMounted } from 'vue';
 import AreaCoverTabs from '../../area-cover/AreaCoverTabs.vue';
 import SupportServicesTabs from '../../support-services/SupportServicesTabs.vue';
 
-const supportServicesStore = useSupportServicesStore();
 const areaCoverStore = useAreaCoverStore();
 
-const supportServices = computed(() => supportServicesStore.supportServices);
-const loading = computed(() => supportServicesStore.loading);
-const showAddServiceModal = ref(false);
-
-// Load support services when component mounts
+// Load data when component mounts
 onMounted(async () => {
-  // Load support services
-  await supportServicesStore.loadSupportServices();
   // Initialize area cover
   await areaCoverStore.initialize();
 });
-
-// Handler functions for CRUD operations
-async function addService(service) {
-  return await supportServicesStore.addSupportService(service);
-}
-
-async function updateService(service) {
-  return await supportServicesStore.updateSupportService(service);
-}
-
-async function removeService(serviceId) {
-  return await supportServicesStore.removeSupportService(serviceId);
-}
 </script>
 
 <style lang="scss" scoped>
