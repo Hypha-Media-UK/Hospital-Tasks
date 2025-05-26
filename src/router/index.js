@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue';
 import ArchiveView from '../views/ArchiveView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import ShiftManagementView from '../views/ShiftManagementView.vue';
+import DefaultSupportView from '../views/DefaultSupportView.vue';
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
     path: '/shift/:id',
     name: 'shift',
     component: ShiftManagementView
+  },
+  {
+    path: '/default-support',
+    name: 'default-support',
+    component: DefaultSupportView
   }
 ];
 

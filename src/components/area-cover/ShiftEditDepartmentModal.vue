@@ -270,7 +270,7 @@ const saveChanges = async () => {
     const startTime = formData.value.startTime + ':00';
     const endTime = formData.value.endTime + ':00';
     
-    // Update department assignment
+    // Update department assignment - use shift-specific update method
     await shiftsStore.updateShiftAreaCover(props.assignment.id, {
       start_time: startTime,
       end_time: endTime,
@@ -336,13 +336,13 @@ const savePorterAssignment = async () => {
     const endTime = porterForm.value.endTime + ':00';
     
     if (editingPorterAssignment.value) {
-      // Update existing assignment
+      // Update existing assignment - use shift-specific method
       await shiftsStore.updateShiftAreaCoverPorter(editingPorterAssignmentId.value, {
         start_time: startTime,
         end_time: endTime
       });
     } else {
-      // Add new assignment
+      // Add new assignment - use shift-specific method
       await shiftsStore.addShiftAreaCoverPorter(
         props.assignment.id,
         porterForm.value.porterId,
@@ -361,6 +361,7 @@ const savePorterAssignment = async () => {
 
 const removePorterAssignment = async (assignmentId) => {
   if (confirm('Are you sure you want to remove this porter assignment?')) {
+    // Use shift-specific method to remove porter assignment
     await shiftsStore.removeShiftAreaCoverPorter(assignmentId);
   }
 };

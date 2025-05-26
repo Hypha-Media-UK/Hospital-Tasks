@@ -186,7 +186,7 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
-import { useSupportServicesStore } from '../../stores/supportServicesStore';
+import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
 
 const props = defineProps({
@@ -198,7 +198,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'update', 'remove']);
 
-const supportServicesStore = useSupportServicesStore();
+const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 
 // Local state for all editable properties
@@ -217,24 +217,31 @@ const newPorterAssignment = ref({
 
 // Computed property for determining what porters are available
 const availablePorters = computed(() => {
-  // Get all porters
-  const allPorters = staffStore.porters.filter(p => p.role === 'porter');
+  // Get all porters from the shift porter pool
+  const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
   
   // Filter out porters that are already in our local assignments
-  const assignedPorterIds = localPorterAssignments.value.map(pa => pa.porter_id);
-  return allPorters.filter(porter => !assignedPorterIds.includes(porter.id));
+  const assignedPorterIds = localPorterAssignments.value
+    .filter(pa => !pa.isRemoved)
+    .map(pa => pa.porter_id);
+  
+  return shiftPorters.filter(porter => !assignedPorterIds.includes(porter.id));
 });
 
 // Check for coverage gaps with local data
 const hasLocalCoverageGap = computed(() => {
   if (localPorterAssignments.value.length === 0) return true;
   
+  // Only consider non-removed assignments
+  const activeAssignments = localPorterAssignments.value.filter(pa => !pa.isRemoved);
+  if (activeAssignments.length === 0) return true;
+  
   // Convert service times to minutes for easier comparison
   const serviceStart = timeToMinutes(localStartTime.value + ':00');
   const serviceEnd = timeToMinutes(localEndTime.value + ':00');
   
   // First check if any single porter covers the entire time period
-  const fullCoverageExists = localPorterAssignments.value.some(assignment => {
+  const fullCoverageExists = activeAssignments.some(assignment => {
     const porterStart = timeToMinutes(assignment.start_time_display + ':00');
     const porterEnd = timeToMinutes(assignment.end_time_display + ':00');
     return porterStart <= serviceStart && porterEnd >= serviceEnd;
@@ -246,7 +253,7 @@ const hasLocalCoverageGap = computed(() => {
   }
   
   // Sort porter assignments by start time
-  const sortedAssignments = [...localPorterAssignments.value].sort((a, b) => {
+  const sortedAssignments = [...activeAssignments].sort((a, b) => {
     return timeToMinutes(a.start_time_display + ':00') - timeToMinutes(b.start_time_display + ':00');
   });
   
@@ -293,7 +300,7 @@ const addLocalPorterAssignment = () => {
     // Add to local state with a temporary ID
     localPorterAssignments.value.push({
       id: `temp-${Date.now()}`,
-      support_service_assignment_id: props.assignment.id,
+      shift_support_service_assignment_id: props.assignment.id,
       porter_id: newPorterAssignment.value.porter_id,
       start_time: newPorterAssignment.value.start_time + ':00',
       end_time: newPorterAssignment.value.end_time + ':00',
@@ -320,39 +327,46 @@ const removeLocalPorterAssignment = (index) => {
   // If it's an existing assignment (has a real DB ID), track it for deletion
   if (assignment.id && !assignment.isNew) {
     removedPorterIds.value.push(assignment.id);
+    // Mark as removed instead of actually removing (for UI only)
+    assignment.isRemoved = true;
+  } else {
+    // For new assignments that haven't been saved yet, just remove from array
+    localPorterAssignments.value.splice(index, 1);
   }
-  
-  // Remove from local array
-  localPorterAssignments.value.splice(index, 1);
 };
 
 const saveAllChanges = async () => {
   try {
     // 1. Update service assignment (times, color)
-    await supportServicesStore.updateServiceAssignment(props.assignment.id, {
+    // Use shift-specific method to update service assignment
+    await shiftsStore.updateShiftSupportService(props.assignment.id, {
       start_time: localStartTime.value + ':00',
       end_time: localEndTime.value + ':00',
       color: localColor.value
     });
     
-    // 2. Remove porter assignments that were deleted
+    // 2. Process porter assignments - removals
     for (const porterId of removedPorterIds.value) {
-      await supportServicesStore.removePorterAssignment(porterId);
+      // Use shift-specific method to remove porter assignment
+      await shiftsStore.removeShiftSupportServicePorter(porterId);
     }
     
-    // 3. Process porter assignments
+    // 3. Process porter assignments - additions and updates
     for (const assignment of localPorterAssignments.value) {
+      // Skip removed assignments
+      if (assignment.isRemoved) continue;
+      
       if (assignment.isNew) {
-        // Add new assignment
-        await supportServicesStore.addPorterToServiceAssignment(
+        // Add new assignment - use shift-specific method
+        await shiftsStore.addShiftSupportServicePorter(
           props.assignment.id,
           assignment.porter_id,
           assignment.start_time,
           assignment.end_time
         );
       } else {
-        // Update existing assignment
-        await supportServicesStore.updatePorterAssignment(assignment.id, {
+        // Update existing assignment - use shift-specific method
+        await shiftsStore.updateShiftSupportServicePorter(assignment.id, {
           start_time: assignment.start_time_display + ':00',
           end_time: assignment.end_time_display + ':00'
         });
@@ -395,12 +409,13 @@ const initializeState = () => {
   // Initialize color
   localColor.value = props.assignment.color || '#4285F4';
   
-  // Initialize porter assignments
-  const assignments = props.assignment.porter_assignments || [];
+  // Initialize porter assignments - use shift-specific porter assignments
+  const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
   localPorterAssignments.value = assignments.map(pa => ({
     ...pa,
     start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
-    end_time_display: pa.end_time ? pa.end_time.slice(0, 5) : ''
+    end_time_display: pa.end_time ? pa.end_time.slice(0, 5) : '',
+    isRemoved: false
   }));
   
   // Clear the removed porters list

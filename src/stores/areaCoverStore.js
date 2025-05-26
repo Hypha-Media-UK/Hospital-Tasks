@@ -3,167 +3,50 @@ import { supabase } from '../services/supabase';
 
 export const useAreaCoverStore = defineStore('areaCover', {
   state: () => ({
-    weekDayAssignments: [],
-    weekNightAssignments: [],
-    weekendDayAssignments: [],
-    weekendNightAssignments: [],
-    porterAssignments: [], // Porter assignments
+    departments: [],
+    areaAssignments: [],
+    porterAssignments: [],
     loading: {
-      week_day: false,
-      week_night: false,
-      weekend_day: false,
-      weekend_night: false,
-      save: false,
-      porters: false
+      departments: false,
+      save: false
     },
     error: null
   }),
   
   getters: {
-    // Get week day assignments sorted by department name
-    sortedWeekDayAssignments: (state) => {
-      return [...state.weekDayAssignments].sort((a, b) => {
-        return a.department.name.localeCompare(b.department.name);
-      });
+    // Get area assignments by department ID
+    getAssignmentsByDepartmentId: (state) => (departmentId) => {
+      return state.areaAssignments.filter(a => a.department_id === departmentId);
     },
     
-    // Get week night assignments sorted by department name
-    sortedWeekNightAssignments: (state) => {
-      return [...state.weekNightAssignments].sort((a, b) => {
-        return a.department.name.localeCompare(b.department.name);
-      });
-    },
-    
-    // Get weekend day assignments sorted by department name
-    sortedWeekendDayAssignments: (state) => {
-      return [...state.weekendDayAssignments].sort((a, b) => {
-        return a.department.name.localeCompare(b.department.name);
-      });
-    },
-    
-    // Get weekend night assignments sorted by department name
-    sortedWeekendNightAssignments: (state) => {
-      return [...state.weekendNightAssignments].sort((a, b) => {
-        return a.department.name.localeCompare(b.department.name);
-      });
-    },
-    
-    // Get assignments for any shift type
-    getSortedAssignmentsByType: (state) => (shiftType) => {
-      let assignments;
-      switch(shiftType) {
-        case 'week_day':
-          assignments = state.weekDayAssignments;
-          break;
-        case 'week_night':
-          assignments = state.weekNightAssignments;
-          break;
-        case 'weekend_day':
-          assignments = state.weekendDayAssignments;
-          break;
-        case 'weekend_night':
-          assignments = state.weekendNightAssignments;
-          break;
-        default:
-          assignments = [];
-      }
-      
-      return [...assignments].sort((a, b) => {
-        return a.department.name.localeCompare(b.department.name);
-      });
-    },
-    
-    // Get assignment by ID
+    // Get area assignment by ID
     getAssignmentById: (state) => (id) => {
-      return [...state.weekDayAssignments, 
-              ...state.weekNightAssignments, 
-              ...state.weekendDayAssignments, 
-              ...state.weekendNightAssignments].find(a => a.id === id);
+      return state.areaAssignments.find(a => a.id === id);
     },
     
-    // Get porter assignments for a specific area cover assignment
-    getPorterAssignmentsByAreaId: (state) => (areaCoverId) => {
-      return state.porterAssignments.filter(pa => pa.area_cover_assignment_id === areaCoverId);
+    // Get area assignments by shift type
+    getAssignmentsByShiftType: (state) => (shiftType) => {
+      return state.areaAssignments.filter(a => a.shift_type === shiftType);
     },
     
-    // Check for coverage gaps in a specific area cover assignment
-    hasCoverageGap: (state) => (areaCoverId) => {
-      try {
-        // Find the assignment directly from state arrays instead of using another getter
-        const assignment = [...state.weekDayAssignments, 
-                           ...state.weekNightAssignments, 
-                           ...state.weekendDayAssignments, 
-                           ...state.weekendNightAssignments].find(a => a.id === areaCoverId);
-        
-        if (!assignment) return false;
-        
-        // Directly access porter assignments from state instead of using another getter
-        const porterAssignments = state.porterAssignments.filter(pa => pa.area_cover_assignment_id === areaCoverId);
-        if (porterAssignments.length === 0) return true; // No porters means complete gap
-        
-        // Convert department times to minutes for easier comparison
-        const departmentStart = timeToMinutes(assignment.start_time);
-        const departmentEnd = timeToMinutes(assignment.end_time);
-      
-        // First check if any single porter covers the entire time period
-        const fullCoverageExists = porterAssignments.some(assignment => {
-          const porterStart = timeToMinutes(assignment.start_time);
-          const porterEnd = timeToMinutes(assignment.end_time);
-          return porterStart <= departmentStart && porterEnd >= departmentEnd;
-        });
-        
-        // If at least one porter provides full coverage, there's no gap
-        if (fullCoverageExists) {
-          return false;
-        }
-        
-        // Sort porter assignments by start time
-        const sortedAssignments = [...porterAssignments].sort((a, b) => {
-          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
-        });
-        
-        // Check for gap at the beginning
-        if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
-          return true;
-        }
-        
-        // Check for gaps between porter assignments
-        for (let i = 0; i < sortedAssignments.length - 1; i++) {
-          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
-          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
-          
-          if (nextStart > currentEnd) {
-            return true;
-          }
-        }
-        
-        // Check for gap at the end
-        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
-        if (lastEnd < departmentEnd) {
-          return true;
-        }
-        
-        return false;
-      } catch (error) {
-        console.error('Error in hasCoverageGap:', error);
-        return false;
-      }
-    },
-    
-    // Removed legacy getters for day/night departments
+    // Get porter assignments for a specific area assignment
+    getPorterAssignmentsByAreaId: (state) => (areaAssignmentId) => {
+      return state.porterAssignments.filter(
+        pa => pa.default_area_cover_assignment_id === areaAssignmentId
+      );
+    }
   },
   
   actions: {
-    // Fetch assignments by shift type
-    async fetchAssignments(shiftType) {
-      this.loading[shiftType] = true;
+    // Fetch all area assignments (for settings/defaults)
+    async fetchAreaAssignments() {
+      this.loading.departments = true;
       this.error = null;
       
       try {
-        console.log(`Fetching area cover assignments for shift type: ${shiftType}`);
-        
+        // Fetch area cover assignments from default_area_cover_assignments
         const { data, error } = await supabase
-          .from('area_cover_assignments')
+          .from('default_area_cover_assignments')
           .select(`
             *,
             department:department_id(
@@ -173,95 +56,49 @@ export const useAreaCoverStore = defineStore('areaCover', {
               building:building_id(id, name)
             )
           `)
-          .eq('shift_type', shiftType);
+          .order('department_id');
         
         if (error) throw error;
         
-        console.log(`Found ${data?.length || 0} assignments for ${shiftType}`);
+        this.areaAssignments = data || [];
+        
+        // Also fetch porter assignments for these area assignments
         if (data && data.length > 0) {
-          console.log(`First assignment department: ${data[0].department?.name}`);
+          const assignmentIds = data.map(a => a.id);
+          
+          const { data: porterData, error: porterError } = await supabase
+            .from('default_area_cover_porter_assignments')
+            .select(`
+              *,
+              porter:porter_id(id, first_name, last_name, role)
+            `)
+            .in('default_area_cover_assignment_id', assignmentIds);
+          
+          if (porterError) throw porterError;
+          
+          this.porterAssignments = porterData || [];
+        } else {
+          this.porterAssignments = [];
         }
         
-        // Update the appropriate state array based on shift type
-        switch(shiftType) {
-          case 'week_day':
-            this.weekDayAssignments = data || [];
-            console.log(`Updated weekDayAssignments: ${this.weekDayAssignments.length} items`);
-            break;
-          case 'week_night':
-            this.weekNightAssignments = data || [];
-            console.log(`Updated weekNightAssignments: ${this.weekNightAssignments.length} items`);
-            break;
-          case 'weekend_day':
-            this.weekendDayAssignments = data || [];
-            console.log(`Updated weekendDayAssignments: ${this.weekendDayAssignments.length} items`);
-            break;
-          case 'weekend_night':
-            this.weekendNightAssignments = data || [];
-            console.log(`Updated weekendNightAssignments: ${this.weekendNightAssignments.length} items`);
-            break;
-          default:
-            console.error(`Unknown shift type: ${shiftType}, cannot update assignments`);
-            break;
-        }
-        
-        // Fetch porter assignments for these area covers
-        if (data && data.length > 0) {
-          const areaCoverIds = data.map(a => a.id);
-          await this.fetchPorterAssignments(areaCoverIds);
-        }
-        
-        return data;
+        return this.areaAssignments;
       } catch (error) {
-        console.error(`Error fetching ${shiftType} assignments:`, error);
-        this.error = `Failed to load ${shiftType} shift assignments`;
+        console.error('Error fetching area assignments:', error);
+        this.error = 'Failed to load area assignments';
         return [];
       } finally {
-        this.loading[shiftType] = false;
+        this.loading.departments = false;
       }
     },
     
-    // Fetch porter assignments for specified area cover assignments
-    async fetchPorterAssignments(areaCoverIds) {
-      if (!areaCoverIds || areaCoverIds.length === 0) return [];
-      
-      this.loading.porters = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('area_cover_porter_assignments')
-          .select(`
-            *,
-            porter:porter_id(
-              id,
-              first_name,
-              last_name
-            )
-          `)
-          .in('area_cover_assignment_id', areaCoverIds);
-        
-        if (error) throw error;
-        
-        this.porterAssignments = data || [];
-        return data;
-      } catch (error) {
-        console.error('Error fetching porter assignments:', error);
-        this.error = 'Failed to load porter assignments';
-        return [];
-      } finally {
-        this.loading.porters = false;
-      }
-    },
-    
-    // Add department to shift
-    async addDepartment(departmentId, shiftType, startTime = '08:00:00', endTime = '16:00:00', color = '#4285F4') {
+    // Add a new area assignment (for settings/defaults)
+    async addAreaAssignment(departmentId, shiftType, startTime, endTime, color = '#4285F4') {
       this.loading.save = true;
       this.error = null;
       
       try {
         const { data, error } = await supabase
-          .from('area_cover_assignments')
+          .from('default_area_cover_assignments')
           .insert({
             department_id: departmentId,
             shift_type: shiftType,
@@ -282,42 +119,27 @@ export const useAreaCoverStore = defineStore('areaCover', {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          // Update the appropriate state array based on shift type
-          switch(shiftType) {
-            case 'week_day':
-              this.weekDayAssignments.push(data[0]);
-              break;
-            case 'week_night':
-              this.weekNightAssignments.push(data[0]);
-              break;
-            case 'weekend_day':
-              this.weekendDayAssignments.push(data[0]);
-              break;
-            case 'weekend_night':
-              this.weekendNightAssignments.push(data[0]);
-              break;
-            // Legacy support has been removed
-          }
+          this.areaAssignments.push(data[0]);
         }
         
         return data?.[0] || null;
       } catch (error) {
-        console.error('Error adding department to area cover:', error);
-        this.error = 'Failed to add department to area cover';
+        console.error('Error adding area assignment:', error);
+        this.error = 'Failed to add area assignment';
         return null;
       } finally {
         this.loading.save = false;
       }
     },
     
-    // Update department settings
-    async updateDepartment(assignmentId, updates) {
+    // Update an area assignment
+    async updateAreaAssignment(assignmentId, updates) {
       this.loading.save = true;
       this.error = null;
       
       try {
         const { data, error } = await supabase
-          .from('area_cover_assignments')
+          .from('default_area_cover_assignments')
           .update(updates)
           .eq('id', assignmentId)
           .select(`
@@ -333,135 +155,71 @@ export const useAreaCoverStore = defineStore('areaCover', {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          const updatedAssignment = data[0];
-          const shiftType = updatedAssignment.shift_type;
-          
-          // Update the appropriate state array based on shift type
-          switch(shiftType) {
-            case 'week_day':
-              {
-                const index = this.weekDayAssignments.findIndex(a => a.id === assignmentId);
-                if (index !== -1) {
-                  this.weekDayAssignments[index] = updatedAssignment;
-                }
-              }
-              break;
-            case 'week_night':
-              {
-                const index = this.weekNightAssignments.findIndex(a => a.id === assignmentId);
-                if (index !== -1) {
-                  this.weekNightAssignments[index] = updatedAssignment;
-                }
-              }
-              break;
-            case 'weekend_day':
-              {
-                const index = this.weekendDayAssignments.findIndex(a => a.id === assignmentId);
-                if (index !== -1) {
-                  this.weekendDayAssignments[index] = updatedAssignment;
-                }
-              }
-              break;
-            case 'weekend_night':
-              {
-                const index = this.weekendNightAssignments.findIndex(a => a.id === assignmentId);
-                if (index !== -1) {
-                  this.weekendNightAssignments[index] = updatedAssignment;
-                }
-              }
-              break;
-            // Legacy support has been removed
+          // Update in local state
+          const index = this.areaAssignments.findIndex(a => a.id === assignmentId);
+          if (index !== -1) {
+            this.areaAssignments[index] = data[0];
           }
         }
         
         return data?.[0] || null;
       } catch (error) {
-        console.error('Error updating area cover assignment:', error);
-        this.error = 'Failed to update area cover assignment';
+        console.error('Error updating area assignment:', error);
+        this.error = 'Failed to update area assignment';
         return null;
       } finally {
         this.loading.save = false;
       }
     },
     
-    // Remove department from shift
-    async removeDepartment(assignmentId) {
+    // Delete an area assignment
+    async deleteAreaAssignment(assignmentId) {
       this.loading.save = true;
       this.error = null;
       
       try {
-        // Find the assignment among all assignments
-        const assignment = [...this.weekDayAssignments, 
-                           ...this.weekNightAssignments,
-                           ...this.weekendDayAssignments,
-                           ...this.weekendNightAssignments].find(a => a.id === assignmentId);
-        
-        if (!assignment) {
-          throw new Error('Assignment not found');
-        }
-        
-        const shiftType = assignment.shift_type;
-        
         const { error } = await supabase
-          .from('area_cover_assignments')
+          .from('default_area_cover_assignments')
           .delete()
           .eq('id', assignmentId);
         
         if (error) throw error;
         
-        // Remove from local state based on shift type
-        switch(shiftType) {
-          case 'week_day':
-            this.weekDayAssignments = this.weekDayAssignments.filter(a => a.id !== assignmentId);
-            break;
-          case 'week_night':
-            this.weekNightAssignments = this.weekNightAssignments.filter(a => a.id !== assignmentId);
-            break;
-          case 'weekend_day':
-            this.weekendDayAssignments = this.weekendDayAssignments.filter(a => a.id !== assignmentId);
-            break;
-          case 'weekend_night':
-            this.weekendNightAssignments = this.weekendNightAssignments.filter(a => a.id !== assignmentId);
-            break;
-          // Legacy support has been removed
-        }
+        // Remove from local state
+        this.areaAssignments = this.areaAssignments.filter(a => a.id !== assignmentId);
         
-        // Also remove all porter assignments for this area cover
+        // Also remove all associated porter assignments
         this.porterAssignments = this.porterAssignments.filter(
-          pa => pa.area_cover_assignment_id !== assignmentId
+          pa => pa.default_area_cover_assignment_id !== assignmentId
         );
         
         return true;
       } catch (error) {
-        console.error('Error removing department from area cover:', error);
-        this.error = 'Failed to remove department from area cover';
+        console.error('Error deleting area assignment:', error);
+        this.error = 'Failed to delete area assignment';
         return false;
       } finally {
         this.loading.save = false;
       }
     },
     
-    // Add porter assignment to an area cover
+    // Add a porter assignment to a default area cover
     async addPorterAssignment(areaCoverId, porterId, startTime, endTime) {
       this.loading.save = true;
       this.error = null;
       
       try {
         const { data, error } = await supabase
-          .from('area_cover_porter_assignments')
+          .from('default_area_cover_porter_assignments')
           .insert({
-            area_cover_assignment_id: areaCoverId,
+            default_area_cover_assignment_id: areaCoverId,
             porter_id: porterId,
             start_time: startTime,
             end_time: endTime
           })
           .select(`
             *,
-            porter:porter_id(
-              id,
-              first_name,
-              last_name
-            )
+            porter:porter_id(id, first_name, last_name, role)
           `);
         
         if (error) throw error;
@@ -480,28 +238,25 @@ export const useAreaCoverStore = defineStore('areaCover', {
       }
     },
     
-    // Update porter assignment
+    // Update a porter assignment
     async updatePorterAssignment(porterAssignmentId, updates) {
       this.loading.save = true;
       this.error = null;
       
       try {
         const { data, error } = await supabase
-          .from('area_cover_porter_assignments')
+          .from('default_area_cover_porter_assignments')
           .update(updates)
           .eq('id', porterAssignmentId)
           .select(`
             *,
-            porter:porter_id(
-              id,
-              first_name,
-              last_name
-            )
+            porter:porter_id(id, first_name, last_name, role)
           `);
         
         if (error) throw error;
         
         if (data && data.length > 0) {
+          // Update in local state
           const index = this.porterAssignments.findIndex(pa => pa.id === porterAssignmentId);
           if (index !== -1) {
             this.porterAssignments[index] = data[0];
@@ -525,7 +280,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
       
       try {
         const { error } = await supabase
-          .from('area_cover_porter_assignments')
+          .from('default_area_cover_porter_assignments')
           .delete()
           .eq('id', porterAssignmentId);
         
@@ -544,111 +299,9 @@ export const useAreaCoverStore = defineStore('areaCover', {
       }
     },
     
-    // Initialize data
+    // Initialize store
     async initialize() {
-      console.log('Initializing area cover store...');
-      
-      // Check if we already have assignments loaded
-      const hasWeekDay = this.weekDayAssignments && this.weekDayAssignments.length > 0;
-      const hasWeekNight = this.weekNightAssignments && this.weekNightAssignments.length > 0;
-      const hasWeekendDay = this.weekendDayAssignments && this.weekendDayAssignments.length > 0;
-      const hasWeekendNight = this.weekendNightAssignments && this.weekendNightAssignments.length > 0;
-      
-      console.log(`Before initialization:
-        - week_day: ${this.weekDayAssignments?.length || 0} assignments
-        - week_night: ${this.weekNightAssignments?.length || 0} assignments
-        - weekend_day: ${this.weekendDayAssignments?.length || 0} assignments
-        - weekend_night: ${this.weekendNightAssignments?.length || 0} assignments`);
-        
-      // Fetch any missing assignment types
-      const promises = [];
-      
-      if (!hasWeekDay) {
-        console.log('Fetching week_day assignments...');
-        promises.push(this.fetchAssignments('week_day'));
-      }
-      
-      if (!hasWeekNight) {
-        console.log('Fetching week_night assignments...');
-        promises.push(this.fetchAssignments('week_night'));
-      }
-      
-      if (!hasWeekendDay) {
-        console.log('Fetching weekend_day assignments...');
-        promises.push(this.fetchAssignments('weekend_day'));
-      }
-      
-      if (!hasWeekendNight) {
-        console.log('Fetching weekend_night assignments...');
-        promises.push(this.fetchAssignments('weekend_night'));
-      }
-      
-      // If we have any promises, wait for them
-      if (promises.length > 0) {
-        await Promise.all(promises);
-      } else {
-        console.log('All assignments already loaded, skipping fetch');
-      }
-      
-      console.log(`Area cover store initialized with:
-        - week_day: ${this.weekDayAssignments?.length || 0} assignments
-        - week_night: ${this.weekNightAssignments?.length || 0} assignments
-        - weekend_day: ${this.weekendDayAssignments?.length || 0} assignments
-        - weekend_night: ${this.weekendNightAssignments?.length || 0} assignments`);
-      
-      // Print details of week_day assignments for debugging
-      if (this.weekDayAssignments?.length > 0) {
-        console.log('Week day assignments details:');
-        this.weekDayAssignments.forEach(assignment => {
-          console.log(`- Department: ${assignment.department?.name || 'Unknown'} (ID: ${assignment.department_id})`);
-        });
-      } else {
-        console.log('No week_day assignments found! This is likely the root cause of the issue.');
-      }
-      
-      return this.weekDayAssignments;
-    },
-    
-    // Ensure specific shift type assignments are loaded
-    async ensureAssignmentsLoaded(shiftType) {
-      console.log(`Ensuring ${shiftType} assignments are loaded...`);
-      
-      // Check if assignments are already loaded
-      let assignmentsArray;
-      switch(shiftType) {
-        case 'week_day':
-          assignmentsArray = this.weekDayAssignments;
-          break;
-        case 'week_night':
-          assignmentsArray = this.weekNightAssignments;
-          break;
-        case 'weekend_day':
-          assignmentsArray = this.weekendDayAssignments;
-          break;
-        case 'weekend_night':
-          assignmentsArray = this.weekendNightAssignments;
-          break;
-        default:
-          console.warn(`Unknown shift type: ${shiftType}`);
-          return [];
-      }
-      
-      // If assignments are not loaded yet, fetch them
-      if (!assignmentsArray.length) {
-        console.log(`No ${shiftType} assignments found, fetching from database...`);
-        return await this.fetchAssignments(shiftType);
-      }
-      
-      console.log(`${assignmentsArray.length} ${shiftType} assignments already loaded`);
-      return assignmentsArray;
+      await this.fetchAreaAssignments();
     }
   }
 });
-
-// Helper function to convert time string (HH:MM:SS) to minutes
-function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
-}

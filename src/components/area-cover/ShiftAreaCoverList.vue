@@ -237,8 +237,31 @@ onMounted(async () => {
     const areaCoverStore = useAreaCoverStore();
     await areaCoverStore.initialize();
     
-    // Verify that we have defaults for this shift type
-    const defaultAssignments = areaCoverStore[`${props.shiftType}Assignments`];
+    // Verify that we have defaults for this shift type - convert to the correct property name
+    // week_day -> weekDayAssignments, week_night -> weekNightAssignments, etc.
+    let storePropertyName;
+    switch(props.shiftType) {
+      case 'week_day':
+        storePropertyName = 'weekDayAssignments';
+        break;
+      case 'week_night':
+        storePropertyName = 'weekNightAssignments';
+        break;
+      case 'weekend_day':
+        storePropertyName = 'weekendDayAssignments';
+        break;
+      case 'weekend_night':
+        storePropertyName = 'weekendNightAssignments';
+        break;
+      default:
+        storePropertyName = null;
+    }
+    
+    console.log(`Looking for assignments in areaCoverStore.${storePropertyName}`);
+    // Create deep copies of default assignments to avoid reference issues
+    const defaultAssignments = storePropertyName ? 
+      JSON.parse(JSON.stringify(areaCoverStore[storePropertyName])) : 
+      [];
     console.log(`Found ${defaultAssignments?.length || 0} default assignments for ${props.shiftType}`);
     
     if (defaultAssignments && defaultAssignments.length > 0) {

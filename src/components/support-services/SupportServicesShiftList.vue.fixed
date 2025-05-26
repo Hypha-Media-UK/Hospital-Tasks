@@ -236,14 +236,10 @@ onMounted(async () => {
   // Set default times based on shift type
   initializeFormDefaults();
   
-  // Load default settings if needed
-  try {
-    const { useSupportServicesStore } = await import('../../stores/supportServicesStore');
-    const supportServicesStoreInstance = useSupportServicesStore();
-    await supportServicesStoreInstance.loadAllServiceAssignments();
-  } catch (error) {
-    console.error('Error loading support service defaults:', error);
-  }
+  // Initialize supportServicesStore to ensure default settings are loaded
+  const { useSupportServicesStore } = await import('../../stores/supportServicesStore');
+  const supportServicesStore = useSupportServicesStore();
+  await supportServicesStore.loadAllServiceAssignments();
 });
 
 // Methods
