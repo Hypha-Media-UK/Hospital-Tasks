@@ -503,6 +503,81 @@ export const useSupportServicesStore = defineStore('supportServices', {
     // Clear error
     clearError() {
       this.error = null;
+    },
+    
+    // Check if a service assignment has coverage gaps
+    hasCoverageGap(assignmentId) {
+      try {
+        // Find the assignment across all shift types
+        let assignment = null;
+        let porterAssignments = [];
+        
+        // Search in all shift types
+        for (const shiftType in this.serviceAssignments) {
+          assignment = this.serviceAssignments[shiftType].find(a => a.id === assignmentId);
+          if (assignment) {
+            porterAssignments = assignment.porter_assignments || [];
+            break;
+          }
+        }
+        
+        if (!assignment) return false;
+        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        
+        // Helper function to convert time string (HH:MM:SS) to minutes
+        const timeToMinutes = (timeStr) => {
+          if (!timeStr) return 0;
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          return (hours * 60) + minutes;
+        };
+        
+        // Convert service times to minutes for easier comparison
+        const serviceStart = timeToMinutes(assignment.start_time);
+        const serviceEnd = timeToMinutes(assignment.end_time);
+        
+        // First check if any single porter covers the entire time period
+        const fullCoverageExists = porterAssignments.some(assignment => {
+          const porterStart = timeToMinutes(assignment.start_time);
+          const porterEnd = timeToMinutes(assignment.end_time);
+          return porterStart <= serviceStart && porterEnd >= serviceEnd;
+        });
+        
+        // If at least one porter provides full coverage, there's no gap
+        if (fullCoverageExists) {
+          return false;
+        }
+        
+        // Sort porter assignments by start time
+        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+        });
+        
+        // Check for gap at the beginning
+        if (timeToMinutes(sortedAssignments[0].start_time) > serviceStart) {
+          return true;
+        }
+        
+        // Check for gaps between porter assignments
+        for (let i = 0; i < sortedAssignments.length - 1; i++) {
+          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+          
+          if (nextStart > currentEnd) {
+            return true;
+          }
+        }
+        
+        // Check for gap at the end
+        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+        if (lastEnd < serviceEnd) {
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasCoverageGap:', error);
+        return false;
+      }
     }
   }
 });

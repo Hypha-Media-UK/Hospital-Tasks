@@ -1,182 +1,182 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay" @click.stop="closeModal">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">
-          Edit {{ assignment.service.name }} Service
-        </h3>
-        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
+        <h3 class="modal-title">Edit {{ assignment.service.name }}</h3>
+        <button class="modal-close" @click.stop="closeModal">&times;</button>
       </div>
       
       <div class="modal-body">
-        <div class="form-group">
-          <label for="start-time">Start Time</label>
-          <input 
-            type="time"
-            id="start-time"
-            v-model="formData.startTime"
-            class="form-control"
-          />
+        <div class="service-info">
+          <div class="service-header">
+            <div class="service-title">
+              <div class="service-name">{{ assignment.service.name }}</div>
+              <div v-if="assignment.service.description" class="service-description">
+                {{ assignment.service.description }}
+              </div>
+            </div>
+            <input 
+              type="color" 
+              id="color" 
+              v-model="localColor" 
+              class="color-picker"
+            />
+          </div>
         </div>
         
-        <div class="form-group">
-          <label for="end-time">End Time</label>
-          <input 
-            type="time"
-            id="end-time"
-            v-model="formData.endTime"
-            class="form-control"
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="color">Color</label>
-          <input 
-            type="color"
-            id="color"
-            v-model="formData.color"
-            class="form-control color-input"
-          />
-        </div>
-        
-        <!-- Porter Assignments Section -->
-        <div class="porter-assignments">
-          <h4 class="section-title">Porter Assignments</h4>
+        <!-- Service Time settings -->
+        <div class="time-settings">
+          <div class="time-group">
+            <label for="startTime">Start Time</label>
+            <input 
+              type="time" 
+              id="startTime" 
+              v-model="localStartTime" 
+            />
+          </div>
           
-          <div v-if="porterAssignments.length === 0" class="empty-state">
-            No porters assigned to this service yet.
+          <div class="time-group">
+            <label for="endTime">End Time</label>
+            <input 
+              type="time" 
+              id="endTime" 
+              v-model="localEndTime" 
+            />
+          </div>
+        </div>
+        
+        <!-- Multiple Porter assignments -->
+        <div class="porter-assignments">
+          <div class="section-title">
+            Porters
+            <span v-if="hasLocalCoverageGap" class="coverage-gap-indicator">
+              Coverage Gap Detected
+            </span>
+          </div>
+          
+          <div v-if="localPorterAssignments.length === 0" class="empty-state">
+            No porters assigned. Add a porter to provide coverage.
           </div>
           
           <div v-else class="porter-list">
             <div 
-              v-for="assignment in porterAssignments" 
-              :key="assignment.id"
-              class="porter-item"
+              v-for="(porterAssignment, index) in localPorterAssignments" 
+              :key="porterAssignment.id || `new-${index}`"
+              class="porter-assignment-item"
             >
-              <div class="porter-info">
-                <div class="porter-name">
-                  {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+              <div class="porter-pill">
+                <span class="porter-name">
+                  {{ porterAssignment.porter.first_name }} {{ porterAssignment.porter.last_name }}
+                </span>
+              </div>
+              
+              <div class="porter-times">
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="porterAssignment.start_time_display" 
+                  />
                 </div>
-                <div class="porter-time">
-                  {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                <span class="time-separator">to</span>
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="porterAssignment.end_time_display" 
+                  />
                 </div>
               </div>
               
-              <div class="porter-actions">
-                <button 
-                  @click="editPorterAssignment(assignment)"
-                  class="btn btn--icon"
-                  title="Edit porter assignment"
-                >
-                  <span class="icon">✏️</span>
-                </button>
-                <button 
-                  @click="removePorterAssignment(assignment.id)"
-                  class="btn btn--icon btn--danger"
-                  title="Remove porter assignment"
-                >
-                  <span class="icon">🗑️</span>
-                </button>
-              </div>
+              <button 
+                class="btn btn--icon" 
+                title="Remove porter assignment"
+                @click.stop="removeLocalPorterAssignment(index)"
+              >
+                &times;
+              </button>
             </div>
           </div>
           
-          <button @click="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2">
-            Add Porter
-          </button>
+          <div class="add-porter">
+            <div v-if="!showAddPorter" class="add-porter-button">
+              <button 
+                class="btn btn--primary" 
+                @click.stop="showAddPorter = true"
+              >
+                Add Porter
+              </button>
+            </div>
+            
+            <div v-else class="add-porter-form">
+              <div class="form-row">
+                <select v-model="newPorterAssignment.porter_id">
+                  <option value="">-- Select Porter --</option>
+                  <option 
+                    v-for="porter in availablePorters" 
+                    :key="porter.id" 
+                    :value="porter.id"
+                  >
+                    {{ porter.first_name }} {{ porter.last_name }}
+                  </option>
+                </select>
+                
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="newPorterAssignment.start_time"
+                    placeholder="Start Time"
+                  />
+                </div>
+                
+                <div class="time-group">
+                  <input 
+                    type="time" 
+                    v-model="newPorterAssignment.end_time"
+                    placeholder="End Time"
+                  />
+                </div>
+                
+                <div class="action-buttons">
+                  <button 
+                    class="btn btn--small btn--primary" 
+                    @click.stop="addLocalPorterAssignment"
+                    :disabled="!newPorterAssignment.porter_id || !newPorterAssignment.start_time || !newPorterAssignment.end_time"
+                  >
+                    Add
+                  </button>
+                  <button 
+                    class="btn btn--small btn--secondary" 
+                    @click.stop="showAddPorter = false"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
       <div class="modal-footer">
-        <button 
-          @click="saveChanges" 
-          class="btn btn--primary"
-          :disabled="saving"
-        >
-          {{ saving ? 'Saving...' : 'Save Changes' }}
-        </button>
-        <button 
-          @click.stop="$emit('close')" 
-          class="btn btn--secondary"
-          :disabled="saving"
-        >
-          Cancel
-        </button>
-        <button 
-          @click="confirmRemove" 
-          class="btn btn--danger ml-auto"
-          :disabled="saving"
-        >
-          Remove Service
-        </button>
-      </div>
-    </div>
-    
-    <!-- Add/Edit Porter Modal -->
-    <div v-if="showPorterModal" class="nested-modal-overlay" @click.self="closePorterModal">
-      <div class="nested-modal-container" @click.stop>
-        <div class="modal-header">
-          <h3 class="modal-title">
-            {{ editingPorterAssignment ? 'Edit Porter Assignment' : 'Add Porter' }}
-          </h3>
-          <button class="modal-close" @click.stop="closePorterModal">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="porter">Select Porter</label>
-            <select 
-              id="porter"
-              v-model="porterForm.porterId"
-              class="form-control"
-              :disabled="editingPorterAssignment"
-            >
-              <option value="">Select a porter</option>
-              <option 
-                v-for="porter in availablePorters" 
-                :key="porter.id" 
-                :value="porter.id"
-              >
-                {{ porter.first_name }} {{ porter.last_name }}
-              </option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="porter-start-time">Start Time</label>
-            <input 
-              type="time"
-              id="porter-start-time"
-              v-model="porterForm.startTime"
-              class="form-control"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="porter-end-time">End Time</label>
-            <input 
-              type="time"
-              id="porter-end-time"
-              v-model="porterForm.endTime"
-              class="form-control"
-            />
-          </div>
-        </div>
-        
-        <div class="modal-footer">
+        <div class="modal-footer-left">
           <button 
-            @click="savePorterAssignment" 
-            class="btn btn--primary"
-            :disabled="!canSavePorter || savingPorter"
+            class="btn btn--danger" 
+            @click.stop="confirmRemove"
           >
-            {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
+            Remove
           </button>
+        </div>
+        <div class="modal-footer-right">
           <button 
-            @click.stop="closePorterModal" 
-            class="btn btn--secondary"
-            :disabled="savingPorter"
+            class="btn btn--secondary" 
+            @click.stop="closeModal"
           >
             Cancel
+          </button>
+          <button 
+            class="btn btn--primary" 
+            @click.stop="saveAllChanges"
+          >
+            Update
           </button>
         </div>
       </div>
@@ -185,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 import { useSupportServicesStore } from '../../stores/supportServicesStore';
 import { useStaffStore } from '../../stores/staffStore';
 
@@ -201,206 +201,228 @@ const emit = defineEmits(['close', 'update', 'remove']);
 const supportServicesStore = useSupportServicesStore();
 const staffStore = useStaffStore();
 
-// Form data for the service assignment
-const formData = ref({
-  startTime: '',
-  endTime: '',
-  color: '#4285F4'
+// Local state for all editable properties
+const localStartTime = ref('');
+const localEndTime = ref('');
+const localColor = ref('#4285F4');
+const localPorterAssignments = ref([]);
+const showAddPorter = ref(false);
+const removedPorterIds = ref([]);
+
+const newPorterAssignment = ref({
+  porter_id: '',
+  start_time: '',
+  end_time: ''
 });
 
-// Form data for porter assignment
-const porterForm = ref({
-  porterId: '',
-  startTime: '',
-  endTime: ''
-});
-
-// UI state
-const saving = ref(false);
-const showPorterModal = ref(false);
-const showAddPorterModal = ref(false);
-const editingPorterAssignment = ref(false);
-const editingPorterAssignmentId = ref(null);
-const savingPorter = ref(false);
-
-// Initialize form data
-onMounted(() => {
-  // Load service data
-  formData.value = {
-    startTime: props.assignment.start_time ? props.assignment.start_time.substring(0, 5) : '08:00',
-    endTime: props.assignment.end_time ? props.assignment.end_time.substring(0, 5) : '16:00',
-    color: props.assignment.color || '#4285F4'
-  };
-  
-  // Load porters if not already loaded
-  if (!staffStore.porters.length) {
-    staffStore.fetchPorters();
-  }
-});
-
-// Computed properties
-const porterAssignments = computed(() => {
-  return props.assignment.porter_assignments || [];
-});
-
+// Computed property for determining what porters are available
 const availablePorters = computed(() => {
-  // Get porters from the shift pool or all porters
+  // Get all porters
   const allPorters = staffStore.porters.filter(p => p.role === 'porter');
   
-  // If editing an existing assignment, include the current porter
-  if (editingPorterAssignment.value && porterForm.value.porterId) {
-    // Check if the current porter is already in the list
-    const currentPorterInList = allPorters.some(p => p.id === porterForm.value.porterId);
+  // Filter out porters that are already in our local assignments
+  const assignedPorterIds = localPorterAssignments.value.map(pa => pa.porter_id);
+  return allPorters.filter(porter => !assignedPorterIds.includes(porter.id));
+});
+
+// Check for coverage gaps with local data
+const hasLocalCoverageGap = computed(() => {
+  if (localPorterAssignments.value.length === 0) return true;
+  
+  // Convert service times to minutes for easier comparison
+  const serviceStart = timeToMinutes(localStartTime.value + ':00');
+  const serviceEnd = timeToMinutes(localEndTime.value + ':00');
+  
+  // First check if any single porter covers the entire time period
+  const fullCoverageExists = localPorterAssignments.value.some(assignment => {
+    const porterStart = timeToMinutes(assignment.start_time_display + ':00');
+    const porterEnd = timeToMinutes(assignment.end_time_display + ':00');
+    return porterStart <= serviceStart && porterEnd >= serviceEnd;
+  });
+  
+  // If at least one porter provides full coverage, there's no gap
+  if (fullCoverageExists) {
+    return false;
+  }
+  
+  // Sort porter assignments by start time
+  const sortedAssignments = [...localPorterAssignments.value].sort((a, b) => {
+    return timeToMinutes(a.start_time_display + ':00') - timeToMinutes(b.start_time_display + ':00');
+  });
+  
+  // Check for gap at the beginning
+  if (timeToMinutes(sortedAssignments[0].start_time_display + ':00') > serviceStart) {
+    return true;
+  }
+  
+  // Check for gaps between porter assignments
+  for (let i = 0; i < sortedAssignments.length - 1; i++) {
+    const currentEnd = timeToMinutes(sortedAssignments[i].end_time_display + ':00');
+    const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time_display + ':00');
     
-    // If not in list, add them
-    if (!currentPorterInList) {
-      const currentPorter = staffStore.porters.find(p => p.id === porterForm.value.porterId);
-      if (currentPorter) {
-        return [...allPorters, currentPorter];
-      }
+    if (nextStart > currentEnd) {
+      return true;
     }
   }
   
-  // Return all porters
-  return allPorters;
-});
-
-const canSavePorter = computed(() => {
-  return porterForm.value.porterId && 
-         porterForm.value.startTime && 
-         porterForm.value.endTime;
+  // Check for gap at the end
+  const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time_display + ':00');
+  if (lastEnd < serviceEnd) {
+    return true;
+  }
+  
+  return false;
 });
 
 // Methods
-const saveChanges = async () => {
-  saving.value = true;
+const closeModal = () => {
+  emit('close');
+};
+
+const addLocalPorterAssignment = () => {
+  if (!newPorterAssignment.value.porter_id || 
+      !newPorterAssignment.value.start_time || 
+      !newPorterAssignment.value.end_time) {
+    return;
+  }
   
+  // Find the porter in the list
+  const porter = staffStore.porters.find(p => p.id === newPorterAssignment.value.porter_id);
+  
+  if (porter) {
+    // Add to local state with a temporary ID
+    localPorterAssignments.value.push({
+      id: `temp-${Date.now()}`,
+      support_service_assignment_id: props.assignment.id,
+      porter_id: newPorterAssignment.value.porter_id,
+      start_time: newPorterAssignment.value.start_time + ':00',
+      end_time: newPorterAssignment.value.end_time + ':00',
+      start_time_display: newPorterAssignment.value.start_time,
+      end_time_display: newPorterAssignment.value.end_time,
+      porter: porter,
+      isNew: true
+    });
+  }
+  
+  // Reset form
+  newPorterAssignment.value = {
+    porter_id: '',
+    start_time: '',
+    end_time: ''
+  };
+  
+  showAddPorter.value = false;
+};
+
+const removeLocalPorterAssignment = (index) => {
+  const assignment = localPorterAssignments.value[index];
+  
+  // If it's an existing assignment (has a real DB ID), track it for deletion
+  if (assignment.id && !assignment.isNew) {
+    removedPorterIds.value.push(assignment.id);
+  }
+  
+  // Remove from local array
+  localPorterAssignments.value.splice(index, 1);
+};
+
+const saveAllChanges = async () => {
   try {
-    // Format times for storage (add seconds)
-    const startTime = formData.value.startTime + ':00';
-    const endTime = formData.value.endTime + ':00';
-    
-    // Update service assignment
+    // 1. Update service assignment (times, color)
     await supportServicesStore.updateServiceAssignment(props.assignment.id, {
-      start_time: startTime,
-      end_time: endTime,
-      color: formData.value.color
+      start_time: localStartTime.value + ':00',
+      end_time: localEndTime.value + ':00',
+      color: localColor.value
     });
     
-    emit('update', props.assignment.id, {
-      start_time: startTime,
-      end_time: endTime,
-      color: formData.value.color
-    });
+    // 2. Remove porter assignments that were deleted
+    for (const porterId of removedPorterIds.value) {
+      await supportServicesStore.removePorterAssignment(porterId);
+    }
     
-    emit('close');
+    // 3. Process porter assignments
+    for (const assignment of localPorterAssignments.value) {
+      if (assignment.isNew) {
+        // Add new assignment
+        await supportServicesStore.addPorterToServiceAssignment(
+          props.assignment.id,
+          assignment.porter_id,
+          assignment.start_time,
+          assignment.end_time
+        );
+      } else {
+        // Update existing assignment
+        await supportServicesStore.updatePorterAssignment(assignment.id, {
+          start_time: assignment.start_time_display + ':00',
+          end_time: assignment.end_time_display + ':00'
+        });
+      }
+    }
+    
+    // Close the modal
+    closeModal();
   } catch (error) {
     console.error('Error saving changes:', error);
-  } finally {
-    saving.value = false;
+    alert('Failed to save changes. Please try again.');
   }
 };
 
 const confirmRemove = () => {
-  if (confirm(`Are you sure you want to remove ${props.assignment.service.name} from this shift?`)) {
+  if (confirm(`Are you sure you want to remove ${props.assignment.service.name} from coverage?`)) {
     emit('remove', props.assignment.id);
   }
 };
 
-// Porter assignment methods
-const editPorterAssignment = (assignment) => {
-  editingPorterAssignment.value = true;
-  editingPorterAssignmentId.value = assignment.id;
+// Helper function to convert time string (HH:MM:SS) to minutes
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
   
-  porterForm.value = {
-    porterId: assignment.porter_id,
-    startTime: assignment.start_time ? assignment.start_time.substring(0, 5) : '08:00',
-    endTime: assignment.end_time ? assignment.end_time.substring(0, 5) : '16:00'
-  };
-  
-  showPorterModal.value = true;
-};
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
 
-const closePorterModal = () => {
-  showPorterModal.value = false;
-  showAddPorterModal.value = false;
-  editingPorterAssignment.value = false;
-  editingPorterAssignmentId.value = null;
-  
-  // Reset form
-  porterForm.value = {
-    porterId: '',
-    startTime: '',
-    endTime: ''
-  };
-};
-
-const savePorterAssignment = async () => {
-  if (!canSavePorter.value || savingPorter.value) return;
-  
-  savingPorter.value = true;
-  
-  try {
-    // Format times for storage (add seconds)
-    const startTime = porterForm.value.startTime + ':00';
-    const endTime = porterForm.value.endTime + ':00';
-    
-    if (editingPorterAssignment.value) {
-      // Update existing assignment
-      await supportServicesStore.updatePorterAssignment(editingPorterAssignmentId.value, {
-        start_time: startTime,
-        end_time: endTime
-      });
-    } else {
-      // Add new assignment
-      await supportServicesStore.addPorterToServiceAssignment(
-        props.assignment.id,
-        porterForm.value.porterId,
-        startTime,
-        endTime
-      );
-    }
-    
-    closePorterModal();
-  } catch (error) {
-    console.error('Error saving porter assignment:', error);
-  } finally {
-    savingPorter.value = false;
+// Initialize component state from props
+const initializeState = () => {
+  // Initialize times
+  if (props.assignment.start_time) {
+    localStartTime.value = props.assignment.start_time.slice(0, 5);
   }
-};
-
-const removePorterAssignment = async (assignmentId) => {
-  if (confirm('Are you sure you want to remove this porter assignment?')) {
-    await supportServicesStore.removePorterAssignment(assignmentId);
+  
+  if (props.assignment.end_time) {
+    localEndTime.value = props.assignment.end_time.slice(0, 5);
   }
+  
+  // Initialize color
+  localColor.value = props.assignment.color || '#4285F4';
+  
+  // Initialize porter assignments
+  const assignments = props.assignment.porter_assignments || [];
+  localPorterAssignments.value = assignments.map(pa => ({
+    ...pa,
+    start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
+    end_time_display: pa.end_time ? pa.end_time.slice(0, 5) : ''
+  }));
+  
+  // Clear the removed porters list
+  removedPorterIds.value = [];
 };
 
-// Helper methods
-const formatTime = (timeStr) => {
-  if (!timeStr) return '';
-  return timeStr.substring(0, 5); // Extract HH:MM from HH:MM:SS
-};
-
-// Watch for "Add Porter" button click
-watch(showAddPorterModal, (newValue) => {
-  if (newValue) {
-    // Set default values for the form
-    porterForm.value = {
-      porterId: '',
-      startTime: formData.value.startTime,
-      endTime: formData.value.endTime
-    };
-    
-    showPorterModal.value = true;
+// Fetch porters if not already loaded
+onMounted(async () => {
+  if (staffStore.porters.length === 0) {
+    await staffStore.fetchPorters();
   }
+  
+  initializeState();
 });
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
 @use '../../assets/scss/mixins' as mix;
+@use 'sass:color';
 
-.modal-overlay, .nested-modal-overlay {
+// Modal styles
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -413,15 +435,11 @@ watch(showAddPorterModal, (newValue) => {
   z-index: 1000;
 }
 
-.nested-modal-overlay {
-  z-index: 1001;
-}
-
-.modal-container, .nested-modal-container {
+.modal-container {
   background-color: white;
   border-radius: mix.radius('lg');
   width: 90%;
-  max-width: 500px;
+  max-width: 550px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -455,92 +473,268 @@ watch(showAddPorterModal, (newValue) => {
   padding: 16px;
   overflow-y: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .modal-footer {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.form-group {
-  margin-bottom: 16px;
+  justify-content: space-between;
   
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
+  &-left {
+    // Left side of footer
   }
   
-  .form-control {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: mix.radius('md');
-    font-size: mix.font-size('md');
+  &-right {
+    display: flex;
+    gap: 12px;
+  }
+}
+
+// Section title
+.section-title {
+  font-weight: 600;
+  font-size: mix.font-size('md');
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// Service info
+.service-info {
+  margin-bottom: 12px;
+  
+  .service-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     
-    &.color-input {
-      height: 40px;
-      padding: 4px;
+    .service-title {
+      flex: 1;
+    }
+    
+    .service-name {
+      font-weight: 600;
+      font-size: mix.font-size('lg');
+    }
+    
+    .service-description {
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
+    }
+    
+    .color-picker {
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('sm');
       cursor: pointer;
+      
+      &:focus {
+        outline: none;
+        border-color: mix.color('primary');
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      }
     }
   }
 }
 
-.section-title {
-  font-size: mix.font-size('md');
-  font-weight: 600;
-  margin: 24px 0 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+// Time settings
+.time-settings {
+  display: flex;
+  gap: 16px;
+  
+  .time-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    label {
+      font-size: mix.font-size('sm');
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.7);
+    }
+    
+    input[type="time"] {
+      padding: 6px 8px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('sm');
+      font-size: mix.font-size('md');
+      
+      &:focus {
+        outline: none;
+        border-color: mix.color('primary');
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      }
+    }
+  }
+}
+
+// Porter assignments
+.porter-assignments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  padding: 12px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: mix.radius('md');
 }
 
 .porter-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 16px;
 }
 
-.porter-item {
+.porter-assignment-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: mix.radius('md');
+  background-color: white;
   
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.04);
-  }
-}
-
-.porter-info {
-  .porter-name {
-    font-weight: 500;
+  .porter-pill {
+    min-width: 120px;
+    margin-right: auto;
+    
+    .porter-name {
+      display: inline-block;
+      background-color: rgba(66, 133, 244, 0.1);
+      color: mix.color('primary');
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: mix.font-size('sm');
+      font-weight: 500;
+      white-space: nowrap;
+    }
   }
   
-  .porter-time {
-    font-size: mix.font-size('sm');
+  .porter-times {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 8px;
+    
+    .time-group {
+      input[type="time"] {
+        padding: 4px 6px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: mix.radius('sm');
+        font-size: mix.font-size('sm');
+      }
+    }
+    
+    .time-separator {
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+  
+  .btn--icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.05);
     color: rgba(0, 0, 0, 0.6);
+    
+    &:hover {
+      background-color: rgba(234, 67, 53, 0.1);
+      color: #EA4335;
+    }
   }
 }
 
-.porter-actions {
+.add-porter {
+  margin-top: 8px;
+}
+
+.add-porter-button {
   display: flex;
-  gap: 4px;
+  justify-content: flex-end;
 }
 
-.empty-state {
-  padding: 16px;
-  text-align: center;
-  color: rgba(0, 0, 0, 0.6);
-  background-color: rgba(0, 0, 0, 0.02);
+.add-porter-form {
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: mix.radius('md');
+  background-color: rgba(0, 0, 0, 0.02);
+  
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    
+    select {
+      flex: 1;
+      min-width: 150px;
+      padding: 6px 8px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('sm');
+      font-size: mix.font-size('sm');
+    }
+    
+    .time-group {
+      width: 90px;
+      
+      input[type="time"] {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: mix.radius('sm');
+        font-size: mix.font-size('sm');
+      }
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .form-row {
+      flex-direction: column;
+      align-items: stretch;
+      
+      select, .time-group {
+        width: 100%;
+      }
+      
+      .action-buttons {
+        margin-top: 8px;
+        justify-content: flex-end;
+      }
+    }
+  }
 }
 
+// Coverage gap indicator
+.coverage-gap-indicator {
+  background-color: rgba(234, 67, 53, 0.1);
+  color: #EA4335;
+  font-size: mix.font-size('xs');
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+// Button styles
 .btn {
   padding: 8px 16px;
   border-radius: mix.radius('md');
@@ -554,7 +748,7 @@ watch(showAddPorterModal, (newValue) => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(mix.color('primary'), $lightness: -10%);
+      background-color: color.adjust(mix.color('primary'), $lightness: -5%);
     }
   }
   
@@ -563,53 +757,27 @@ watch(showAddPorterModal, (newValue) => {
     color: mix.color('text');
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#f1f1f1, $lightness: -5%);
+      background-color: color.adjust(#f1f1f1, $lightness: -5%);
     }
   }
   
   &--danger {
-    background-color: #EA4335;
-    color: white;
+    background-color: rgba(234, 67, 53, 0.1);
+    color: #EA4335;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#EA4335, $lightness: -10%);
+      background-color: rgba(234, 67, 53, 0.2);
     }
   }
   
-  &--sm {
-    padding: 6px 12px;
+  &--small {
+    padding: 4px 8px;
     font-size: mix.font-size('sm');
-  }
-  
-  &--icon {
-    padding: 4px;
-    border-radius: 4px;
-    background: transparent;
-    
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
-    }
-    
-    &.btn--danger:hover {
-      background-color: rgba(234, 67, 53, 0.1);
-    }
-    
-    .icon {
-      font-size: 16px;
-    }
   }
   
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
-}
-
-.ml-auto {
-  margin-left: auto;
-}
-
-.mt-2 {
-  margin-top: 8px;
 }
 </style>
