@@ -57,7 +57,13 @@ const activeTab = ref('staff');
 // Set active tab based on current route
 onMounted(() => {
   if (route.path === '/settings') {
-    activeTab.value = 'settings';
+    // Check if the user was redirected from /default-support
+    const redirectedFrom = route.redirectedFrom?.path;
+    if (redirectedFrom === '/default-support') {
+      activeTab.value = 'supportServices';
+    } else {
+      activeTab.value = 'settings';
+    }
   } else if (route.path === '/') {
     activeTab.value = 'staff'; // Default for home route
   }

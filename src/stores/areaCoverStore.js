@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
 
+// Helper function to convert time string (HH:MM:SS) to minutes
+function timeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
+
 export const useAreaCoverStore = defineStore('areaCover', {
   state: () => ({
     departments: [],
@@ -34,6 +42,75 @@ export const useAreaCoverStore = defineStore('areaCover', {
       return state.porterAssignments.filter(
         pa => pa.default_area_cover_assignment_id === areaAssignmentId
       );
+    },
+    
+    // Get sorted assignments by shift type (migrated from defaultAreaCoverStore)
+    getSortedAssignmentsByType: (state) => (shiftType) => {
+      const assignments = state.areaAssignments.filter(a => a.shift_type === shiftType);
+      return [...assignments].sort((a, b) => {
+        return a.department.name.localeCompare(b.department.name);
+      });
+    },
+    
+    // Check for coverage gaps (migrated from defaultAreaCoverStore)
+    hasCoverageGap: (state) => (areaCoverId) => {
+      try {
+        const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
+        if (!assignment) return false;
+        
+        const porterAssignments = state.porterAssignments.filter(
+          pa => pa.default_area_cover_assignment_id === areaCoverId
+        );
+        
+        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        
+        // Convert department times to minutes for easier comparison
+        const departmentStart = timeToMinutes(assignment.start_time);
+        const departmentEnd = timeToMinutes(assignment.end_time);
+      
+        // First check if any single porter covers the entire time period
+        const fullCoverageExists = porterAssignments.some(assignment => {
+          const porterStart = timeToMinutes(assignment.start_time);
+          const porterEnd = timeToMinutes(assignment.end_time);
+          return porterStart <= departmentStart && porterEnd >= departmentEnd;
+        });
+        
+        // If at least one porter provides full coverage, there's no gap
+        if (fullCoverageExists) {
+          return false;
+        }
+        
+        // Sort porter assignments by start time
+        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+        });
+        
+        // Check for gap at the beginning
+        if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
+          return true;
+        }
+        
+        // Check for gaps between porter assignments
+        for (let i = 0; i < sortedAssignments.length - 1; i++) {
+          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+          
+          if (nextStart > currentEnd) {
+            return true;
+          }
+        }
+        
+        // Check for gap at the end
+        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+        if (lastEnd < departmentEnd) {
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasCoverageGap:', error);
+        return false;
+      }
     }
   },
   
@@ -44,6 +121,27 @@ export const useAreaCoverStore = defineStore('areaCover', {
         await this.fetchAreaAssignments();
       }
       return this.getAssignmentsByShiftType(shiftType);
+    },
+    
+    // Fetch assignments by shift type (for compatibility with components)
+    async fetchAssignments(shiftType) {
+      await this.fetchAreaAssignments();
+      return this.getAssignmentsByShiftType(shiftType);
+    },
+    
+    // For compatibility with DefaultAreaCoverSection component
+    async addDepartment(departmentId, shiftType, startTime, endTime, color = '#4285F4') {
+      return this.addAreaAssignment(departmentId, shiftType, startTime, endTime, color);
+    },
+    
+    // For compatibility with DefaultAreaCoverSection component
+    async updateDepartment(assignmentId, updates) {
+      return this.updateAreaAssignment(assignmentId, updates);
+    },
+    
+    // For compatibility with DefaultAreaCoverSection component
+    async removeDepartment(assignmentId) {
+      return this.deleteAreaAssignment(assignmentId);
     },
     
     // Fetch all area assignments (for settings/defaults)

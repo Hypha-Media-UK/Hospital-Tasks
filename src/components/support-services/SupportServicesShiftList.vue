@@ -141,7 +141,8 @@ import EditServiceModal from './EditServiceModal.vue';
 const props = defineProps({
   shiftId: {
     type: String,
-    required: true
+    required: false,
+    default: null
   },
   shiftType: {
     type: String,
@@ -173,9 +174,21 @@ const addServiceForm = ref({
 });
 
 // Computed properties
-const loading = computed(() => shiftsStore.loading.supportServices);
+const loading = computed(() => {
+  // If we're in settings view (no shiftId), use supportServicesStore loading
+  if (!props.shiftId) {
+    return supportServicesStore.loading.services;
+  }
+  return shiftsStore.loading.supportServices;
+});
 
 const serviceAssignments = computed(() => {
+  // In settings view - use defaults from supportServicesStore
+  if (!props.shiftId) {
+    return supportServicesStore.getSortedAssignmentsByType(props.shiftType) || [];
+  }
+  
+  // In shift view - use shift-specific assignments
   console.log(`Computing service assignments for shift ${props.shiftId}; total: ${shiftsStore.shiftSupportServiceAssignments.length}`);
   return shiftsStore.shiftSupportServiceAssignments.filter(
     assignment => assignment.shift_id === props.shiftId
@@ -201,7 +214,7 @@ const availableServices = computed(() => {
   // Get all services (ensure it's an array)
   const allServices = supportServicesStore.supportServices || [];
   
-  // Get ids of services already assigned to this shift
+  // Get ids of services already assigned to this shift or settings
   const assignments = serviceAssignments.value || [];
   const assignedServiceIds = assignments.map(a => a.service_id);
   
@@ -231,23 +244,18 @@ onMounted(async () => {
     await staffStore.fetchPorters();
   }
   
-  // Load support service assignments for this shift
-  await shiftsStore.fetchShiftSupportServices(props.shiftId);
+  // If we have a shiftId, load shift-specific assignments
+  if (props.shiftId) {
+    await shiftsStore.fetchShiftSupportServices(props.shiftId);
+  } else {
+    // Load default assignments for this shift type
+    if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
+      await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+    }
+  }
   
   // Set default times based on shift type
   initializeFormDefaults();
-  
-  // Initialize support services store
-  try {
-    // We already have supportServicesStore injected, so just use it
-    if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
-      await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
-    } else {
-      console.log('Support service defaults store loaded, but ensureAssignmentsLoaded not available');
-    }
-  } catch (error) {
-    console.error('Error initializing support services store:', error);
-  }
 });
 
 // Methods
@@ -274,20 +282,37 @@ async function addService() {
   isSubmitting.value = true;
   
   try {
-    await shiftsStore.addShiftSupportService(
-      props.shiftId,
-      addServiceForm.value.serviceId,
-      addServiceForm.value.startTime,
-      addServiceForm.value.endTime,
-      addServiceForm.value.color
-    );
+    if (props.shiftId) {
+      // Add to specific shift
+      await shiftsStore.addShiftSupportService(
+        props.shiftId,
+        addServiceForm.value.serviceId,
+        addServiceForm.value.startTime,
+        addServiceForm.value.endTime,
+        addServiceForm.value.color
+      );
+      
+      // Reload the service assignments
+      await shiftsStore.fetchShiftSupportServices(props.shiftId);
+    } else {
+      // Add to default settings
+      await supportServicesStore.addServiceAssignment(
+        addServiceForm.value.serviceId,
+        props.shiftType,
+        addServiceForm.value.startTime,
+        addServiceForm.value.endTime,
+        addServiceForm.value.color
+      );
+      
+      // Reload the default assignments
+      if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
+        await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+      }
+    }
     
     // Reset form and close modal
     addServiceForm.value.serviceId = '';
     showAddServiceModal.value = false;
-    
-    // Reload the service assignments
-    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error adding service assignment:', error);
   } finally {
@@ -302,12 +327,24 @@ function openEditModal(assignment) {
 
 async function updateAssignment(assignmentId, updates) {
   try {
-    await shiftsStore.updateShiftSupportService(assignmentId, updates);
+    if (props.shiftId) {
+      // Update in specific shift
+      await shiftsStore.updateShiftSupportService(assignmentId, updates);
+      
+      // Reload assignments to ensure we have the latest data
+      await shiftsStore.fetchShiftSupportServices(props.shiftId);
+    } else {
+      // Update in default settings
+      await supportServicesStore.updateServiceAssignment(assignmentId, updates);
+      
+      // Reload the default assignments
+      if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
+        await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+      }
+    }
+    
     showEditModal.value = false;
     selectedAssignment.value = null;
-    
-    // Reload assignments to ensure we have the latest data
-    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error updating assignment:', error);
   }
@@ -316,8 +353,14 @@ async function updateAssignment(assignmentId, updates) {
 async function confirmRemove(assignmentId) {
   if (confirm('Are you sure you want to remove this service assignment?')) {
     try {
-      // This now uses the shiftsStore method to remove only from this shift
-      await shiftsStore.removeShiftSupportService(assignmentId);
+      if (props.shiftId) {
+        // Remove from specific shift
+        await shiftsStore.removeShiftSupportService(assignmentId);
+      } else {
+        // Remove from default settings
+        await supportServicesStore.deleteServiceAssignment(assignmentId);
+      }
+      
       showEditModal.value = false;
       selectedAssignment.value = null;
     } catch (error) {
