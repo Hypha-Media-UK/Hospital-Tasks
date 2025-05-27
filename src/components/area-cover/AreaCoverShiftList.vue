@@ -1,11 +1,10 @@
 <template>
   <div class="area-cover-shift-list">
-    <div class="area-cover-shift-list__header">
-      <h4>{{ shiftTypeLabel }} Coverage</h4>
-      <button class="btn btn--primary" @click="showDepartmentSelector = true">
-        Add Department
-      </button>
-    </div>
+  <div class="area-cover-shift-list__header">
+    <button class="btn btn--primary" @click="showDepartmentSelector = true">
+      Add Department
+    </button>
+  </div>
     
     <div v-if="areaCoverStore.loading[shiftType]" class="loading">
       Loading {{ shiftTypeLabel.toLowerCase() }} coverage...
@@ -200,14 +199,9 @@ onMounted(async () => {
 .area-cover-shift-list {
   &__header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 16px;
-    
-    h4 {
-      margin: 0;
-      font-size: mix.font-size('lg');
-    }
   }
 }
 

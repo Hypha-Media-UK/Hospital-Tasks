@@ -108,7 +108,9 @@ function formatTimeRange(shiftSettings) {
     
     &--active {
       color: mix.color('primary');
-      box-shadow: inset 0 -2px 0 mix.color('primary');
+      background-color: rgba(66, 133, 244, 0.1);
+      box-shadow: inset 0 -3px 0 mix.color('primary');
+      font-weight: 600;
     }
   }
   

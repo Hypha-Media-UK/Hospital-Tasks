@@ -120,27 +120,33 @@
                   <td>{{ getTaskCount(shift.id) }}</td>
                   <td>
                     <div class="action-buttons">
-                      <button @click="viewShift(shift.id)" class="btn btn-primary btn-small">
-                        View
-                      </button>
-                      
-                      <button 
-                        v-if="!confirmingDelete[shift.id]" 
-                        @click="confirmDelete(shift.id)" 
-                        class="btn btn-danger btn-small"
-                        :disabled="isDeleting[shift.id]"
+                      <IconButton 
+                        @click="viewShift(shift.id)"
+                        title="View shift details"
                       >
-                        Delete
-                      </button>
+                        <EditIcon :size="18" />
+                      </IconButton>
                       
-                      <button 
+                      <IconButton 
+                        v-if="!confirmingDelete[shift.id]" 
+                        @click="confirmDelete(shift.id)"
+                        :disabled="isDeleting[shift.id]"
+                        title="Delete shift"
+                        class="delete-button"
+                      >
+                        <TrashIcon :size="18" />
+                      </IconButton>
+                      
+                      <IconButton 
                         v-else
                         @click="deleteShift(shift.id)" 
-                        class="btn btn-danger btn-small confirm-delete"
                         :disabled="isDeleting[shift.id]"
+                        title="Confirm delete"
+                        class="confirm-delete-button"
                       >
-                        {{ isDeleting[shift.id] ? 'Deleting...' : 'Sure?' }}
-                      </button>
+                        <ExclamationIcon v-if="!isDeleting[shift.id]" :size="18" />
+                        <span v-else class="loading-dots">...</span>
+                      </IconButton>
                     </div>
                   </td>
                 </tr>
@@ -160,6 +166,10 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import DayShiftIcon from '../components/icons/DayShiftIcon.vue';
 import NightShiftIcon from '../components/icons/NightShiftIcon.vue';
+import EditIcon from '../components/icons/EditIcon.vue';
+import TrashIcon from '../components/icons/TrashIcon.vue';
+import ExclamationIcon from '../components/icons/ExclamationIcon.vue';
+import IconButton from '../components/IconButton.vue';
 
 const router = useRouter();
 const shiftsStore = useShiftsStore();
@@ -529,6 +539,39 @@ function calculateDuration(startTime, endTime) {
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+  
+  .delete-button {
+    color: #dc3545;
+    
+    &:hover {
+      background-color: rgba(220, 53, 69, 0.1);
+    }
+  }
+  
+  .confirm-delete-button {
+    color: #fd7e14;
+    animation: pulse 1.5s infinite;
+    
+    &:hover {
+      background-color: rgba(253, 126, 20, 0.1);
+    }
+    
+    .loading-dots {
+      font-size: 14px;
+      letter-spacing: 1px;
+      display: inline-block;
+      animation: loading 1.5s infinite;
+    }
+  }
+}
+
+@keyframes loading {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .btn {

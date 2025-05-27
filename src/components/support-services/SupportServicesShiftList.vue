@@ -9,16 +9,15 @@
     <div v-else-if="serviceAssignments.length === 0" class="empty-state">
       <p>No support services have been assigned to this shift type.</p>
       <button @click="showAddServiceModal = true" class="btn-add-service">
-        <span class="icon">+</span> Add Service
+        Add Service
       </button>
     </div>
     
     <!-- Service Assignments List -->
     <div v-else>
       <div class="services-list-header">
-        <h4 v-if="showHeader">{{ shiftTypeLabel }} Coverage</h4>
         <button @click="showAddServiceModal = true" class="btn-add-service">
-          <span class="icon">+</span> Add Service
+          Add Service
         </button>
       </div>
       
@@ -373,36 +372,23 @@ async function confirmRemove(assignmentId) {
   
   .services-list-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 16px;
-    
-    h4 {
-      margin: 0;
-      font-size: mix.font-size('md');
-    }
   }
   
   .btn-add-service {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: none;
-    background-color: mix.color('primary');
-    color: white;
+    padding: 8px 16px;
     border-radius: mix.radius('md');
     font-weight: 500;
     cursor: pointer;
-    font-size: mix.font-size('sm');
+    border: none;
+    transition: all 0.2s ease;
+    background-color: mix.color('primary');
+    color: white;
     
     &:hover {
       background-color: color.scale(mix.color('primary'), $lightness: -10%);
-    }
-    
-    .icon {
-      font-size: 16px;
-      font-weight: bold;
     }
   }
   
