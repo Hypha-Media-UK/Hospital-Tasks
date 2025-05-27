@@ -278,6 +278,28 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        console.log('Fetching archived shifts from database...');
+        
+        // First check that archived shifts exist
+        const { count, error: countError } = await supabase
+          .from('shifts')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', false);
+          
+        if (countError) {
+          console.error('Error counting archived shifts:', countError);
+          throw countError;
+        }
+        
+        console.log(`Found ${count} archived shifts in database`);
+        
+        // If no archived shifts, set empty array and return early
+        if (count === 0) {
+          this.archivedShifts = [];
+          return;
+        }
+        
+        // Fetch the actual shifts with supervisor data
         const { data, error } = await supabase
           .from('shifts')
           .select(`
@@ -287,7 +309,23 @@ export const useShiftsStore = defineStore('shifts', {
           .eq('is_active', false)
           .order('end_time', { ascending: false });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching archived shifts data:', error);
+          throw error;
+        }
+        
+        console.log(`Retrieved ${data?.length || 0} archived shifts with supervisor data`);
+        
+        // Check if we got the expected number of shifts
+        if (data && data.length !== count) {
+          console.warn(`Count mismatch: Expected ${count} archived shifts but received ${data.length}`);
+        }
+        
+        // Check for shifts with missing end_time and fix them
+        const shiftsWithoutEndTime = data?.filter(shift => !shift.end_time) || [];
+        if (shiftsWithoutEndTime.length > 0) {
+          console.warn(`Found ${shiftsWithoutEndTime.length} archived shifts with missing end_time`);
+        }
         
         this.archivedShifts = data || [];
       } catch (error) {
@@ -1425,6 +1463,33 @@ export const useShiftsStore = defineStore('shifts', {
         return false;
       } finally {
         this.loading.porterPool = false;
+      }
+    },
+    
+    // Delete a shift
+    async deleteShift(shiftId) {
+      this.loading.deleteShift = true;
+      this.error = null;
+      
+      try {
+        // Delete the shift
+        const { error } = await supabase
+          .from('shifts')
+          .delete()
+          .eq('id', shiftId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.archivedShifts = this.archivedShifts.filter(shift => shift.id !== shiftId);
+        
+        return true;
+      } catch (error) {
+        console.error('Error deleting shift:', error);
+        this.error = 'Failed to delete shift';
+        return false;
+      } finally {
+        this.loading.deleteShift = false;
       }
     }
   }

@@ -37,6 +37,22 @@
                 <input 
                   type="radio" 
                   v-model="typeFilter" 
+                  value="weekday" 
+                  name="type-filter"
+                /> Weekday Shifts
+              </label>
+              <label>
+                <input 
+                  type="radio" 
+                  v-model="typeFilter" 
+                  value="weekend" 
+                  name="type-filter"
+                /> Weekend Shifts
+              </label>
+              <label>
+                <input 
+                  type="radio" 
+                  v-model="typeFilter" 
                   value="day" 
                   name="type-filter"
                 /> Day Shifts
@@ -89,9 +105,12 @@
                 <tr 
                   v-for="shift in filteredAndSortedShifts" 
                   :key="shift.id"
-                  :class="{ 'day-shift': shift.shift_type === 'day', 'night-shift': shift.shift_type === 'night' }"
+                  :class="{ 
+                    'day-shift': shift.shift_type.includes('day'), 
+                    'night-shift': shift.shift_type.includes('night') 
+                  }"
                 >
-                  <td>{{ shift.shift_type === 'day' ? 'Day' : 'Night' }}</td>
+                  <td>{{ formatShiftType(shift.shift_type) }}</td>
                   <td>
                     {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
                   </td>
@@ -160,7 +179,15 @@ const filteredAndSortedShifts = computed(() => {
   
   // Apply type filter
   if (typeFilter.value !== 'all') {
-    shifts = shifts.filter(shift => shift.shift_type === typeFilter.value);
+    if (typeFilter.value === 'weekday') {
+      shifts = shifts.filter(shift => shift.shift_type.includes('week_'));
+    } else if (typeFilter.value === 'weekend') {
+      shifts = shifts.filter(shift => shift.shift_type.includes('weekend_'));
+    } else if (typeFilter.value === 'day') {
+      shifts = shifts.filter(shift => shift.shift_type.includes('day'));
+    } else if (typeFilter.value === 'night') {
+      shifts = shifts.filter(shift => shift.shift_type.includes('night'));
+    }
   }
   
   // Apply search filter
@@ -225,23 +252,32 @@ function hexToRgba(hex, alpha = 1) {
 
 // Get tinted versions of the user-defined shift colors
 const dayShiftBgColor = computed(() => {
-  const hexColor = settingsStore.shiftDefaults.day.color;
+  // Use week_day color or fallback to a default if not available
+  const hexColor = settingsStore.shiftDefaults?.week_day?.color || '#4285F4';
   return hexToRgba(hexColor, 0.15);
 });
 
 const nightShiftBgColor = computed(() => {
-  const hexColor = settingsStore.shiftDefaults.night.color;
+  // Use week_night color or fallback to a default if not available
+  const hexColor = settingsStore.shiftDefaults?.week_night?.color || '#673AB7';
   return hexToRgba(hexColor, 0.15);
 });
 
 // Load data on component mount
 onMounted(async () => {
   loading.value = true;
-  await Promise.all([
-    shiftsStore.fetchArchivedShifts(),
-    settingsStore.loadSettings()
-  ]);
-  loading.value = false;
+  try {
+    console.log('Loading archived shifts...');
+    await Promise.all([
+      shiftsStore.fetchArchivedShifts(),
+      settingsStore.loadSettings()
+    ]);
+    console.log(`Loaded ${shiftsStore.archivedShifts.length} archived shifts`);
+  } catch (error) {
+    console.error('Error loading archived shifts:', error);
+  } finally {
+    loading.value = false;
+  }
 });
 
 // Methods
@@ -316,6 +352,22 @@ function formatDateTime(dateString) {
     minute: '2-digit', 
     hour12: true 
   });
+}
+
+// Format shift type for display
+function formatShiftType(shiftType) {
+  switch (shiftType) {
+    case 'week_day':
+      return 'Weekday (Day)';
+    case 'week_night':
+      return 'Weekday (Night)';
+    case 'weekend_day':
+      return 'Weekend (Day)';
+    case 'weekend_night':
+      return 'Weekend (Night)';
+    default:
+      return shiftType;
+  }
 }
 
 // Calculate duration between two timestamps
@@ -408,12 +460,12 @@ function calculateDuration(startTime, endTime) {
   
   tr {
     &.day-shift {
-      border-left: 3px solid v-bind('settingsStore.shiftDefaults.day.color');
+      border-left: 3px solid v-bind('settingsStore.shiftDefaults?.week_day?.color || "#4285F4"');
       background-color: v-bind('dayShiftBgColor');
     }
     
     &.night-shift {
-      border-left: 3px solid v-bind('settingsStore.shiftDefaults.night.color');
+      border-left: 3px solid v-bind('settingsStore.shiftDefaults?.week_night?.color || "#673AB7"');
       background-color: v-bind('nightShiftBgColor');
     }
     
