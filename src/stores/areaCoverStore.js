@@ -38,6 +38,14 @@ export const useAreaCoverStore = defineStore('areaCover', {
   },
   
   actions: {
+    // Make sure assignments are loaded for a specific shift type
+    async ensureAssignmentsLoaded(shiftType) {
+      if (!this.areaAssignments || this.areaAssignments.length === 0) {
+        await this.fetchAreaAssignments();
+      }
+      return this.getAssignmentsByShiftType(shiftType);
+    },
+    
     // Fetch all area assignments (for settings/defaults)
     async fetchAreaAssignments() {
       this.loading.departments = true;

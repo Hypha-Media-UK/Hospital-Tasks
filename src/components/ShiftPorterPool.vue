@@ -148,17 +148,27 @@ const availablePorters = computed(() => {
   const poolPorterIds = porterPool.value.map(p => p.porter_id);
   
   // Get porters assigned to departments in settings
-  // Combine all area cover assignments from different shift types
-  const allAreaCovers = [
-    ...areaCoverStore.weekDayAssignments,
-    ...areaCoverStore.weekNightAssignments,
-    ...areaCoverStore.weekendDayAssignments,
-    ...areaCoverStore.weekendNightAssignments
-  ];
+  // Get assignments for all shift types
+  const weekDayAssignments = areaCoverStore.getAssignmentsByShiftType('week_day') || [];
+  const weekNightAssignments = areaCoverStore.getAssignmentsByShiftType('week_night') || [];
+  const weekendDayAssignments = areaCoverStore.getAssignmentsByShiftType('weekend_day') || [];
+  const weekendNightAssignments = areaCoverStore.getAssignmentsByShiftType('weekend_night') || [];
   
-  const departmentPorterIds = allAreaCovers
-    .filter(a => a.porter_id)
-    .map(a => a.porter_id);
+  // Get all porter assignments
+  const departmentPorterIds = [];
+  
+  // Check each area assignment for assigned porters
+  for (const assignment of [...weekDayAssignments, ...weekNightAssignments, 
+                            ...weekendDayAssignments, ...weekendNightAssignments]) {
+    // Get porter assignments for this area assignment
+    const porterAssignments = areaCoverStore.getPorterAssignmentsByAreaId(assignment.id) || [];
+    // Add porter IDs to the list
+    for (const pa of porterAssignments) {
+      if (pa.porter_id) {
+        departmentPorterIds.push(pa.porter_id);
+      }
+    }
+  }
   
   // Get porters already assigned to departments in THIS shift
   const shiftDepartmentPorterIds = shiftsStore.shiftAreaCoverPorterAssignments
@@ -261,9 +271,8 @@ onMounted(async () => {
       await staffStore.fetchPorters();
     }
     
-    if (areaCoverStore.weekDayAssignments.length === 0) {
-      await areaCoverStore.initialize();
-    }
+    // Initialize area cover store if needed
+    await areaCoverStore.initialize();
     
     // Ensure area cover assignments load last
     await shiftsStore.fetchShiftAreaCover(props.shiftId);

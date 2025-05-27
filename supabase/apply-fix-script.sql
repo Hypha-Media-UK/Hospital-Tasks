@@ -1,54 +1,18 @@
--- First, check if the database tables exist, create them if they don't
+-- Script to fix the issue where changes to shift-specific assignments affect default settings
+-- This script will:
+-- 1. Verify the trigger function properly copies defaults to new shifts
+-- 2. Remove any potential cross-table triggers that might be causing conflicts
+-- 3. Ensure that shift-specific tables are fully independent from default tables
 
--- Create default_area_cover_assignments table if it doesn't exist
-CREATE TABLE IF NOT EXISTS default_area_cover_assignments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  department_id UUID NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
-  shift_type TEXT NOT NULL CHECK (shift_type IN ('week_day', 'week_night', 'weekend_day', 'weekend_night')),
-  start_time TIME NOT NULL DEFAULT '08:00:00',
-  end_time TIME NOT NULL DEFAULT '16:00:00',
-  color TEXT DEFAULT '#4285F4',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  UNIQUE(department_id, shift_type)
-);
+-- First, make sure we have the correct trigger installed on the shifts table
+DROP TRIGGER IF EXISTS trigger_copy_default_assignments ON shifts;
+DROP TRIGGER IF EXISTS copy_defaults_on_shift_creation ON shifts;
+DROP TRIGGER IF EXISTS copy_defaults_to_new_shift ON shifts;
 
--- Create default_area_cover_porter_assignments table if it doesn't exist
-CREATE TABLE IF NOT EXISTS default_area_cover_porter_assignments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  default_area_cover_assignment_id UUID NOT NULL REFERENCES default_area_cover_assignments(id) ON DELETE CASCADE,
-  porter_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-  start_time TIME NOT NULL DEFAULT '08:00:00',
-  end_time TIME NOT NULL DEFAULT '16:00:00',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+-- Drop any functions that might conflict with our desired behavior
+DROP FUNCTION IF EXISTS copy_default_assignments_to_shift();
 
--- Create default_service_cover_assignments table if it doesn't exist
-CREATE TABLE IF NOT EXISTS default_service_cover_assignments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  service_id UUID NOT NULL REFERENCES support_services(id) ON DELETE CASCADE,
-  shift_type TEXT NOT NULL CHECK (shift_type IN ('week_day', 'week_night', 'weekend_day', 'weekend_night')),
-  start_time TIME NOT NULL DEFAULT '08:00:00',
-  end_time TIME NOT NULL DEFAULT '16:00:00',
-  color TEXT DEFAULT '#4285F4',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  UNIQUE(service_id, shift_type)
-);
-
--- Create default_service_cover_porter_assignments table if it doesn't exist
-CREATE TABLE IF NOT EXISTS default_service_cover_porter_assignments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  default_service_cover_assignment_id UUID NOT NULL REFERENCES default_service_cover_assignments(id) ON DELETE CASCADE,
-  porter_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-  start_time TIME NOT NULL DEFAULT '08:00:00',
-  end_time TIME NOT NULL DEFAULT '16:00:00',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Create or replace the function to copy defaults when creating new shifts
+-- Create or replace the function that copies defaults to new shifts
 CREATE OR REPLACE FUNCTION copy_defaults_to_shift(p_shift_id UUID, p_shift_type VARCHAR)
 RETURNS VOID AS $$
 DECLARE
@@ -56,9 +20,6 @@ DECLARE
   v_service_cover_assignment_id UUID;
   v_default_area_cover_id UUID;
   v_default_service_cover_id UUID;
-  v_porter_id UUID;
-  v_start_time TIME;
-  v_end_time TIME;
   r_area_assignment RECORD;
   r_service_assignment RECORD;
   r_area_porter RECORD;
@@ -124,7 +85,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger function to call copy_defaults_to_shift
+-- Create a wrapper function for the trigger
 CREATE OR REPLACE FUNCTION copy_defaults_on_shift_creation()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -133,9 +94,95 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create the trigger if it doesn't exist
-DROP TRIGGER IF EXISTS copy_defaults_on_shift_creation ON shifts;
-CREATE TRIGGER copy_defaults_on_shift_creation
+-- Create a single trigger that uses the wrapper function
+CREATE TRIGGER copy_defaults_to_new_shift
 AFTER INSERT ON shifts
 FOR EACH ROW
 EXECUTE FUNCTION copy_defaults_on_shift_creation();
+
+-- Now remove any potential triggers on shift-specific tables that might be 
+-- causing changes to propagate back to default tables
+
+-- Check and remove any triggers on shift_area_cover_assignments
+DO $$
+DECLARE
+  trigger_name text;
+BEGIN
+  FOR trigger_name IN (
+    SELECT trigger_name FROM information_schema.triggers 
+    WHERE event_object_table = 'shift_area_cover_assignments'
+  )
+  LOOP
+    EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON shift_area_cover_assignments';
+  END LOOP;
+END$$;
+
+-- Check and remove any triggers on shift_area_cover_porter_assignments
+DO $$
+DECLARE
+  trigger_name text;
+BEGIN
+  FOR trigger_name IN (
+    SELECT trigger_name FROM information_schema.triggers 
+    WHERE event_object_table = 'shift_area_cover_porter_assignments'
+  )
+  LOOP
+    EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON shift_area_cover_porter_assignments';
+  END LOOP;
+END$$;
+
+-- Check and remove any triggers on shift_support_service_assignments
+DO $$
+DECLARE
+  trigger_name text;
+BEGIN
+  FOR trigger_name IN (
+    SELECT trigger_name FROM information_schema.triggers 
+    WHERE event_object_table = 'shift_support_service_assignments'
+  )
+  LOOP
+    EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON shift_support_service_assignments';
+  END LOOP;
+END$$;
+
+-- Check and remove any triggers on shift_support_service_porter_assignments
+DO $$
+DECLARE
+  trigger_name text;
+BEGIN
+  FOR trigger_name IN (
+    SELECT trigger_name FROM information_schema.triggers 
+    WHERE event_object_table = 'shift_support_service_porter_assignments'
+  )
+  LOOP
+    EXECUTE 'DROP TRIGGER IF EXISTS ' || trigger_name || ' ON shift_support_service_porter_assignments';
+  END LOOP;
+END$$;
+
+-- Confirm that all tables exist with proper constraints
+DO $$
+BEGIN
+  -- Check if shift_area_cover_assignments table exists with proper constraint
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'shift_area_cover_assignments_shift_id_department_id_key'
+      AND table_name = 'shift_area_cover_assignments'
+  ) THEN
+    -- Add the constraint if it doesn't exist
+    ALTER TABLE shift_area_cover_assignments 
+    ADD CONSTRAINT shift_area_cover_assignments_shift_id_department_id_key 
+    UNIQUE (shift_id, department_id);
+  END IF;
+
+  -- Check if shift_support_service_assignments table exists with proper constraint
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'shift_support_service_assignments_shift_id_service_id_key'
+      AND table_name = 'shift_support_service_assignments'
+  ) THEN
+    -- Add the constraint if it doesn't exist
+    ALTER TABLE shift_support_service_assignments 
+    ADD CONSTRAINT shift_support_service_assignments_shift_id_service_id_key 
+    UNIQUE (shift_id, service_id);
+  END IF;
+END$$;

@@ -19,6 +19,11 @@ export const useSupportServicesStore = defineStore('supportServices', {
       return [...state.services].sort((a, b) => a.name.localeCompare(b.name));
     },
     
+    // Get all active support services
+    activeSupportServices: (state) => {
+      return state.services.filter(service => service.is_active !== false);
+    },
+    
     // Get service assignment by ID
     getAssignmentById: (state) => (id) => {
       return state.serviceAssignments.find(a => a.id === id);
@@ -36,6 +41,19 @@ export const useSupportServicesStore = defineStore('supportServices', {
   },
   
   actions: {
+    // Make sure assignments are loaded for a specific shift type
+    async ensureAssignmentsLoaded(shiftType) {
+      if (!this.serviceAssignments || this.serviceAssignments.length === 0) {
+        await this.fetchServiceAssignments();
+      }
+      return this.getAssignmentsByShiftType(shiftType);
+    },
+    
+    // Load all service assignments for all shift types
+    async loadAllServiceAssignments() {
+      return await this.fetchServiceAssignments();
+    },
+    
     // Fetch all support services
     async fetchServices() {
       this.loading.services = true;

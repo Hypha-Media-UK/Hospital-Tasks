@@ -198,15 +198,16 @@ const shiftTypeLabel = computed(() => {
 });
 
 const availableServices = computed(() => {
-  // Get all services
-  const allServices = supportServicesStore.supportServices;
+  // Get all services (ensure it's an array)
+  const allServices = supportServicesStore.supportServices || [];
   
   // Get ids of services already assigned to this shift
-  const assignedServiceIds = serviceAssignments.value.map(a => a.service_id);
+  const assignments = serviceAssignments.value || [];
+  const assignedServiceIds = assignments.map(a => a.service_id);
   
   // Return only services not already assigned
   return allServices.filter(service => 
-    !assignedServiceIds.includes(service.id) && service.is_active
+    !assignedServiceIds.includes(service.id) && service.is_active !== false
   );
 });
 
@@ -221,8 +222,8 @@ onMounted(async () => {
   console.log(`SupportServicesShiftList mounted for shift ${props.shiftId} with type ${props.shiftType}`);
 
   // Make sure we have all support services loaded
-  if (!supportServicesStore.supportServices.length) {
-    await supportServicesStore.loadSupportServices();
+  if (!supportServicesStore.supportServices || !supportServicesStore.supportServices.length) {
+    await supportServicesStore.fetchServices();
   }
   
   // Make sure porters are loaded
@@ -236,13 +237,16 @@ onMounted(async () => {
   // Set default times based on shift type
   initializeFormDefaults();
   
-  // Load default settings if needed
+  // Initialize support services store
   try {
-    const { useSupportServicesStore } = await import('../../stores/supportServicesStore');
-    const supportServicesStoreInstance = useSupportServicesStore();
-    await supportServicesStoreInstance.loadAllServiceAssignments();
+    // We already have supportServicesStore injected, so just use it
+    if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
+      await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+    } else {
+      console.log('Support service defaults store loaded, but ensureAssignmentsLoaded not available');
+    }
   } catch (error) {
-    console.error('Error loading support service defaults:', error);
+    console.error('Error initializing support services store:', error);
   }
 });
 

@@ -114,9 +114,12 @@ export const useShiftsStore = defineStore('shifts', {
     
     // Get porter assignments for a specific support service assignment
     getPorterAssignmentsByServiceId: (state) => (serviceId) => {
+      if (!serviceId || !state.shiftSupportServicePorterAssignments) {
+        return [];
+      }
       return state.shiftSupportServicePorterAssignments.filter(
         pa => pa.shift_support_service_assignment_id === serviceId
-      );
+      ) || [];
     },
     
     // Check for coverage gaps in a specific area cover assignment
@@ -1359,6 +1362,67 @@ export const useShiftsStore = defineStore('shifts', {
         console.error('Error fetching shift porter pool:', error);
         this.error = 'Failed to load shift porter pool';
         return [];
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+
+    // Add a porter to a shift's porter pool
+    async addPorterToShift(shiftId, porterId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        // Add porter to shift pool
+        const { data, error } = await supabase
+          .from('shift_porter_pool')
+          .insert({
+            shift_id: shiftId,
+            porter_id: porterId
+          })
+          .select(`
+            *,
+            porter:porter_id(id, first_name, last_name)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Add to local state
+          this.shiftPorterPool.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding porter to shift:', error);
+        this.error = 'Failed to add porter to shift';
+        return null;
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+    
+    // Remove a porter from a shift's porter pool
+    async removePorterFromShift(porterPoolId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('shift_porter_pool')
+          .delete()
+          .eq('id', porterPoolId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.shiftPorterPool = this.shiftPorterPool.filter(p => p.id !== porterPoolId);
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing porter from shift:', error);
+        this.error = 'Failed to remove porter from shift';
+        return false;
       } finally {
         this.loading.porterPool = false;
       }

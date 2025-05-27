@@ -57,7 +57,9 @@ const showEditModal = ref(false);
 // Get porter assignments for this service
 const porterAssignments = computed(() => {
   // Use the shiftsStore getPorterAssignmentsByServiceId getter
-  return shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
+  // Make sure we always return an array, even if the getter returns undefined
+  const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
+  return Array.isArray(assignments) ? assignments : [];
 });
 
 // Check if there's a coverage gap
