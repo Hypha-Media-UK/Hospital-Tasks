@@ -84,21 +84,21 @@ const activeTab = ref('departments');
 const supportServicesStore = useSupportServicesStore();
 const showAddServiceModal = ref(false);
 
-const supportServices = computed(() => supportServicesStore.supportServices);
-const loading = computed(() => supportServicesStore.loading);
+const supportServices = computed(() => supportServicesStore.services);
+const loading = computed(() => supportServicesStore.loading.services);
 
 // Load support services when component mounts
 onMounted(async () => {
   // Load support services when the services tab is first accessed
   if (activeTab.value === 'services') {
-    await supportServicesStore.loadSupportServices();
+    await supportServicesStore.fetchServices();
   }
 });
 
 // Watch for tab changes
 const watchTabChange = () => {
-  if (activeTab.value === 'services' && !supportServicesStore.supportServices.length && !supportServicesStore.loading) {
-    supportServicesStore.loadSupportServices();
+  if (activeTab.value === 'services' && !supportServicesStore.services.length && !supportServicesStore.loading.services) {
+    supportServicesStore.fetchServices();
   }
 };
 
@@ -109,15 +109,15 @@ watchEffect(() => {
 
 // Handler functions for CRUD operations
 async function addService(service) {
-  return await supportServicesStore.addSupportService(service);
+  return await supportServicesStore.addService(service.name, service.description);
 }
 
 async function updateService(service) {
-  return await supportServicesStore.updateSupportService(service);
+  return await supportServicesStore.updateService(service.id, service);
 }
 
 async function removeService(serviceId) {
-  return await supportServicesStore.removeSupportService(serviceId);
+  return await supportServicesStore.deleteService(serviceId);
 }
 </script>
 
