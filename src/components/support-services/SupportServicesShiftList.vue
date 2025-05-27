@@ -212,7 +212,7 @@ const shiftTypeLabel = computed(() => {
 
 const availableServices = computed(() => {
   // Get all services (ensure it's an array)
-  const allServices = supportServicesStore.supportServices || [];
+  const allServices = supportServicesStore.services || [];
   
   // Get ids of services already assigned to this shift or settings
   const assignments = serviceAssignments.value || [];
@@ -235,7 +235,7 @@ onMounted(async () => {
   console.log(`SupportServicesShiftList mounted for shift ${props.shiftId} with type ${props.shiftType}`);
 
   // Make sure we have all support services loaded
-  if (!supportServicesStore.supportServices || !supportServicesStore.supportServices.length) {
+  if (!supportServicesStore.services || !supportServicesStore.services.length) {
     await supportServicesStore.fetchServices();
   }
   
@@ -248,10 +248,8 @@ onMounted(async () => {
   if (props.shiftId) {
     await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } else {
-    // Load default assignments for this shift type
-    if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
-      await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
-    }
+  // Load default assignments for this shift type
+  await supportServicesStore.fetchServiceAssignments();
   }
   
   // Set default times based on shift type
@@ -305,9 +303,7 @@ async function addService() {
       );
       
       // Reload the default assignments
-      if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
-        await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
-      }
+      await supportServicesStore.fetchServiceAssignments();
     }
     
     // Reset form and close modal
@@ -338,9 +334,7 @@ async function updateAssignment(assignmentId, updates) {
       await supportServicesStore.updateServiceAssignment(assignmentId, updates);
       
       // Reload the default assignments
-      if (typeof supportServicesStore.ensureAssignmentsLoaded === 'function') {
-        await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
-      }
+      await supportServicesStore.fetchServiceAssignments();
     }
     
     showEditModal.value = false;
