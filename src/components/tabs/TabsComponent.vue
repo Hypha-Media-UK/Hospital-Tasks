@@ -67,6 +67,13 @@ onMounted(() => {
   } else if (route.path === '/') {
     activeTab.value = 'staff'; // Default for home route
   }
+  
+  // Listen for custom tab selection events (from ShiftDefaultsSettings)
+  document.addEventListener('select-tab', (event) => {
+    if (event.detail && event.detail.tabId) {
+      activeTab.value = event.detail.tabId;
+    }
+  });
 });
 
 function setActiveTab(tabId) {

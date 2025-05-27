@@ -7,9 +7,6 @@
       <router-link to="/archive" aria-label="Archive">
         <IconComponent name="archive" />
       </router-link>
-      <router-link to="/default-support" aria-label="Default Support">
-        <IconComponent name="defaults" />
-      </router-link>
       <router-link to="/settings" aria-label="Settings">
         <IconComponent name="settings" />
       </router-link>

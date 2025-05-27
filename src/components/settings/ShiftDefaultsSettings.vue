@@ -6,13 +6,13 @@
     </p>
     
     <div class="default-support-link">
-      <router-link to="/default-support" class="support-link">
+      <router-link to="/settings" class="support-link" @click="selectAreaSupportTab">
         <IconComponent name="defaults" size="small" />
         Configure Default Department & Service Coverage
       </router-link>
       <p class="support-description">
-        Manage porter assignments and time ranges for departments and services on the Default Support page.
-        Changes made on that page will only affect new shifts, not existing ones.
+        Manage porter assignments and time ranges for departments and services in the Area Support tab.
+        Changes made there will only affect new shifts, not existing ones.
       </p>
     </div>
     
@@ -175,6 +175,16 @@ const saveDefaults = async () => {
       saveSuccess.value = false;
     }, 3000);
   }
+};
+
+// Function to select the Area Support tab
+const selectAreaSupportTab = () => {
+  // Using custom event to notify parent component to switch tabs
+  const event = new CustomEvent('select-tab', { 
+    detail: { tabId: 'supportServices' },
+    bubbles: true
+  });
+  document.dispatchEvent(event);
 };
 
 // Load settings on component mount
