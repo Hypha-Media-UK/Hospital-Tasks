@@ -16,6 +16,7 @@
     <!-- Service Assignments List -->
     <div v-else>
       <div class="services-list-header">
+        <div class="time-info" v-if="timeRange">{{ timeRange }}</div>
         <button @click="showAddServiceModal = true" class="btn-add-service">
           Add Service
         </button>
@@ -229,6 +230,14 @@ const canAddService = computed(() =>
   addServiceForm.value.endTime
 );
 
+const timeRange = computed(() => {
+  if (props.shiftType && settingsStore.shiftDefaults[props.shiftType]) {
+    const shiftSettings = settingsStore.shiftDefaults[props.shiftType];
+    return `${shiftSettings.startTime} - ${shiftSettings.endTime}`;
+  }
+  return '';
+});
+
 // Load data when component mounts
 onMounted(async () => {
   console.log(`SupportServicesShiftList mounted for shift ${props.shiftId} with type ${props.shiftType}`);
@@ -372,9 +381,18 @@ async function confirmRemove(assignmentId) {
   
   .services-list-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    
+    .time-info {
+      padding: 6px 10px;
+      background-color: rgba(0, 0, 0, 0.03);
+      border-radius: mix.radius('sm');
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.7);
+      margin: 0;
+    }
   }
   
   .btn-add-service {

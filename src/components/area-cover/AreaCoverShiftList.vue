@@ -1,6 +1,7 @@
 <template>
   <div class="area-cover-shift-list">
   <div class="area-cover-shift-list__header">
+    <div class="time-info" v-if="timeRange">{{ timeRange }}</div>
     <button class="btn btn--primary" @click="showDepartmentSelector = true">
       Add Department
     </button>
@@ -72,6 +73,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import { useLocationsStore } from '../../stores/locationsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import AreaCoverDepartmentCard from './AreaCoverDepartmentCard.vue';
 
 const props = defineProps({
@@ -84,6 +86,7 @@ const props = defineProps({
 
 const areaCoverStore = useAreaCoverStore();
 const locationsStore = useLocationsStore();
+const settingsStore = useSettingsStore();
 
 const showDepartmentSelector = ref(false);
 
@@ -102,6 +105,14 @@ const shiftTypeLabel = computed(() => {
 
 const assignments = computed(() => {
   return areaCoverStore.getSortedAssignmentsByType(props.shiftType);
+});
+
+const timeRange = computed(() => {
+  if (props.shiftType && settingsStore.shiftDefaults[props.shiftType]) {
+    const shiftSettings = settingsStore.shiftDefaults[props.shiftType];
+    return `${shiftSettings.startTime} - ${shiftSettings.endTime}`;
+  }
+  return '';
 });
 
 // Get departments from locationsStore directly instead of relying on rootGetters
@@ -199,9 +210,18 @@ onMounted(async () => {
 .area-cover-shift-list {
   &__header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    
+    .time-info {
+      padding: 6px 10px;
+      background-color: rgba(0, 0, 0, 0.03);
+      border-radius: mix.radius('sm');
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.7);
+      margin: 0;
+    }
   }
 }
 

@@ -33,22 +33,18 @@
     
     <div class="support-services-tabs__content">
       <div v-if="activeTab === 'week_day'" class="support-services-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.week_day) }}</div>
         <SupportServicesShiftList shift-type="week_day" />
       </div>
       
       <div v-if="activeTab === 'week_night'" class="support-services-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.week_night) }}</div>
         <SupportServicesShiftList shift-type="week_night" />
       </div>
       
       <div v-if="activeTab === 'weekend_day'" class="support-services-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.weekend_day) }}</div>
         <SupportServicesShiftList shift-type="weekend_day" />
       </div>
       
       <div v-if="activeTab === 'weekend_night'" class="support-services-tabs__panel">
-        <div class="time-info">{{ formatTimeRange(settingsStore.shiftDefaults.weekend_night) }}</div>
         <SupportServicesShiftList shift-type="weekend_night" />
       </div>
     </div>
