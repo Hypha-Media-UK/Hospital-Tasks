@@ -70,14 +70,6 @@
               
               <div class="staff-item__actions">
                 <IconButton 
-                  title="Assign Department"
-                  :active="!!supervisor.department_id"
-                  @click="openDepartmentAssignment(supervisor)"
-                >
-                  <MapPinIcon :active="!!supervisor.department_id" />
-                </IconButton>
-                
-                <IconButton 
                   title="Edit Supervisor"
                   @click="editSupervisor(supervisor)"
                 >
@@ -145,14 +137,6 @@
               </div>
               
               <div class="staff-item__actions">
-                <IconButton 
-                  title="Assign Department"
-                  :active="!!porter.department_id"
-                  @click="openDepartmentAssignment(porter)"
-                >
-                  <MapPinIcon :active="!!porter.department_id" />
-                </IconButton>
-                
                 <IconButton 
                   title="Edit Porter"
                   @click="editPorter(porter)"
@@ -262,91 +246,21 @@
       </div>
     </div>
     
-    <!-- Department Assignment Modal -->
-    <div v-if="showDepartmentModal" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Assign Department to {{ selectedStaff.first_name }} {{ selectedStaff.last_name }}</h3>
-          <button class="modal-close" @click="showDepartmentModal = false">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <div v-if="locationsStore.loading.buildings" class="loading">
-            Loading departments...
-          </div>
-          
-          <div v-else-if="buildings.length === 0" class="empty-state">
-            No buildings or departments found. Please add some in the Locations tab.
-          </div>
-          
-          <div v-else class="buildings-list">
-            <div class="building-item special">
-              <div class="building-name">Clear Selection</div>
-              <div class="department-item">
-                <div class="department-name">No Department</div>
-                <div class="department-radio">
-                  <input 
-                    type="radio" 
-                    id="department-none" 
-                    name="department"
-                    :checked="!selectedDepartment"
-                    @change="selectedDepartment = null"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div v-for="building in buildings" :key="building.id" class="building-item">
-              <div class="building-name">{{ building.name }}</div>
-              
-              <div v-for="department in building.departments" :key="department.id" class="department-item">
-                <div class="department-name">{{ department.name }}</div>
-                
-                <div class="department-radio">
-                  <input 
-                    type="radio" 
-                    :id="'department-' + department.id" 
-                    name="department"
-                    :checked="selectedDepartment === department.id"
-                    @change="selectedDepartment = department.id"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button 
-            class="btn btn--secondary" 
-            @click="showDepartmentModal = false"
-          >
-            Cancel
-          </button>
-          <button 
-            class="btn btn--primary" 
-            @click="saveDepartmentAssignment"
-            :disabled="staffStore.loading.staff"
-          >
-            {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
-          </button>
-        </div>
-      </div>
+    <!-- Department management note -->
+    <div class="info-message">
+      <p>Note: Porter department assignments are now managed in the Area Support tab, where you can also specify time ranges and coverage.</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useStaffStore } from '../../../stores/staffStore';
-import { useLocationsStore } from '../../../stores/locationsStore';
 import IconButton from '../../IconButton.vue';
-import MapPinIcon from '../../icons/MapPinIcon.vue';
 import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
 
 const staffStore = useStaffStore();
-const locationsStore = useLocationsStore();
 
 // Tab state
 const activeTab = ref('supervisors');
@@ -362,22 +276,9 @@ const staffForm = ref({
   lastName: ''
 });
 
-// Department assignment state
-const showDepartmentModal = ref(false);
-const selectedStaff = ref(null);
-const selectedDepartment = ref(null);
-
-// Get buildings with their departments
-const buildings = computed(() => {
-  return locationsStore.buildingsWithDepartments;
-});
-
 // Initialize data
 onMounted(async () => {
-  await Promise.all([
-    staffStore.initialize(),
-    locationsStore.initialize()
-  ]);
+  await staffStore.initialize();
 });
 
 // Staff form methods
@@ -434,27 +335,6 @@ const saveStaff = async (role) => {
   }
 };
 
-// Department assignment methods
-const openDepartmentAssignment = (staff) => {
-  selectedStaff.value = staff;
-  selectedDepartment.value = staff.department_id;
-  showDepartmentModal.value = true;
-};
-
-const saveDepartmentAssignment = async () => {
-  if (!selectedStaff.value) return;
-  
-  const success = await staffStore.assignDepartment(
-    selectedStaff.value.id,
-    selectedDepartment.value
-  );
-  
-  if (success) {
-    showDepartmentModal.value = false;
-    selectedStaff.value = null;
-    selectedDepartment.value = null;
-  }
-};
 
 // Delete methods
 const deleteSupervisor = async (supervisor) => {
@@ -473,6 +353,20 @@ const deletePorter = async (porter) => {
 <style lang="scss" scoped>
 @use '../../../assets/scss/mixins' as mix;
 @use 'sass:color';
+
+.info-message {
+  background-color: rgba(66, 133, 244, 0.1);
+  border-left: 4px solid mix.color('primary');
+  border-radius: mix.radius('md');
+  padding: 12px 16px;
+  margin-top: 24px;
+  margin-bottom: 24px;
+  
+  p {
+    margin: 0;
+    color: rgba(0, 0, 0, 0.7);
+  }
+}
 
 .staff-tab {
   h3 {
@@ -730,56 +624,4 @@ const deletePorter = async (porter) => {
   }
 }
 
-// Department assignment modal styles
-.buildings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.building-item {
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: mix.radius('md');
-  overflow: hidden;
-  
-  &.special {
-    background-color: rgba(0, 0, 0, 0.02);
-    margin-bottom: 8px;
-  }
-}
-
-.building-name {
-  background-color: rgba(0, 0, 0, 0.03);
-  padding: 8px 12px;
-  font-weight: 600;
-}
-
-.department-item {
-  display: grid;
-  grid-template-columns: 1fr 80px;
-  gap: 8px;
-  padding: 8px 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-  }
-}
-
-.department-name {
-  display: flex;
-  align-items: center;
-}
-
-.department-radio {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-  }
-}
 </style>
