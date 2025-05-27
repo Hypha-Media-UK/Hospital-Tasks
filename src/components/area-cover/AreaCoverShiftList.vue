@@ -119,29 +119,8 @@ const availableDepartments = computed(() => {
     });
   });
   
-  // Get assigned department IDs based on shift type
-  let assignedDeptIds = [];
-  switch (props.shiftType) {
-    case 'week_day':
-      assignedDeptIds = areaCoverStore.weekDayAssignments.map(a => a.department_id);
-      break;
-    case 'week_night':
-      assignedDeptIds = areaCoverStore.weekNightAssignments.map(a => a.department_id);
-      break;
-    case 'weekend_day':
-      assignedDeptIds = areaCoverStore.weekendDayAssignments.map(a => a.department_id);
-      break;
-    case 'weekend_night':
-      assignedDeptIds = areaCoverStore.weekendNightAssignments.map(a => a.department_id);
-      break;
-    // Legacy support
-    case 'day':
-      assignedDeptIds = areaCoverStore.weekDayAssignments.map(a => a.department_id);
-      break;
-    case 'night':
-      assignedDeptIds = areaCoverStore.weekNightAssignments.map(a => a.department_id);
-      break;
-  }
+  // Get assigned department IDs based on the current assignments for the shift type
+  const assignedDeptIds = areaCoverStore.getAssignmentsByShiftType(props.shiftType).map(a => a.department_id);
   
   return allDepartments.filter(dept => !assignedDeptIds.includes(dept.id));
 });
