@@ -73,9 +73,9 @@
             <table class="shifts-table">
               <thead>
                 <tr>
-                  <th @click="changeSortField('shift_type')">
-                    Type
-                    <span v-if="sortField === 'shift_type'" class="sort-indicator">
+                  <th @click="changeSortField('start_time')">
+                    Date
+                    <span v-if="sortField === 'start_time'" class="sort-indicator">
                       {{ sortDirection === 'asc' ? '▲' : '▼' }}
                     </span>
                   </th>
@@ -85,19 +85,12 @@
                       {{ sortDirection === 'asc' ? '▲' : '▼' }}
                     </span>
                   </th>
-                  <th @click="changeSortField('start_time')">
-                    Start Time
-                    <span v-if="sortField === 'start_time'" class="sort-indicator">
+                  <th @click="changeSortField('task_count')">
+                    Total Tasks
+                    <span v-if="sortField === 'task_count'" class="sort-indicator">
                       {{ sortDirection === 'asc' ? '▲' : '▼' }}
                     </span>
                   </th>
-                  <th @click="changeSortField('end_time')">
-                    End Time
-                    <span v-if="sortField === 'end_time'" class="sort-indicator">
-                      {{ sortDirection === 'asc' ? '▲' : '▼' }}
-                    </span>
-                  </th>
-                  <th>Duration</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -110,13 +103,11 @@
                     'night-shift': shift.shift_type.includes('night') 
                   }"
                 >
-                  <td>{{ formatShiftType(shift.shift_type) }}</td>
+                  <td>{{ formatDate(shift.start_time) }}</td>
                   <td>
                     {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
                   </td>
-                  <td>{{ formatDateTime(shift.start_time) }}</td>
-                  <td>{{ formatDateTime(shift.end_time) }}</td>
-                  <td>{{ calculateDuration(shift.start_time, shift.end_time) }}</td>
+                  <td>{{ getTaskCount(shift.id) }}</td>
                   <td>
                     <div class="action-buttons">
                       <button @click="viewShift(shift.id)" class="btn btn-primary btn-small">
@@ -212,6 +203,18 @@ const filteredAndSortedShifts = computed(() => {
       return sortDirection.value === 'asc' 
         ? valueA.localeCompare(valueB)
         : valueB.localeCompare(valueA);
+    } else if (sortField.value === 'task_count') {
+      // Handle task count sorting
+      valueA = shiftsStore.archivedShiftTaskCounts[a.id] || 0;
+      valueB = shiftsStore.archivedShiftTaskCounts[b.id] || 0;
+      
+      if (valueA === valueB) return 0;
+      
+      if (sortDirection.value === 'asc') {
+        return valueA < valueB ? -1 : 1;
+      } else {
+        return valueA > valueB ? -1 : 1;
+      }
     } else {
       // Handle date/time and other fields
       valueA = a[sortField.value];
@@ -273,12 +276,31 @@ onMounted(async () => {
       settingsStore.loadSettings()
     ]);
     console.log(`Loaded ${shiftsStore.archivedShifts.length} archived shifts`);
+    
+    // Fetch task counts for all archived shifts
+    await shiftsStore.fetchArchivedShiftTaskCounts();
   } catch (error) {
     console.error('Error loading archived shifts:', error);
   } finally {
     loading.value = false;
   }
 });
+
+// Get task count for a specific shift
+function getTaskCount(shiftId) {
+  return shiftsStore.archivedShiftTaskCounts[shiftId] || 0;
+}
+
+// Format date only (e.g., "May 23, 2025")
+function formatDate(dateString) {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric'
+  });
+}
 
 // Methods
 function changeSortField(field) {

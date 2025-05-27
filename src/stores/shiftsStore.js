@@ -19,6 +19,7 @@ export const useShiftsStore = defineStore('shifts', {
   state: () => ({
     activeShifts: [],
     archivedShifts: [],
+    archivedShiftTaskCounts: {}, // Object mapping shift IDs to their task counts
     currentShift: null,
     shiftTasks: [],
     shiftAreaCoverAssignments: [], // Shift-specific area cover assignments
@@ -1463,6 +1464,65 @@ export const useShiftsStore = defineStore('shifts', {
         return false;
       } finally {
         this.loading.porterPool = false;
+      }
+    },
+    
+    // Fetch task counts for archived shifts
+    async fetchArchivedShiftTaskCounts() {
+      this.error = null;
+      
+      try {
+        console.log('Fetching task counts for archived shifts...');
+        
+        // Get the shift IDs for which we need to fetch task counts
+        const shiftIds = this.archivedShifts.map(shift => shift.id);
+        
+        if (shiftIds.length === 0) {
+          console.log('No archived shifts to fetch task counts for');
+          return {};
+        }
+
+        // We'll try a different approach - fetch all tasks for the archived shifts
+        // and then count them manually
+        const { data, error } = await supabase
+          .from('shift_tasks')
+          .select('shift_id')
+          .in('shift_id', shiftIds);
+        
+        if (error) {
+          console.error('Error fetching shift tasks:', error);
+          throw error;
+        }
+        
+        console.log(`Fetched ${data?.length || 0} tasks for archived shifts`);
+        
+        // Create a mapping of shift ID to task count by counting tasks manually
+        const taskCounts = {};
+        
+        // Initialize counts for all shifts to 0
+        shiftIds.forEach(id => {
+          taskCounts[id] = 0;
+        });
+        
+        // Count tasks for each shift
+        if (data && data.length > 0) {
+          data.forEach(task => {
+            if (task.shift_id) {
+              taskCounts[task.shift_id] = (taskCounts[task.shift_id] || 0) + 1;
+            }
+          });
+        }
+        
+        console.log('Task counts:', taskCounts);
+        
+        // Store the task counts
+        this.archivedShiftTaskCounts = taskCounts;
+        
+        return taskCounts;
+      } catch (error) {
+        console.error('Error in fetchArchivedShiftTaskCounts:', error);
+        this.error = 'Failed to load task counts';
+        return {};
       }
     },
     
