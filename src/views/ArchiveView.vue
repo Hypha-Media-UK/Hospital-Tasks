@@ -73,6 +73,12 @@
             <table class="shifts-table">
               <thead>
                 <tr>
+                  <th @click="changeSortField('shift_type')">
+                    Type
+                    <span v-if="sortField === 'shift_type'" class="sort-indicator">
+                      {{ sortDirection === 'asc' ? '▲' : '▼' }}
+                    </span>
+                  </th>
                   <th @click="changeSortField('start_time')">
                     Date
                     <span v-if="sortField === 'start_time'" class="sort-indicator">
@@ -103,6 +109,10 @@
                     'night-shift': shift.shift_type.includes('night') 
                   }"
                 >
+                  <td class="type-icon-cell">
+                    <DayShiftIcon v-if="shift.shift_type.includes('day')" :size="18" />
+                    <NightShiftIcon v-else :size="18" />
+                  </td>
                   <td>{{ formatDate(shift.start_time) }}</td>
                   <td>
                     {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
@@ -148,6 +158,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import DayShiftIcon from '../components/icons/DayShiftIcon.vue';
+import NightShiftIcon from '../components/icons/NightShiftIcon.vue';
 
 const router = useRouter();
 const shiftsStore = useShiftsStore();
@@ -489,6 +501,23 @@ function calculateDuration(startTime, endTime) {
     &.night-shift {
       border-left: 3px solid v-bind('settingsStore.shiftDefaults?.week_night?.color || "#673AB7"');
       background-color: v-bind('nightShiftBgColor');
+    }
+    
+    .type-icon-cell {
+      text-align: center;
+      width: 50px;
+      
+      svg {
+        color: inherit;
+      }
+    }
+    
+    &.day-shift .type-icon-cell svg {
+      color: v-bind('settingsStore.shiftDefaults?.week_day?.color || "#4285F4"');
+    }
+    
+    &.night-shift .type-icon-cell svg {
+      color: v-bind('settingsStore.shiftDefaults?.week_night?.color || "#673AB7"');
     }
     
     &:hover {
