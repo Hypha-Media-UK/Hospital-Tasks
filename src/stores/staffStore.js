@@ -11,6 +11,7 @@ export const useStaffStore = defineStore('staff', {
       staff: false
     },
     sortBy: 'firstName', // 'firstName' or 'lastName'
+    porterTypeFilter: 'all', // 'all', 'shift', or 'relief'
     error: null
   }),
   
@@ -28,7 +29,18 @@ export const useStaffStore = defineStore('staff', {
     
     // Get sorted porters
     sortedPorters: (state) => {
-      return [...state.porters].sort((a, b) => {
+      // First apply type filter, then sort
+      let filteredPorters = [...state.porters];
+      
+      // Apply porter type filter if not set to 'all'
+      if (state.porterTypeFilter !== 'all') {
+        filteredPorters = filteredPorters.filter(porter => 
+          porter.porter_type === state.porterTypeFilter
+        );
+      }
+      
+      // Then sort the filtered list
+      return filteredPorters.sort((a, b) => {
         if (state.sortBy === 'firstName') {
           return a.first_name.localeCompare(b.first_name);
         } else {
@@ -47,6 +59,14 @@ export const useStaffStore = defineStore('staff', {
     // Set sort method
     setSortBy(sortField) {
       this.sortBy = sortField;
+    },
+    
+    // Set porter type filter
+    setPorterTypeFilter(filterType) {
+      // Validate filter type
+      if (['all', 'shift', 'relief'].includes(filterType)) {
+        this.porterTypeFilter = filterType;
+      }
     },
     
     // Fetch all supervisors

@@ -95,22 +95,49 @@
             </button>
           </div>
           
-          <div class="sort-controls">
-            <span>Sort by:</span>
-            <button 
-              class="sort-btn" 
-              :class="{ 'sort-btn--active': staffStore.sortBy === 'firstName' }"
-              @click="staffStore.setSortBy('firstName')"
-            >
-              First Name
-            </button>
-            <button 
-              class="sort-btn" 
-              :class="{ 'sort-btn--active': staffStore.sortBy === 'lastName' }"
-              @click="staffStore.setSortBy('lastName')"
-            >
-              Last Name
-            </button>
+          <div class="filter-controls">
+            <div class="sort-controls">
+              <span>Sort by:</span>
+              <button 
+                class="sort-btn" 
+                :class="{ 'sort-btn--active': staffStore.sortBy === 'firstName' }"
+                @click="staffStore.setSortBy('firstName')"
+              >
+                First Name
+              </button>
+              <button 
+                class="sort-btn" 
+                :class="{ 'sort-btn--active': staffStore.sortBy === 'lastName' }"
+                @click="staffStore.setSortBy('lastName')"
+              >
+                Last Name
+              </button>
+            </div>
+            
+            <div class="porter-type-filters">
+              <span>Type:</span>
+              <button 
+                class="filter-btn" 
+                :class="{ 'filter-btn--active': staffStore.porterTypeFilter === 'all' }"
+                @click="staffStore.setPorterTypeFilter('all')"
+              >
+                All Porters
+              </button>
+              <button 
+                class="filter-btn" 
+                :class="{ 'filter-btn--active': staffStore.porterTypeFilter === 'shift' }"
+                @click="staffStore.setPorterTypeFilter('shift')"
+              >
+                Shift Porters
+              </button>
+              <button 
+                class="filter-btn" 
+                :class="{ 'filter-btn--active': staffStore.porterTypeFilter === 'relief' }"
+                @click="staffStore.setPorterTypeFilter('relief')"
+              >
+                Relief Porters
+              </button>
+            </div>
           </div>
           
           <div v-if="staffStore.loading.porters" class="loading">
@@ -127,14 +154,20 @@
               :key="porter.id"
               class="staff-item"
             >
-              <div class="staff-item__content">
-                <div class="staff-item__name">
-                  {{ porter.first_name }} {{ porter.last_name }}
+                <div class="staff-item__content">
+                  <div class="staff-item__name">
+                    {{ porter.first_name }} {{ porter.last_name }}
+                    <span 
+                      class="porter-type-badge"
+                      :class="{ 'porter-type-badge--shift': porter.porter_type === 'shift', 'porter-type-badge--relief': porter.porter_type === 'relief' }"
+                    >
+                      {{ porter.porter_type === 'shift' ? 'Shift' : 'Relief' }}
+                    </span>
+                  </div>
+                  <div class="staff-item__department">
+                    {{ porter.department ? porter.department.name : 'No department assigned' }}
+                  </div>
                 </div>
-                <div class="staff-item__department">
-                  {{ porter.department ? porter.department.name : 'No department assigned' }}
-                </div>
-              </div>
               
               <div class="staff-item__actions">
                 <IconButton 
@@ -189,6 +222,7 @@
               />
             </div>
             
+            
             <div class="form-actions">
               <button type="button" class="btn btn--secondary" @click="closeStaffForm">
                 Cancel
@@ -233,6 +267,30 @@
               />
             </div>
             
+            <div class="form-group">
+              <label>Porter Type</label>
+              <div class="radio-group">
+                <div class="radio-option">
+                  <input 
+                    type="radio" 
+                    id="porterTypeShift" 
+                    value="shift" 
+                    v-model="staffForm.porterType"
+                  />
+                  <label for="porterTypeShift">Shift Porter</label>
+                </div>
+                <div class="radio-option">
+                  <input 
+                    type="radio" 
+                    id="porterTypeRelief" 
+                    value="relief" 
+                    v-model="staffForm.porterType"
+                  />
+                  <label for="porterTypeRelief">Relief Porter</label>
+                </div>
+              </div>
+            </div>
+            
             <div class="form-actions">
               <button type="button" class="btn btn--secondary" @click="closeStaffForm">
                 Cancel
@@ -273,7 +331,8 @@ const showEditPorterForm = ref(false);
 const staffForm = ref({
   id: null,
   firstName: '',
-  lastName: ''
+  lastName: '',
+  porterType: 'shift' // Default to shift porter
 });
 
 // Initialize data
@@ -295,7 +354,8 @@ const editPorter = (porter) => {
   staffForm.value = {
     id: porter.id,
     firstName: porter.first_name,
-    lastName: porter.last_name
+    lastName: porter.last_name,
+    porterType: porter.porter_type || 'shift' // Use existing porter type or default to 'shift'
   };
   showEditPorterForm.value = true;
 };
@@ -308,7 +368,8 @@ const closeStaffForm = () => {
   staffForm.value = {
     id: null,
     firstName: '',
-    lastName: ''
+    lastName: '',
+    porterType: 'shift' // Reset to default porter type
   };
 };
 
@@ -318,6 +379,11 @@ const saveStaff = async (role) => {
     last_name: staffForm.value.lastName.trim(),
     role
   };
+  
+  // Add porter_type field for porters
+  if (role === 'porter') {
+    staffData.porter_type = staffForm.value.porterType;
+  }
   
   let success = false;
   
@@ -426,19 +492,24 @@ const deletePorter = async (porter) => {
   }
 }
 
-.sort-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.filter-controls {
   margin-bottom: 16px;
   
-  span {
-    font-size: mix.font-size('sm');
-    color: rgba(0, 0, 0, 0.6);
+  .sort-controls, .porter-type-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    
+    span {
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
+    }
   }
 }
 
-.sort-btn {
+.sort-btn, .filter-btn {
   background: none;
   border: none;
   padding: 4px 8px;
@@ -478,6 +549,26 @@ const deletePorter = async (porter) => {
   
   &__name {
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .porter-type-badge {
+      font-size: mix.font-size('xs');
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 100px;
+      
+      &--shift {
+        background-color: rgba(66, 133, 244, 0.1);
+        color: mix.color('primary');
+      }
+      
+      &--relief {
+        background-color: rgba(234, 67, 53, 0.1);
+        color: #EA4335;
+      }
+    }
   }
   
   &__department {
@@ -580,6 +671,22 @@ const deletePorter = async (porter) => {
       outline: none;
       border-color: mix.color('primary');
       box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
+  }
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    input[type="radio"] {
+      margin: 0;
     }
   }
 }
