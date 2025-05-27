@@ -30,13 +30,22 @@
           </div>
           <div v-else class="modal-title">
             <h3>{{ taskType.name }} Items</h3>
-            <button 
-              @click="startEditTaskTypeName" 
-              class="btn-action edit-task-type-btn"
-              title="Edit task type name"
-            >
-              <EditIcon size="16" />
-            </button>
+            <div class="task-type-actions">
+              <button 
+                @click="showTaskTypeAssignmentModal = true" 
+                class="btn-action"
+                title="Assign departments to task type"
+              >
+                <MapPinIcon size="16" :active="hasTaskTypeAssignments" />
+              </button>
+              <button 
+                @click="startEditTaskTypeName" 
+                class="btn-action edit-task-type-btn"
+                title="Edit task type name"
+              >
+                <EditIcon size="16" />
+              </button>
+            </div>
           </div>
         </div>
         <button class="modal-close" @click.stop="$emit('close')">&times;</button>
@@ -108,6 +117,13 @@
                 
                 <div class="task-item-actions">
                   <button 
+                    @click="openItemAssignmentModal(item)"
+                    class="btn-action"
+                    title="Assign departments to task item"
+                  >
+                    <MapPinIcon size="16" :active="hasItemAssignments(item.id)" />
+                  </button>
+                  <button 
                     @click="editTaskItem(item)"
                     class="btn-action"
                     title="Edit task item"
@@ -134,6 +150,21 @@
         </button>
       </div>
     </div>
+    
+    <!-- Department Assignment Modals -->
+    <DepartmentAssignmentModal 
+      v-if="showTaskTypeAssignmentModal"
+      :taskType="taskType"
+      @close="showTaskTypeAssignmentModal = false"
+      @saved="showTaskTypeAssignmentModal = false"
+    />
+    
+    <ItemDepartmentAssignmentModal 
+      v-if="selectedTaskItem"
+      :taskItem="selectedTaskItem"
+      @close="selectedTaskItem = null"
+      @saved="selectedTaskItem = null"
+    />
   </div>
 </template>
 
@@ -142,6 +173,9 @@ import { ref, computed, nextTick } from 'vue';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
 import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
+import MapPinIcon from '../icons/MapPinIcon.vue';
+import DepartmentAssignmentModal from './DepartmentAssignmentModal.vue';
+import ItemDepartmentAssignmentModal from './ItemDepartmentAssignmentModal.vue';
 
 const props = defineProps({
   taskType: {
@@ -163,6 +197,25 @@ const taskTypeNameInput = ref(null);
 const newTaskItemName = ref('');
 const editingTaskItem = ref(null);
 const editTaskItemName = ref('');
+
+// Department assignment modal state
+const showTaskTypeAssignmentModal = ref(false);
+const selectedTaskItem = ref(null);
+
+// Check if task type has any department assignments
+const hasTaskTypeAssignments = computed(() => {
+  return taskTypesStore.hasTypeAssignments(props.taskType.id);
+});
+
+// Check if a task item has any department assignments
+const hasItemAssignments = (itemId) => {
+  return taskTypesStore.hasItemAssignments(itemId);
+};
+
+// Open item assignment modal
+const openItemAssignmentModal = (item) => {
+  selectedTaskItem.value = item;
+};
 
 // Task Type name editing
 const startEditTaskTypeName = async () => {
@@ -293,12 +346,20 @@ const deleteTaskItem = async (item) => {
 .modal-title {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 8px;
   
   h3 {
     margin: 0;
     font-size: mix.font-size('lg');
     font-weight: 600;
+  }
+  
+  .task-type-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
   }
   
   .edit-task-type-btn {
