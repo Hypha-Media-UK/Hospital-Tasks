@@ -156,13 +156,11 @@
             >
                 <div class="staff-item__content">
                   <div class="staff-item__name">
-                    {{ porter.first_name }} {{ porter.last_name }}
                     <span 
-                      class="porter-type-badge"
-                      :class="{ 'porter-type-badge--shift': porter.porter_type === 'shift', 'porter-type-badge--relief': porter.porter_type === 'relief' }"
-                    >
-                      {{ porter.porter_type === 'shift' ? 'Shift' : 'Relief' }}
-                    </span>
+                      class="porter-type-dot"
+                      :class="{ 'porter-type-dot--shift': porter.porter_type === 'shift', 'porter-type-dot--relief': porter.porter_type === 'relief' }"
+                    ></span>
+                    {{ porter.first_name }} {{ porter.last_name }}
                   </div>
                   <div class="staff-item__department">
                     {{ porter.department ? porter.department.name : 'No department assigned' }}
@@ -269,25 +267,21 @@
             
             <div class="form-group">
               <label>Porter Type</label>
-              <div class="radio-group">
-                <div class="radio-option">
+              <div class="toggle-container">
+                <div class="toggle-option" :class="{ active: staffForm.porterType === 'shift' }">Shift</div>
+                <div class="toggle-switch">
                   <input 
-                    type="radio" 
-                    id="porterTypeShift" 
-                    value="shift" 
-                    v-model="staffForm.porterType"
+                    type="checkbox" 
+                    id="porterTypeToggle" 
+                    class="toggle-switch-checkbox"
+                    :checked="staffForm.porterType === 'relief'"
+                    @change="staffForm.porterType = $event.target.checked ? 'relief' : 'shift'"
                   />
-                  <label for="porterTypeShift">Shift Porter</label>
+                  <label class="toggle-switch-label" for="porterTypeToggle">
+                    <span class="toggle-switch-switch"></span>
+                  </label>
                 </div>
-                <div class="radio-option">
-                  <input 
-                    type="radio" 
-                    id="porterTypeRelief" 
-                    value="relief" 
-                    v-model="staffForm.porterType"
-                  />
-                  <label for="porterTypeRelief">Relief Porter</label>
-                </div>
+                <div class="toggle-option" :class="{ active: staffForm.porterType === 'relief' }">Relief</div>
               </div>
             </div>
             
@@ -553,20 +547,19 @@ const deletePorter = async (porter) => {
     align-items: center;
     gap: 8px;
     
-    .porter-type-badge {
-      font-size: mix.font-size('xs');
-      font-weight: 500;
-      padding: 2px 6px;
-      border-radius: 100px;
+    .porter-type-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
       
       &--shift {
-        background-color: rgba(66, 133, 244, 0.1);
-        color: mix.color('primary');
+        background-color: #4285F4; // Blue for Shift Porter
       }
       
       &--relief {
-        background-color: rgba(234, 67, 53, 0.1);
-        color: #EA4335;
+        background-color: #FF9800; // Orange for Relief Porter
       }
     }
   }
@@ -675,18 +668,84 @@ const deletePorter = async (porter) => {
   }
 }
 
-.radio-group {
+// Toggle Switch for Porter Type
+.toggle-container {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
   
-  .radio-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  .toggle-option {
+    font-size: 14px;
+    font-weight: 500;
+    padding: 4px 0;
+    color: rgba(0, 0, 0, 0.5);
+    transition: all 0.2s ease;
+    min-width: 60px;
+    text-align: center;
     
-    input[type="radio"] {
+    &.active {
+      &:first-of-type {
+        color: #4285F4; // Blue for Shift Porter
+        font-weight: 600;
+      }
+      
+      &:last-of-type {
+        color: #FF9800; // Orange for Relief Porter
+        font-weight: 600;
+      }
+    }
+  }
+  
+  .toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 24px;
+    display: inline-block;
+    
+    .toggle-switch-checkbox {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      
+      &:checked + .toggle-switch-label .toggle-switch-switch {
+        transform: translateX(24px);
+        background-color: #FF9800; // Orange for Relief Porter
+      }
+      
+      &:focus + .toggle-switch-label {
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      }
+      
+      &:checked + .toggle-switch-label {
+        background-color: rgba(255, 152, 0, 0.15); // Light orange background when Relief
+      }
+    }
+    
+    .toggle-switch-label {
+      display: block;
+      overflow: hidden;
+      cursor: pointer;
+      height: 100%;
+      border: 0;
+      border-radius: 24px;
       margin: 0;
+      background-color: rgba(66, 133, 244, 0.15); // Light blue background when Shift
+      transition: background-color 0.3s ease;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+      
+      .toggle-switch-switch {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background-color: #4285F4; // Blue for Shift Porter
+        border-radius: 50%;
+        transition: transform 0.2s ease, background-color 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
     }
   }
 }
