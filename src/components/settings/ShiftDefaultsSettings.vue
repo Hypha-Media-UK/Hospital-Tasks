@@ -5,17 +5,6 @@
       Configure default times and colors for day and night shifts. These settings will be used as defaults when creating new shifts.
     </p>
     
-    <div class="default-support-link">
-      <router-link to="/settings" class="support-link" @click="selectAreaSupportTab">
-        <IconComponent name="defaults" size="small" />
-        Configure Default Department & Service Coverage
-      </router-link>
-      <p class="support-description">
-        Manage porter assignments and time ranges for departments and services in the Area Support tab.
-        Changes made there will only affect new shifts, not existing ones.
-      </p>
-    </div>
-    
     <div class="shifts-container">
       <!-- Day Shift Card -->
       <div class="shift-card">
@@ -107,7 +96,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useSettingsStore } from '../../stores/settingsStore';
-import IconComponent from '../IconComponent.vue';
 
 const settingsStore = useSettingsStore();
 
@@ -177,16 +165,6 @@ const saveDefaults = async () => {
   }
 };
 
-// Function to select the Area Support tab
-const selectAreaSupportTab = () => {
-  // Using custom event to notify parent component to switch tabs
-  const event = new CustomEvent('select-tab', { 
-    detail: { tabId: 'supportServices' },
-    bubbles: true
-  });
-  document.dispatchEvent(event);
-};
-
 // Load settings on component mount
 onMounted(async () => {
   await settingsStore.loadSettings();
@@ -207,37 +185,6 @@ onMounted(async () => {
   .section-description {
     color: rgba(0, 0, 0, 0.6);
     margin-bottom: 16px;
-  }
-  
-  .default-support-link {
-    background-color: #f5f7fa;
-    border-left: 4px solid #4285F4;
-    border-radius: mix.radius('sm');
-    padding: 16px;
-    margin-bottom: 24px;
-    
-    .support-link {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: #4285F4;
-      font-weight: 500;
-      font-size: mix.font-size('md');
-      
-      .icon {
-        margin-right: 8px;
-      }
-      
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-    
-    .support-description {
-      margin-top: 8px;
-      font-size: mix.font-size('sm');
-      color: rgba(0, 0, 0, 0.6);
-    }
   }
   
   .shifts-container {

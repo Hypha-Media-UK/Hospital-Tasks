@@ -103,45 +103,14 @@
           </div>
           
           <div class="form-actions">
-            <div class="shift-buttons">
-              <button 
-                @click="createShift('week_day')" 
-                class="btn btn-primary"
-                :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: settingsStore.shiftDefaults.week_day.color }"
-              >
-                Start Week Day Shift
-              </button>
-              
-              <button 
-                @click="createShift('week_night')" 
-                class="btn btn-secondary"
-                :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: settingsStore.shiftDefaults.week_night.color }"
-              >
-                Start Week Night Shift
-              </button>
-            </div>
-            
-            <div class="shift-buttons">
-              <button 
-                @click="createShift('weekend_day')" 
-                class="btn btn-primary"
-                :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: settingsStore.shiftDefaults.week_day.color }"
-              >
-                Start Weekend Day Shift
-              </button>
-              
-              <button 
-                @click="createShift('weekend_night')" 
-                class="btn btn-secondary"
-                :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: settingsStore.shiftDefaults.week_night.color }"
-              >
-                Start Weekend Night Shift
-              </button>
-            </div>
+            <button 
+              @click="createAutoShift()" 
+              class="btn btn-auto-shift"
+              :disabled="!selectedSupervisor || creating"
+              :style="{ backgroundColor: getShiftColor(detectedShiftType) }"
+            >
+              Start Shift
+            </button>
           </div>
           
           <div v-if="error" class="error-message">
@@ -154,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
@@ -169,6 +138,8 @@ const settingsStore = useSettingsStore();
 const selectedSupervisor = ref('');
 const creating = ref(false);
 const error = ref('');
+const detectedShiftType = ref('week_day'); // Default value, will be updated
+const updateTimer = ref(null);
 
 // Computed properties
 const loading = computed(() => shiftsStore.loading.activeShifts || staffStore.loading.supervisors);
@@ -177,7 +148,7 @@ const dayShifts = computed(() => shiftsStore.activeDayShifts);
 const nightShifts = computed(() => shiftsStore.activeNightShifts);
 const supervisors = computed(() => staffStore.sortedSupervisors);
 
-// Load data
+// Load data and start auto-detection
 onMounted(async () => {
   // Initialize settings (to get shift colors)
   await settingsStore.loadSettings();
@@ -187,7 +158,102 @@ onMounted(async () => {
     staffStore.fetchSupervisors(),
     shiftsStore.fetchActiveShifts()
   ]);
+  
+  // Determine shift type initially
+  determineShiftType();
+  
+  // Set up timer to update the shift type every minute
+  updateTimer.value = setInterval(() => {
+    determineShiftType();
+  }, 60000); // 60 seconds
 });
+
+// Clean up timer when component is unmounted
+onUnmounted(() => {
+  if (updateTimer.value) {
+    clearInterval(updateTimer.value);
+  }
+});
+
+// Determine the current shift type based on time and day
+function determineShiftType() {
+  const now = new Date();
+  const isCurrentDayWeekend = isWeekend(now);
+  
+  // Parse settings times into minutes for easier comparison
+  const dayStartMinutes = parseTimeString(settingsStore.shiftDefaults.week_day.startTime);
+  const dayEndMinutes = parseTimeString(settingsStore.shiftDefaults.week_day.endTime);
+  const nightStartMinutes = parseTimeString(settingsStore.shiftDefaults.week_night.startTime);
+  const nightEndMinutes = parseTimeString(settingsStore.shiftDefaults.week_night.endTime);
+  
+  // Get current time in minutes
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  
+  // Check if current time is during day shift
+  let isDayShift;
+  
+  // Handle overnight night shifts (e.g., 20:00 to 08:00)
+  if (nightEndMinutes < nightStartMinutes) {
+    // Night shift spans midnight
+    isDayShift = currentTimeInMinutes < nightEndMinutes || currentTimeInMinutes >= dayStartMinutes;
+  } else {
+    // Normal day/night split
+    isDayShift = currentTimeInMinutes >= dayStartMinutes && currentTimeInMinutes < nightStartMinutes;
+  }
+  
+  // Set shift type based on time and day
+  if (isCurrentDayWeekend) {
+    detectedShiftType.value = isDayShift ? 'weekend_day' : 'weekend_night';
+  } else {
+    detectedShiftType.value = isDayShift ? 'week_day' : 'week_night';
+  }
+}
+
+// Parse time string (HH:MM) to minutes
+function parseTimeString(timeString) {
+  const [hours, minutes] = timeString.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
+
+// Format the shift type name for display
+function formatShiftTypeName(shiftType) {
+  switch (shiftType) {
+    case 'week_day':
+      return 'Weekday Day Shift';
+    case 'week_night':
+      return 'Weekday Night Shift';
+    case 'weekend_day':
+      return 'Weekend Day Shift';
+    case 'weekend_night':
+      return 'Weekend Night Shift';
+    default:
+      return 'Unknown Shift Type';
+  }
+}
+
+// Format current date and time for display
+function formatCurrentDateTime() {
+  const now = new Date();
+  const formattedDate = now.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const formattedTime = now.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  });
+  return `${formattedDate} at ${formattedTime}`;
+}
+
+// Create a shift based on the auto-detected type
+function createAutoShift() {
+  createShift(detectedShiftType.value);
+}
 
 // Create a new shift
 async function createShift(shiftType) {
@@ -369,33 +435,36 @@ function calculateDuration(startTimeString) {
     flex-direction: column;
     gap: 1rem;
     margin-top: 1.5rem;
-    
-    .shift-buttons {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    
-    button {
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: opacity 0.2s;
-      flex: 1;
-      min-width: 150px;
-      
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      
-      &:not(:disabled):hover {
-        opacity: 0.9;
-      }
-    }
+  }
+}
+
+.btn-auto-shift {
+  padding: 16px 24px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  margin: 10px 0;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &:not(:disabled):hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:not(:disabled):active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 }
 
