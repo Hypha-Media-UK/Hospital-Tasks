@@ -1,13 +1,13 @@
 <template>
   <div class="settings-tab">
-    <!-- App Settings Section -->
-    <div class="settings-section app-settings-section">
-      <AppSettings />
-    </div>
-    
     <!-- Shift Defaults Section -->
     <div class="settings-section">
       <ShiftDefaultsSettings />
+    </div>
+    
+    <!-- App Settings Section -->
+    <div class="settings-section app-settings-section">
+      <AppSettings />
     </div>
   </div>
 </template>
