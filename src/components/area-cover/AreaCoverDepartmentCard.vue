@@ -9,15 +9,18 @@
       <div class="department-card__name">
         {{ assignment.department.name }}
       </div>
-      <div class="department-card__building">
-        {{ assignment.department.building?.name || 'Unknown Building' }}
-      </div>
       
-      <div v-if="porterAssignments.length > 0" class="department-card__porters">
-        <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
-          {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
-          <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
-        </span>
+      <div class="department-card__footer">
+        <div v-if="porterAssignments.length > 0" class="department-card__porters">
+          <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
+            {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
+            <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
+          </span>
+        </div>
+        
+        <div class="department-card__time">
+          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+        </div>
       </div>
     </div>
     
@@ -64,6 +67,22 @@ const hasCoverageGap = computed(() => {
   }
 });
 
+// Helper function to format time range
+function formatTimeRange(startTime, endTime) {
+  if (!startTime || !endTime) return '';
+  
+  // Format times (assumes HH:MM format)
+  const formatTime = (time) => {
+    if (typeof time === 'string') {
+      // Handle 24-hour time format string (e.g., "14:30:00")
+      return time.substring(0, 5); // Get HH:MM part
+    }
+    return '';
+  };
+  
+  return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+}
+
 // Forward events from modal to parent
 const handleUpdate = (assignmentId, updates) => {
   emit('update', assignmentId, updates);
@@ -109,6 +128,8 @@ const handleRemove = (assignmentId) => {
   
   &__content {
     padding: 12px 16px;
+    position: relative;
+    min-height: 80px;
   }
   
   &__name {
@@ -117,14 +138,28 @@ const handleRemove = (assignmentId) => {
     margin-bottom: 4px;
   }
   
-  &__building {
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 8px;
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+    width: calc(100% - 32px);
+  }
+  
+  &__time {
     font-size: mix.font-size('sm');
-    color: rgba(0, 0, 0, 0.6);
-    margin-bottom: 8px;
+    color: rgba(0, 0, 0, 0.7);
+    padding: 2px 6px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: mix.radius('sm');
   }
   
   &__porters {
-    margin-top: 8px;
     
     .porter-count {
       display: inline-flex;

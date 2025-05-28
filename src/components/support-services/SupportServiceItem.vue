@@ -10,19 +10,17 @@
         {{ assignment.service.name }}
       </div>
       
-      <div class="service-card__time">
-        {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
-      </div>
-      
-      <div v-if="assignment.service.description" class="service-card__description">
-        {{ assignment.service.description }}
-      </div>
-      
-      <div v-if="porterAssignments.length > 0" class="service-card__porters">
-        <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
-          {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
-          <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
-        </span>
+      <div class="service-card__footer">
+        <div v-if="porterAssignments.length > 0" class="service-card__porters">
+          <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
+            {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
+            <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
+          </span>
+        </div>
+        
+        <div class="service-card__time">
+          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+        </div>
       </div>
     </div>
     
@@ -40,6 +38,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
+import { useSupportServicesStore } from '../../stores/supportServicesStore';
 import EditServiceModal from './EditServiceModal.vue';
 
 const props = defineProps({
@@ -52,21 +51,22 @@ const props = defineProps({
 const emit = defineEmits(['update', 'remove']);
 
 const shiftsStore = useShiftsStore();
+const supportServicesStore = useSupportServicesStore();
 const showEditModal = ref(false);
 
 // Get porter assignments for this service
 const porterAssignments = computed(() => {
-  // Use the shiftsStore getPorterAssignmentsByServiceId getter
+  // Use the supportServicesStore getPorterAssignmentsByServiceId getter for default settings
   // Make sure we always return an array, even if the getter returns undefined
-  const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
+  const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id);
   return Array.isArray(assignments) ? assignments : [];
 });
 
 // Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
   try {
-    // Use the shiftsStore hasServiceCoverageGap getter
-    return shiftsStore.hasServiceCoverageGap(props.assignment.id);
+    // Use the supportServicesStore hasCoverageGap getter
+    return supportServicesStore.hasCoverageGap(props.assignment.id);
   } catch (error) {
     console.error('Error checking coverage gap:', error);
     return false;
@@ -134,6 +134,8 @@ const handleRemove = (assignmentId) => {
   
   &__content {
     padding: 12px 16px;
+    position: relative;
+    min-height: 80px;
   }
   
   &__name {
@@ -142,11 +144,22 @@ const handleRemove = (assignmentId) => {
     margin-bottom: 4px;
   }
   
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 8px;
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+    width: calc(100% - 32px);
+  }
+  
   &__time {
     font-size: mix.font-size('sm');
     color: rgba(0, 0, 0, 0.7);
-    margin-bottom: 6px;
-    display: inline-block;
     padding: 2px 6px;
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: mix.radius('sm');
@@ -159,7 +172,6 @@ const handleRemove = (assignmentId) => {
   }
   
   &__porters {
-    margin-top: 8px;
     
     .porter-count {
       display: inline-flex;
