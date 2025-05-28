@@ -114,16 +114,16 @@ const saveSuccess = ref(false);
 
 // Initialize form values from store
 const initializeForm = () => {
-  const { day, night } = settingsStore.shiftDefaults;
+  const { week_day, week_night } = settingsStore.shiftDefaults;
   
   // Make sure to set default values in case they're missing from store
-  dayStartTime.value = day.startTime || '08:00';
-  dayEndTime.value = day.endTime || '16:00';
-  dayShiftColor.value = day.color || '#4285F4';
+  dayStartTime.value = week_day.startTime || '08:00';
+  dayEndTime.value = week_day.endTime || '16:00';
+  dayShiftColor.value = week_day.color || '#4285F4';
   
-  nightStartTime.value = night.startTime || '20:00';
-  nightEndTime.value = night.endTime || '08:00';
-  nightShiftColor.value = night.color || '#673AB7';
+  nightStartTime.value = week_night.startTime || '20:00';
+  nightEndTime.value = week_night.endTime || '08:00';
+  nightShiftColor.value = week_night.color || '#673AB7';
 };
 
 // Initialize with defaults immediately (don't wait for store)
