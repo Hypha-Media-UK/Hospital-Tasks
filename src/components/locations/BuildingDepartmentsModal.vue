@@ -43,6 +43,92 @@
       </div>
       
       <div class="modal-body">
+        <!-- Frequent Departments Section -->
+        <div v-if="frequentDepartments.length > 0" class="frequent-departments-section">
+          <div class="section-header">
+            <h4 class="section-title">
+              Frequent Departments
+              <span class="count-badge">{{ frequentDepartments.length }}</span>
+            </h4>
+            <p class="drag-hint" v-if="frequentDepartments.length > 1">
+              <span class="drag-icon">⇅</span> Drag to reorder
+            </p>
+          </div>
+          
+          <draggable 
+            v-model="sortableFrequentDepartments" 
+            class="departments-list frequent-list"
+            item-key="id"
+            :animation="200"
+            :disabled="locationsStore.loading.sorting"
+            @end="onFrequentDragEnd"
+            handle=".department-drag-handle"
+          >
+            <template #item="{element}">
+              <div class="department-item frequent-item">
+                <div v-if="editingDepartment === element.id" class="department-edit">
+                  <input 
+                    v-model="editDepartmentName" 
+                    class="form-control"
+                    @keyup.enter="saveDepartment(element)"
+                    @keyup.esc="cancelEditDepartment"
+                  />
+                  <div class="edit-actions">
+                    <button 
+                      class="btn btn-small btn-primary" 
+                      @click="saveDepartment(element)"
+                      :disabled="!editDepartmentName.trim()"
+                    >
+                      Save
+                    </button>
+                    <button 
+                      class="btn btn-small btn-secondary" 
+                      @click="cancelEditDepartment"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                <div v-else class="department-content">
+                  <div class="department-drag-handle">
+                    <span class="drag-icon">⠿</span>
+                  </div>
+                  <div class="department-details">
+                    <div class="department-name">{{ element.name }}</div>
+                    <div class="department-badge">
+                      Frequent
+                    </div>
+                  </div>
+                  
+                  <div class="department-actions">
+                    <button 
+                      @click="toggleFrequent(element)"
+                      class="btn-action btn-active" 
+                      title="Remove from frequent"
+                    >
+                      <StarIcon size="16" />
+                    </button>
+                    <button 
+                      @click="editDepartment(element)"
+                      class="btn-action"
+                      title="Edit department"
+                    >
+                      <EditIcon size="16" />
+                    </button>
+                    <button 
+                      @click="deleteDepartment(element)"
+                      class="btn-action"
+                      title="Delete department"
+                    >
+                      <TrashIcon size="16" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </draggable>
+        </div>
+        
         <!-- Add Department Form -->
         <div class="department-form">
           <div class="form-header">
@@ -68,16 +154,16 @@
           </div>
         </div>
         
-        <!-- Departments List -->
+        <!-- All Departments List -->
         <div class="departments-section">
-          <h4 class="section-title">Departments</h4>
+          <h4 class="section-title">All Departments</h4>
           
-          <div v-if="departments.length === 0" class="empty-state">
+          <div v-if="sortedBuildingDepartments.length === 0" class="empty-state">
             No departments added yet. Add your first department using the form above.
           </div>
           
           <div v-else class="departments-list">
-            <div v-for="department in departments" :key="department.id" class="department-item">
+            <div v-for="department in sortedBuildingDepartments" :key="department.id" class="department-item">
               <div v-if="editingDepartment === department.id" class="department-edit">
                 <input 
                   v-model="editDepartmentName" 
@@ -104,9 +190,6 @@
               <div v-else class="department-content">
                 <div class="department-details">
                   <div class="department-name">{{ department.name }}</div>
-                  <div class="department-badge" v-if="department.is_frequent">
-                    Frequent
-                  </div>
                 </div>
                 
                 <div class="department-actions">
@@ -114,7 +197,7 @@
                     @click="toggleFrequent(department)"
                     class="btn-action" 
                     :class="{ 'btn-active': department.is_frequent }"
-                    title="Toggle frequent status"
+                    title="Mark as frequent"
                   >
                     <StarIcon size="16" />
                   </button>
@@ -149,11 +232,12 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
 import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 import StarIcon from '../icons/StarIcon.vue';
+import draggable from 'vuedraggable';
 
 const props = defineProps({
   building: {
@@ -175,6 +259,7 @@ const buildingNameInput = ref(null);
 const newDepartmentName = ref('');
 const editingDepartment = ref(null);
 const editDepartmentName = ref('');
+const localFrequentDepartments = ref([]);
 
 // Building name editing
 const startEditBuildingName = async () => {
@@ -205,7 +290,7 @@ const cancelEditBuildingName = () => {
   editBuildingName.value = '';
 };
 
-// Computed property to get departments for this building
+// Computed property to get all departments for this building
 const departments = computed(() => {
   return locationsStore.departments
     .filter(dept => dept.building_id === props.building.id)
@@ -217,6 +302,56 @@ const departments = computed(() => {
       return a.is_frequent ? -1 : 1;
     });
 });
+
+// Get only frequent departments for this building, sorted by sort_order
+const frequentDepartments = computed(() => {
+  return locationsStore.departments
+    .filter(dept => dept.building_id === props.building.id && dept.is_frequent)
+    .sort((a, b) => a.sort_order - b.sort_order);
+});
+
+// Initialize local frequent departments when frequentDepartments changes
+watch(() => frequentDepartments.value, (newDepts) => {
+  localFrequentDepartments.value = [...newDepts];
+}, { immediate: true });
+
+// Sortable frequent departments for drag and drop
+const sortableFrequentDepartments = computed({
+  get: () => {
+    return localFrequentDepartments.value;
+  },
+  set: (newValue) => {
+    // Update local state immediately to prevent reversion
+    localFrequentDepartments.value = newValue;
+    
+    // Update sort_order properties on the local departments
+    localFrequentDepartments.value.forEach((department, index) => {
+      department.sort_order = index * 10; // Multiply by 10 to leave room for insertions later
+    });
+  }
+});
+
+// Get all departments for this building, excluding frequent departments
+// This is used for the "All Departments" section, to avoid duplication
+const sortedBuildingDepartments = computed(() => {
+  return locationsStore.departments
+    .filter(dept => dept.building_id === props.building.id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
+// Handle drag end event for frequent departments
+const onFrequentDragEnd = async (event) => {
+  if (event.oldIndex === event.newIndex) return; // No change in order
+  
+  // Update the sort orders of all frequent departments
+  const updates = sortableFrequentDepartments.value.map((department, index) => ({
+    id: department.id,
+    sort_order: index * 10 // Multiply by 10 to leave room for insertions later
+  }));
+  
+  // Save the changes to the database
+  await locationsStore.updateDepartmentsSortOrder(updates);
+};
 
 // Add a new department
 const addDepartment = async () => {
@@ -462,6 +597,21 @@ const deleteDepartment = async (department) => {
     justify-content: space-between;
     align-items: center;
     padding: 10px 16px;
+    user-select: none; /* Prevent text selection during drag */
+  }
+  
+  .department-drag-handle {
+    cursor: grab;
+    margin-right: 8px;
+    color: rgba(0, 0, 0, 0.3);
+    
+    &:hover {
+      color: rgba(0, 0, 0, 0.5);
+    }
+    
+    &:active {
+      cursor: grabbing;
+    }
   }
   
   .department-details {

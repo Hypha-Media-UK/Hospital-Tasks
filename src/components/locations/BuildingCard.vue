@@ -1,5 +1,8 @@
 <template>
   <div class="building-card">
+    <div class="building-card__drag-handle">
+      <span class="drag-icon">⠿</span>
+    </div>
     <div class="building-details">
       <h3 class="building-name">{{ building.name }}</h3>
     </div>
@@ -72,6 +75,29 @@ const confirmDelete = async () => {
   flex-direction: column;
   position: relative;
   min-height: 100px;
+  user-select: none; /* Prevent text selection during drag */
+  
+  &__drag-handle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    color: rgba(0, 0, 0, 0.3);
+    font-size: 18px;
+    cursor: grab;
+    
+    &:hover {
+      color: rgba(0, 0, 0, 0.5);
+    }
+    
+    &:active {
+      cursor: grabbing;
+    }
+    
+    .drag-icon {
+      display: block;
+      transform: rotate(90deg);
+    }
+  }
   
   .building-details {
     flex: 1;

@@ -1,6 +1,12 @@
 <template>
   <div class="buildings-card-list">
     <div class="buildings-card-list__header">
+      <div class="title-section">
+        <h3>Buildings</h3>
+        <p class="drag-hint" v-if="buildings.length > 1">
+          <span class="drag-icon">⇅</span> Drag to reorder buildings
+        </p>
+      </div>
       <button 
         class="btn btn--primary"
         @click="showAddForm = true"
@@ -44,15 +50,24 @@
       No buildings added yet. Add your first building to get started.
     </div>
     
-    <div class="buildings-card-list__grid">
-      <BuildingCard 
-        v-for="building in buildings" 
-        :key="building.id"
-        :building="building"
-        @view-departments="viewBuildingDepartments"
-        @deleted="handleBuildingDeleted"
-      />
-    </div>
+    <draggable 
+      v-model="sortableBuildings" 
+      class="buildings-card-list__grid"
+      item-key="id"
+      :animation="200"
+      :disabled="locationsStore.loading.sorting"
+      @end="onDragEnd"
+      handle=".building-card__drag-handle"
+    >
+      <template #item="{element}">
+        <BuildingCard 
+          :building="element"
+          :key="element.id"
+          @view-departments="viewBuildingDepartments"
+          @deleted="handleBuildingDeleted"
+        />
+      </template>
+    </draggable>
     
     <!-- Building Departments Modal -->
     <BuildingDepartmentsModal
@@ -64,10 +79,11 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
 import BuildingCard from './BuildingCard.vue';
 import BuildingDepartmentsModal from './BuildingDepartmentsModal.vue';
+import draggable from 'vuedraggable';
 
 const locationsStore = useLocationsStore();
 const showAddForm = ref(false);
@@ -75,10 +91,48 @@ const newBuildingName = ref('');
 const newBuildingInput = ref(null);
 const selectedBuilding = ref(null);
 
-// Get sorted buildings
+// Get sorted buildings for display purposes
 const buildings = computed(() => {
-  return [...locationsStore.buildings].sort((a, b) => a.name.localeCompare(b.name));
+  return locationsStore.sortedBuildings;
 });
+
+// Local state to store the buildings array for drag and drop
+const localBuildings = ref([]);
+
+// Initialize local buildings from store when component mounts or when store changes
+watch(() => locationsStore.sortedBuildings, (newBuildings) => {
+  localBuildings.value = [...newBuildings];
+}, { immediate: true });
+
+// Use local buildings for the draggable component
+const sortableBuildings = computed({
+  get: () => {
+    return localBuildings.value;
+  },
+  set: (newValue) => {
+    // Update local state immediately to prevent reversion
+    localBuildings.value = newValue;
+    
+    // Update sort_order properties on the local buildings
+    localBuildings.value.forEach((building, index) => {
+      building.sort_order = index * 10; // Multiply by 10 to leave room for insertions later
+    });
+  }
+});
+
+// Handle drag end event - persist changes to database
+const onDragEnd = async (event) => {
+  if (event.oldIndex === event.newIndex) return; // No change in order
+  
+  // Update the sort orders of all buildings
+  const updates = localBuildings.value.map((building, index) => ({
+    id: building.id,
+    sort_order: index * 10 // Multiply by 10 to leave room for insertions later
+  }));
+  
+  // Save the changes to the database
+  await locationsStore.updateBuildingsSortOrder(updates);
+};
 
 // Show add form and focus input
 const showAddBuildingForm = async () => {
@@ -135,8 +189,29 @@ onMounted(async () => {
   &__header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     margin-bottom: 24px;
+    
+    .title-section {
+      display: flex;
+      flex-direction: column;
+      
+      h3 {
+        margin: 0;
+        font-size: mix.font-size('lg');
+      }
+      
+      .drag-hint {
+        font-size: mix.font-size('sm');
+        color: rgba(0, 0, 0, 0.6);
+        margin: 4px 0 0 0;
+        
+        .drag-icon {
+          font-weight: bold;
+          color: mix.color('primary');
+        }
+      }
+    }
   }
   
   &__form {

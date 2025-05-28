@@ -157,9 +157,27 @@
     :class="{ 'field-auto-populated': originFieldAutoPopulated }"
   >
     <option value="">Select origin department (optional)</option>
-    <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-      {{ dept.name }}
-    </option>
+    
+    <!-- Frequent departments (if any) -->
+    <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
+      <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
+        {{ dept.name }}
+      </option>
+    </optgroup>
+    
+    <!-- All departments -->
+    <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
+      <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
+        {{ dept.name }}
+      </option>
+    </optgroup>
+    
+    <!-- If no frequent departments, just show all departments without grouping -->
+    <template v-if="frequentDepartments.length === 0">
+      <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
+        {{ dept.name }}
+      </option>
+    </template>
   </select>
 </div>
 
@@ -172,9 +190,27 @@
     :class="{ 'field-auto-populated': destinationFieldAutoPopulated }"
   >
     <option value="">Select destination department (optional)</option>
-    <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-      {{ dept.name }}
-    </option>
+    
+    <!-- Frequent departments (if any) -->
+    <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
+      <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
+        {{ dept.name }}
+      </option>
+    </optgroup>
+    
+    <!-- All departments -->
+    <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
+      <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
+        {{ dept.name }}
+      </option>
+    </optgroup>
+    
+    <!-- If no frequent departments, just show all departments without grouping -->
+    <template v-if="frequentDepartments.length === 0">
+      <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
+        {{ dept.name }}
+      </option>
+    </template>
   </select>
 </div>
               
@@ -380,7 +416,23 @@ const porters = computed(() => {
   return shiftsStore.shiftPorterPool.map(p => p.porter);
 });
 const taskTypes = computed(() => taskTypesStore.taskTypes);
+// Regular departments list for dropdowns
 const departments = computed(() => locationsStore.departments);
+
+// Get only frequent departments for task form dropdowns
+const frequentDepartments = computed(() => locationsStore.frequentDepartments);
+
+// Get regular (non-frequent) departments for task form dropdowns
+const regularDepartments = computed(() => {
+  return locationsStore.departments
+    .filter(dept => !dept.is_frequent)
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
+// All departments, properly sorted for dropdowns when no frequent departments exist
+const sortedDepartments = computed(() => {
+  return [...locationsStore.departments].sort((a, b) => a.name.localeCompare(b.name));
+});
 const canSaveTask = computed(() => {
   // For a new task, we need a task item
   if (!isEditingTask.value) {
