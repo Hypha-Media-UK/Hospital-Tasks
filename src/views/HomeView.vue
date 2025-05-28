@@ -128,7 +128,7 @@
                 @click="createShift('weekend_day')" 
                 class="btn btn-primary"
                 :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: '#34A853' }"
+                :style="{ backgroundColor: settingsStore.shiftDefaults.week_day.color }"
               >
                 Start Weekend Day Shift
               </button>
@@ -137,7 +137,7 @@
                 @click="createShift('weekend_night')" 
                 class="btn btn-secondary"
                 :disabled="!selectedSupervisor || creating"
-                :style="{ backgroundColor: '#EA4335' }"
+                :style="{ backgroundColor: settingsStore.shiftDefaults.week_night.color }"
               >
                 Start Weekend Night Shift
               </button>
@@ -234,13 +234,13 @@ function isWeekend(date) {
 function getShiftColor(shiftType) {
   switch (shiftType) {
     case 'week_day':
+    case 'weekend_day':
+      // Use day shift color for both weekday and weekend day shifts
       return settingsStore.shiftDefaults.week_day.color;
     case 'week_night':
-      return settingsStore.shiftDefaults.week_night.color;
-    case 'weekend_day':
-      return settingsStore.shiftDefaults.weekend_day.color;
     case 'weekend_night':
-      return settingsStore.shiftDefaults.weekend_night.color;
+      // Use night shift color for both weekday and weekend night shifts
+      return settingsStore.shiftDefaults.week_night.color;
     default:
       return '#4285F4'; // Default blue color
   }
