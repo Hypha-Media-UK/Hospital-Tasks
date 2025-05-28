@@ -188,6 +188,7 @@
 import { ref, computed, onMounted, reactive } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
+import { useSupportServicesStore } from '../../stores/supportServicesStore';
 
 const props = defineProps({
   assignment: {
@@ -217,15 +218,15 @@ const newPorterAssignment = ref({
 
 // Computed property for determining what porters are available
 const availablePorters = computed(() => {
-  // Get all porters from the shift porter pool
-  const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
+  // Get all porters from the staff store
+  const allPorters = staffStore.sortedPorters || [];
   
   // Filter out porters that are already in our local assignments
   const assignedPorterIds = localPorterAssignments.value
     .filter(pa => !pa.isRemoved)
     .map(pa => pa.porter_id);
   
-  return shiftPorters.filter(porter => !assignedPorterIds.includes(porter.id));
+  return allPorters.filter(porter => !assignedPorterIds.includes(porter.id));
 });
 
 // Check for coverage gaps with local data
@@ -300,7 +301,7 @@ const addLocalPorterAssignment = () => {
     // Add to local state with a temporary ID
     localPorterAssignments.value.push({
       id: `temp-${Date.now()}`,
-      shift_support_service_assignment_id: props.assignment.id,
+      default_service_cover_assignment_id: props.assignment.id,
       porter_id: newPorterAssignment.value.porter_id,
       start_time: newPorterAssignment.value.start_time + ':00',
       end_time: newPorterAssignment.value.end_time + ':00',
@@ -337,9 +338,12 @@ const removeLocalPorterAssignment = (index) => {
 
 const saveAllChanges = async () => {
   try {
+    // Import the supportServicesStore for handling default service settings
+    const supportServicesStore = useSupportServicesStore();
+    
     // 1. Update service assignment (times, color)
-    // Use shift-specific method to update service assignment
-    await shiftsStore.updateShiftSupportService(props.assignment.id, {
+    // Use the appropriate method for default service settings
+    await supportServicesStore.updateServiceAssignment(props.assignment.id, {
       start_time: localStartTime.value + ':00',
       end_time: localEndTime.value + ':00',
       color: localColor.value
@@ -347,8 +351,8 @@ const saveAllChanges = async () => {
     
     // 2. Process porter assignments - removals
     for (const porterId of removedPorterIds.value) {
-      // Use shift-specific method to remove porter assignment
-      await shiftsStore.removeShiftSupportServicePorter(porterId);
+      // Use default service settings method to remove porter assignment
+      await supportServicesStore.removePorterAssignment(porterId);
     }
     
     // 3. Process porter assignments - additions and updates
@@ -357,16 +361,16 @@ const saveAllChanges = async () => {
       if (assignment.isRemoved) continue;
       
       if (assignment.isNew) {
-        // Add new assignment - use shift-specific method
-        await shiftsStore.addShiftSupportServicePorter(
+        // Add new assignment - use default service settings method
+        await supportServicesStore.addPorterToServiceAssignment(
           props.assignment.id,
           assignment.porter_id,
           assignment.start_time,
           assignment.end_time
         );
       } else {
-        // Update existing assignment - use shift-specific method
-        await shiftsStore.updateShiftSupportServicePorter(assignment.id, {
+        // Update existing assignment - use default service settings method
+        await supportServicesStore.updatePorterAssignment(assignment.id, {
           start_time: assignment.start_time_display + ':00',
           end_time: assignment.end_time_display + ':00'
         });
@@ -409,8 +413,9 @@ const initializeState = () => {
   // Initialize color
   localColor.value = props.assignment.color || '#4285F4';
   
-  // Initialize porter assignments - use shift-specific porter assignments
-  const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
+  // Initialize porter assignments - use the supportServicesStore
+  const supportServicesStore = useSupportServicesStore();
+  const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
   localPorterAssignments.value = assignments.map(pa => ({
     ...pa,
     start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
