@@ -16,7 +16,6 @@
     <!-- Service Assignments List -->
     <div v-else>
       <div class="services-list-header">
-        <div class="time-info" v-if="timeRange">{{ timeRange }}</div>
         <button @click="showAddServiceModal = true" class="btn-add-service">
           Add Service
         </button>
@@ -388,18 +387,9 @@ async function confirmRemove(assignmentId) {
   
   .services-list-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 16px;
-    
-    .time-info {
-      padding: 6px 10px;
-      background-color: rgba(0, 0, 0, 0.03);
-      border-radius: mix.radius('sm');
-      font-size: mix.font-size('sm');
-      color: rgba(0, 0, 0, 0.7);
-      margin: 0;
-    }
   }
   
   .btn-add-service {

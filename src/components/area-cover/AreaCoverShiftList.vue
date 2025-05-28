@@ -160,15 +160,31 @@ const buildingsWithAvailableDepartments = computed(() => {
 
 // Methods
 const addDepartment = async (departmentId) => {
-  // Default times based on shift type
+  // Get default times from settings store based on shift type
   let startTime, endTime;
   
-  if (props.shiftType === 'day') {
-    startTime = '08:00:00';
-    endTime = '16:00:00';
+  // Map legacy types to current types if needed
+  const shiftTypeToUse = props.shiftType === 'day' ? 'week_day' : 
+                          props.shiftType === 'night' ? 'week_night' : 
+                          props.shiftType;
+  
+  // Get shift defaults from settings store
+  if (settingsStore.shiftDefaults[shiftTypeToUse]) {
+    // Convert HH:MM to HH:MM:SS format
+    startTime = settingsStore.shiftDefaults[shiftTypeToUse].startTime + ':00';
+    endTime = settingsStore.shiftDefaults[shiftTypeToUse].endTime + ':00';
+    
+    console.log(`Using shift defaults for ${shiftTypeToUse}: ${startTime} - ${endTime}`);
   } else {
-    startTime = '20:00:00';
-    endTime = '04:00:00';
+    // Fallback defaults if settings aren't available
+    if (shiftTypeToUse.includes('day')) {
+      startTime = '08:00:00';
+      endTime = '20:00:00';
+    } else {
+      startTime = '20:00:00';
+      endTime = '08:00:00';
+    }
+    console.log(`Using fallback defaults: ${startTime} - ${endTime}`);
   }
   
   await areaCoverStore.addDepartment(
