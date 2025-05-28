@@ -98,7 +98,7 @@ onMounted(() => {
     if (redirectedFrom === '/default-support') {
       activeTab.value = 'supportServices';
     } else {
-      activeTab.value = 'settings';
+      activeTab.value = 'staff'; // Default to first tab for settings page
     }
   } else if (route.path === '/') {
     activeTab.value = 'staff'; // Default for home route
