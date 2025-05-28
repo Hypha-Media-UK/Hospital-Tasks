@@ -507,6 +507,12 @@ const deleteDepartment = async (department) => {
   .frequent-departments-section {
     background-color: #fff;
 
+  .frequent-list {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
     .department-item {
       background-color: #FFEDD5 !important; /* Light orange */
       border: 1px solid rgba(245, 158, 11, 0.1);
@@ -528,12 +534,14 @@ const deleteDepartment = async (department) => {
       justify-content: space-between;
       gap: 6px;
       height: 40px;
+      width: 100%;
     }
     
     .department-name {
       color: #B45309; /* Darker orange */
       font-size: mix.font-size('sm');
       font-weight: 500;
+      text-align: left;
     }
     
     .department-badge {
@@ -638,13 +646,6 @@ const deleteDepartment = async (department) => {
     gap: 8px;
   }
   
-  .frequent-list {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  
   .department-item {
     border-radius: mix.radius('md');
     background-color: rgba(0, 0, 0, 0.02);
@@ -694,12 +695,14 @@ const deleteDepartment = async (department) => {
     }
   }
   
-  .department-details {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-  }
+    .department-details {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      text-align: left;
+      gap: 12px;
+      flex: 1;
+    }
   
   .department-name {
     font-weight: 500;
@@ -719,6 +722,8 @@ const deleteDepartment = async (department) => {
   .department-actions {
     display: flex;
     gap: 4px;
+    margin-left: auto; /* Push to the right */
+    justify-content: flex-end;
   }
   
   .department-edit {
