@@ -1,7 +1,6 @@
 <template>
   <div class="area-cover-shift-list">
   <div class="area-cover-shift-list__header">
-    <div class="time-info" v-if="timeRange">{{ timeRange }}</div>
     <button class="btn btn--primary" @click="showDepartmentSelector = true">
       Add Department
     </button>
@@ -210,18 +209,9 @@ onMounted(async () => {
 .area-cover-shift-list {
   &__header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 16px;
-    
-    .time-info {
-      padding: 6px 10px;
-      background-color: rgba(0, 0, 0, 0.03);
-      border-radius: mix.radius('sm');
-      font-size: mix.font-size('sm');
-      color: rgba(0, 0, 0, 0.7);
-      margin: 0;
-    }
   }
 }
 

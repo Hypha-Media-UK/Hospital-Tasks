@@ -361,6 +361,20 @@ export const useSupportServicesStore = defineStore('supportServices', {
       this.loading.save = true;
       
       try {
+        // First, delete any porter assignments related to this service assignment
+        console.log('Deleting porter assignments for service assignment ID:', assignmentId);
+        const { error: porterError } = await supabase
+          .from('default_service_cover_porter_assignments')
+          .delete()
+          .eq('default_service_cover_assignment_id', assignmentId);
+        
+        if (porterError) {
+          console.error('Error deleting related porter assignments:', porterError);
+          throw porterError;
+        }
+        
+        // Now delete the service assignment itself
+        console.log('Deleting service assignment with ID:', assignmentId);
         const { error } = await supabase
           .from('default_service_cover_assignments')
           .delete()
@@ -371,11 +385,12 @@ export const useSupportServicesStore = defineStore('supportServices', {
         // Remove the assignment from the state
         this.serviceAssignments = this.serviceAssignments.filter(a => a.id !== assignmentId);
         
-        // Also remove associated porter assignments
+        // Also remove associated porter assignments from state
         this.porterAssignments = this.porterAssignments.filter(
           pa => pa.default_service_cover_assignment_id !== assignmentId
         );
         
+        console.log('Service assignment successfully deleted');
         return true;
       } catch (error) {
         console.error('Error deleting service assignment:', error);

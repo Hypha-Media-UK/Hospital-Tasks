@@ -357,16 +357,23 @@ async function confirmRemove(assignmentId) {
     try {
       if (props.shiftId) {
         // Remove from specific shift
+        console.log('Removing shift support service with ID:', assignmentId);
         await shiftsStore.removeShiftSupportService(assignmentId);
       } else {
         // Remove from default settings
-        await supportServicesStore.deleteServiceAssignment(assignmentId);
+        console.log('Removing default service assignment with ID:', assignmentId);
+        const result = await supportServicesStore.deleteServiceAssignment(assignmentId);
+        console.log('Delete result:', result);
+        
+        // Refresh service assignments after deletion
+        await supportServicesStore.fetchServiceAssignments();
       }
       
       showEditModal.value = false;
       selectedAssignment.value = null;
     } catch (error) {
       console.error('Error removing assignment:', error);
+      alert(`Failed to remove service: ${error.message}`);
     }
   }
 }
