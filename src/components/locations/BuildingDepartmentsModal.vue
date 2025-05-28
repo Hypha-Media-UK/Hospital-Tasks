@@ -45,7 +45,7 @@
       <div class="modal-body">
         <!-- Frequent Departments Section -->
         <div v-if="frequentDepartments.length > 0" class="frequent-departments-section">
-          <div class="section-header">
+          <div class="section-header frequent-section-header">
             <h4 class="section-title">
               Frequent Departments
               <span class="count-badge">{{ frequentDepartments.length }}</span>
@@ -95,32 +95,15 @@
                   </div>
                   <div class="department-details">
                     <div class="department-name">{{ element.name }}</div>
-                    <div class="department-badge">
-                      Frequent
-                    </div>
                   </div>
                   
                   <div class="department-actions">
                     <button 
                       @click="toggleFrequent(element)"
-                      class="btn-action btn-active" 
+                      class="btn-action btn-remove-frequent" 
                       title="Remove from frequent"
                     >
-                      <StarIcon size="16" />
-                    </button>
-                    <button 
-                      @click="editDepartment(element)"
-                      class="btn-action"
-                      title="Edit department"
-                    >
-                      <EditIcon size="16" />
-                    </button>
-                    <button 
-                      @click="deleteDepartment(element)"
-                      class="btn-action"
-                      title="Delete department"
-                    >
-                      <TrashIcon size="16" />
+                      &times;
                     </button>
                   </div>
                 </div>
@@ -519,6 +502,74 @@ const deleteDepartment = async (department) => {
   gap: 12px;
 }
 
+
+
+  .frequent-departments-section {
+    background-color: #fff;
+
+    .department-item {
+      background-color: #FFEDD5 !important; /* Light orange */
+      border: 1px solid rgba(245, 158, 11, 0.1);
+      border-radius: mix.radius('md');
+      margin-bottom: 8px;
+      transition: background-color 0.2s ease;
+      overflow: hidden;
+      flex: 0 0 auto;
+      width: 180px;
+      
+      &:hover {
+        background-color: #FFE8C8 !important;
+      }
+    
+    .department-content {
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      height: 40px;
+    }
+    
+    .department-name {
+      color: #B45309; /* Darker orange */
+      font-size: mix.font-size('sm');
+      font-weight: 500;
+    }
+    
+    .department-badge {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: #B45309;
+      font-size: mix.font-size('xs');
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: mix.radius('full');
+      text-transform: uppercase;
+    }
+    
+    .department-drag-handle {
+      cursor: grab;
+      color: rgba(180, 83, 9, 0.4);
+      margin-right: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s ease;
+      
+      &:hover {
+        color: rgba(180, 83, 9, 0.6);
+      }
+      
+      &:active {
+        cursor: grabbing;
+      }
+      
+      .drag-icon {
+        font-size: 16px;
+      }
+    }
+  }
+}
+
 // Department form styles
 .department-form {
   background-color: rgba(0, 0, 0, 0.02);
@@ -572,6 +623,7 @@ const deleteDepartment = async (department) => {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   }
   
+  
   .empty-state {
     padding: 24px;
     text-align: center;
@@ -586,11 +638,19 @@ const deleteDepartment = async (department) => {
     gap: 8px;
   }
   
+  .frequent-list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
   .department-item {
     border-radius: mix.radius('md');
     background-color: rgba(0, 0, 0, 0.02);
     overflow: hidden;
   }
+
   
   .department-content {
     display: flex;
@@ -600,38 +660,61 @@ const deleteDepartment = async (department) => {
     user-select: none; /* Prevent text selection during drag */
   }
   
+  
   .department-drag-handle {
     cursor: grab;
-    margin-right: 8px;
-    color: rgba(0, 0, 0, 0.3);
+    margin-right: 12px;
+    color: rgba(180, 83, 9, 0.5);
+    background-color: rgba(245, 158, 11, 0.15);
+    border-radius: 8px;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.1);
+    
+    .drag-icon {
+      font-size: 18px;
+      filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
+    }
     
     &:hover {
-      color: rgba(0, 0, 0, 0.5);
+      color: rgba(180, 83, 9, 0.8);
+      background-color: rgba(245, 158, 11, 0.25);
+      transform: translateY(-1px);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0, 0, 0, 0.15);
     }
     
     &:active {
       cursor: grabbing;
+      background-color: rgba(245, 158, 11, 0.35);
+      transform: translateY(1px);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
     }
   }
   
   .department-details {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
+    flex: 1;
   }
   
   .department-name {
     font-weight: 500;
   }
   
-  .department-badge {
-    background-color: rgba(255, 193, 7, 0.2);
-    color: #B45309;
-    font-size: mix.font-size('xs');
-    font-weight: 500;
-    padding: 2px 6px;
-    border-radius: mix.radius('sm');
-  }
+  
+    .department-badge {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: #B45309;
+      font-size: mix.font-size('xs');
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: mix.radius('full');
+      text-transform: uppercase;
+    }
   
   .department-actions {
     display: flex;
@@ -719,6 +802,25 @@ const deleteDepartment = async (department) => {
   
   &.btn-active {
     color: #F59E0B;
+  }
+  
+  &.btn-remove-frequent {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 500;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    padding: 0;
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #B91C1C;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      background-color: rgba(220, 38, 38, 0.2);
+    }
   }
 }
 </style>
