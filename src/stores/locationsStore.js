@@ -46,9 +46,30 @@ export const useLocationsStore = defineStore('locations', {
     },
     
     frequentDepartments: (state) => {
-      return state.departments
-        .filter(dept => dept.is_frequent)
-        .sort((a, b) => a.sort_order - b.sort_order);
+      // First, get a map of building IDs to their sort order
+      const buildingSortMap = new Map();
+      [...state.buildings].sort((a, b) => a.sort_order - b.sort_order)
+        .forEach((building, index) => {
+          buildingSortMap.set(building.id, index);
+        });
+      
+      // Get all frequent departments
+      const frequentDepts = state.departments.filter(dept => dept.is_frequent);
+      
+      // Sort frequent departments by building order first, then by department sort_order
+      return frequentDepts.sort((a, b) => {
+        // Get building sort order (or a high number if building not found)
+        const buildingOrderA = buildingSortMap.get(a.building_id) ?? 999;
+        const buildingOrderB = buildingSortMap.get(b.building_id) ?? 999;
+        
+        // First sort by building order
+        if (buildingOrderA !== buildingOrderB) {
+          return buildingOrderA - buildingOrderB;
+        }
+        
+        // If same building, sort by department sort_order
+        return a.sort_order - b.sort_order;
+      });
     },
     
     sortedDepartmentsByBuilding: (state) => (buildingId) => {
@@ -58,10 +79,29 @@ export const useLocationsStore = defineStore('locations', {
     },
     
     sortedDepartmentsForDropdown: (state) => {
-      // First, get all frequent departments sorted by sort_order
+      // First, get a map of building IDs to their sort order
+      const buildingSortMap = new Map();
+      [...state.buildings].sort((a, b) => a.sort_order - b.sort_order)
+        .forEach((building, index) => {
+          buildingSortMap.set(building.id, index);
+        });
+      
+      // First, get all frequent departments sorted by building order then by sort_order
       const frequentDepts = state.departments
         .filter(dept => dept.is_frequent)
-        .sort((a, b) => a.sort_order - b.sort_order);
+        .sort((a, b) => {
+          // Get building sort order (or a high number if building not found)
+          const buildingOrderA = buildingSortMap.get(a.building_id) ?? 999;
+          const buildingOrderB = buildingSortMap.get(b.building_id) ?? 999;
+          
+          // First sort by building order
+          if (buildingOrderA !== buildingOrderB) {
+            return buildingOrderA - buildingOrderB;
+          }
+          
+          // If same building, sort by department sort_order
+          return a.sort_order - b.sort_order;
+        });
       
       // Then, get non-frequent departments sorted by name
       const regularDepts = state.departments
