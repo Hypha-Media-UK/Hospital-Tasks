@@ -4,7 +4,7 @@
       <button 
         class="area-cover-tabs__tab" 
         :class="{ 'area-cover-tabs__tab--active': activeTab === shift.shift_type }"
-        @click="activeTab = shift.shift_type"
+        @click="setActiveTab(shift.shift_type)"
       >
         {{ shiftTypeLabel }} Coverage
       </button>
@@ -20,6 +20,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import ShiftAreaCoverList from './ShiftAreaCoverList.vue';
 
@@ -31,6 +32,8 @@ const props = defineProps({
 });
 
 const shiftsStore = useShiftsStore();
+const route = useRoute();
+const router = useRouter();
 const activeTab = ref('');
 
 // Set the active tab based on the shift type
@@ -56,9 +59,38 @@ const shiftTypeLabel = computed(() => {
 
 onMounted(() => {
   if (shift.value) {
-    activeTab.value = shift.value.shift_type;
+    // Check for shift-area-tab query parameter first
+    const tabParam = route.query['shift-area-tab'];
+    if (tabParam && tabParam === shift.value.shift_type) {
+      activeTab.value = tabParam;
+    } else {
+      activeTab.value = shift.value.shift_type;
+      // Update URL to include tab param
+      updateQueryParam(activeTab.value);
+    }
   }
 });
+
+// Function to set active tab and update URL query parameter
+function setActiveTab(tabId) {
+  activeTab.value = tabId;
+  updateQueryParam(tabId);
+}
+
+// Helper function to update the URL query parameter
+function updateQueryParam(tabId) {
+  router.replace({ 
+    query: { 
+      ...route.query, 
+      'shift-area-tab': tabId 
+    }
+  }).catch(err => {
+    // Handle navigation errors silently
+    if (err.name !== 'NavigationDuplicated') {
+      console.error(err);
+    }
+  });
+}
 </script>
 
 <style lang="scss" scoped>

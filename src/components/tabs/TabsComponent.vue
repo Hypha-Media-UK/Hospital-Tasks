@@ -60,7 +60,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import TabHeader from './TabHeader.vue';
 import TabContent from './TabContent.vue';
 import IconComponent from '../IconComponent.vue';
@@ -71,6 +71,7 @@ import SupportServicesTabContent from './tab-contents/SupportServicesTabContent.
 import SettingsTabContent from './tab-contents/SettingsTabContent.vue';
 
 const route = useRoute();
+const router = useRouter();
 
 const tabs = [
   { id: 'staff', label: 'Staff' },
@@ -80,7 +81,7 @@ const tabs = [
   { id: 'settings', label: 'Settings' }
 ];
 
-// Initialize active tab based on route
+// Initialize active tab - will be updated in onMounted
 const activeTab = ref('staff');
 const isMobileMenuOpen = ref(false);
 
@@ -90,34 +91,60 @@ const activeTabLabel = computed(() => {
   return tab ? tab.label : '';
 });
 
-// Set active tab based on current route
+// Set active tab based on current route or query parameter
 onMounted(() => {
-  if (route.path === '/settings') {
+  // First check if there's a tab query parameter
+  if (route.query.tab && tabs.some(tab => tab.id === route.query.tab)) {
+    // If there's a valid tab query parameter, use it
+    activeTab.value = route.query.tab;
+  } else if (route.path === '/settings') {
     // Check if the user was redirected from /default-support
     const redirectedFrom = route.redirectedFrom?.path;
     if (redirectedFrom === '/default-support') {
       activeTab.value = 'supportServices';
+      // Update URL to include tab param
+      updateQueryParam(activeTab.value);
     } else {
       activeTab.value = 'staff'; // Default to first tab for settings page
+      // Update URL to include tab param
+      updateQueryParam(activeTab.value);
     }
   } else if (route.path === '/') {
     activeTab.value = 'staff'; // Default for home route
+    // Update URL to include tab param
+    updateQueryParam(activeTab.value);
   }
   
   // Listen for custom tab selection events (from ShiftDefaultsSettings)
   document.addEventListener('select-tab', (event) => {
     if (event.detail && event.detail.tabId) {
-      activeTab.value = event.detail.tabId;
+      setActiveTab(event.detail.tabId);
     }
   });
 });
 
+// Helper function to update the URL query parameter
+function updateQueryParam(tabId) {
+  router.replace({ 
+    query: { 
+      ...route.query, 
+      tab: tabId 
+    }
+  }).catch(err => {
+    // Handle navigation errors silently (to avoid console errors on duplicated navigation)
+    if (err.name !== 'NavigationDuplicated') {
+      console.error(err);
+    }
+  });
+}
+
 function setActiveTab(tabId) {
   activeTab.value = tabId;
+  updateQueryParam(tabId);
 }
 
 function setActiveTabMobile(tabId) {
-  activeTab.value = tabId;
+  setActiveTab(tabId);
   isMobileMenuOpen.value = false; // Close menu after selection
 }
 

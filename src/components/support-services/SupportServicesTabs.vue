@@ -4,28 +4,28 @@
       <button 
         class="support-services-tabs__tab" 
         :class="{ 'support-services-tabs__tab--active': activeTab === 'week_day' }"
-        @click="activeTab = 'week_day'"
+        @click="setActiveTab('week_day')"
       >
         Week Days
       </button>
       <button 
         class="support-services-tabs__tab" 
         :class="{ 'support-services-tabs__tab--active': activeTab === 'week_night' }"
-        @click="activeTab = 'week_night'"
+        @click="setActiveTab('week_night')"
       >
         Week Nights
       </button>
       <button 
         class="support-services-tabs__tab" 
         :class="{ 'support-services-tabs__tab--active': activeTab === 'weekend_day' }"
-        @click="activeTab = 'weekend_day'"
+        @click="setActiveTab('weekend_day')"
       >
         Weekend Days
       </button>
       <button 
         class="support-services-tabs__tab" 
         :class="{ 'support-services-tabs__tab--active': activeTab === 'weekend_night' }"
-        @click="activeTab = 'weekend_night'"
+        @click="setActiveTab('weekend_night')"
       >
         Weekend Nights
       </button>
@@ -53,10 +53,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useSettingsStore } from '../../stores/settingsStore';
 import SupportServicesShiftList from './SupportServicesShiftList.vue';
 
 const settingsStore = useSettingsStore();
+const route = useRoute();
+const router = useRouter();
 const activeTab = ref('week_day');
 
 onMounted(async () => {
@@ -64,7 +67,31 @@ onMounted(async () => {
   if (!settingsStore.shiftDefaults.week_day.startTime) {
     await settingsStore.loadSettings();
   }
+  
+  // Check for support-tab query parameter
+  const tabParam = route.query['support-tab'];
+  if (tabParam && ['week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(tabParam)) {
+    activeTab.value = tabParam;
+  }
 });
+
+// Function to set active tab and update URL query parameter
+function setActiveTab(tabId) {
+  activeTab.value = tabId;
+  
+  // Update URL with the new tab
+  router.replace({ 
+    query: { 
+      ...route.query, 
+      'support-tab': tabId 
+    }
+  }).catch(err => {
+    // Handle navigation errors silently
+    if (err.name !== 'NavigationDuplicated') {
+      console.error(err);
+    }
+  });
+}
 
 // Format time range for display (e.g., "08:00 - 16:00")
 function formatTimeRange(shiftSettings) {
