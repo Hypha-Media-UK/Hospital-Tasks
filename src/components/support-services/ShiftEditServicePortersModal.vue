@@ -1,42 +1,22 @@
 <template>
-  <div class="modal-overlay" @click.stop="$emit('close')">
+  <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">Edit Service Assignment</h3>
+        <h3 class="modal-title">
+          {{ assignment.service.name }} Porter Assignments
+        </h3>
         <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
       
       <div class="modal-body">
-        <div class="form-group">
-          <label>Service Name</label>
-          <div class="static-field">{{ assignment.service.name }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label for="edit-start-time">Start Time</label>
-          <input 
-            type="time"
-            id="edit-start-time"
-            v-model="editForm.startTime"
-            class="form-control"
-            required
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="edit-end-time">End Time</label>
-          <input 
-            type="time"
-            id="edit-end-time"
-            v-model="editForm.endTime"
-            class="form-control"
-            required
-          />
+        <div class="service-time-info">
+          <div class="info-label">Service Coverage Time:</div>
+          <div class="info-value">{{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
         
         <!-- Porter Assignments Section -->
         <div class="porter-assignments">
-          <h4 class="section-title">Porter Assignments</h4>
+          <h4 class="section-title">Assigned Porters</h4>
           
           <div v-if="porterAssignments.length === 0" class="empty-state">
             <p>No porters assigned to this service yet.</p>
@@ -59,14 +39,14 @@
               
               <div class="porter-actions">
                 <button 
-                  @click.stop="editPorterAssignment(assignment)"
+                  @click="editPorterAssignment(assignment)"
                   class="btn btn--icon"
                   title="Edit porter assignment"
                 >
                   <span class="icon">✏️</span>
                 </button>
                 <button 
-                  @click.stop="removePorterAssignment(assignment.id)"
+                  @click="removePorterAssignment(assignment.id)"
                   class="btn btn--icon btn--danger"
                   title="Remove porter assignment"
                 >
@@ -76,48 +56,32 @@
             </div>
           </div>
           
-          <button @click.stop="showAddPorterModal = true" class="btn btn-primary btn-sm mt-2">
+          <button @click="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2">
             Add Porter
           </button>
-          
-          <!-- Coverage Status -->
-          <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap }">
-            <div class="status-icon">{{ hasCoverageGap ? '⚠️' : '✅' }}</div>
-            <div class="status-text">
-              {{ hasCoverageGap ? 'Coverage gap detected! Some time slots are not covered.' : 'Full coverage for this service.' }}
-            </div>
+        </div>
+        
+        <!-- Coverage Status -->
+        <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap }">
+          <div class="status-icon">{{ hasCoverageGap ? '⚠️' : '✅' }}</div>
+          <div class="status-text">
+            {{ hasCoverageGap ? 'Coverage gap detected! Some time slots are not covered.' : 'Full coverage for this service.' }}
           </div>
         </div>
       </div>
       
       <div class="modal-footer">
-        <div class="modal-footer-left">
-          <button 
-            class="btn btn-danger" 
-            @click.stop="confirmDelete"
-          >
-            Remove Service
-          </button>
-        </div>
-        <div class="modal-footer-right">
-          <button 
-            @click.stop="$emit('close')" 
-            class="btn btn-secondary"
-          >
-            Cancel
-          </button>
-          <button 
-            @click.stop="saveChanges" 
-            class="btn btn-primary"
-            :disabled="saving || !isFormValid"
-          >
-            {{ saving ? 'Saving...' : 'Save Changes' }}
-          </button>
-        </div>
+        <button 
+          @click="$emit('close')" 
+          class="btn btn--primary"
+        >
+          Close
+        </button>
       </div>
     </div>
+    
     <!-- Add/Edit Porter Modal -->
-    <div v-if="showPorterModal" class="nested-modal-overlay" @click.stop="closePorterModal">
+    <div v-if="showPorterModal" class="nested-modal-overlay" @click.self="closePorterModal">
       <div class="nested-modal-container" @click.stop>
         <div class="modal-header">
           <h3 class="modal-title">
@@ -169,15 +133,15 @@
         
         <div class="modal-footer">
           <button 
-            @click.stop="savePorterAssignment" 
-            class="btn btn-primary"
+            @click="savePorterAssignment" 
+            class="btn btn--primary"
             :disabled="!canSavePorter || savingPorter"
           >
             {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
           </button>
           <button 
             @click.stop="closePorterModal" 
-            class="btn btn-secondary"
+            class="btn btn--secondary"
             :disabled="savingPorter"
           >
             Cancel
@@ -200,22 +164,10 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'update', 'remove']);
+const emit = defineEmits(['close']);
 
 const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
-
-// Form state
-const editForm = ref({
-  startTime: '',
-  endTime: ''
-});
-const saving = ref(false);
-const showPorterModal = ref(false);
-const showAddPorterModal = ref(false);
-const editingPorterAssignment = ref(false);
-const editingPorterAssignmentId = ref(null);
-const savingPorter = ref(false);
 
 // Form data for porter assignment
 const porterForm = ref({
@@ -224,22 +176,30 @@ const porterForm = ref({
   endTime: ''
 });
 
-// Computed
-const isFormValid = computed(() => {
-  return editForm.value.startTime && editForm.value.endTime;
+// UI state
+const showPorterModal = ref(false);
+const showAddPorterModal = ref(false);
+const editingPorterAssignment = ref(false);
+const editingPorterAssignmentId = ref(null);
+const savingPorter = ref(false);
+
+// Initialize data
+onMounted(async () => {
+  // Load porters if not already loaded
+  if (!staffStore.porters.length) {
+    await staffStore.fetchPorters();
+  }
 });
 
-// Get porter assignments for this service
+// Computed properties
 const porterAssignments = computed(() => {
-  return shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
+  return shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
 });
 
-// Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
   return shiftsStore.hasServiceCoverageGap(props.assignment.id);
 });
 
-// Get available porters for assignment
 const availablePorters = computed(() => {
   // Get porters from the shift pool
   const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
@@ -262,58 +222,14 @@ const availablePorters = computed(() => {
   return shiftPorters;
 });
 
-// Check if porter form is valid
 const canSavePorter = computed(() => {
   return porterForm.value.porterId && 
          porterForm.value.startTime && 
          porterForm.value.endTime;
 });
 
-// Initialize form with assignment data
-onMounted(() => {
-  // Format time from HH:MM:SS to HH:MM for input
-  const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    return timeStr.substring(0, 5); // Gets only HH:MM part
-  };
-  
-  editForm.value = {
-    startTime: formatTime(props.assignment.start_time) || '',
-    endTime: formatTime(props.assignment.end_time) || ''
-  };
-});
-
-// Save changes
-async function saveChanges() {
-  if (!isFormValid.value || saving.value) return;
-  
-  saving.value = true;
-  
-  try {
-    // Prepare update object with time fields
-    const updates = {
-      start_time: editForm.value.startTime + ':00', // Add seconds for database format
-      end_time: editForm.value.endTime + ':00'
-    };
-    
-    // Emit update event
-    emit('update', props.assignment.id, updates);
-  } catch (error) {
-    console.error('Error saving service assignment:', error);
-  } finally {
-    saving.value = false;
-  }
-}
-
-// Delete service assignment
-function confirmDelete() {
-  if (confirm(`Are you sure you want to remove "${props.assignment.service.name}" from this shift?`)) {
-    emit('remove', props.assignment.id);
-  }
-}
-
 // Porter assignment methods
-function editPorterAssignment(assignment) {
+const editPorterAssignment = (assignment) => {
   editingPorterAssignment.value = true;
   editingPorterAssignmentId.value = assignment.id;
   
@@ -324,9 +240,9 @@ function editPorterAssignment(assignment) {
   };
   
   showPorterModal.value = true;
-}
+};
 
-function closePorterModal() {
+const closePorterModal = () => {
   showPorterModal.value = false;
   showAddPorterModal.value = false;
   editingPorterAssignment.value = false;
@@ -338,9 +254,9 @@ function closePorterModal() {
     startTime: '',
     endTime: ''
   };
-}
+};
 
-async function savePorterAssignment() {
+const savePorterAssignment = async () => {
   if (!canSavePorter.value || savingPorter.value) return;
   
   savingPorter.value = true;
@@ -372,19 +288,19 @@ async function savePorterAssignment() {
   } finally {
     savingPorter.value = false;
   }
-}
+};
 
-async function removePorterAssignment(assignmentId) {
+const removePorterAssignment = async (assignmentId) => {
   if (confirm('Are you sure you want to remove this porter assignment?')) {
     await shiftsStore.removeShiftSupportServicePorter(assignmentId);
   }
-}
+};
 
 // Helper methods
-function formatTime(timeStr) {
+const formatTime = (timeStr) => {
   if (!timeStr) return '';
   return timeStr.substring(0, 5); // Extract HH:MM from HH:MM:SS
-}
+};
 
 // Watch for "Add Porter" button click
 watch(showAddPorterModal, (newValue) => {
@@ -392,8 +308,8 @@ watch(showAddPorterModal, (newValue) => {
     // Set default values for the form
     porterForm.value = {
       porterId: '',
-      startTime: editForm.value.startTime,
-      endTime: editForm.value.endTime
+      startTime: props.assignment.start_time ? props.assignment.start_time.substring(0, 5) : '08:00',
+      endTime: props.assignment.end_time ? props.assignment.end_time.substring(0, 5) : '16:00'
     };
     
     showPorterModal.value = true;
@@ -405,8 +321,7 @@ watch(showAddPorterModal, (newValue) => {
 @use "sass:color";
 @use '../../assets/scss/mixins' as mix;
 
-// Modal styles
-.modal-overlay {
+.modal-overlay, .nested-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -419,11 +334,15 @@ watch(showAddPorterModal, (newValue) => {
   z-index: 1000;
 }
 
-.modal-container {
+.nested-modal-overlay {
+  z-index: 1001;
+}
+
+.modal-container, .nested-modal-container {
   background-color: white;
   border-radius: mix.radius('lg');
   width: 90%;
-  max-width: 550px;
+  max-width: 500px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -463,16 +382,28 @@ watch(showAddPorterModal, (newValue) => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.service-time-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(66, 133, 244, 0.05);
+  padding: 12px;
+  border-radius: mix.radius('md');
+  margin-bottom: 16px;
   
-  &-left {
-    display: flex;
-    gap: 12px;
+  .info-label {
+    font-weight: 500;
   }
   
-  &-right {
-    display: flex;
-    gap: 12px;
+  .info-value {
+    background-color: white;
+    padding: 4px 8px;
+    border-radius: mix.radius('sm');
+    font-weight: 500;
   }
 }
 
@@ -491,45 +422,7 @@ watch(showAddPorterModal, (newValue) => {
     border: 1px solid rgba(0, 0, 0, 0.2);
     border-radius: mix.radius('md');
     font-size: mix.font-size('md');
-    
-    &:focus {
-      outline: none;
-      border-color: mix.color('primary');
-      box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.2);
-    }
   }
-  
-  .static-field {
-    padding: 8px 12px;
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: mix.radius('md');
-    font-weight: 500;
-  }
-}
-
-// Button styles
-.nested-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-}
-
-.nested-modal-container {
-  background-color: white;
-  border-radius: mix.radius('lg');
-  width: 90%;
-  max-width: 550px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .section-title {
@@ -614,39 +507,39 @@ watch(showAddPorterModal, (newValue) => {
   border: none;
   transition: all 0.2s ease;
   
-  &.btn-primary {
+  &--primary {
     background-color: mix.color('primary');
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(mix.color('primary'), $lightness: -10%);
+      background-color: rgba(66, 133, 244, 0.8);
     }
   }
   
-  &.btn-secondary {
+  &--secondary {
     background-color: #f1f1f1;
     color: mix.color('text');
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#f1f1f1, $lightness: -5%);
+      background-color: #e5e5e5;
     }
   }
   
-  &.btn-danger {
-    background-color: #dc3545;
+  &--danger {
+    background-color: #EA4335;
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#dc3545, $lightness: -10%);
+      background-color: color.scale(#EA4335, $lightness: -10%);
     }
   }
   
-  &.btn-sm {
+  &--sm {
     padding: 6px 12px;
     font-size: mix.font-size('sm');
   }
   
-  &.btn--icon {
+  &--icon {
     padding: 4px;
     border-radius: 4px;
     background: transparent;

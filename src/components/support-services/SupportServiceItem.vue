@@ -10,18 +10,18 @@
         {{ assignment.service.name }}
       </div>
       
-      <div class="service-card__footer">
-        <div v-if="porterAssignments.length > 0" class="service-card__porters">
-          <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
-            {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
-            <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
-          </span>
-        </div>
-        
-        <div class="service-card__time">
-          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
-        </div>
+    <div class="service-card__footer">
+      <div class="service-card__time">
+        {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
       </div>
+      
+      <div v-if="isShiftAssignment && porterAssignments.length > 0" class="service-card__porters">
+        <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
+          {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
+          <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
+        </span>
+      </div>
+    </div>
     </div>
     
     <!-- Edit Service Modal - Use different modal based on whether this is a shift assignment -->
@@ -199,7 +199,6 @@ const handleRemove = (assignmentId) => {
   }
   
   &__porters {
-    
     .porter-count {
       display: inline-flex;
       align-items: center;

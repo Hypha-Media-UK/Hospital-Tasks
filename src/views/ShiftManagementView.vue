@@ -525,12 +525,18 @@ const porters = computed(() => {
   // Only show porters from the shift pool who are "Runners" (no assignments)
   return shiftsStore.shiftPorterPool
     .filter(entry => {
-      // Get assignments for this porter
-      const assignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(
+      // Get area cover assignments for this porter
+      const areaCoverAssignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(
         a => a.porter_id === entry.porter_id
       );
+      
+      // Get service assignments for this porter
+      const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments.filter(
+        a => a.porter_id === entry.porter_id
+      );
+      
       // Only include porters with no assignments (Runners)
-      return assignments.length === 0;
+      return areaCoverAssignments.length === 0 && serviceAssignments.length === 0;
     })
     .map(p => p.porter);
 });
@@ -636,6 +642,14 @@ onMounted(async () => {
         console.log(`- Service: ${assignment.service?.name || 'Unknown'} (ID: ${assignment.service_id})`);
         console.log(`  Time: ${assignment.start_time} - ${assignment.end_time}`);
       });
+      
+      // Load porter assignments for service assignments
+      console.log('Loading porter assignments for service assignments...');
+      for (const assignment of shiftsStore.shiftSupportServiceAssignments) {
+        // The porter assignments are loaded automatically in fetchShiftSupportServices
+        const porterAssignments = shiftsStore.getPorterAssignmentsByServiceId(assignment.id);
+        console.log(`Service ${assignment.service?.name}: ${porterAssignments.length} porter assignments`);
+      }
     }
     
     // Load porter pool

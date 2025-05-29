@@ -26,7 +26,7 @@
               <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" 
                    class="assignment-item" 
                    :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }">
-                {{ assignment.shift_area_cover_assignment?.department?.name || 'Unknown Department' }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
               </div>
             </div>
             <div v-else class="assignments-list">
@@ -202,9 +202,13 @@ const availablePorters = computed(() => {
   // Get porters already assigned to departments in THIS shift
   const shiftDepartmentPorterIds = shiftsStore.shiftAreaCoverPorterAssignments
     .map(a => a.porter_id);
+    
+  // Get porters already assigned to services in THIS shift
+  const shiftServicePorterIds = shiftsStore.shiftSupportServicePorterAssignments
+    .map(a => a.porter_id);
   
   // Combine all excluded porter IDs
-  const excludedPorterIds = [...new Set([...poolPorterIds, ...departmentPorterIds, ...shiftDepartmentPorterIds])];
+  const excludedPorterIds = [...new Set([...poolPorterIds, ...departmentPorterIds, ...shiftDepartmentPorterIds, ...shiftServicePorterIds])];
   
   // Return porters not in the excluded list
   return allPorters.filter(p => !excludedPorterIds.includes(p.id));
@@ -262,21 +266,61 @@ const removePorter = async (porterPoolId) => {
 };
 
 const getPorterAssignments = (porterId) => {
-  // Get assignments for this porter in this shift
-  return shiftsStore.shiftAreaCoverPorterAssignments.filter(
+  // Get area cover assignments for this porter in this shift
+  const areaCoverAssignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(
     a => a.porter_id === porterId
   );
+  
+  // Get service assignments for this porter in this shift
+  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments.filter(
+    a => a.porter_id === porterId
+  );
+  
+  // Return both types of assignments
+  return [...areaCoverAssignments, ...serviceAssignments];
 };
 
 // Get the background color for an assignment item
 const getAssignmentBackgroundColor = (assignment) => {
-  // Get the color from the area cover assignment
-  const color = assignment.shift_area_cover_assignment?.color || '#4285F4';
-  // Convert to a semi-transparent version for better text readability
-  return `${color}25`; // 25 is hex for 15% opacity
+  // Check if this is an area cover assignment or service assignment
+  if (assignment.shift_area_cover_assignment_id) {
+    // Area cover assignment
+    const color = assignment.shift_area_cover_assignment?.color || '#4285F4';
+    return `${color}25`; // 25 is hex for 15% opacity
+  } else if (assignment.shift_support_service_assignment_id) {
+    // Service assignment
+    // Get the service assignment from the store
+    const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+      s => s.id === assignment.shift_support_service_assignment_id
+    );
+    const color = serviceAssignment?.color || '#4285F4';
+    return `${color}25`; // 25 is hex for 15% opacity
+  }
+  
+  // Default color
+  return 'rgba(66, 133, 244, 0.15)'; // Light blue
 };
 
 // Format time (e.g., "09:30") in 24-hour format
+// Get the assignment name (department or service)
+const getAssignmentName = (assignment) => {
+  // Check if this is an area cover assignment
+  if (assignment.shift_area_cover_assignment_id) {
+    // Area cover assignment - return department name
+    return assignment.shift_area_cover_assignment?.department?.name || 'Unknown Department';
+  } else if (assignment.shift_support_service_assignment_id) {
+    // Service assignment - find the service assignment
+    const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+      s => s.id === assignment.shift_support_service_assignment_id
+    );
+    // Return the service name
+    return serviceAssignment?.service?.name || 'Unknown Service';
+  }
+  
+  // Default
+  return 'Unknown Assignment';
+};
+
 const formatTime = (timeStr) => {
   if (!timeStr) return '';
   
