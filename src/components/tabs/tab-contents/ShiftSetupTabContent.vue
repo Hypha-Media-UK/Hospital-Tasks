@@ -5,27 +5,44 @@
       <div class="shift-info-section">
         <!-- Shift Porters Section -->
         <div class="shift-porter-section">
-          <h3 class="section-title">Shift Porters</h3>
-          <ShiftPorterPool :shift-id="shiftId" />
+          <div class="section-header">
+            <h3 class="section-title">Shift Porters</h3>
+            <button class="btn btn-primary" @click="porterPoolRef?.openPorterSelector()">
+              Add Porter
+            </button>
+          </div>
+          <ShiftPorterPool :shift-id="shiftId" ref="porterPoolRef" />
         </div>
         
         <!-- Area Coverage Section -->
         <div class="area-coverage-section">
-          <h3 class="section-title">Area Coverage</h3>
+          <div class="section-header">
+            <h3 class="section-title">Area Coverage</h3>
+            <button class="btn btn-primary" @click="areaCoverListRef?.openDepartmentSelector()">
+              Add Department
+            </button>
+          </div>
           <ShiftAreaCoverList 
             :shift-id="shiftId" 
             :shift-type="shiftType"
             :show-header="false"
+            ref="areaCoverListRef"
           />
         </div>
         
         <!-- Support Services Section -->
         <div class="support-services-section">
-          <h3 class="section-title">Service Coverage</h3>
+          <div class="section-header">
+            <h3 class="section-title">Service Coverage</h3>
+            <button class="btn btn-primary" @click="supportServicesListRef?.openAddServiceModal()">
+              Add Service
+            </button>
+          </div>
           <SupportServicesShiftList 
             :shift-id="shiftId" 
             :shift-type="shiftType"
             :show-header="false"
+            ref="supportServicesListRef"
           />
         </div>
       </div>
@@ -34,9 +51,14 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import ShiftPorterPool from '../../ShiftPorterPool.vue';
 import ShiftAreaCoverList from '../../area-cover/ShiftAreaCoverList.vue';
 import SupportServicesShiftList from '../../support-services/SupportServicesShiftList.vue';
+
+const porterPoolRef = ref(null);
+const areaCoverListRef = ref(null);
+const supportServicesListRef = ref(null);
 
 const props = defineProps({
   shiftId: {
@@ -55,10 +77,17 @@ const props = defineProps({
   margin-bottom: 1rem;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .section-title {
   font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin: 0; /* Remove bottom margin since it's now handled by section-header */
   color: #333;
 }
 
@@ -93,5 +122,24 @@ const props = defineProps({
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+/* Button styling */
+.btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  
+  &-primary {
+    background-color: #4285F4;
+    color: white;
+    
+    &:hover {
+      background-color: darken(#4285F4, 10%);
+    }
+  }
 }
 </style>

@@ -5,11 +5,6 @@
       <div class="spinner"></div>
       <div class="loading-text">Loading shift data...</div>
     </div>
-    <div class="shift-porter-pool__header">
-      <button class="btn btn--primary" @click="showPorterSelector = true">
-        Add Porter
-      </button>
-    </div>
     
     <div v-if="shiftsStore.loading.porterPool" class="loading">
       Loading shift porters...
@@ -138,6 +133,16 @@ const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
 
 const showPorterSelector = ref(false);
+
+// Expose showPorterSelector method to parent
+const openPorterSelector = () => {
+  showPorterSelector.value = true;
+};
+
+// Expose necessary methods to parent
+defineExpose({
+  openPorterSelector
+});
 const selectedPorters = ref([]);
 const addingPorters = ref(false);
 const isLoading = ref(true);

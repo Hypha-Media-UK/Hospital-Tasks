@@ -24,14 +24,25 @@
       </div>
     </div>
     
-    <!-- Edit Service Modal -->
-    <EditServiceModal 
-      v-if="showEditModal" 
-      :assignment="assignment"
-      @close="showEditModal = false"
-      @update="handleUpdate"
-      @remove="handleRemove"
-    />
+    <!-- Edit Service Modal - Use different modal based on whether this is a shift assignment -->
+    <template v-if="showEditModal">
+      <!-- For shift assignments -->
+      <ShiftEditServiceModal 
+        v-if="isShiftAssignment"
+        :assignment="assignment"
+        @close="showEditModal = false"
+        @update="handleUpdate"
+        @remove="handleRemove"
+      />
+      <!-- For default settings assignments -->
+      <EditServiceModal 
+        v-else
+        :service="assignment.service"
+        @close="showEditModal = false"
+        @update="handleUpdate"
+        @remove="handleRemove"
+      />
+    </template>
   </div>
 </template>
 
@@ -40,6 +51,7 @@ import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useSupportServicesStore } from '../../stores/supportServicesStore';
 import EditServiceModal from './EditServiceModal.vue';
+import ShiftEditServiceModal from './ShiftEditServiceModal.vue';
 
 const props = defineProps({
   assignment: {
@@ -56,8 +68,8 @@ const showEditModal = ref(false);
 
 // Get porter assignments for this service
 const porterAssignments = computed(() => {
-  // Check if this is a shift-specific assignment (has shift_id) or a default assignment
-  if (props.assignment.shift_id) {
+  // Check if this is a shift-specific assignment or a default assignment
+  if (isShiftAssignment.value) {
     // Use the shiftsStore getter for shift-specific assignments
     const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
     return Array.isArray(assignments) ? assignments : [];
@@ -68,11 +80,16 @@ const porterAssignments = computed(() => {
   }
 });
 
+// Check if this is a shift-specific assignment
+const isShiftAssignment = computed(() => {
+  return !!props.assignment.shift_id;
+});
+
 // Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
   try {
     // Use the appropriate store's coverage gap checker based on assignment type
-    if (props.assignment.shift_id) {
+    if (isShiftAssignment.value) {
       return shiftsStore.hasServiceCoverageGap(props.assignment.id);
     } else {
       return supportServicesStore.hasCoverageGap(props.assignment.id);

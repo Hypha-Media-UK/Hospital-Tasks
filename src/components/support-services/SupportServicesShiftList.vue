@@ -8,15 +8,15 @@
     <!-- Empty state -->
     <div v-else-if="serviceAssignments.length === 0" class="empty-state">
       <p>No support services have been assigned to this shift type.</p>
-      <button @click="showAddServiceModal = true" class="btn-add-service">
+      <button v-if="showHeader" @click="showAddServiceModal = true" class="btn-add-service">
         <span class="icon">+</span> Add Service
       </button>
     </div>
     
     <!-- Service Assignments List -->
     <div v-else>
-      <div class="services-list-header">
-        <h4 v-if="showHeader">{{ shiftTypeLabel }} Coverage</h4>
+      <div class="services-list-header" v-if="showHeader">
+        <h4>{{ shiftTypeLabel }} Coverage</h4>
         <button @click="showAddServiceModal = true" class="btn-add-service">
           <span class="icon">+</span> Add Service
         </button>
@@ -87,7 +87,8 @@
             />
           </div>
           
-          <div class="form-group">
+          <!-- Only show color selection in settings mode, not in shift mode -->
+          <div class="form-group" v-if="!isShiftMode">
             <label for="color">Color</label>
             <input 
               type="color"
@@ -169,6 +170,16 @@ const showAddServiceModal = ref(false);
 const showEditModal = ref(false);
 const selectedAssignment = ref(null);
 const isSubmitting = ref(false);
+
+// Expose method to open modal
+const openAddServiceModal = () => {
+  showAddServiceModal.value = true;
+};
+
+// Expose necessary methods
+defineExpose({
+  openAddServiceModal
+});
 const addServiceForm = ref({
   serviceId: '',
   startTime: '',
@@ -287,12 +298,26 @@ async function addService() {
   try {
     if (isShiftMode.value) {
       // In shift mode, add to the specific shift
+      // Get default color from settings based on shift type
+      let defaultColor = '#4285F4'; // Fallback default color
+      
+      // Use the appropriate color based on the shift type
+      if (props.shiftType === 'week_day') {
+        defaultColor = settingsStore.shiftDefaults.week_day?.color || defaultColor;
+      } else if (props.shiftType === 'week_night') {
+        defaultColor = settingsStore.shiftDefaults.week_night?.color || defaultColor;
+      } else if (props.shiftType === 'weekend_day') {
+        defaultColor = settingsStore.shiftDefaults.weekend_day?.color || defaultColor;
+      } else if (props.shiftType === 'weekend_night') {
+        defaultColor = settingsStore.shiftDefaults.weekend_night?.color || defaultColor;
+      }
+      
       await shiftsStore.addShiftSupportService(
         props.shiftId,
         addServiceForm.value.serviceId,
         addServiceForm.value.startTime,
         addServiceForm.value.endTime,
-        addServiceForm.value.color
+        defaultColor
       );
       
       // Reload the service assignments

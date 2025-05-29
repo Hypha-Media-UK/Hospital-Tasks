@@ -1,7 +1,7 @@
 <template>
   <div class="area-cover-shift-list">
-    <div class="area-cover-shift-list__header">
-      <h4 v-if="showHeader">{{ shiftTypeLabel }} Coverage</h4>
+    <div class="area-cover-shift-list__header" v-if="showHeader">
+      <h4>{{ shiftTypeLabel }} Coverage</h4>
       <button class="btn btn--primary" @click="showDepartmentSelector = true">
         Add Department
       </button>
@@ -95,6 +95,16 @@ const shiftsStore = useShiftsStore();
 const locationsStore = useLocationsStore();
 
 const showDepartmentSelector = ref(false);
+
+// Expose showDepartmentSelector method to parent
+const openDepartmentSelector = () => {
+  showDepartmentSelector.value = true;
+};
+
+// Expose necessary methods to parent
+defineExpose({
+  openDepartmentSelector
+});
 
 // Computed properties
 const shiftTypeLabel = computed(() => {
