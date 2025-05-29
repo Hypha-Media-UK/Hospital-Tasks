@@ -15,14 +15,14 @@
       Loading shift porters...
     </div>
     
-    <div v-else-if="porterPool.length === 0" class="empty-state">
+    <div v-else-if="sortedPorterPool.length === 0" class="empty-state">
       No porters assigned to this shift yet. Add porters using the button above.
     </div>
     
     <div v-else class="porter-grid">
-      <div v-for="entry in porterPool" :key="entry.id" class="porter-card">
+      <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card">
         <div class="porter-card__content">
-          <div class="porter-card__name">
+          <div class="porter-card__name" :class="{ 'assigned': getPorterAssignments(entry.porter_id).length > 0 }">
             {{ entry.porter.first_name }} {{ entry.porter.last_name }}
           </div>
           
@@ -145,6 +145,23 @@ const isLoading = ref(true);
 // Computed properties
 const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
+});
+
+// Sorted porter pool with Runners first, then assigned porters
+const sortedPorterPool = computed(() => {
+  if (!porterPool.value.length) return [];
+  
+  return [...porterPool.value].sort((a, b) => {
+    const aAssignments = getPorterAssignments(a.porter_id).length;
+    const bAssignments = getPorterAssignments(b.porter_id).length;
+    
+    // If a is a Runner (0 assignments) and b is not, a comes first
+    if (aAssignments === 0 && bAssignments > 0) return -1;
+    // If b is a Runner and a is not, b comes first
+    if (bAssignments === 0 && aAssignments > 0) return 1;
+    // Otherwise keep original order
+    return 0;
+  });
 });
 
 const availablePorters = computed(() => {
@@ -385,6 +402,10 @@ onMounted(async () => {
   &__name {
     font-weight: 600;
     margin-bottom: 8px;
+    
+    &.assigned {
+      color: rgba(0, 0, 0, 0.4); /* Lighter gray for assigned porters */
+    }
   }
   
   &__assignments {
