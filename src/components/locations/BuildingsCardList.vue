@@ -64,7 +64,6 @@
           :building="element"
           :key="element.id"
           @view-departments="viewBuildingDepartments"
-          @deleted="handleBuildingDeleted"
         />
       </template>
     </draggable>
@@ -167,13 +166,6 @@ const viewBuildingDepartments = (buildingId) => {
   }
 };
 
-// Handle building deleted event
-const handleBuildingDeleted = (buildingId) => {
-  // If the deleted building is currently selected, close the modal
-  if (selectedBuilding.value && selectedBuilding.value.id === buildingId) {
-    selectedBuilding.value = null;
-  }
-};
 
 // Initialize data
 onMounted(async () => {

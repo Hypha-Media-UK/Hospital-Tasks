@@ -1,6 +1,6 @@
 <template>
-  <div class="building-card">
-    <div class="building-card__drag-handle">
+  <div class="building-card" @click="viewDepartments">
+    <div class="building-card__drag-handle" @click.stop>
       <span class="drag-icon">⠿</span>
     </div>
     <div class="building-details">
@@ -8,15 +8,6 @@
     </div>
     
     <div class="building-card-footer">
-      <div class="building-actions">
-        <button @click="viewDepartments" class="btn-view" title="View departments">
-          <EditIcon size="16" />
-        </button>
-        <button @click="confirmDelete" class="btn-delete" title="Delete building">
-          <TrashIcon size="16" />
-        </button>
-      </div>
-      
       <div class="department-count">
         {{ departmentCount }} {{ departmentCount === 1 ? 'Department' : 'Departments' }}
       </div>
@@ -27,8 +18,6 @@
 <script setup>
 import { computed } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
-import EditIcon from '../icons/EditIcon.vue';
-import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
   building: {
@@ -37,7 +26,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['view-departments', 'deleted']);
+const emit = defineEmits(['view-departments']);
 
 const locationsStore = useLocationsStore();
 
@@ -51,14 +40,6 @@ const departmentCount = computed(() => {
 // View departments
 const viewDepartments = () => {
   emit('view-departments', props.building.id);
-};
-
-// Delete building with confirmation
-const confirmDelete = async () => {
-  if (confirm(`Are you sure you want to delete "${props.building.name}" and all its departments?`)) {
-    await locationsStore.deleteBuilding(props.building.id);
-    emit('deleted', props.building.id);
-  }
 };
 </script>
 
@@ -76,6 +57,13 @@ const confirmDelete = async () => {
   position: relative;
   min-height: 100px;
   user-select: none; /* Prevent text selection during drag */
+  cursor: pointer; /* Add pointer cursor to indicate clickable */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  }
   
   &__drag-handle {
     position: absolute;
@@ -124,34 +112,6 @@ const confirmDelete = async () => {
     }
   }
   
-  .building-actions {
-    display: flex;
-    gap: 8px;
-    
-    button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 6px;
-      border-radius: mix.radius('sm');
-      
-      .icon {
-        font-size: 16px;
-      }
-      
-      &.btn-view:hover {
-        background-color: rgba(66, 133, 244, 0.1);
-      }
-      
-      &.btn-edit:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-      }
-      
-      &.btn-delete:hover {
-        background-color: rgba(234, 67, 53, 0.1);
-      }
-    }
-  }
   
   .building-card-footer {
     display: flex;

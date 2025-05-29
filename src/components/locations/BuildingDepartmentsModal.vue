@@ -206,9 +206,16 @@
       </div>
       
       <div class="modal-footer">
-        <button @click="$emit('close')" class="btn btn-secondary">
-          Close
-        </button>
+        <div class="modal-footer-left">
+          <button @click="confirmDelete" class="btn btn-danger">
+            Delete Entire Building
+          </button>
+        </div>
+        <div class="modal-footer-right">
+          <button @click="$emit('close')" class="btn btn-secondary">
+            Close
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -390,6 +397,14 @@ const deleteDepartment = async (department) => {
     await locationsStore.deleteDepartment(department.id);
   }
 };
+
+// Delete building with confirmation
+const confirmDelete = async () => {
+  if (confirm(`Are you sure you want to delete "${props.building.name}" and all its departments?`)) {
+    await locationsStore.deleteBuilding(props.building.id);
+    emit('close');
+  }
+};
 </script>
 
 <style lang="scss" scoped>
@@ -498,8 +513,17 @@ const deleteDepartment = async (department) => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  
+  .modal-footer-left {
+    display: flex;
+    gap: 12px;
+  }
+  
+  .modal-footer-right {
+    display: flex;
+    gap: 12px;
+  }
 }
 
 // Frequent Departments Section
@@ -814,6 +838,15 @@ const deleteDepartment = async (department) => {
     
     &:hover:not(:disabled) {
       background-color: color.scale(#f1f1f1, $lightness: -5%);
+    }
+  }
+  
+  &.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: color.scale(#dc3545, $lightness: -10%);
     }
   }
   
