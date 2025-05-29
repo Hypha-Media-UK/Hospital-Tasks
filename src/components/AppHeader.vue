@@ -2,18 +2,20 @@
   <header class="header">
     <nav class="header__nav">
       <router-link to="/" aria-label="Home">
-        <IconComponent name="home" />
+        <HomeIcon />
       </router-link>
       <router-link to="/archive" aria-label="Archive">
-        <IconComponent name="archive" />
+        <ArchiveIcon />
       </router-link>
       <router-link to="/settings" aria-label="Settings">
-        <IconComponent name="settings" />
+        <SettingsIcon />
       </router-link>
     </nav>
   </header>
 </template>
 
 <script setup>
-import IconComponent from './IconComponent.vue';
+import HomeIcon from './icons/HomeIcon.vue';
+import ArchiveIcon from './icons/ArchiveIcon.vue';
+import SettingsIcon from './icons/SettingsIcon.vue';
 </script>
