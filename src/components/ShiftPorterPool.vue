@@ -32,8 +32,10 @@
                 {{ assignment.shift_area_cover_assignment?.department?.name || 'Unknown Department' }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
               </div>
             </div>
-            <div v-else class="no-assignments">
-              Not assigned to any departments
+            <div v-else class="assignments-list">
+              <div class="assignment-item">
+                Runner
+              </div>
             </div>
           </div>
         </div>
@@ -44,7 +46,10 @@
             class="btn btn--icon btn--danger"
             title="Remove porter from shift"
           >
-            <span class="icon">🗑️</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
           </button>
         </div>
       </div>
