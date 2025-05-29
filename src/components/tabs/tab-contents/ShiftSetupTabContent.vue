@@ -69,10 +69,23 @@ const props = defineProps({
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.shift-porter-section {
+  background-color: rgba(66, 133, 244, 0.05); /* Light shade of primary color */
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid rgba(66, 133, 244, 0.15);
+}
+
 .area-coverage-section, .support-services-section {
   margin-top: 24px;
   padding-top: 24px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.03); /* Pale gray background */
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Add some styling for the shift-info-section */
