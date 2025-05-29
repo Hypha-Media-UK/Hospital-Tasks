@@ -28,12 +28,14 @@
           
           <div class="porter-card__assignments">
             <div v-if="getPorterAssignments(entry.porter_id).length > 0" class="assignments-list">
-              <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" class="assignment-item">
+              <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" 
+                   class="assignment-item" 
+                   :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }">
                 {{ assignment.shift_area_cover_assignment?.department?.name || 'Unknown Department' }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
               </div>
             </div>
             <div v-else class="assignments-list">
-              <div class="assignment-item">
+              <div class="assignment-item" style="background-color: rgba(128, 128, 128, 0.15);">
                 Runner
               </div>
             </div>
@@ -242,6 +244,14 @@ const getPorterAssignments = (porterId) => {
   return shiftsStore.shiftAreaCoverPorterAssignments.filter(
     a => a.porter_id === porterId
   );
+};
+
+// Get the background color for an assignment item
+const getAssignmentBackgroundColor = (assignment) => {
+  // Get the color from the area cover assignment
+  const color = assignment.shift_area_cover_assignment?.color || '#4285F4';
+  // Convert to a semi-transparent version for better text readability
+  return `${color}25`; // 25 is hex for 15% opacity
 };
 
 // Format time (e.g., "09:30") in 24-hour format

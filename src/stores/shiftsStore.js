@@ -855,6 +855,7 @@ export const useShiftsStore = defineStore('shifts', {
               porter:porter_id(id, first_name, last_name),
               shift_area_cover_assignment:shift_area_cover_assignment_id(
                 id,
+                color,
                 department:department_id(id, name)
               )
             `)
@@ -1016,6 +1017,7 @@ export const useShiftsStore = defineStore('shifts', {
             porter:porter_id(id, first_name, last_name),
             shift_area_cover_assignment:shift_area_cover_assignment_id(
               id,
+              color,
               department:department_id(id, name)
             )
           `);
@@ -1052,6 +1054,7 @@ export const useShiftsStore = defineStore('shifts', {
             porter:porter_id(id, first_name, last_name),
             shift_area_cover_assignment:shift_area_cover_assignment_id(
               id,
+              color,
               department:department_id(id, name)
             )
           `);
