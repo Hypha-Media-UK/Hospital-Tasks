@@ -83,10 +83,8 @@
         <h2 class="card__title">Create New Shift</h2>
         
         <div class="create-shift-form">
-          <!-- Step 1: Select Date and Shift Type -->
-          <div v-if="!selectedShiftType" class="shift-type-selection">
-            <p class="instruction">Select a date and shift type to start:</p>
-            
+          <!-- Create New Shift (Single Step) -->
+          <div class="shift-type-selection">
             <div class="form-group date-picker-container">
               <label for="shiftDate">Shift Date</label>
               <input 
@@ -99,46 +97,8 @@
               >
             </div>
             
-            <div class="shift-type-buttons">
-              <button 
-                @click="selectShiftType('day')" 
-                class="btn btn-shift-type"
-                :disabled="creating || !selectedDate"
-                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
-              >
-                Create Day Shift
-              </button>
-              
-              <button 
-                @click="selectShiftType('night')" 
-                class="btn btn-shift-type"
-                :disabled="creating || !selectedDate"
-                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
-              >
-                Create Night Shift
-              </button>
-            </div>
-            
-            <p v-if="selectedDate" class="date-info">
-              Selected date is a <strong>{{ isDayShiftWeekend ? 'weekend' : 'weekday' }}</strong> shift
-            </p>
-          </div>
-          
-          <!-- Step 2: Select Supervisor (shown after shift type is selected) -->
-          <div v-else class="supervisor-selection">
-            <div class="selection-header">
-              <div class="selected-type">
-                <span>Selected: </span>
-                <strong :style="{ color: getShiftColor(fullShiftType) }">
-                  {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} {{ selectedShiftType === 'day' ? 'Day' : 'Night' }} Shift
-                </strong>
-                <span class="shift-date">{{ formatShortDate(new Date(selectedDate)) }}</span>
-              </div>
-              <button @click="resetSelection" class="btn-reset">Change</button>
-            </div>
-
-            <div class="form-group">
-              <label for="supervisor">Select Supervisor</label>
+            <div class="form-group supervisor-picker-container">
+              <label for="supervisor">Supervisor</label>
               <select 
                 id="supervisor" 
                 v-model="selectedSupervisor" 
@@ -156,17 +116,36 @@
               </select>
             </div>
             
-            <div class="form-actions">
+            <div class="shift-type-buttons">
               <button 
-                @click="createShift(selectedShiftType)" 
-                class="btn btn-create-shift"
-                :disabled="!selectedSupervisor || !selectedDate || creating"
-                :style="{ backgroundColor: getShiftColor(fullShiftType) }"
+                @click="createDayShift()" 
+                class="btn btn-shift-type"
+                :disabled="creating || !selectedDate || !selectedSupervisor"
+                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
               >
-                Start {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} {{ selectedShiftType === 'day' ? 'Day' : 'Night' }} Shift
+                <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Day Shift</span>
+                <span v-else class="loading-indicator">
+                  <span class="loading-spinner"></span>
+                  Creating...
+                </span>
+              </button>
+              
+              <button 
+                @click="createNightShift()" 
+                class="btn btn-shift-type"
+                :disabled="creating || !selectedDate || !selectedSupervisor"
+                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
+              >
+                <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Night Shift</span>
+                <span v-else class="loading-indicator">
+                  <span class="loading-spinner"></span>
+                  Creating...
+                </span>
               </button>
             </div>
           </div>
+          
+          <!-- Removed the second step since we now have a single-step approach -->
           
           <div v-if="error" class="error-message">
             {{ error }}
@@ -464,6 +443,19 @@ function formatTime(dateString) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+// Helper functions for creating day and night shifts
+function createDayShift() {
+  // Set the shift type to 'day' and create the shift
+  selectedShiftType.value = 'day';
+  createShift();
+}
+
+function createNightShift() {
+  // Set the shift type to 'night' and create the shift
+  selectedShiftType.value = 'night';
+  createShift();
+}
+
 // Calculate duration since start time
 function calculateDuration(startTimeString) {
   if (!startTimeString) return '';
@@ -707,5 +699,34 @@ function calculateDuration(startTimeString) {
   padding: 2rem 0;
   text-align: center;
   color: #666;
+}
+
+// Loading spinner in buttons
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.supervisor-picker-container {
+  max-width: 400px;
+  margin: 0 auto 1.5rem auto;
 }
 </style>

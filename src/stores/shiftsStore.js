@@ -1569,6 +1569,46 @@ export const useShiftsStore = defineStore('shifts', {
       } finally {
         this.loading.deleteShift = false;
       }
+    },
+    
+    // Update shift supervisor
+    async updateShiftSupervisor(shiftId, supervisorId) {
+      this.loading.currentShift = true;
+      this.error = null;
+      
+      try {
+        // Update the shift with new supervisor
+        const { data, error } = await supabase
+          .from('shifts')
+          .update({ supervisor_id: supervisorId })
+          .eq('id', shiftId)
+          .select(`
+            *,
+            supervisor:supervisor_id(id, first_name, last_name, role)
+          `)
+          .single();
+        
+        if (error) throw error;
+        
+        // Update local state
+        if (this.currentShift && this.currentShift.id === shiftId) {
+          this.currentShift = data;
+        }
+        
+        // Also update in activeShifts if present
+        const activeShiftIndex = this.activeShifts.findIndex(s => s.id === shiftId);
+        if (activeShiftIndex !== -1) {
+          this.activeShifts[activeShiftIndex] = data;
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error updating shift supervisor:', error);
+        this.error = 'Failed to update supervisor';
+        return null;
+      } finally {
+        this.loading.currentShift = false;
+      }
     }
   }
 });

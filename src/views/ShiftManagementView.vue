@@ -23,7 +23,12 @@
               </span>&nbsp;
               {{ formatShortDate(shift.start_time) }}
               <span class="separator">|</span>
-              Supervisor: {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+              <span class="supervisor-section">
+                Supervisor: {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+                <button v-if="shift.is_active" @click="showChangeSupervisorModal" class="btn-edit-supervisor" title="Change Supervisor">
+                  <EditIcon class="edit-icon" />
+                </button>
+              </span>
               <span v-if="!shift.is_active" class="archived-badge">Archived</span>
             </h2>
           </div>
@@ -323,6 +328,59 @@
         </div>
       </div>
       
+      <!-- Change Supervisor Modal -->
+      <div v-if="showSupervisorModal" class="modal">
+        <div class="modal-content supervisor-modal-content">
+          <div class="modal-header">
+            <h2>Change Shift Supervisor</h2>
+            <button @click="closeSupervisorModal" class="close-button">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <p class="current-supervisor">
+              Current Supervisor: 
+              <strong>{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</strong>
+            </p>
+            
+            <div class="form-group">
+              <label for="newSupervisor">New Supervisor</label>
+              <select 
+                id="newSupervisor" 
+                v-model="selectedSupervisor" 
+                class="form-control"
+                :disabled="changingSupervisor"
+              >
+                <option value="">Select a supervisor</option>
+                <option 
+                  v-for="supervisor in supervisors" 
+                  :key="supervisor.id" 
+                  :value="supervisor.id"
+                >
+                  {{ supervisor.first_name }} {{ supervisor.last_name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="modal-footer">
+            <button 
+              @click="closeSupervisorModal" 
+              class="btn btn-secondary" 
+              :disabled="changingSupervisor"
+            >
+              Cancel
+            </button>
+            <button 
+              @click="saveSupervisor" 
+              class="btn btn-primary" 
+              :disabled="!selectedSupervisor || changingSupervisor"
+            >
+              {{ changingSupervisor ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Floating Action Button for Adding Tasks -->
       <div class="floating-action-container">
         <button 
@@ -357,6 +415,7 @@ import TabHeader from '../components/tabs/TabHeader.vue';
 import TabContent from '../components/tabs/TabContent.vue';
 import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabContent.vue';
 import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
+import EditIcon from '../components/icons/EditIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -370,6 +429,9 @@ const settingsStore = useSettingsStore();
 const loading = ref(true);
 const activeTab = ref('pending'); // For task list tabs (pending/completed)
 const activeTabId = ref('shiftSetup'); // For main view tabs (shift setup/tasks)
+const showSupervisorModal = ref(false);
+const changingSupervisor = ref(false);
+const selectedSupervisor = ref('');
 const tabs = [
   { id: 'shiftSetup', label: 'Shift Setup' },
   { id: 'tasks', label: 'Tasks' }
@@ -473,6 +535,8 @@ const porters = computed(() => {
     .map(p => p.porter);
 });
 const taskTypes = computed(() => taskTypesStore.taskTypes);
+// Supervisors list for the supervisor change modal
+const supervisors = computed(() => staffStore.sortedSupervisors);
 // Regular departments list for dropdowns
 const departments = computed(() => locationsStore.departments);
 
@@ -1178,6 +1242,45 @@ function getShiftColor() {
   }
 }
 
+// Show the change supervisor modal
+function showChangeSupervisorModal() {
+  // Initialize the supervisor dropdown with current supervisor
+  if (shift.value && shift.value.supervisor_id) {
+    selectedSupervisor.value = shift.value.supervisor_id;
+  } else {
+    selectedSupervisor.value = '';
+  }
+  
+  // Need to load supervisors if not already loaded
+  if (!supervisors.value || supervisors.value.length === 0) {
+    staffStore.fetchSupervisors();
+  }
+  
+  showSupervisorModal.value = true;
+}
+
+// Close the supervisor modal
+function closeSupervisorModal() {
+  showSupervisorModal.value = false;
+  selectedSupervisor.value = '';
+}
+
+// Save the new supervisor
+async function saveSupervisor() {
+  if (!selectedSupervisor.value || changingSupervisor.value) return;
+  
+  changingSupervisor.value = true;
+  
+  try {
+    await shiftsStore.updateShiftSupervisor(shift.value.id, selectedSupervisor.value);
+    closeSupervisorModal();
+  } catch (error) {
+    console.error('Error updating supervisor:', error);
+  } finally {
+    changingSupervisor.value = false;
+  }
+}
+
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {
   const day = date.getDay();
@@ -1700,5 +1803,42 @@ function isWeekend(date) {
   max-width: 300px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.supervisor-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-edit-supervisor {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  .edit-icon {
+    width: 14px;
+    height: 14px;
+    color: #666;
+  }
+}
+
+.current-supervisor {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+}
+
+.supervisor-modal-content {
+  max-width: 400px;
 }
 </style>
