@@ -11,48 +11,38 @@
       </div>
       
       <template v-else>
-        <!-- Shift Information Card -->
+        <!-- Simplified Shift Information Header -->
         <div 
-          class="card shift-info mb-4" 
+          class="shift-info-header mb-4" 
           :class="{ 'archived-shift': !shift.is_active }"
         >
-          <div class="shift-header">
-            <div>
-              <h2>
-                {{ getShiftTypeDisplayName() }}
-                <span v-if="!shift.is_active" class="archived-badge">Archived</span>
-              </h2>
-              <p class="shift-details">
-                <strong>Supervisor:</strong> 
-                {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
-              </p>
-              <p class="shift-details">
-                <strong>Started:</strong> {{ formatDateTime(shift.start_time) }}
-              </p>
-              <p v-if="shift.end_time" class="shift-details">
-                <strong>Ended:</strong> {{ formatDateTime(shift.end_time) }}
-              </p>
-              <p v-else class="shift-details">
-                <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
-              </p>
-            </div>
-            
-            <div class="shift-actions">
-              <button 
-                v-if="shift.is_active" 
-                @click="confirmEndShift" 
-                class="btn btn-danger"
-              >
-                End Shift
-              </button>
-              <button 
-                v-else 
-                @click="navigateToHome" 
-                class="btn btn-secondary"
-              >
-                Back to Home
-              </button>
-            </div>
+          <div class="shift-header-content">
+            <h2>
+              <span class="shift-type" :style="{ color: getShiftColor() }">
+                {{ getShiftTypeDisplayName() }}:
+              </span>&nbsp;
+              {{ formatShortDate(shift.start_time) }}
+              <span class="separator">|</span>
+              Supervisor: {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+              <span v-if="!shift.is_active" class="archived-badge">Archived</span>
+            </h2>
+          </div>
+          
+          <div class="shift-actions">
+            <button 
+              v-if="shift.is_active" 
+              @click="confirmEndShift" 
+              class="btn btn-danger"
+            >
+              End Shift
+            </button>
+            <button 
+              v-else 
+              @click="navigateToHome" 
+              class="btn btn-secondary"
+            >
+              Back to Home
+            </button>
           </div>
           
           <!-- End Shift Confirmation -->
@@ -1039,21 +1029,52 @@ function calculateDuration(startTimeString) {
   }
 }
 
+// Format date as "29th May 2025"
+function formatShortDate(dateString) {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  
+  // Get day with ordinal suffix (1st, 2nd, 3rd, etc.)
+  const day = date.getDate();
+  const suffix = getDayOrdinalSuffix(day);
+  
+  // Format date in the requested format
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  
+  const parts = formatter.formatToParts(date);
+  const month = parts.find(part => part.type === 'month').value;
+  const year = parts.find(part => part.type === 'year').value;
+  
+  return `${day}${suffix} ${month} ${year}`;
+}
+
+// Helper to get the correct ordinal suffix for a day
+function getDayOrdinalSuffix(day) {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
+}
+
 // Get display name for shift type
 function getShiftTypeDisplayName() {
   if (!shift.value) return 'Shift';
   
-  switch (shift.value.shift_type) {
-    case 'week_day':
-      return 'Week Day Shift';
-    case 'week_night':
-      return 'Week Night Shift';
-    case 'weekend_day':
-      return 'Weekend Day Shift';
-    case 'weekend_night':
-      return 'Weekend Night Shift';
-    default:
-      return 'Shift';
+  // Simplify shift type display to just "Day Shift" or "Night Shift"
+  if (shift.value.shift_type.includes('day')) {
+    return 'Day Shift';
+  } else if (shift.value.shift_type.includes('night')) {
+    return 'Night Shift';
+  } else {
+    return 'Shift';
   }
 }
 
@@ -1117,24 +1138,42 @@ function isWeekend(date) {
   padding: 2rem;
 }
 
-.shift-info {
-  border-left: 4px solid v-bind('getShiftColor()');
-  
-  &.archived-shift {
-    border-left-color: #9e9e9e;
-  }
-}
-
-.shift-header {
+.shift-info-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  padding: 1rem 2.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
   
-  h2 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
+  .shift-type {
+    font-weight: 700; /* Make the colored text bolder */
+  }
+  
+  &.archived-shift {
+    .shift-type {
+      color: #9e9e9e !important;
+    }
+  }
+  
+  .shift-header-content {
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      
+      .separator {
+        margin: 0 0.5rem;
+        color: #6c757d;
+      }
+      
+      @media (max-width: 600px) {
+        font-size: 1rem;
+      }
+    }
   }
 }
 
