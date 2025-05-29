@@ -412,8 +412,17 @@ const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
 const totalTasksCount = computed(() => pendingTasks.value.length + completedTasks.value.length);
 const porters = computed(() => {
-  // Only show porters from the shift pool
-  return shiftsStore.shiftPorterPool.map(p => p.porter);
+  // Only show porters from the shift pool who are "Runners" (no assignments)
+  return shiftsStore.shiftPorterPool
+    .filter(entry => {
+      // Get assignments for this porter
+      const assignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(
+        a => a.porter_id === entry.porter_id
+      );
+      // Only include porters with no assignments (Runners)
+      return assignments.length === 0;
+    })
+    .map(p => p.porter);
 });
 const taskTypes = computed(() => taskTypesStore.taskTypes);
 // Regular departments list for dropdowns
