@@ -9,15 +9,16 @@
     <div v-else-if="serviceAssignments.length === 0" class="empty-state">
       <p>No support services have been assigned to this shift type.</p>
       <button @click="showAddServiceModal = true" class="btn-add-service">
-        Add Service
+        <span class="icon">+</span> Add Service
       </button>
     </div>
     
     <!-- Service Assignments List -->
     <div v-else>
       <div class="services-list-header">
+        <h4 v-if="showHeader">{{ shiftTypeLabel }} Coverage</h4>
         <button @click="showAddServiceModal = true" class="btn-add-service">
-          Add Service
+          <span class="icon">+</span> Add Service
         </button>
       </div>
       
@@ -140,8 +141,7 @@ import EditServiceModal from './EditServiceModal.vue';
 const props = defineProps({
   shiftId: {
     type: String,
-    required: false,
-    default: null
+    required: true
   },
   shiftType: {
     type: String,
@@ -173,21 +173,9 @@ const addServiceForm = ref({
 });
 
 // Computed properties
-const loading = computed(() => {
-  // If we're in settings view (no shiftId), use supportServicesStore loading
-  if (!props.shiftId) {
-    return supportServicesStore.loading.services;
-  }
-  return shiftsStore.loading.supportServices;
-});
+const loading = computed(() => shiftsStore.loading.supportServices);
 
 const serviceAssignments = computed(() => {
-  // In settings view - use defaults from supportServicesStore
-  if (!props.shiftId) {
-    return supportServicesStore.getSortedAssignmentsByType(props.shiftType) || [];
-  }
-  
-  // In shift view - use shift-specific assignments
   console.log(`Computing service assignments for shift ${props.shiftId}; total: ${shiftsStore.shiftSupportServiceAssignments.length}`);
   return shiftsStore.shiftSupportServiceAssignments.filter(
     assignment => assignment.shift_id === props.shiftId
@@ -210,12 +198,11 @@ const shiftTypeLabel = computed(() => {
 });
 
 const availableServices = computed(() => {
-  // Get all services (ensure it's an array)
+  // Get all services
   const allServices = supportServicesStore.services || [];
   
-  // Get ids of services already assigned to this shift or settings
-  const assignments = serviceAssignments.value || [];
-  const assignedServiceIds = assignments.map(a => a.service_id);
+  // Get ids of services already assigned to this shift
+  const assignedServiceIds = serviceAssignments.value.map(a => a.service_id);
   
   // Return only services not already assigned
   return allServices.filter(service => 
@@ -228,14 +215,6 @@ const canAddService = computed(() =>
   addServiceForm.value.startTime && 
   addServiceForm.value.endTime
 );
-
-const timeRange = computed(() => {
-  if (props.shiftType && settingsStore.shiftDefaults[props.shiftType]) {
-    const shiftSettings = settingsStore.shiftDefaults[props.shiftType];
-    return `${shiftSettings.startTime} - ${shiftSettings.endTime}`;
-  }
-  return '';
-});
 
 // Load data when component mounts
 onMounted(async () => {
@@ -251,33 +230,31 @@ onMounted(async () => {
     await staffStore.fetchPorters();
   }
   
-  // If we have a shiftId, load shift-specific assignments
-  if (props.shiftId) {
-    await shiftsStore.fetchShiftSupportServices(props.shiftId);
-  } else {
-  // Load default assignments for this shift type
-  await supportServicesStore.fetchServiceAssignments();
-  }
+  // Load support service assignments for this shift
+  await shiftsStore.fetchShiftSupportServices(props.shiftId);
   
   // Set default times based on shift type
   initializeFormDefaults();
+  
+  // Initialize supportServicesStore to ensure default settings are loaded
+  await supportServicesStore.loadAllServiceAssignments();
 });
 
 // Methods
 function initializeFormDefaults() {
   // Set default times based on the specific shift type
   if (props.shiftType === 'week_day') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_day.startTime || '08:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_day.endTime || '16:00';
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_day?.startTime || '08:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_day?.endTime || '16:00';
   } else if (props.shiftType === 'week_night') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_night.startTime || '20:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_night.endTime || '08:00';
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_night?.startTime || '20:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_night?.endTime || '08:00';
   } else if (props.shiftType === 'weekend_day') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_day.startTime || '08:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_day.endTime || '16:00';
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_day?.startTime || '08:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_day?.endTime || '16:00';
   } else if (props.shiftType === 'weekend_night') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_night.startTime || '20:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_night.endTime || '08:00';
+    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_night?.startTime || '20:00';
+    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_night?.endTime || '08:00';
   }
 }
 
@@ -287,35 +264,20 @@ async function addService() {
   isSubmitting.value = true;
   
   try {
-    if (props.shiftId) {
-      // Add to specific shift
-      await shiftsStore.addShiftSupportService(
-        props.shiftId,
-        addServiceForm.value.serviceId,
-        addServiceForm.value.startTime,
-        addServiceForm.value.endTime,
-        addServiceForm.value.color
-      );
-      
-      // Reload the service assignments
-      await shiftsStore.fetchShiftSupportServices(props.shiftId);
-    } else {
-      // Add to default settings
-      await supportServicesStore.addServiceAssignment(
-        addServiceForm.value.serviceId,
-        props.shiftType,
-        addServiceForm.value.startTime,
-        addServiceForm.value.endTime,
-        addServiceForm.value.color
-      );
-      
-      // Reload the default assignments
-      await supportServicesStore.fetchServiceAssignments();
-    }
+    await shiftsStore.addShiftSupportService(
+      props.shiftId,
+      addServiceForm.value.serviceId,
+      addServiceForm.value.startTime,
+      addServiceForm.value.endTime,
+      addServiceForm.value.color
+    );
     
     // Reset form and close modal
     addServiceForm.value.serviceId = '';
     showAddServiceModal.value = false;
+    
+    // Reload the service assignments
+    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error adding service assignment:', error);
   } finally {
@@ -330,22 +292,12 @@ function openEditModal(assignment) {
 
 async function updateAssignment(assignmentId, updates) {
   try {
-    if (props.shiftId) {
-      // Update in specific shift
-      await shiftsStore.updateShiftSupportService(assignmentId, updates);
-      
-      // Reload assignments to ensure we have the latest data
-      await shiftsStore.fetchShiftSupportServices(props.shiftId);
-    } else {
-      // Update in default settings
-      await supportServicesStore.updateServiceAssignment(assignmentId, updates);
-      
-      // Reload the default assignments
-      await supportServicesStore.fetchServiceAssignments();
-    }
-    
+    await shiftsStore.updateShiftSupportService(assignmentId, updates);
     showEditModal.value = false;
     selectedAssignment.value = null;
+    
+    // Reload assignments to ensure we have the latest data
+    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error updating assignment:', error);
   }
@@ -354,25 +306,12 @@ async function updateAssignment(assignmentId, updates) {
 async function confirmRemove(assignmentId) {
   if (confirm('Are you sure you want to remove this service assignment?')) {
     try {
-      if (props.shiftId) {
-        // Remove from specific shift
-        console.log('Removing shift support service with ID:', assignmentId);
-        await shiftsStore.removeShiftSupportService(assignmentId);
-      } else {
-        // Remove from default settings
-        console.log('Removing default service assignment with ID:', assignmentId);
-        const result = await supportServicesStore.deleteServiceAssignment(assignmentId);
-        console.log('Delete result:', result);
-        
-        // Refresh service assignments after deletion
-        await supportServicesStore.fetchServiceAssignments();
-      }
-      
+      // This now uses the shiftsStore method to remove only from this shift
+      await shiftsStore.removeShiftSupportService(assignmentId);
       showEditModal.value = false;
       selectedAssignment.value = null;
     } catch (error) {
       console.error('Error removing assignment:', error);
-      alert(`Failed to remove service: ${error.message}`);
     }
   }
 }
@@ -387,23 +326,36 @@ async function confirmRemove(assignmentId) {
   
   .services-list-header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
+    
+    h4 {
+      margin: 0;
+      font-size: mix.font-size('md');
+    }
   }
   
   .btn-add-service {
-    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    background-color: mix.color('primary');
+    color: white;
     border-radius: mix.radius('md');
     font-weight: 500;
     cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-    background-color: mix.color('primary');
-    color: white;
+    font-size: mix.font-size('sm');
     
     &:hover {
       background-color: color.scale(mix.color('primary'), $lightness: -10%);
+    }
+    
+    .icon {
+      font-size: 16px;
+      font-weight: bold;
     }
   }
   

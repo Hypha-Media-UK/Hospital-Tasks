@@ -56,17 +56,27 @@ const showEditModal = ref(false);
 
 // Get porter assignments for this service
 const porterAssignments = computed(() => {
-  // Use the supportServicesStore getPorterAssignmentsByServiceId getter for default settings
-  // Make sure we always return an array, even if the getter returns undefined
-  const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id);
-  return Array.isArray(assignments) ? assignments : [];
+  // Check if this is a shift-specific assignment (has shift_id) or a default assignment
+  if (props.assignment.shift_id) {
+    // Use the shiftsStore getter for shift-specific assignments
+    const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
+    return Array.isArray(assignments) ? assignments : [];
+  } else {
+    // Use the supportServicesStore getter for default settings
+    const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id);
+    return Array.isArray(assignments) ? assignments : [];
+  }
 });
 
 // Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
   try {
-    // Use the supportServicesStore hasCoverageGap getter
-    return supportServicesStore.hasCoverageGap(props.assignment.id);
+    // Use the appropriate store's coverage gap checker based on assignment type
+    if (props.assignment.shift_id) {
+      return shiftsStore.hasServiceCoverageGap(props.assignment.id);
+    } else {
+      return supportServicesStore.hasCoverageGap(props.assignment.id);
+    }
   } catch (error) {
     console.error('Error checking coverage gap:', error);
     return false;

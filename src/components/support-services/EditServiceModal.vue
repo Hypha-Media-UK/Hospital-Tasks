@@ -201,6 +201,10 @@ const emit = defineEmits(['close', 'update', 'remove']);
 
 const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
+const supportServicesStore = useSupportServicesStore();
+
+// Determine if this is a shift-specific assignment or a default assignment
+const isShiftAssignment = computed(() => !!props.assignment.shift_id);
 
 // Local state for all editable properties
 const localStartTime = ref('');
@@ -301,7 +305,6 @@ const addLocalPorterAssignment = () => {
     // Add to local state with a temporary ID
     localPorterAssignments.value.push({
       id: `temp-${Date.now()}`,
-      default_service_cover_assignment_id: props.assignment.id,
       porter_id: newPorterAssignment.value.porter_id,
       start_time: newPorterAssignment.value.start_time + ':00',
       end_time: newPorterAssignment.value.end_time + ':00',
@@ -338,21 +341,32 @@ const removeLocalPorterAssignment = (index) => {
 
 const saveAllChanges = async () => {
   try {
-    // Import the supportServicesStore for handling default service settings
-    const supportServicesStore = useSupportServicesStore();
-    
     // 1. Update service assignment (times, color)
-    // Use the appropriate method for default service settings
-    await supportServicesStore.updateServiceAssignment(props.assignment.id, {
-      start_time: localStartTime.value + ':00',
-      end_time: localEndTime.value + ':00',
-      color: localColor.value
-    });
+    if (isShiftAssignment.value) {
+      // For shift-specific assignments
+      await shiftsStore.updateShiftSupportService(props.assignment.id, {
+        start_time: localStartTime.value + ':00',
+        end_time: localEndTime.value + ':00',
+        color: localColor.value
+      });
+    } else {
+      // For default service settings
+      await supportServicesStore.updateServiceAssignment(props.assignment.id, {
+        start_time: localStartTime.value + ':00',
+        end_time: localEndTime.value + ':00',
+        color: localColor.value
+      });
+    }
     
     // 2. Process porter assignments - removals
     for (const porterId of removedPorterIds.value) {
-      // Use default service settings method to remove porter assignment
-      await supportServicesStore.removePorterAssignment(porterId);
+      if (isShiftAssignment.value) {
+        // For shift-specific assignments
+        await shiftsStore.removeShiftSupportServicePorter(porterId);
+      } else {
+        // For default service settings
+        await supportServicesStore.removePorterAssignment(porterId);
+      }
     }
     
     // 3. Process porter assignments - additions and updates
@@ -361,21 +375,48 @@ const saveAllChanges = async () => {
       if (assignment.isRemoved) continue;
       
       if (assignment.isNew) {
-        // Add new assignment - use default service settings method
-        await supportServicesStore.addPorterToServiceAssignment(
-          props.assignment.id,
-          assignment.porter_id,
-          assignment.start_time,
-          assignment.end_time
-        );
+        // Add new assignment
+        if (isShiftAssignment.value) {
+          // For shift-specific assignments
+          await shiftsStore.addShiftSupportServicePorter(
+            props.assignment.id,
+            assignment.porter_id,
+            assignment.start_time,
+            assignment.end_time
+          );
+        } else {
+          // For default service settings
+          await supportServicesStore.addPorterToServiceAssignment(
+            props.assignment.id,
+            assignment.porter_id,
+            assignment.start_time,
+            assignment.end_time
+          );
+        }
       } else {
-        // Update existing assignment - use default service settings method
-        await supportServicesStore.updatePorterAssignment(assignment.id, {
-          start_time: assignment.start_time_display + ':00',
-          end_time: assignment.end_time_display + ':00'
-        });
+        // Update existing assignment
+        if (isShiftAssignment.value) {
+          // For shift-specific assignments
+          await shiftsStore.updateShiftSupportServicePorter(assignment.id, {
+            start_time: assignment.start_time_display + ':00',
+            end_time: assignment.end_time_display + ':00'
+          });
+        } else {
+          // For default service settings
+          await supportServicesStore.updatePorterAssignment(assignment.id, {
+            start_time: assignment.start_time_display + ':00',
+            end_time: assignment.end_time_display + ':00'
+          });
+        }
       }
     }
+    
+    // Emit the update event
+    emit('update', props.assignment.id, {
+      start_time: localStartTime.value + ':00',
+      end_time: localEndTime.value + ':00',
+      color: localColor.value
+    });
     
     // Close the modal
     closeModal();
@@ -400,7 +441,7 @@ function timeToMinutes(timeStr) {
 }
 
 // Initialize component state from props
-const initializeState = () => {
+const initializeState = async () => {
   // Initialize times
   if (props.assignment.start_time) {
     localStartTime.value = props.assignment.start_time.slice(0, 5);
@@ -413,9 +454,17 @@ const initializeState = () => {
   // Initialize color
   localColor.value = props.assignment.color || '#4285F4';
   
-  // Initialize porter assignments - use the supportServicesStore
-  const supportServicesStore = useSupportServicesStore();
-  const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
+  // Initialize porter assignments - use the appropriate store based on assignment type
+  let assignments = [];
+  
+  if (isShiftAssignment.value) {
+    // For shift-specific assignments
+    assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
+  } else {
+    // For default service settings
+    assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id) || [];
+  }
+  
   localPorterAssignments.value = assignments.map(pa => ({
     ...pa,
     start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
@@ -433,7 +482,7 @@ onMounted(async () => {
     await staffStore.fetchPorters();
   }
   
-  initializeState();
+  await initializeState();
 });
 </script>
 
