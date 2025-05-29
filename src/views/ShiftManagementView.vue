@@ -329,16 +329,16 @@
           v-if="shift && shift.is_active" 
           @click="showAddTaskModal" 
           class="floating-action-button"
-          :class="{ 'disabled': !isCurrentDate }"
-          :disabled="!isCurrentDate"
-          :title="isCurrentDate ? 'Add Task' : 'Cannot add tasks to shifts from different dates'"
+          :class="{ 'disabled': !isShiftAccessible }"
+          :disabled="!isShiftAccessible"
+          :title="isShiftAccessible ? 'Add Task' : 'Cannot add tasks now - only available during shift or 1 hour before'"
         >
           <span class="plus-icon">+</span>
         </button>
         
-        <!-- Non-current date message -->
-        <div v-if="shift && shift.is_active && !isCurrentDate" class="date-warning">
-          Tasks can only be added to shifts for the current date
+        <!-- Non-accessible shift message -->
+        <div v-if="shift && shift.is_active && !isShiftAccessible" class="date-warning">
+          Tasks can only be added during the shift or 1 hour before it starts
         </div>
       </div>
     </div>
@@ -410,16 +410,54 @@ const shift = computed(() => shiftsStore.currentShift);
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
 const totalTasksCount = computed(() => pendingTasks.value.length + completedTasks.value.length);
-// Check if shift is for the current date (to determine if tasks can be added)
-const isCurrentDate = computed(() => {
+// Check if tasks can be added to this shift (current date and within time window)
+const isShiftAccessible = computed(() => {
   if (!shift.value || !shift.value.start_time) return false;
   
   const shiftDate = new Date(shift.value.start_time);
   const today = new Date();
+  const shiftType = shift.value.shift_type;
   
-  return shiftDate.getDate() === today.getDate() && 
-         shiftDate.getMonth() === today.getMonth() && 
-         shiftDate.getFullYear() === today.getFullYear();
+  // First check if dates match
+  const isSameDate = shiftDate.getDate() === today.getDate() && 
+                     shiftDate.getMonth() === today.getMonth() && 
+                     shiftDate.getFullYear() === today.getFullYear();
+  
+  if (!isSameDate) return false; // Different date, not accessible
+  
+  // Get shift times from settings
+  const startTimeStr = settingsStore.shiftDefaults[shiftType]?.startTime;
+  const endTimeStr = settingsStore.shiftDefaults[shiftType]?.endTime;
+  
+  if (!startTimeStr || !endTimeStr) return false; // No time settings found
+  
+  // Convert times to minutes for easier comparison
+  const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
+  const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
+  
+  const startTimeInMinutes = startHours * 60 + startMinutes;
+  const endTimeInMinutes = endHours * 60 + endMinutes;
+  
+  // Calculate time 1 hour before shift starts
+  const oneHourBeforeStartInMinutes = startTimeInMinutes - 60;
+  
+  // Get current time in minutes
+  const currentHours = today.getHours();
+  const currentMinutes = today.getMinutes();
+  const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+  
+  // Check if night shift (spans midnight)
+  const isNightShift = endTimeInMinutes < startTimeInMinutes;
+  
+  if (isNightShift) {
+    // For night shifts that span midnight
+    return currentTimeInMinutes >= oneHourBeforeStartInMinutes || 
+           currentTimeInMinutes < endTimeInMinutes;
+  } else {
+    // For day shifts
+    return currentTimeInMinutes >= oneHourBeforeStartInMinutes && 
+           currentTimeInMinutes < endTimeInMinutes;
+  }
 });
 const porters = computed(() => {
   // Only show porters from the shift pool who are "Runners" (no assignments)
