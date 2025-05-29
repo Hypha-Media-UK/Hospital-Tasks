@@ -4,17 +4,17 @@
       <div class="staff-tabs__header">
         <button 
           class="staff-tabs__tab" 
-          :class="{ 'staff-tabs__tab--active': activeTab === 'supervisors' }"
-          @click="activeTab = 'supervisors'"
-        >
-          Supervisors
-        </button>
-        <button 
-          class="staff-tabs__tab" 
           :class="{ 'staff-tabs__tab--active': activeTab === 'porters' }"
           @click="activeTab = 'porters'"
         >
           Porters
+        </button>
+        <button 
+          class="staff-tabs__tab" 
+          :class="{ 'staff-tabs__tab--active': activeTab === 'supervisors' }"
+          @click="activeTab = 'supervisors'"
+        >
+          Supervisors
         </button>
       </div>
       
@@ -27,7 +27,7 @@
             </button>
           </div>
           
-          <div class="sort-controls">
+          <div class="sort-controls supervisor-sort-controls">
             <span>Sort by:</span>
             <button 
               class="sort-btn" 
@@ -62,9 +62,6 @@
               <div class="staff-item__content">
                 <div class="staff-item__name">
                   {{ supervisor.first_name }} {{ supervisor.last_name }}
-                </div>
-                <div class="staff-item__department">
-                  {{ supervisor.department ? supervisor.department.name : 'No department assigned' }}
                 </div>
               </div>
               
@@ -354,7 +351,7 @@ import TrashIcon from '../../icons/TrashIcon.vue';
 const staffStore = useStaffStore();
 
 // Tab state
-const activeTab = ref('supervisors');
+const activeTab = ref('porters');
 
 // Form state
 const showAddSupervisorForm = ref(false);
@@ -575,7 +572,7 @@ const deletePorter = async (porter) => {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
     
     span {
@@ -583,6 +580,10 @@ const deletePorter = async (porter) => {
       color: rgba(0, 0, 0, 0.6);
     }
   }
+}
+
+.supervisor-sort-controls {
+  margin-bottom: 24px;
 }
 
 .sort-btn, .filter-btn {
