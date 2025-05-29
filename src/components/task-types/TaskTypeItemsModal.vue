@@ -86,7 +86,12 @@
           </div>
           
           <div v-else class="task-items-list">
-            <div v-for="item in taskItems" :key="item.id" class="task-item">
+            <div 
+              v-for="item in taskItems" 
+              :key="item.id" 
+              class="task-item"
+              :class="{ 'task-item--regular': isRegular(item.id) }"
+            >
               <div v-if="editingTaskItem === item.id" class="task-item-edit">
                 <input 
                   v-model="editTaskItemName" 
@@ -116,6 +121,14 @@
                 </div>
                 
                 <div class="task-item-actions">
+                  <button 
+                    @click="toggleRegular(item.id)"
+                    class="btn-action"
+                    :class="{ 'btn-active': isRegular(item.id) }"
+                    title="Mark as Regular"
+                  >
+                    <StarIcon size="16" :filled="isRegular(item.id)" />
+                  </button>
                   <button 
                     @click="openItemAssignmentModal(item)"
                     class="btn-action"
@@ -184,6 +197,7 @@ import { useTaskTypesStore } from '../../stores/taskTypesStore';
 import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 import MapPinIcon from '../icons/MapPinIcon.vue';
+import StarIcon from '../icons/StarIcon.vue';
 import DepartmentAssignmentModal from './DepartmentAssignmentModal.vue';
 import ItemDepartmentAssignmentModal from './ItemDepartmentAssignmentModal.vue';
 
@@ -220,6 +234,20 @@ const hasTaskTypeAssignments = computed(() => {
 // Check if a task item has any department assignments
 const hasItemAssignments = (itemId) => {
   return taskTypesStore.hasItemAssignments(itemId);
+};
+
+// Check if a task item is marked as regular
+const isRegular = (itemId) => {
+  const item = taskTypesStore.taskItems.find(item => item.id === itemId);
+  return item && item.is_regular === true;
+};
+
+// Toggle regular status for a task item
+const toggleRegular = async (itemId) => {
+  const item = taskTypesStore.taskItems.find(item => item.id === itemId);
+  if (item) {
+    await taskTypesStore.setTaskItemRegular(itemId, !item.is_regular);
+  }
 };
 
 // Open item assignment modal
@@ -516,6 +544,11 @@ const confirmDeleteTaskType = async () => {
     border-radius: mix.radius('md');
     background-color: rgba(0, 0, 0, 0.02);
     overflow: hidden;
+    
+    &--regular {
+      background-color: rgba(66, 133, 244, 0.05);
+      border-left: 3px solid rgba(66, 133, 244, 0.6);
+    }
   }
   
   .task-item-content {
@@ -622,6 +655,10 @@ const confirmDeleteTaskType = async () => {
   
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);
+  }
+  
+  &.btn-active {
+    color: #4285F4; // Blue color for Regular items
   }
 }
 </style>

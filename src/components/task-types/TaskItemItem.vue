@@ -1,5 +1,5 @@
 <template>
-  <div class="task-item">
+  <div class="task-item" :class="{ 'task-item--regular': isRegular }">
     <div v-if="isEditing" class="task-item__edit">
       <input 
         v-model="editName" 
@@ -13,6 +13,14 @@
     <div v-else class="task-item__content">
       <div class="task-item__name">{{ taskItem.name }}</div>
       <div class="task-item__actions">
+        <IconButton 
+          title="Mark as Regular"
+          :active="isRegular"
+          @click="toggleRegular"
+        >
+          <StarIcon :filled="isRegular" />
+        </IconButton>
+        
         <IconButton 
           title="Assign Departments"
           :active="hasAssignments"
@@ -53,6 +61,7 @@ import IconButton from '../IconButton.vue';
 import EditIcon from '../icons/EditIcon.vue';
 import CloseIcon from '../icons/CloseIcon.vue';
 import MapPinIcon from '../icons/MapPinIcon.vue';
+import StarIcon from '../icons/StarIcon.vue';
 import ItemDepartmentAssignmentModal from './ItemDepartmentAssignmentModal.vue';
 
 const props = defineProps({
@@ -73,6 +82,11 @@ const showAssignmentModal = ref(false);
 // Check if this task item has any department assignments
 const hasAssignments = computed(() => {
   return taskTypesStore.hasItemAssignments(props.taskItem.id);
+});
+
+// Check if this task item is marked as regular
+const isRegular = computed(() => {
+  return props.taskItem.is_regular === true;
 });
 
 // Start editing the task item name
@@ -118,6 +132,11 @@ const confirmDelete = async () => {
 const onAssignmentsSaved = () => {
   // This is just a hook in case we need to do something after assignments are saved
 };
+
+// Toggle regular status
+const toggleRegular = async () => {
+  await taskTypesStore.setTaskItemRegular(props.taskItem.id, !isRegular.value);
+};
 </script>
 
 <style lang="scss" scoped>
@@ -132,6 +151,12 @@ const onAssignmentsSaved = () => {
   
   &:hover {
     background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  // Highlight the item if it's marked as regular
+  &--regular {
+    background-color: rgba(66, 133, 244, 0.05);
+    border-left: 3px solid rgba(66, 133, 244, 0.6);
   }
   
   &__content {

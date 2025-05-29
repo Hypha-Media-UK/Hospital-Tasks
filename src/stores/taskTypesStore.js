@@ -73,6 +73,13 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       return state.itemAssignments.find(
         a => a.task_item_id === itemId && a.department_id === departmentId
       ) || { is_origin: false, is_destination: false };
+    },
+    
+    // Get the regular task item for a task type
+    getRegularTaskItem: (state) => (typeId) => {
+      return state.taskItems.find(
+        item => item.task_type_id === typeId && item.is_regular
+      );
     }
   },
   
@@ -254,6 +261,64 @@ export const useTaskTypesStore = defineStore('taskTypes', {
         return true;
       } catch (error) {
         console.error('Error updating task item:', error);
+        this.error = 'Failed to update task item';
+        return false;
+      } finally {
+        this.loading.taskItems = false;
+      }
+    },
+    
+    // Set a task item as regular and ensure only one per task type is regular
+    async setTaskItemRegular(taskItemId, isRegular = true) {
+      this.loading.taskItems = true;
+      this.error = null;
+      
+      try {
+        // Get the task item to find its task type
+        const taskItem = this.taskItems.find(item => item.id === taskItemId);
+        if (!taskItem) {
+          throw new Error('Task item not found');
+        }
+        
+        const taskTypeId = taskItem.task_type_id;
+        
+        if (isRegular) {
+          // First, unmark any other regular task items for this task type
+          const currentRegularItem = this.getRegularTaskItem(taskTypeId);
+          if (currentRegularItem && currentRegularItem.id !== taskItemId) {
+            // Update in database
+            await supabase
+              .from('task_items')
+              .update({ is_regular: false })
+              .eq('id', currentRegularItem.id);
+            
+            // Update in local state
+            const index = this.taskItems.findIndex(i => i.id === currentRegularItem.id);
+            if (index !== -1) {
+              this.taskItems[index].is_regular = false;
+            }
+          }
+        }
+        
+        // Now update the target task item
+        const { data, error } = await supabase
+          .from('task_items')
+          .update({ is_regular: isRegular })
+          .eq('id', taskItemId)
+          .select();
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const index = this.taskItems.findIndex(i => i.id === taskItemId);
+          if (index !== -1) {
+            this.taskItems[index] = data[0];
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error setting task item as regular:', error);
         this.error = 'Failed to update task item';
         return false;
       } finally {

@@ -133,11 +133,12 @@
                   id="taskItem" 
                   v-model="taskForm.taskItemId" 
                   class="form-control"
+                  :class="{ 'field-auto-populated': taskItemAutoPopulated }"
                   :disabled="!taskForm.taskTypeId || loadingTaskItems || isEditingTask"
                 >
                   <option value="">{{ loadingTaskItems ? 'Loading items...' : 'Select a task item' }}</option>
                   <option v-for="item in taskItems" :key="item.id" :value="item.id">
-                    {{ item.name }}
+                    {{ item.name }}{{ item.is_regular ? ' (Regular)' : '' }}
                   </option>
                 </select>
               </div>
@@ -453,6 +454,7 @@ const taskFormError = ref('');
 // Track fields auto-population for visual feedback
 const originFieldAutoPopulated = ref(false);
 const destinationFieldAutoPopulated = ref(false);
+const taskItemAutoPopulated = ref(false);
 
 // Task form data
 const taskForm = ref({
@@ -812,6 +814,20 @@ async function loadTaskItems() {
     
     // Check for task type department assignments and auto-populate
     checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+    
+    // Check for regular task item and auto-select it
+    const regularItem = taskItems.value.find(item => item.is_regular);
+    if (regularItem) {
+      console.log('Found regular task item:', regularItem.name, '- auto-selecting');
+      taskForm.value.taskItemId = regularItem.id;
+      
+      // Set the animation flag for visual feedback
+      taskItemAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        taskItemAutoPopulated.value = false;
+      }, 1500);
+    }
   } catch (error) {
     console.error('Error loading task items:', error);
   } finally {
