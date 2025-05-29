@@ -135,6 +135,27 @@
                 Relief Porters
               </button>
             </div>
+            
+            <div class="search-container">
+              <div class="search-field">
+                <span class="search-icon">🔍</span>
+                <input 
+                  type="text" 
+                  placeholder="Search porters..."
+                  v-model="searchQuery"
+                  class="search-input"
+                  @input="onSearchInput"
+                />
+                <button 
+                  v-if="searchQuery" 
+                  class="clear-search-btn"
+                  @click="clearSearch"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
           </div>
           
           <div v-if="staffStore.loading.porters" class="loading">
@@ -352,6 +373,7 @@ const staffStore = useStaffStore();
 
 // Tab state
 const activeTab = ref('porters');
+const searchQuery = ref('');
 
 // Form state
 const showAddSupervisorForm = ref(false);
@@ -487,6 +509,16 @@ const deletePorter = async (porter) => {
     await staffStore.deleteStaff(porter.id, 'porter');
   }
 };
+
+// Search methods
+const onSearchInput = () => {
+  staffStore.setSearchQuery(searchQuery.value);
+};
+
+const clearSearch = () => {
+  searchQuery.value = '';
+  staffStore.setSearchQuery('');
+};
 </script>
 
 <style lang="scss" scoped>
@@ -602,6 +634,54 @@ const deletePorter = async (porter) => {
     background-color: rgba(66, 133, 244, 0.1);
     color: mix.color('primary');
     font-weight: 500;
+  }
+}
+
+
+.search-container {
+  margin-bottom: 24px;
+  
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.4);
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('md');
+      font-size: mix.font-size('md');
+      
+      &:focus {
+        outline: none;
+        border-color: mix.color('primary');
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      }
+    }
+    
+    .clear-search-btn {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      
+      &:hover {
+        color: rgba(0, 0, 0, 0.7);
+      }
+    }
   }
 }
 

@@ -12,6 +12,8 @@ export const useStaffStore = defineStore('staff', {
     },
     sortBy: 'firstName', // 'firstName' or 'lastName'
     porterTypeFilter: 'all', // 'all', 'shift', or 'relief'
+    sortDirection: 'asc', // 'asc' or 'desc'
+    searchQuery: '', // For filtering porters by name
     availabilityPatterns: [
       'Weekdays - Days',
       'Weekdays - Nights',
@@ -50,13 +52,26 @@ export const useStaffStore = defineStore('staff', {
         );
       }
       
+      // Apply search query filter if there is one
+      if (state.searchQuery.trim()) {
+        const query = state.searchQuery.toLowerCase().trim();
+        filteredPorters = filteredPorters.filter(porter => {
+          const fullName = `${porter.first_name} ${porter.last_name}`.toLowerCase();
+          return fullName.includes(query);
+        });
+      }
+      
       // Then sort the filtered list
       return filteredPorters.sort((a, b) => {
+        let comparison = 0;
         if (state.sortBy === 'firstName') {
-          return a.first_name.localeCompare(b.first_name);
+          comparison = a.first_name.localeCompare(b.first_name);
         } else {
-          return a.last_name.localeCompare(b.last_name);
+          comparison = a.last_name.localeCompare(b.last_name);
         }
+        
+        // Apply sort direction
+        return state.sortDirection === 'asc' ? comparison : -comparison;
       });
     },
     
@@ -93,6 +108,22 @@ export const useStaffStore = defineStore('staff', {
       if (['all', 'shift', 'relief'].includes(filterType)) {
         this.porterTypeFilter = filterType;
       }
+    },
+    
+    // Set search query
+    setSearchQuery(query) {
+      this.searchQuery = query;
+    },
+    
+    // Toggle sort direction
+    toggleSortDirection() {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    },
+    
+    // Reset to default A-Z sort
+    resetToAZSort() {
+      this.sortBy = 'firstName';
+      this.sortDirection = 'asc';
     },
     
     // Fetch all supervisors
