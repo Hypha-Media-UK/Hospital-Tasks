@@ -29,7 +29,7 @@
           <div class="porter-card__assignments">
             <div v-if="getPorterAssignments(entry.porter_id).length > 0" class="assignments-list">
               <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" class="assignment-item">
-                {{ assignment.department?.name || 'Unknown Department' }} ({{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }})
+                {{ assignment.shift_area_cover_assignment?.department?.name || 'Unknown Department' }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
               </div>
             </div>
             <div v-else class="no-assignments">
@@ -239,17 +239,16 @@ const getPorterAssignments = (porterId) => {
   );
 };
 
-// Format time (e.g., "9:30 AM")
+// Format time (e.g., "09:30") in 24-hour format
 const formatTime = (timeStr) => {
   if (!timeStr) return '';
   
-  // Convert "HH:MM:SS" to "HH:MM AM/PM"
+  // Convert "HH:MM:SS" to "HH:MM" in 24-hour format
   const [hours, minutes] = timeStr.split(':');
   const hoursNum = parseInt(hours, 10);
-  const period = hoursNum >= 12 ? 'PM' : 'AM';
-  const hours12 = hoursNum % 12 || 12;
   
-  return `${hours12}:${minutes} ${period}`;
+  // Format with leading zeros for consistency
+  return `${String(hoursNum).padStart(2, '0')}:${minutes}`;
 };
 
 // Reset selected porters when modal is closed

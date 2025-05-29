@@ -852,7 +852,11 @@ export const useShiftsStore = defineStore('shifts', {
             .from('shift_area_cover_porter_assignments')
             .select(`
               *,
-              porter:porter_id(id, first_name, last_name)
+              porter:porter_id(id, first_name, last_name),
+              shift_area_cover_assignment:shift_area_cover_assignment_id(
+                id,
+                department:department_id(id, name)
+              )
             `)
             .in('shift_area_cover_assignment_id', assignmentIds);
           
@@ -1009,7 +1013,11 @@ export const useShiftsStore = defineStore('shifts', {
           })
           .select(`
             *,
-            porter:porter_id(id, first_name, last_name)
+            porter:porter_id(id, first_name, last_name),
+            shift_area_cover_assignment:shift_area_cover_assignment_id(
+              id,
+              department:department_id(id, name)
+            )
           `);
         
         if (error) throw error;
@@ -1041,7 +1049,11 @@ export const useShiftsStore = defineStore('shifts', {
           .eq('id', porterAssignmentId)
           .select(`
             *,
-            porter:porter_id(id, first_name, last_name)
+            porter:porter_id(id, first_name, last_name),
+            shift_area_cover_assignment:shift_area_cover_assignment_id(
+              id,
+              department:department_id(id, name)
+            )
           `);
         
         if (error) throw error;
