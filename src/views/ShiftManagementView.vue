@@ -1612,9 +1612,11 @@ function isWeekend(date) {
   }
   
   .plus-icon {
-    font-size: 32px;
+    font-size: 45px;
     font-weight: 300;
-    line-height: 1;
+    line-height: 0.8;
+    margin-top: -4px;
+    display: block; /* Ensures the text is treated as a block */
   }
 }
 </style>
