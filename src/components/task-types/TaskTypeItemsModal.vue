@@ -145,9 +145,19 @@
       </div>
       
       <div class="modal-footer">
-        <button @click="$emit('close')" class="btn btn-secondary">
-          Close
-        </button>
+        <div class="modal-footer-left">
+          <button 
+            class="btn btn-danger" 
+            @click="confirmDeleteTaskType"
+          >
+            Delete Task Type
+          </button>
+        </div>
+        <div class="modal-footer-right">
+          <button @click="$emit('close')" class="btn btn-secondary">
+            Close
+          </button>
+        </div>
       </div>
     </div>
     
@@ -298,6 +308,14 @@ const deleteTaskItem = async (item) => {
     await taskTypesStore.deleteTaskItem(item.id);
   }
 };
+
+// Delete task type with confirmation
+const confirmDeleteTaskType = async () => {
+  if (confirm(`Are you sure you want to delete "${props.taskType.name}" and all its items?`)) {
+    await taskTypesStore.deleteTaskType(props.taskType.id);
+    emit('close');
+  }
+};
 </script>
 
 <style lang="scss" scoped>
@@ -414,8 +432,17 @@ const deleteTaskItem = async (item) => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  
+  &-left {
+    display: flex;
+    gap: 12px;
+  }
+  
+  &-right {
+    display: flex;
+    gap: 12px;
+  }
 }
 
 // Task Item form styles
@@ -562,6 +589,15 @@ const deleteTaskItem = async (item) => {
     
     &:hover:not(:disabled) {
       background-color: color.scale(#f1f1f1, $lightness: -5%);
+    }
+  }
+  
+  &.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: color.scale(#dc3545, $lightness: -10%);
     }
   }
   

@@ -1,15 +1,12 @@
 <template>
-  <div class="task-type-card">
+  <div class="task-type-card" @click="viewItems">
     <div class="task-type-details">
       <h3 class="task-type-name">{{ taskType.name }}</h3>
     </div>
     
     <div class="task-type-card-footer">
       <div class="task-type-actions">
-        <button @click="viewItems" class="btn-view" title="View task items">
-          <EditIcon size="16" />
-        </button>
-        <button @click="confirmDelete" class="btn-delete" title="Delete task type">
+        <button @click.stop="confirmDelete" class="btn-delete" title="Delete task type">
           <TrashIcon size="16" />
         </button>
       </div>
@@ -24,7 +21,6 @@
 <script setup>
 import { computed } from 'vue';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
-import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
@@ -70,6 +66,14 @@ const confirmDelete = async () => {
   flex-direction: column;
   position: relative;
   min-height: 100px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    background-color: rgba(0, 0, 0, 0.01);
+  }
   
   .task-type-details {
     flex: 1;
@@ -122,10 +126,6 @@ const confirmDelete = async () => {
         cursor: pointer;
         padding: 6px;
         border-radius: mix.radius('sm');
-        
-        &.btn-view:hover {
-          background-color: rgba(66, 133, 244, 0.1);
-        }
         
         &.btn-delete:hover {
           background-color: rgba(234, 67, 53, 0.1);
