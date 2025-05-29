@@ -502,77 +502,161 @@ const deleteDepartment = async (department) => {
   gap: 12px;
 }
 
-
-
-  .frequent-departments-section {
-    background-color: #fff;
-
-  .frequent-list {
-    display: flex !important;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-    .department-item {
-      background-color: #FFEDD5 !important; /* Light orange */
-      border: 1px solid rgba(245, 158, 11, 0.1);
-      border-radius: mix.radius('md');
-      margin-bottom: 8px;
-      transition: background-color 0.2s ease;
-      overflow: hidden;
-      flex: 0 0 auto;
-      width: 180px;
-      
-      &:hover {
-        background-color: #FFE8C8 !important;
-      }
+// Frequent Departments Section
+.frequent-departments-section {
+  margin-bottom: 24px;
+  
+  .frequent-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
     
-    .department-content {
-      padding: 8px 12px;
+    .section-title {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      height: 40px;
-      width: 100%;
+      gap: 8px;
+      margin: 0;
+      font-size: mix.font-size('md');
+      font-weight: 600;
+      
+      .count-badge {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #B45309;
+        font-size: mix.font-size('xs');
+        font-weight: 500;
+        padding: 2px 8px;
+        border-radius: mix.radius('full');
+      }
     }
     
-    .department-name {
-      color: #B45309; /* Darker orange */
+    .drag-hint {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       font-size: mix.font-size('sm');
-      font-weight: 500;
-      text-align: left;
+      color: rgba(0, 0, 0, 0.5);
+      margin: 0;
+      
+      .drag-icon {
+        font-size: 14px;
+      }
+    }
+  }
+  
+  .frequent-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  
+  .frequent-item {
+    background-color: #FFEDD5 !important; /* Light orange */
+    border-radius: mix.radius('lg');
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
+    transition: all 0.2s ease;
+    overflow: hidden;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(245, 158, 11, 0.2);
     }
     
-    .department-badge {
-      background-color: rgba(245, 158, 11, 0.2);
-      color: #B45309;
-      font-size: mix.font-size('xs');
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: mix.radius('full');
-      text-transform: uppercase;
+    .department-content {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      position: relative;
     }
     
     .department-drag-handle {
-      cursor: grab;
+      position: absolute;
+      top: 8px;
+      left: 8px;
       color: rgba(180, 83, 9, 0.4);
-      margin-right: 6px;
+      font-size: 18px;
+      cursor: grab;
+      width: 20px;
+      height: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.2s ease;
+      background-color: rgba(245, 158, 11, 0.1);
+      border-radius: 4px;
+      transition: all 0.2s ease;
       
       &:hover {
-        color: rgba(180, 83, 9, 0.6);
+        color: rgba(180, 83, 9, 0.8);
+        background-color: rgba(245, 158, 11, 0.2);
       }
       
       &:active {
         cursor: grabbing;
       }
+    }
+    
+    .department-details {
+      flex: 1;
+      padding-left: 24px; /* Make room for the drag handle */
+      padding-right: 24px; /* Make room for the remove button */
+    }
+    
+    .department-name {
+      font-weight: 600;
+      font-size: mix.font-size('md');
+      color: #92400E; /* Amber 800 */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+    
+    .department-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
       
-      .drag-icon {
-        font-size: 16px;
+      .btn-remove-frequent {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(220, 38, 38, 0.1);
+        color: #B91C1C;
+        font-size: 14px;
+        font-weight: bold;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background-color: rgba(220, 38, 38, 0.2);
+        }
+      }
+    }
+    
+    .department-edit {
+      padding: 12px;
+      
+      .form-control {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #F59E0B;
+        border-radius: mix.radius('md');
+        font-size: mix.font-size('md');
+        margin-bottom: 8px;
+        
+        &:focus {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+      }
+      
+      .edit-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
       }
     }
   }
@@ -661,63 +745,18 @@ const deleteDepartment = async (department) => {
     user-select: none; /* Prevent text selection during drag */
   }
   
-  
-  .department-drag-handle {
-    cursor: grab;
-    margin-right: 12px;
-    color: rgba(180, 83, 9, 0.5);
-    background-color: rgba(245, 158, 11, 0.15);
-    border-radius: 8px;
-    padding: 6px 8px;
+  .department-details {
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 1px 2px rgba(0, 0, 0, 0.1);
-    
-    .drag-icon {
-      font-size: 18px;
-      filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
-    }
-    
-    &:hover {
-      color: rgba(180, 83, 9, 0.8);
-      background-color: rgba(245, 158, 11, 0.25);
-      transform: translateY(-1px);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0, 0, 0, 0.15);
-    }
-    
-    &:active {
-      cursor: grabbing;
-      background-color: rgba(245, 158, 11, 0.35);
-      transform: translateY(1px);
-      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
+    justify-content: flex-start;
+    text-align: left;
+    gap: 12px;
+    flex: 1;
   }
-  
-    .department-details {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      text-align: left;
-      gap: 12px;
-      flex: 1;
-    }
   
   .department-name {
     font-weight: 500;
   }
-  
-  
-    .department-badge {
-      background-color: rgba(245, 158, 11, 0.2);
-      color: #B45309;
-      font-size: mix.font-size('xs');
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: mix.radius('full');
-      text-transform: uppercase;
-    }
   
   .department-actions {
     display: flex;
@@ -807,25 +846,6 @@ const deleteDepartment = async (department) => {
   
   &.btn-active {
     color: #F59E0B;
-  }
-  
-  &.btn-remove-frequent {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    font-weight: 500;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    padding: 0;
-    background-color: rgba(220, 38, 38, 0.1);
-    color: #B91C1C;
-    transition: background-color 0.2s ease;
-    
-    &:hover {
-      background-color: rgba(220, 38, 38, 0.2);
-    }
   }
 }
 </style>

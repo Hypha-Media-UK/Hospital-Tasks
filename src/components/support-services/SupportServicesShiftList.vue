@@ -141,7 +141,8 @@ import EditServiceModal from './EditServiceModal.vue';
 const props = defineProps({
   shiftId: {
     type: String,
-    required: true
+    required: false,
+    default: null
   },
   shiftType: {
     type: String,
@@ -160,6 +161,9 @@ const supportServicesStore = useSupportServicesStore();
 const staffStore = useStaffStore();
 const settingsStore = useSettingsStore();
 
+// Determine whether we're in shift mode or settings mode
+const isShiftMode = computed(() => !!props.shiftId);
+
 // Local state
 const showAddServiceModal = ref(false);
 const showEditModal = ref(false);
@@ -173,13 +177,26 @@ const addServiceForm = ref({
 });
 
 // Computed properties
-const loading = computed(() => shiftsStore.loading.supportServices);
+const loading = computed(() => {
+  // If we're in shift mode, use the shiftsStore loading state
+  if (isShiftMode.value) {
+    return shiftsStore.loading.supportServices;
+  }
+  // Otherwise, use the supportServicesStore loading state
+  return supportServicesStore.loading.services;
+});
 
 const serviceAssignments = computed(() => {
-  console.log(`Computing service assignments for shift ${props.shiftId}; total: ${shiftsStore.shiftSupportServiceAssignments.length}`);
-  return shiftsStore.shiftSupportServiceAssignments.filter(
-    assignment => assignment.shift_id === props.shiftId
-  );
+  // If we're in shift mode, use shift-specific assignments
+  if (isShiftMode.value) {
+    console.log(`Computing service assignments for shift ${props.shiftId}; total: ${shiftsStore.shiftSupportServiceAssignments.length}`);
+    return shiftsStore.shiftSupportServiceAssignments.filter(
+      assignment => assignment.shift_id === props.shiftId
+    );
+  }
+  
+  // Otherwise, use default assignments for the specified shift type
+  return supportServicesStore.getSortedAssignmentsByType(props.shiftType) || [];
 });
 
 const shiftTypeLabel = computed(() => {
@@ -201,8 +218,10 @@ const availableServices = computed(() => {
   // Get all services
   const allServices = supportServicesStore.services || [];
   
-  // Get ids of services already assigned to this shift
-  const assignedServiceIds = serviceAssignments.value.map(a => a.service_id);
+  // Get ids of services already assigned
+  const assignedServiceIds = serviceAssignments.value.map(a => 
+    isShiftMode.value ? a.service_id : a.service.id
+  );
   
   // Return only services not already assigned
   return allServices.filter(service => 
@@ -230,14 +249,16 @@ onMounted(async () => {
     await staffStore.fetchPorters();
   }
   
-  // Load support service assignments for this shift
-  await shiftsStore.fetchShiftSupportServices(props.shiftId);
+  if (isShiftMode.value) {
+    // If in shift mode, load support service assignments for this shift
+    await shiftsStore.fetchShiftSupportServices(props.shiftId);
+  } else {
+    // Otherwise, load default assignments for this shift type
+    await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+  }
   
   // Set default times based on shift type
   initializeFormDefaults();
-  
-  // Initialize supportServicesStore to ensure default settings are loaded
-  await supportServicesStore.loadAllServiceAssignments();
 });
 
 // Methods
@@ -264,20 +285,35 @@ async function addService() {
   isSubmitting.value = true;
   
   try {
-    await shiftsStore.addShiftSupportService(
-      props.shiftId,
-      addServiceForm.value.serviceId,
-      addServiceForm.value.startTime,
-      addServiceForm.value.endTime,
-      addServiceForm.value.color
-    );
+    if (isShiftMode.value) {
+      // In shift mode, add to the specific shift
+      await shiftsStore.addShiftSupportService(
+        props.shiftId,
+        addServiceForm.value.serviceId,
+        addServiceForm.value.startTime,
+        addServiceForm.value.endTime,
+        addServiceForm.value.color
+      );
+      
+      // Reload the service assignments
+      await shiftsStore.fetchShiftSupportServices(props.shiftId);
+    } else {
+      // In settings mode, add to default settings
+      await supportServicesStore.addServiceAssignment(
+        addServiceForm.value.serviceId,
+        props.shiftType,
+        addServiceForm.value.startTime,
+        addServiceForm.value.endTime,
+        addServiceForm.value.color
+      );
+      
+      // Reload default assignments
+      await supportServicesStore.fetchServiceAssignments();
+    }
     
     // Reset form and close modal
     addServiceForm.value.serviceId = '';
     showAddServiceModal.value = false;
-    
-    // Reload the service assignments
-    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error adding service assignment:', error);
   } finally {
@@ -292,12 +328,22 @@ function openEditModal(assignment) {
 
 async function updateAssignment(assignmentId, updates) {
   try {
-    await shiftsStore.updateShiftSupportService(assignmentId, updates);
+    if (isShiftMode.value) {
+      // In shift mode, update the specific shift assignment
+      await shiftsStore.updateShiftSupportService(assignmentId, updates);
+      
+      // Reload assignments
+      await shiftsStore.fetchShiftSupportServices(props.shiftId);
+    } else {
+      // In settings mode, update the default assignment
+      await supportServicesStore.updateServiceAssignment(assignmentId, updates);
+      
+      // Reload default assignments
+      await supportServicesStore.fetchServiceAssignments();
+    }
+    
     showEditModal.value = false;
     selectedAssignment.value = null;
-    
-    // Reload assignments to ensure we have the latest data
-    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error updating assignment:', error);
   }
@@ -306,8 +352,17 @@ async function updateAssignment(assignmentId, updates) {
 async function confirmRemove(assignmentId) {
   if (confirm('Are you sure you want to remove this service assignment?')) {
     try {
-      // This now uses the shiftsStore method to remove only from this shift
-      await shiftsStore.removeShiftSupportService(assignmentId);
+      if (isShiftMode.value) {
+        // In shift mode, remove from the specific shift
+        await shiftsStore.removeShiftSupportService(assignmentId);
+      } else {
+        // In settings mode, remove from default settings
+        await supportServicesStore.deleteServiceAssignment(assignmentId);
+        
+        // Refresh service assignments
+        await supportServicesStore.fetchServiceAssignments();
+      }
+      
       showEditModal.value = false;
       selectedAssignment.value = null;
     } catch (error) {
