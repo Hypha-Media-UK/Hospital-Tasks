@@ -13,7 +13,17 @@
   z-index: 100;
   
   &__nav {
-    @include mix.grid(repeat(3, 1fr), 1fr, mix.spacing('lg'));
+    @include mix.flex(row, space-between, center);
+    width: 100%;
+    padding: 0 70px;
+    
+    &-left, &-right {
+      @include mix.flex(row, center, center);
+    }
+    
+    &-right {
+      gap: mix.spacing('lg');
+    }
     
     a {
       @include mix.flex(row, center, center);

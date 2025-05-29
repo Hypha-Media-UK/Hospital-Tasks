@@ -1,15 +1,19 @@
 <template>
   <header class="header">
     <nav class="header__nav">
-      <router-link to="/" aria-label="Home">
-        <HomeIcon />
-      </router-link>
-      <router-link to="/archive" aria-label="Archive">
-        <ArchiveIcon />
-      </router-link>
-      <router-link to="/settings" aria-label="Settings">
-        <SettingsIcon />
-      </router-link>
+      <div class="header__nav-left">
+        <router-link to="/" aria-label="Home">
+          <HomeIcon />
+        </router-link>
+      </div>
+      <div class="header__nav-right">
+        <router-link to="/archive" aria-label="Archive">
+          <ArchiveIcon />
+        </router-link>
+        <router-link to="/settings" aria-label="Settings">
+          <SettingsIcon />
+        </router-link>
+      </div>
     </nav>
   </header>
 </template>
