@@ -324,14 +324,23 @@
       </div>
       
       <!-- Floating Action Button for Adding Tasks -->
-      <button 
-        v-if="shift && shift.is_active" 
-        @click="showAddTaskModal" 
-        class="floating-action-button"
-        title="Add Task"
-      >
-        <span class="plus-icon">+</span>
-      </button>
+      <div class="floating-action-container">
+        <button 
+          v-if="shift && shift.is_active" 
+          @click="showAddTaskModal" 
+          class="floating-action-button"
+          :class="{ 'disabled': !isCurrentDate }"
+          :disabled="!isCurrentDate"
+          :title="isCurrentDate ? 'Add Task' : 'Cannot add tasks to shifts from different dates'"
+        >
+          <span class="plus-icon">+</span>
+        </button>
+        
+        <!-- Non-current date message -->
+        <div v-if="shift && shift.is_active && !isCurrentDate" class="date-warning">
+          Tasks can only be added to shifts for the current date
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -401,6 +410,17 @@ const shift = computed(() => shiftsStore.currentShift);
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
 const totalTasksCount = computed(() => pendingTasks.value.length + completedTasks.value.length);
+// Check if shift is for the current date (to determine if tasks can be added)
+const isCurrentDate = computed(() => {
+  if (!shift.value || !shift.value.start_time) return false;
+  
+  const shiftDate = new Date(shift.value.start_time);
+  const today = new Date();
+  
+  return shiftDate.getDate() === today.getDate() && 
+         shiftDate.getMonth() === today.getMonth() && 
+         shiftDate.getFullYear() === today.getFullYear();
+});
 const porters = computed(() => {
   // Only show porters from the shift pool who are "Runners" (no assignments)
   return shiftsStore.shiftPorterPool
@@ -1582,11 +1602,18 @@ function isWeekend(date) {
   animation: field-glow 2s ease-in-out;
 }
 
-/* Floating Action Button */
-.floating-action-button {
+/* Floating Action Container and Button */
+.floating-action-container {
   position: fixed;
   bottom: 24px;
   right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  z-index: 900;
+}
+
+.floating-action-button {
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -1599,16 +1626,20 @@ function isWeekend(date) {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease-in-out;
-  z-index: 900;
   
-  &:hover {
+  &:hover:not(:disabled) {
     transform: scale(1.05);
     filter: brightness(0.9);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
   }
   
-  &:active {
+  &:active:not(:disabled) {
     transform: scale(0.95);
+  }
+  
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
   .plus-icon {
@@ -1618,5 +1649,18 @@ function isWeekend(date) {
     margin-top: -4px;
     display: block; /* Ensures the text is treated as a block */
   }
+}
+
+.date-warning {
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  max-width: 300px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

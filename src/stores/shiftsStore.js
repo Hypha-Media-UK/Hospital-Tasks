@@ -397,19 +397,22 @@ export const useShiftsStore = defineStore('shifts', {
     },
     
     // Create a new shift
-    async createShift(supervisorId, shiftType) {
+    async createShift(supervisorId, shiftType, startTime = null) {
       this.loading.createShift = true;
       this.error = null;
       
       try {
-        console.log(`Creating new shift with supervisor: ${supervisorId}, type: ${shiftType}`);
+        // Use provided start time or default to current time
+        const shiftStartTime = startTime || new Date().toISOString();
+        
+        console.log(`Creating new shift with supervisor: ${supervisorId}, type: ${shiftType}, start time: ${shiftStartTime}`);
         
         const { data, error } = await supabase
           .from('shifts')
           .insert({
             supervisor_id: supervisorId,
             shift_type: shiftType,
-            start_time: new Date().toISOString(),
+            start_time: shiftStartTime,
             is_active: true
           })
           .select();

@@ -83,34 +83,89 @@
         <h2 class="card__title">Create New Shift</h2>
         
         <div class="create-shift-form">
-          <div class="form-group">
-            <label for="supervisor">Supervisor</label>
-            <select 
-              id="supervisor" 
-              v-model="selectedSupervisor" 
-              class="form-control"
-              :disabled="creating"
-            >
-              <option value="">Select a supervisor</option>
-              <option 
-                v-for="supervisor in supervisors" 
-                :key="supervisor.id" 
-                :value="supervisor.id"
+          <!-- Step 1: Select Date and Shift Type -->
+          <div v-if="!selectedShiftType" class="shift-type-selection">
+            <p class="instruction">Select a date and shift type to start:</p>
+            
+            <div class="form-group date-picker-container">
+              <label for="shiftDate">Shift Date</label>
+              <input 
+                type="date" 
+                id="shiftDate" 
+                v-model="selectedDate" 
+                class="form-control"
+                :disabled="creating"
+                :min="today"
               >
-                {{ supervisor.first_name }} {{ supervisor.last_name }}
-              </option>
-            </select>
+            </div>
+            
+            <div class="shift-type-buttons">
+              <button 
+                @click="selectShiftType('day')" 
+                class="btn btn-shift-type"
+                :disabled="creating || !selectedDate"
+                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
+              >
+                Create Day Shift
+              </button>
+              
+              <button 
+                @click="selectShiftType('night')" 
+                class="btn btn-shift-type"
+                :disabled="creating || !selectedDate"
+                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
+              >
+                Create Night Shift
+              </button>
+            </div>
+            
+            <p v-if="selectedDate" class="date-info">
+              Selected date is a <strong>{{ isDayShiftWeekend ? 'weekend' : 'weekday' }}</strong> shift
+            </p>
           </div>
           
-          <div class="form-actions">
-            <button 
-              @click="createAutoShift()" 
-              class="btn btn-auto-shift"
-              :disabled="!selectedSupervisor || creating"
-              :style="{ backgroundColor: getShiftColor(detectedShiftType) }"
-            >
-              Start Shift
-            </button>
+          <!-- Step 2: Select Supervisor (shown after shift type is selected) -->
+          <div v-else class="supervisor-selection">
+            <div class="selection-header">
+              <div class="selected-type">
+                <span>Selected: </span>
+                <strong :style="{ color: getShiftColor(fullShiftType) }">
+                  {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} {{ selectedShiftType === 'day' ? 'Day' : 'Night' }} Shift
+                </strong>
+                <span class="shift-date">{{ formatShortDate(new Date(selectedDate)) }}</span>
+              </div>
+              <button @click="resetSelection" class="btn-reset">Change</button>
+            </div>
+
+            <div class="form-group">
+              <label for="supervisor">Select Supervisor</label>
+              <select 
+                id="supervisor" 
+                v-model="selectedSupervisor" 
+                class="form-control"
+                :disabled="creating"
+              >
+                <option value="">Select a supervisor</option>
+                <option 
+                  v-for="supervisor in supervisors" 
+                  :key="supervisor.id" 
+                  :value="supervisor.id"
+                >
+                  {{ supervisor.first_name }} {{ supervisor.last_name }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="form-actions">
+              <button 
+                @click="createShift(selectedShiftType)" 
+                class="btn btn-create-shift"
+                :disabled="!selectedSupervisor || !selectedDate || creating"
+                :style="{ backgroundColor: getShiftColor(fullShiftType) }"
+              >
+                Start {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} {{ selectedShiftType === 'day' ? 'Day' : 'Night' }} Shift
+              </button>
+            </div>
           </div>
           
           <div v-if="error" class="error-message">
@@ -136,9 +191,11 @@ const settingsStore = useSettingsStore();
 
 // Local state
 const selectedSupervisor = ref('');
+const selectedShiftType = ref(null); // New ref for tracking selected shift type
+const selectedDate = ref(new Date().toISOString().split('T')[0]); // Default to today in YYYY-MM-DD format
 const creating = ref(false);
 const error = ref('');
-const detectedShiftType = ref('week_day'); // Default value, will be updated
+const detectedShiftType = ref('week_day'); // Used for auto-detection, still needed for existing functionality
 const updateTimer = ref(null);
 
 // Computed properties
@@ -147,6 +204,22 @@ const activeShifts = computed(() => shiftsStore.activeShifts);
 const dayShifts = computed(() => shiftsStore.activeDayShifts);
 const nightShifts = computed(() => shiftsStore.activeNightShifts);
 const supervisors = computed(() => staffStore.sortedSupervisors);
+const today = computed(() => new Date().toISOString().split('T')[0]); // Current date in YYYY-MM-DD format for date input min
+
+// Check if the selected date is a weekend
+const isDayShiftWeekend = computed(() => {
+  if (!selectedDate.value) return false;
+  const date = new Date(selectedDate.value);
+  return isWeekend(date);
+});
+
+// Determine the full shift type based on day/night selection and weekend status
+const fullShiftType = computed(() => {
+  if (!selectedShiftType.value) return '';
+  
+  const prefix = isDayShiftWeekend.value ? 'weekend_' : 'week_';
+  return prefix + selectedShiftType.value;
+});
 
 // Load data and start auto-detection
 onMounted(async () => {
@@ -250,15 +323,28 @@ function formatCurrentDateTime() {
   return `${formattedDate} at ${formattedTime}`;
 }
 
-// Create a shift based on the auto-detected type
-function createAutoShift() {
-  createShift(detectedShiftType.value);
+// Select a shift type
+function selectShiftType(shiftType) {
+  selectedShiftType.value = shiftType;
+  // Reset supervisor selection when changing shift type
+  selectedSupervisor.value = '';
+}
+
+// Reset the shift type selection to go back to step 1
+function resetSelection() {
+  selectedShiftType.value = null;
+  selectedSupervisor.value = '';
 }
 
 // Create a new shift
-async function createShift(shiftType) {
+async function createShift(baseShiftType) {
   if (!selectedSupervisor.value) {
     error.value = 'Please select a supervisor';
+    return;
+  }
+  
+  if (!selectedDate.value) {
+    error.value = 'Please select a date';
     return;
   }
   
@@ -266,12 +352,26 @@ async function createShift(shiftType) {
   error.value = '';
   
   try {
-    console.log(`Creating new shift: type=${shiftType}`);
+    // Get the full shift type (week_day, weekend_night, etc.)
+    const completeShiftType = fullShiftType.value;
     
-    // Use specific shift type directly - no conversion needed
+    console.log(`Creating new shift: type=${completeShiftType}, date=${selectedDate.value}`);
+    
+    // Create a date object for the selected date with current time
+    const selectedDateObj = new Date(selectedDate.value);
+    const now = new Date();
+    
+    // Set the time part of the selected date to the current time
+    selectedDateObj.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+    
+    // Convert to ISO string
+    const startTime = selectedDateObj.toISOString();
+    
+    // Use the complete shift type with custom start time
     const newShift = await shiftsStore.createShift(
       selectedSupervisor.value, 
-      shiftType
+      completeShiftType,
+      startTime
     );
     if (newShift) {
       // The setupShiftAreaCoverFromDefaults function takes care of initializing default assignments
@@ -322,6 +422,39 @@ function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Format date for display with ordinal suffix (e.g., "23rd May 2025")
+function formatShortDate(date) {
+  if (!date) return '';
+  
+  // Get day with ordinal suffix (1st, 2nd, 3rd, etc.)
+  const day = date.getDate();
+  const suffix = getDayOrdinalSuffix(day);
+  
+  // Format date in the requested format
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+  
+  const parts = formatter.formatToParts(date);
+  const month = parts.find(part => part.type === 'month').value;
+  const year = parts.find(part => part.type === 'year').value;
+  
+  return `${day}${suffix} ${month} ${year}`;
+}
+
+// Helper to get the correct ordinal suffix for a day
+function getDayOrdinalSuffix(day) {
+  if (day > 3 && day < 21) return 'th';
+  switch (day % 10) {
+    case 1: return 'st';
+    case 2: return 'nd';
+    case 3: return 'rd';
+    default: return 'th';
+  }
 }
 
 // Format time (e.g., "9:30 AM")
@@ -438,18 +571,96 @@ function calculateDuration(startTimeString) {
   }
 }
 
-.btn-auto-shift {
+.shift-type-selection {
+  .instruction {
+    text-align: center;
+    margin-bottom: 1.25rem;
+    font-weight: 500;
+    font-size: 1.1rem;
+  }
+  
+  .date-picker-container {
+    max-width: 400px;
+    margin: 0 auto 1.5rem auto;
+  }
+  
+  .shift-type-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  .date-info {
+    text-align: center;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    color: #333;
+    font-size: 0.95rem;
+    
+    strong {
+      color: #4285F4;
+    }
+  }
+}
+
+.supervisor-selection {
+  .selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #eee;
+    
+    .selected-type {
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      
+      .shift-date {
+        font-size: 0.9rem;
+        color: #666;
+        font-weight: normal;
+        margin-left: 0.5rem;
+      }
+    }
+    
+    .btn-reset {
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:hover {
+        background-color: #f5f5f5;
+      }
+    }
+  }
+}
+
+.btn-shift-type, 
+.btn-create-shift {
   padding: 16px 24px;
   border: none;
   border-radius: 6px;
   color: white;
   font-weight: 600;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   width: 100%;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   margin: 10px 0;
+  text-align: center;
   
   &:disabled {
     opacity: 0.6;
@@ -466,6 +677,21 @@ function calculateDuration(startTimeString) {
     transform: translateY(1px);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
+}
+
+.btn-shift-type {
+  // Specific styles for the shift type buttons
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 80px;
+}
+
+.btn-create-shift {
+  // Specific styles for the create shift button
+  font-size: 1.2rem;
+  margin-top: 2rem;
 }
 
 .error-message {
