@@ -12,6 +12,17 @@ export const useStaffStore = defineStore('staff', {
     },
     sortBy: 'firstName', // 'firstName' or 'lastName'
     porterTypeFilter: 'all', // 'all', 'shift', or 'relief'
+    availabilityPatterns: [
+      'Weekdays - Days',
+      'Weekdays - Nights',
+      'Weekdays - Days and Nights',
+      'Weekends - Days',
+      'Weekends - Nights',
+      'Weekends - Days and Nights',
+      '4 on 4 off - Days',
+      '4 on 4 off - Nights',
+      '4 on 4 off - Days and Nights'
+    ],
     error: null
   }),
   
@@ -52,6 +63,21 @@ export const useStaffStore = defineStore('staff', {
     // Get staff member by ID
     getStaffById: (state) => (id) => {
       return [...state.supervisors, ...state.porters].find(staff => staff.id === id);
+    },
+    
+    // Format availability for display
+    formatAvailability: () => (porter) => {
+      if (porter.availability_pattern) {
+        // For 24-hour patterns (Days and Nights), don't show time range
+        if (porter.availability_pattern.includes('Days and Nights')) {
+          return `${porter.availability_pattern} (24hrs)`;
+        } else if (porter.contracted_hours_start && porter.contracted_hours_end) {
+          return `${porter.availability_pattern} (${porter.contracted_hours_start.substring(0, 5)}-${porter.contracted_hours_end.substring(0, 5)})`;
+        } else {
+          return porter.availability_pattern;
+        }
+      }
+      return 'No availability set';
     }
   },
   

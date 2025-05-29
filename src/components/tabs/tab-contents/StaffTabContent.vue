@@ -163,7 +163,7 @@
                     {{ porter.first_name }} {{ porter.last_name }}
                   </div>
                   <div class="staff-item__department">
-                    {{ porter.department ? porter.department.name : 'No department assigned' }}
+                    {{ staffStore.formatAvailability(porter) }}
                   </div>
                 </div>
               
@@ -266,22 +266,61 @@
             </div>
             
             <div class="form-group">
-              <label>Porter Type</label>
-              <div class="toggle-container">
-                <div class="toggle-option" :class="{ active: staffForm.porterType === 'shift' }">Shift</div>
-                <div class="toggle-switch">
-                  <input 
-                    type="checkbox" 
-                    id="porterTypeToggle" 
-                    class="toggle-switch-checkbox"
-                    :checked="staffForm.porterType === 'relief'"
-                    @change="staffForm.porterType = $event.target.checked ? 'relief' : 'shift'"
-                  />
-                  <label class="toggle-switch-label" for="porterTypeToggle">
-                    <span class="toggle-switch-switch"></span>
-                  </label>
+              <div class="checkbox-container">
+                <input 
+                  type="checkbox" 
+                  id="reliefPorterCheckbox" 
+                  v-model="staffForm.isRelief"
+                  @change="updatePorterType"
+                />
+                <label for="reliefPorterCheckbox">Relief Porter</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Availability</label>
+              <div class="availability-container">
+                <div class="pattern-select">
+                  <label for="availabilityPattern">Work Pattern</label>
+                  <select 
+                    id="availabilityPattern" 
+                    v-model="staffForm.availabilityPattern"
+                    class="form-control"
+                    @change="checkHideContractedHours"
+                  >
+                    <option value="">Select a work pattern</option>
+                    <option 
+                      v-for="pattern in staffStore.availabilityPatterns" 
+                      :key="pattern" 
+                      :value="pattern"
+                    >
+                      {{ pattern }}
+                    </option>
+                  </select>
                 </div>
-                <div class="toggle-option" :class="{ active: staffForm.porterType === 'relief' }">Relief</div>
+                
+                <div v-if="hideContractedHours" class="availability-info">
+                  Assumes this porter can be moved between shifts
+                </div>
+                
+                <div v-else class="time-inputs">
+                  <label for="contractedHoursStart">Contracted Hours</label>
+                  <div class="time-range">
+                    <input 
+                      type="time" 
+                      id="contractedHoursStart" 
+                      v-model="staffForm.contractedHoursStart"
+                      class="time-input"
+                    />
+                    <span class="time-separator">to</span>
+                    <input 
+                      type="time" 
+                      id="contractedHoursEnd" 
+                      v-model="staffForm.contractedHoursEnd"
+                      class="time-input"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -322,11 +361,16 @@ const showAddSupervisorForm = ref(false);
 const showEditSupervisorForm = ref(false);
 const showAddPorterForm = ref(false);
 const showEditPorterForm = ref(false);
+const hideContractedHours = ref(false);
 const staffForm = ref({
   id: null,
   firstName: '',
   lastName: '',
-  porterType: 'shift' // Default to shift porter
+  porterType: 'shift', // Default to shift porter
+  isRelief: false, // Checkbox for relief porter
+  availabilityPattern: '',
+  contractedHoursStart: '09:00',
+  contractedHoursEnd: '17:00'
 });
 
 // Initialize data
@@ -349,9 +393,14 @@ const editPorter = (porter) => {
     id: porter.id,
     firstName: porter.first_name,
     lastName: porter.last_name,
-    porterType: porter.porter_type || 'shift' // Use existing porter type or default to 'shift'
+    porterType: porter.porter_type || 'shift', // Use existing porter type or default to 'shift'
+    isRelief: porter.porter_type === 'relief',
+    availabilityPattern: porter.availability_pattern || '',
+    contractedHoursStart: porter.contracted_hours_start ? porter.contracted_hours_start.substring(0, 5) : '09:00',
+    contractedHoursEnd: porter.contracted_hours_end ? porter.contracted_hours_end.substring(0, 5) : '17:00'
   };
   showEditPorterForm.value = true;
+  checkHideContractedHours();
 };
 
 const closeStaffForm = () => {
@@ -359,12 +408,35 @@ const closeStaffForm = () => {
   showEditSupervisorForm.value = false;
   showAddPorterForm.value = false;
   showEditPorterForm.value = false;
+  hideContractedHours.value = false;
   staffForm.value = {
     id: null,
     firstName: '',
     lastName: '',
-    porterType: 'shift' // Reset to default porter type
+    porterType: 'shift', // Reset to default porter type
+    isRelief: false,
+    availabilityPattern: '',
+    contractedHoursStart: '09:00',
+    contractedHoursEnd: '17:00'
   };
+};
+
+// Helper method to update porter type based on isRelief checkbox
+const updatePorterType = () => {
+  staffForm.value.porterType = staffForm.value.isRelief ? 'relief' : 'shift';
+};
+
+// Helper method to check if contracted hours should be hidden
+const checkHideContractedHours = () => {
+  // Hide contracted hours for patterns with "Days and Nights"
+  const pattern = staffForm.value.availabilityPattern;
+  hideContractedHours.value = pattern.includes('Days and Nights');
+  
+  // For 24-hour patterns, set contracted hours to cover full day
+  if (hideContractedHours.value) {
+    staffForm.value.contractedHoursStart = '00:00';
+    staffForm.value.contractedHoursEnd = '23:59';
+  }
 };
 
 const saveStaff = async (role) => {
@@ -377,6 +449,16 @@ const saveStaff = async (role) => {
   // Add porter_type field for porters
   if (role === 'porter') {
     staffData.porter_type = staffForm.value.porterType;
+    staffData.availability_pattern = staffForm.value.availabilityPattern;
+    
+    // For 24-hour patterns, set contracted hours to cover full day
+    if (hideContractedHours.value) {
+      staffData.contracted_hours_start = '00:00';
+      staffData.contracted_hours_end = '23:59';
+    } else {
+      staffData.contracted_hours_start = staffForm.value.contractedHoursStart;
+      staffData.contracted_hours_end = staffForm.value.contractedHoursEnd;
+    }
   }
   
   let success = false;
@@ -664,6 +746,78 @@ const deletePorter = async (porter) => {
       outline: none;
       border-color: mix.color('primary');
       box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+    }
+  }
+  
+  // Checkbox container
+  .checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    
+    input[type="checkbox"] {
+      margin-right: 8px;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    label {
+      display: inline;
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+  }
+  
+  // Availability container
+  .availability-container {
+    background-color: rgba(0, 0, 0, 0.02);
+    padding: 12px;
+    border-radius: mix.radius('md');
+    margin-top: 8px;
+    
+    .time-inputs {
+      margin-bottom: 16px;
+      
+      label {
+        margin-bottom: 8px;
+      }
+      
+      .time-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        .time-input {
+          flex: 1;
+          padding: 8px;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+          border-radius: mix.radius('md');
+        }
+        
+        .time-separator {
+          color: rgba(0, 0, 0, 0.5);
+          font-weight: 500;
+        }
+      }
+    }
+    
+    .pattern-select {
+      margin-bottom: 16px;
+      
+      label {
+        margin-bottom: 8px;
+      }
+    }
+    
+    .availability-info {
+      background-color: rgba(66, 133, 244, 0.1);
+      padding: 10px;
+      border-radius: mix.radius('md');
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.7);
+      margin-bottom: 8px;
+      border-left: 3px solid rgba(66, 133, 244, 0.6);
     }
   }
 }
