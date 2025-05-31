@@ -427,22 +427,34 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
-    // Check for coverage gaps in a specific support service assignment
-    hasServiceCoverageGap: (state) => (serviceId) => {
+    // Get coverage gaps with detailed information for a service
+    getServiceCoverageGaps: (state) => (serviceId) => {
       try {
         const assignment = state.shiftSupportServiceAssignments.find(a => a.id === serviceId);
-        if (!assignment) return false;
+        if (!assignment) return { hasGap: false, gaps: [] };
         
         const porterAssignments = state.shiftSupportServicePorterAssignments.filter(
           pa => pa.shift_support_service_assignment_id === serviceId
         );
         
-        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        if (porterAssignments.length === 0) {
+          // No porters assigned - the entire period is a gap
+          return {
+            hasGap: true,
+            gaps: [
+              {
+                startTime: assignment.start_time,
+                endTime: assignment.end_time,
+                type: 'gap'
+              }
+            ]
+          };
+        }
         
         // Convert service times to minutes for easier comparison
         const serviceStart = timeToMinutes(assignment.start_time);
         const serviceEnd = timeToMinutes(assignment.end_time);
-        
+      
         // First check if any single porter covers the entire time period
         const fullCoverageExists = porterAssignments.some(assignment => {
           const porterStart = timeToMinutes(assignment.start_time);
@@ -452,7 +464,7 @@ export const useShiftsStore = defineStore('shifts', {
         
         // If at least one porter provides full coverage, there's no gap
         if (fullCoverageExists) {
-          return false;
+          return { hasGap: false, gaps: [] };
         }
         
         // Sort porter assignments by start time
@@ -460,9 +472,15 @@ export const useShiftsStore = defineStore('shifts', {
           return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
         });
         
+        const gaps = [];
+        
         // Check for gap at the beginning
         if (timeToMinutes(sortedAssignments[0].start_time) > serviceStart) {
-          return true;
+          gaps.push({
+            startTime: assignment.start_time,
+            endTime: sortedAssignments[0].start_time,
+            type: 'gap'
+          });
         }
         
         // Check for gaps between porter assignments
@@ -471,21 +489,37 @@ export const useShiftsStore = defineStore('shifts', {
           const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
           
           if (nextStart > currentEnd) {
-            return true;
+            gaps.push({
+              startTime: sortedAssignments[i].end_time,
+              endTime: sortedAssignments[i + 1].start_time,
+              type: 'gap'
+            });
           }
         }
         
         // Check for gap at the end
         const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
         if (lastEnd < serviceEnd) {
-          return true;
+          gaps.push({
+            startTime: sortedAssignments[sortedAssignments.length - 1].end_time,
+            endTime: assignment.end_time,
+            type: 'gap'
+          });
         }
         
-        return false;
+        return {
+          hasGap: gaps.length > 0,
+          gaps
+        };
       } catch (error) {
-        console.error('Error in hasServiceCoverageGap:', error);
-        return false;
+        console.error('Error in getServiceCoverageGaps:', error);
+        return { hasGap: false, gaps: [] };
       }
+    },
+    
+    // Legacy method for backward compatibility
+    hasServiceCoverageGap: (state) => (serviceId) => {
+      return state.getServiceCoverageGaps(serviceId).hasGap;
     }
   },
   

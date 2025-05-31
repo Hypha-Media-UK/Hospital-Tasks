@@ -12,9 +12,12 @@
       <div class="department-card__name">
         {{ assignment.department.name }}
       </div>
+      <div class="department-card__time">
+        {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+      </div>
       
-      <div class="department-card__footer">
-        <div v-if="porterAssignments.length > 0" class="department-card__porters">
+      <div v-if="porterAssignments.length > 0" class="department-card__porters">
+        <div class="porter-count-wrapper">
           <span class="porter-count" :class="{ 
             'has-coverage-gap': hasCoverageGap,
             'has-staffing-shortage': hasStaffingShortage 
@@ -25,8 +28,22 @@
           </span>
         </div>
         
-        <div class="department-card__time">
-          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+        <div class="porter-assignments">
+          <div v-for="(assignment, index) in sortedPorterAssignments" :key="assignment.id" class="porter-assignment">
+            <div class="porter-name">
+              {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+              <span class="porter-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}</span>
+            </div>
+
+            <!-- Gap indicator between assignments -->
+            <div v-if="coverageGaps.gaps.length > 0 && index < sortedPorterAssignments.length - 1" 
+                class="gap-line"
+                v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
+                :key="gap.startTime">
+              <div class="gap-line-indicator" :class="{ 'gap-type-shortage': gap.type === 'shortage' }"></div>
+              <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -83,6 +100,85 @@ const hasStaffingShortage = computed(() => {
     return false;
   }
 });
+
+// Sort porter assignments by start time
+const sortedPorterAssignments = computed(() => {
+  return [...porterAssignments.value].sort((a, b) => {
+    const aStart = timeToMinutes(a.start_time);
+    const bStart = timeToMinutes(b.start_time);
+    return aStart - bStart;
+  });
+});
+
+// Get coverage gaps with detailed information
+const coverageGaps = computed(() => {
+  try {
+    return areaCoverStore.getCoverageGaps ? 
+      areaCoverStore.getCoverageGaps(props.assignment.id) : 
+      { hasGap: false, gaps: [] };
+  } catch (error) {
+    console.error('Error getting coverage gaps:', error);
+    return { hasGap: false, gaps: [] };
+  }
+});
+
+// Get staffing shortages with detailed information
+const staffingShortages = computed(() => {
+  try {
+    return areaCoverStore.getStaffingShortages ? 
+      areaCoverStore.getStaffingShortages(props.assignment.id) : 
+      { hasShortage: false, shortages: [] };
+  } catch (error) {
+    console.error('Error getting staffing shortages:', error);
+    return { hasShortage: false, shortages: [] };
+  }
+});
+
+// Helper to convert time string to minutes
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+};
+
+// Helper to find gaps between two assignments
+const getGapsBetweenAssignments = (current, next) => {
+  const gaps = [];
+  
+  // Check if there's a gap between these two assignments
+  const currentEnd = timeToMinutes(current.end_time);
+  const nextStart = timeToMinutes(next.start_time);
+  
+  if (nextStart > currentEnd) {
+    // There's a gap, check if it matches any known gaps
+    coverageGaps.value.gaps.forEach(gap => {
+      const gapStart = timeToMinutes(gap.startTime);
+      const gapEnd = timeToMinutes(gap.endTime);
+      
+      // If this gap matches the one between these assignments
+      if (Math.abs(gapStart - currentEnd) < 5 && Math.abs(gapEnd - nextStart) < 5) {
+        gaps.push(gap);
+      }
+    });
+    
+    // If no coverage gap found, but there's still a time gap, add a generic one
+    if (gaps.length === 0) {
+      gaps.push({
+        startTime: current.end_time,
+        endTime: next.start_time,
+        type: 'gap'
+      });
+    }
+  }
+  
+  return gaps;
+};
+
+// Format time for display (HH:MM)
+const formatTime = (timeStr) => {
+  if (!timeStr) return '';
+  return timeStr.substring(0, 5); // Extract HH:MM part
+};
 
 // Helper function to format time range
 function formatTimeRange(startTime, endTime) {
@@ -192,6 +288,11 @@ const handleRemove = (assignmentId) => {
   }
   
   &__porters {
+    margin-top: 8px;
+    
+    .porter-count-wrapper {
+      margin-bottom: 10px;
+    }
     
     .porter-count {
       display: inline-flex;
@@ -224,6 +325,61 @@ const handleRemove = (assignmentId) => {
       &.has-staffing-shortage {
         background-color: rgba(244, 180, 0, 0.1);
         color: #F4B400;
+      }
+    }
+    
+    .porter-assignments {
+      margin-top: 12px;
+      
+      .porter-assignment {
+        font-size: mix.font-size('xs');
+        margin-bottom: 8px;
+        
+        .porter-name {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 4px 8px;
+          background-color: rgba(0, 0, 0, 0.02);
+          border-radius: mix.radius('sm');
+          
+          .porter-time {
+            color: rgba(0, 0, 0, 0.5);
+            font-size: mix.font-size('2xs');
+          }
+        }
+      }
+      
+      .gap-line {
+        margin: 4px 0;
+        position: relative;
+        padding-left: 12px;
+        
+        .gap-line-indicator {
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 4px;
+          height: 20px; /* Fixed height for better visibility */
+          background-color: #EA4335;
+          border-radius: 2px;
+          border: 1px solid rgba(0, 0, 0, 0.1); /* Add border for better visibility */
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
+          
+          &.gap-type-shortage {
+            background-color: #F4B400;
+          }
+        }
+        
+        .gap-line-time {
+          font-size: mix.font-size('2xs');
+          color: rgba(0, 0, 0, 0.5);
+          padding: 2px 6px;
+          background-color: rgba(234, 67, 53, 0.05);
+          border-radius: mix.radius('sm');
+          display: inline-block;
+        }
       }
     }
   }

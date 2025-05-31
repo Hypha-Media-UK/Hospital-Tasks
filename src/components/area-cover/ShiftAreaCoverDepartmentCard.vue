@@ -306,9 +306,11 @@ const handleRemove = (assignmentId) => {
           top: 50%;
           transform: translateY(-50%);
           width: 4px;
-          height: 100%;
+          height: 20px; /* Fixed height for better visibility */
           background-color: #EA4335;
           border-radius: 2px;
+          border: 1px solid rgba(0, 0, 0, 0.1); /* Add border for better visibility */
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
           
           &.gap-type-shortage {
             background-color: #F4B400;
