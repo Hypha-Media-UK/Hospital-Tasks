@@ -1,3 +1,19 @@
+# This file configures how Netlify should build and deploy your site
+
+[build]
+  # Directory to change to before starting a build.
+  # This is where we will look for package.json/.nvmrc/etc.
+  base = "/"
+
+  # Directory that contains the deploy-ready HTML files and assets.
+  # This is relative to the base directory.
+  publish = "dist"
+
+  # Default build command.
+  command = "npm run build"
+
+# The following redirect is intended for use with a SPA that uses the HTML5 History API.
+# It makes sure that all routes are served the index.html file for client-side routing.
 [[redirects]]
   from = "/*"
   to = "/index.html"

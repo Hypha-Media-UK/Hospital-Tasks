@@ -38,6 +38,7 @@
       <EditServiceModal 
         v-else
         :service="assignment.service"
+        :assignment="assignment"
         @close="showEditModal = false"
         @update="handleUpdate"
         @remove="handleRemove"
