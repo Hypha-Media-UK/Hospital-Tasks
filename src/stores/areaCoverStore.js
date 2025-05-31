@@ -9,6 +9,13 @@ function timeToMinutes(timeStr) {
   return (hours * 60) + minutes;
 }
 
+// Helper function to convert minutes back to time string (HH:MM:SS)
+function minutesToTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+}
+
 export const useAreaCoverStore = defineStore('areaCover', {
   state: () => ({
     departments: [],
@@ -52,17 +59,128 @@ export const useAreaCoverStore = defineStore('areaCover', {
       });
     },
     
-    // Check for coverage gaps (migrated from defaultAreaCoverStore)
-    hasCoverageGap: (state) => (areaCoverId) => {
+    // Check for staffing shortages based on minimum porter count
+    getStaffingShortages: (state) => (areaCoverId) => {
       try {
         const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
-        if (!assignment) return false;
+        if (!assignment) return { hasShortage: false, shortages: [] };
+        
+        // If minimum_porters is not set or is 0, there's no staffing requirement
+        if (!assignment.minimum_porters) return { hasShortage: false, shortages: [] };
         
         const porterAssignments = state.porterAssignments.filter(
           pa => pa.default_area_cover_assignment_id === areaCoverId
         );
         
-        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        if (porterAssignments.length === 0) {
+          // No porters assigned - the entire period is a shortage
+          return {
+            hasShortage: true,
+            shortages: [
+              {
+                startTime: assignment.start_time,
+                endTime: assignment.end_time,
+                type: 'shortage',
+                porterCount: 0,
+                requiredCount: assignment.minimum_porters
+              }
+            ]
+          };
+        }
+        
+        // Convert department times to minutes for easier comparison
+        const departmentStart = timeToMinutes(assignment.start_time);
+        const departmentEnd = timeToMinutes(assignment.end_time);
+        
+        // Create a timeline of porter counts
+        // First, collect all the time points where porter count changes
+        let timePoints = new Set();
+        timePoints.add(departmentStart);
+        timePoints.add(departmentEnd);
+        
+        porterAssignments.forEach(pa => {
+          const porterStart = timeToMinutes(pa.start_time);
+          const porterEnd = timeToMinutes(pa.end_time);
+          
+          // Only add time points that are within the department's time range
+          if (porterStart >= departmentStart && porterStart <= departmentEnd) {
+            timePoints.add(porterStart);
+          }
+          if (porterEnd >= departmentStart && porterEnd <= departmentEnd) {
+            timePoints.add(porterEnd);
+          }
+        });
+        
+        // Convert to array and sort
+        timePoints = Array.from(timePoints).sort((a, b) => a - b);
+        
+        // Check each time segment between time points
+        const shortages = [];
+        
+        for (let i = 0; i < timePoints.length - 1; i++) {
+          const segmentStart = timePoints[i];
+          const segmentEnd = timePoints[i + 1];
+          
+          // Skip segments with zero duration
+          if (segmentStart === segmentEnd) continue;
+          
+          // Count porters active during this segment
+          const activePorters = porterAssignments.filter(pa => {
+            const porterStart = timeToMinutes(pa.start_time);
+            const porterEnd = timeToMinutes(pa.end_time);
+            return porterStart <= segmentStart && porterEnd >= segmentEnd;
+          }).length;
+          
+          // Check if active porter count is below minimum
+          if (activePorters < assignment.minimum_porters) {
+            shortages.push({
+              startTime: minutesToTime(segmentStart),
+              endTime: minutesToTime(segmentEnd),
+              type: 'shortage',
+              porterCount: activePorters,
+              requiredCount: assignment.minimum_porters
+            });
+          }
+        }
+        
+        return {
+          hasShortage: shortages.length > 0,
+          shortages
+        };
+      } catch (error) {
+        console.error('Error in getStaffingShortages:', error);
+        return { hasShortage: false, shortages: [] };
+      }
+    },
+    
+    // Legacy method for compatibility
+    hasStaffingShortage: (state) => (areaCoverId) => {
+      return state.getStaffingShortages(areaCoverId).hasShortage;
+    },
+    
+    // Get coverage gaps with detailed information
+    getCoverageGaps: (state) => (areaCoverId) => {
+      try {
+        const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
+        if (!assignment) return { hasGap: false, gaps: [] };
+        
+        const porterAssignments = state.porterAssignments.filter(
+          pa => pa.default_area_cover_assignment_id === areaCoverId
+        );
+        
+        if (porterAssignments.length === 0) {
+          // No porters assigned - the entire period is a gap
+          return {
+            hasGap: true,
+            gaps: [
+              {
+                startTime: assignment.start_time,
+                endTime: assignment.end_time,
+                type: 'gap'
+              }
+            ]
+          };
+        }
         
         // Convert department times to minutes for easier comparison
         const departmentStart = timeToMinutes(assignment.start_time);
@@ -77,7 +195,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
         
         // If at least one porter provides full coverage, there's no gap
         if (fullCoverageExists) {
-          return false;
+          return { hasGap: false, gaps: [] };
         }
         
         // Sort porter assignments by start time
@@ -85,9 +203,15 @@ export const useAreaCoverStore = defineStore('areaCover', {
           return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
         });
         
+        const gaps = [];
+        
         // Check for gap at the beginning
         if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
-          return true;
+          gaps.push({
+            startTime: assignment.start_time,
+            endTime: sortedAssignments[0].start_time,
+            type: 'gap'
+          });
         }
         
         // Check for gaps between porter assignments
@@ -96,21 +220,52 @@ export const useAreaCoverStore = defineStore('areaCover', {
           const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
           
           if (nextStart > currentEnd) {
-            return true;
+            gaps.push({
+              startTime: sortedAssignments[i].end_time,
+              endTime: sortedAssignments[i + 1].start_time,
+              type: 'gap'
+            });
           }
         }
         
         // Check for gap at the end
         const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
         if (lastEnd < departmentEnd) {
-          return true;
+          gaps.push({
+            startTime: sortedAssignments[sortedAssignments.length - 1].end_time,
+            endTime: assignment.end_time,
+            type: 'gap'
+          });
         }
         
-        return false;
+        return {
+          hasGap: gaps.length > 0,
+          gaps
+        };
       } catch (error) {
-        console.error('Error in hasCoverageGap:', error);
-        return false;
+        console.error('Error in getCoverageGaps:', error);
+        return { hasGap: false, gaps: [] };
       }
+    },
+    
+    // Legacy method for compatibility
+    hasCoverageGap: (state) => (areaCoverId) => {
+      return state.getCoverageGaps(areaCoverId).hasGap;
+    },
+    
+    // Get all coverage issues (both gaps and staffing shortages)
+    getCoverageIssues: (state) => (areaCoverId) => {
+      const gaps = state.getCoverageGaps(areaCoverId).gaps;
+      const shortages = state.getStaffingShortages(areaCoverId).shortages;
+      
+      const allIssues = [...gaps, ...shortages].sort((a, b) => {
+        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
+      });
+      
+      return {
+        hasIssues: allIssues.length > 0,
+        issues: allIssues
+      };
     }
   },
   

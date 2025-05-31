@@ -3,7 +3,10 @@
     class="service-card" 
     :style="{ borderLeftColor: assignment.color || '#4285F4' }"
     @click="showEditModal = true"
-    :class="{ 'has-coverage-gap': hasCoverageGap }"
+    :class="{ 
+      'has-coverage-gap': hasCoverageGap,
+      'has-staffing-shortage': hasStaffingShortage 
+    }"
   >
     <div class="service-card__content">
       <div class="service-card__name">
@@ -15,10 +18,14 @@
         {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
       </div>
       
-      <div v-if="isShiftAssignment && porterAssignments.length > 0" class="service-card__porters">
-        <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
+      <div v-if="(isShiftAssignment || !isShiftAssignment) && porterAssignments.length > 0" class="service-card__porters">
+        <span class="porter-count" :class="{ 
+          'has-coverage-gap': hasCoverageGap,
+          'has-staffing-shortage': hasStaffingShortage 
+        }">
           {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
           <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
+          <span v-if="hasStaffingShortage" class="shortage-indicator">Understaffed</span>
         </span>
       </div>
     </div>
@@ -101,6 +108,21 @@ const hasCoverageGap = computed(() => {
   }
 });
 
+// Check if there's a staffing shortage
+const hasStaffingShortage = computed(() => {
+  try {
+    // Use the appropriate store's staffing shortage checker based on assignment type
+    if (isShiftAssignment.value) {
+      return false; // Not implemented for shift services yet
+    } else {
+      return supportServicesStore.hasStaffingShortage(props.assignment.id);
+    }
+  } catch (error) {
+    console.error('Error checking staffing shortage:', error);
+    return false;
+  }
+});
+
 // Helper function to format time range
 function formatTimeRange(startTime, endTime) {
   if (!startTime || !endTime) return '';
@@ -160,6 +182,21 @@ const handleRemove = (assignmentId) => {
     }
   }
   
+  &.has-staffing-shortage {
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 12px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 0 12px 12px 0;
+      border-color: transparent #F4B400 transparent transparent;
+      transform: rotate(90deg);
+    }
+  }
+  
   &__content {
     padding: 12px 16px;
     position: relative;
@@ -216,12 +253,21 @@ const handleRemove = (assignmentId) => {
         color: #EA4335;
       }
       
-      .gap-indicator {
+      .gap-indicator, .shortage-indicator {
         background-color: #EA4335;
         color: white;
         font-size: mix.font-size('2xs');
         padding: 1px 4px;
         border-radius: 100px;
+      }
+      
+      .shortage-indicator {
+        background-color: #F4B400;
+      }
+      
+      &.has-staffing-shortage {
+        background-color: rgba(244, 180, 0, 0.1);
+        color: #F4B400;
       }
     }
   }

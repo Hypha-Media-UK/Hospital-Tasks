@@ -43,6 +43,23 @@
           </div>
         </div>
         
+        <!-- Minimum Porter Count -->
+        <div class="min-porters-setting">
+          <label for="minPorters">Minimum Porter Count</label>
+          <div class="min-porters-input">
+            <input 
+              type="number" 
+              id="minPorters" 
+              v-model="localMinPorters"
+              min="1"
+              class="number-input"
+            />
+            <div class="min-porters-description">
+              Minimum number of porters required at any time
+            </div>
+          </div>
+        </div>
+        
         <!-- Multiple Porter assignments -->
         <div class="porter-assignments">
           <div class="section-title">
@@ -203,6 +220,7 @@ const staffStore = useStaffStore();
 const localStartTime = ref('');
 const localEndTime = ref('');
 const localColor = ref('#4285F4');
+const localMinPorters = ref(1);
 const localPorterAssignments = ref([]);
 const showAddPorter = ref(false);
 const removedPorterIds = ref([]);
@@ -326,11 +344,12 @@ const removeLocalPorterAssignment = (index) => {
 
 const saveAllChanges = async () => {
   try {
-    // 1. Update area cover assignment (times, color)
+    // 1. Update area cover assignment (times, color, minimum porters)
     await areaCoverStore.updateDepartment(props.assignment.id, {
       start_time: localStartTime.value + ':00',
       end_time: localEndTime.value + ':00',
-      color: localColor.value
+      color: localColor.value,
+      minimum_porters: parseInt(localMinPorters.value) || 1
     });
     
     // 2. Remove porter assignments that were deleted
@@ -384,6 +403,9 @@ const initializeState = () => {
   
   // Initialize color
   localColor.value = props.assignment.color || '#4285F4';
+  
+  // Initialize minimum porter count
+  localMinPorters.value = props.assignment.minimum_porters || 1;
   
   // Initialize porter assignments
   const assignments = areaCoverStore.getPorterAssignmentsByAreaId(props.assignment.id);
@@ -569,6 +591,45 @@ onMounted(async () => {
         border-color: mix.color('primary');
         box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
       }
+    }
+  }
+}
+
+// Minimum porter settings
+.min-porters-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  
+  label {
+    font-size: mix.font-size('sm');
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.7);
+  }
+  
+  .min-porters-input {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    .number-input {
+      width: 60px;
+      padding: 6px 8px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('sm');
+      font-size: mix.font-size('md');
+      text-align: center;
+      
+      &:focus {
+        outline: none;
+        border-color: mix.color('primary');
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+      }
+    }
+    
+    .min-porters-description {
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
     }
   }
 }

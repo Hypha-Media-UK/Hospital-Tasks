@@ -44,6 +44,154 @@ export const useShiftsStore = defineStore('shifts', {
   }),
   
   getters: {
+    // Check if area has a staffing shortage based on minimum porter count
+    hasAreaStaffingShortage: (state) => (areaId) => {
+      try {
+        const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaId);
+        if (!assignment || !assignment.department || !assignment.department.id) return false;
+        
+        // Get the default area cover assignment to find the minimum_porters setting
+        // We'll need to access this from localStorage or another source since we don't
+        // have direct access to the default settings from the shift store
+        const defaultMinPorters = localStorage.getItem(`area_${assignment.department.id}_min_porters`);
+        const minPorters = defaultMinPorters ? parseInt(defaultMinPorters) : 1;
+        
+        // If minimum_porters is not set or is 0, there's no staffing requirement
+        if (!minPorters) return false;
+        
+        const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
+          pa => pa.shift_area_cover_assignment_id === areaId
+        );
+        
+        if (porterAssignments.length === 0) return true; // No porters assigned
+        
+        // Convert area times to minutes for easier comparison
+        const areaStart = timeToMinutes(assignment.start_time);
+        const areaEnd = timeToMinutes(assignment.end_time);
+        
+        // Create a timeline of porter counts
+        // First, collect all the time points where porter count changes
+        let timePoints = new Set();
+        timePoints.add(areaStart);
+        timePoints.add(areaEnd);
+        
+        porterAssignments.forEach(pa => {
+          const porterStart = timeToMinutes(pa.start_time);
+          const porterEnd = timeToMinutes(pa.end_time);
+          
+          // Only add time points that are within the area's time range
+          if (porterStart >= areaStart && porterStart <= areaEnd) {
+            timePoints.add(porterStart);
+          }
+          if (porterEnd >= areaStart && porterEnd <= areaEnd) {
+            timePoints.add(porterEnd);
+          }
+        });
+        
+        // Convert to array and sort
+        timePoints = Array.from(timePoints).sort((a, b) => a - b);
+        
+        // Check each time segment between time points
+        for (let i = 0; i < timePoints.length - 1; i++) {
+          const segmentStart = timePoints[i];
+          const segmentEnd = timePoints[i + 1];
+          
+          // Skip segments with zero duration
+          if (segmentStart === segmentEnd) continue;
+          
+          // Count porters active during this segment
+          const activePorters = porterAssignments.filter(pa => {
+            const porterStart = timeToMinutes(pa.start_time);
+            const porterEnd = timeToMinutes(pa.end_time);
+            return porterStart <= segmentStart && porterEnd >= segmentEnd;
+          }).length;
+          
+          // Check if active porter count is below minimum
+          if (activePorters < minPorters) {
+            return true;
+          }
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasAreaStaffingShortage:', error);
+        return false;
+      }
+    },
+    
+    // Check if service has a staffing shortage
+    hasServiceStaffingShortage: (state) => (serviceId) => {
+      try {
+        const assignment = state.shiftSupportServiceAssignments.find(a => a.id === serviceId);
+        if (!assignment || !assignment.service || !assignment.service.id) return false;
+        
+        // Get the default service assignment to find the minimum_porters setting
+        const defaultMinPorters = localStorage.getItem(`service_${assignment.service.id}_min_porters`);
+        const minPorters = defaultMinPorters ? parseInt(defaultMinPorters) : 1;
+        
+        // If minimum_porters is not set or is 0, there's no staffing requirement
+        if (!minPorters) return false;
+        
+        const porterAssignments = state.shiftSupportServicePorterAssignments.filter(
+          pa => pa.shift_support_service_assignment_id === serviceId
+        );
+        
+        if (porterAssignments.length === 0) return true; // No porters assigned
+        
+        // Convert service times to minutes for easier comparison
+        const serviceStart = timeToMinutes(assignment.start_time);
+        const serviceEnd = timeToMinutes(assignment.end_time);
+        
+        // Create a timeline of porter counts
+        // First, collect all the time points where porter count changes
+        let timePoints = new Set();
+        timePoints.add(serviceStart);
+        timePoints.add(serviceEnd);
+        
+        porterAssignments.forEach(pa => {
+          const porterStart = timeToMinutes(pa.start_time);
+          const porterEnd = timeToMinutes(pa.end_time);
+          
+          // Only add time points that are within the service's time range
+          if (porterStart >= serviceStart && porterStart <= serviceEnd) {
+            timePoints.add(porterStart);
+          }
+          if (porterEnd >= serviceStart && porterEnd <= serviceEnd) {
+            timePoints.add(porterEnd);
+          }
+        });
+        
+        // Convert to array and sort
+        timePoints = Array.from(timePoints).sort((a, b) => a - b);
+        
+        // Check each time segment between time points
+        for (let i = 0; i < timePoints.length - 1; i++) {
+          const segmentStart = timePoints[i];
+          const segmentEnd = timePoints[i + 1];
+          
+          // Skip segments with zero duration
+          if (segmentStart === segmentEnd) continue;
+          
+          // Count porters active during this segment
+          const activePorters = porterAssignments.filter(pa => {
+            const porterStart = timeToMinutes(pa.start_time);
+            const porterEnd = timeToMinutes(pa.end_time);
+            return porterStart <= segmentStart && porterEnd >= segmentEnd;
+          }).length;
+          
+          // Check if active porter count is below minimum
+          if (activePorters < minPorters) {
+            return true;
+          }
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasServiceStaffingShortage:', error);
+        return false;
+      }
+    },
+    
     // Get active day shifts (week_day and weekend_day)
     activeDayShifts: (state) => {
       return state.activeShifts.filter(shift => 
@@ -123,8 +271,103 @@ export const useShiftsStore = defineStore('shifts', {
       ) || [];
     },
     
-    // Check for coverage gaps in a specific area cover assignment
+    // Get coverage gaps with detailed information for an area
+    getAreaCoverageGaps: (state) => (areaCoverId) => {
+      try {
+        const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
+        if (!assignment) return { hasGap: false, gaps: [] };
+        
+        const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
+          pa => pa.shift_area_cover_assignment_id === areaCoverId
+        );
+        
+        if (porterAssignments.length === 0) {
+          // No porters assigned - the entire period is a gap
+          return {
+            hasGap: true,
+            gaps: [
+              {
+                startTime: assignment.start_time,
+                endTime: assignment.end_time,
+                type: 'gap'
+              }
+            ]
+          };
+        }
+        
+        // Convert department times to minutes for easier comparison
+        const departmentStart = timeToMinutes(assignment.start_time);
+        const departmentEnd = timeToMinutes(assignment.end_time);
+      
+        // First check if any single porter covers the entire time period
+        const fullCoverageExists = porterAssignments.some(assignment => {
+          const porterStart = timeToMinutes(assignment.start_time);
+          const porterEnd = timeToMinutes(assignment.end_time);
+          return porterStart <= departmentStart && porterEnd >= departmentEnd;
+        });
+        
+        // If at least one porter provides full coverage, there's no gap
+        if (fullCoverageExists) {
+          return { hasGap: false, gaps: [] };
+        }
+        
+        // Sort porter assignments by start time
+        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
+        });
+        
+        const gaps = [];
+        
+        // Check for gap at the beginning
+        if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
+          gaps.push({
+            startTime: assignment.start_time,
+            endTime: sortedAssignments[0].start_time,
+            type: 'gap'
+          });
+        }
+        
+        // Check for gaps between porter assignments
+        for (let i = 0; i < sortedAssignments.length - 1; i++) {
+          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
+          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
+          
+          if (nextStart > currentEnd) {
+            gaps.push({
+              startTime: sortedAssignments[i].end_time,
+              endTime: sortedAssignments[i + 1].start_time,
+              type: 'gap'
+            });
+          }
+        }
+        
+        // Check for gap at the end
+        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
+        if (lastEnd < departmentEnd) {
+          gaps.push({
+            startTime: sortedAssignments[sortedAssignments.length - 1].end_time,
+            endTime: assignment.end_time,
+            type: 'gap'
+          });
+        }
+        
+        return {
+          hasGap: gaps.length > 0,
+          gaps
+        };
+      } catch (error) {
+        console.error('Error in getAreaCoverageGaps:', error);
+        return { hasGap: false, gaps: [] };
+      }
+    },
+    
+    // Legacy method for backward compatibility
     hasAreaCoverageGap: (state) => (areaCoverId) => {
+      return state.getAreaCoverageGaps(areaCoverId).hasGap;
+    },
+    
+    // Get staffing shortages for an area
+    getAreaStaffingShortages: (state) => (areaCoverId) => {
       try {
         const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
         if (!assignment) return false;

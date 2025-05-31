@@ -56,6 +56,76 @@ export const useSupportServicesStore = defineStore('supportServices', {
       });
     },
     
+    // Check for staffing shortages based on minimum porter count
+    hasStaffingShortage: (state) => (serviceId) => {
+      try {
+        const assignment = state.serviceAssignments.find(a => a.id === serviceId);
+        if (!assignment) return false;
+        
+        // If minimum_porters is not set or is 0, there's no staffing requirement
+        if (!assignment.minimum_porters) return false;
+        
+        const porterAssignments = state.porterAssignments.filter(
+          pa => pa.default_service_cover_assignment_id === serviceId ||
+                pa.support_service_assignment_id === serviceId
+        );
+        
+        if (porterAssignments.length === 0) return true; // No porters assigned
+        
+        // Convert service times to minutes for easier comparison
+        const serviceStart = timeToMinutes(assignment.start_time);
+        const serviceEnd = timeToMinutes(assignment.end_time);
+        
+        // Create a timeline of porter counts
+        // First, collect all the time points where porter count changes
+        let timePoints = new Set();
+        timePoints.add(serviceStart);
+        timePoints.add(serviceEnd);
+        
+        porterAssignments.forEach(pa => {
+          const porterStart = timeToMinutes(pa.start_time);
+          const porterEnd = timeToMinutes(pa.end_time);
+          
+          // Only add time points that are within the service's time range
+          if (porterStart >= serviceStart && porterStart <= serviceEnd) {
+            timePoints.add(porterStart);
+          }
+          if (porterEnd >= serviceStart && porterEnd <= serviceEnd) {
+            timePoints.add(porterEnd);
+          }
+        });
+        
+        // Convert to array and sort
+        timePoints = Array.from(timePoints).sort((a, b) => a - b);
+        
+        // Check each time segment between time points
+        for (let i = 0; i < timePoints.length - 1; i++) {
+          const segmentStart = timePoints[i];
+          const segmentEnd = timePoints[i + 1];
+          
+          // Skip segments with zero duration
+          if (segmentStart === segmentEnd) continue;
+          
+          // Count porters active during this segment
+          const activePorters = porterAssignments.filter(pa => {
+            const porterStart = timeToMinutes(pa.start_time);
+            const porterEnd = timeToMinutes(pa.end_time);
+            return porterStart <= segmentStart && porterEnd >= segmentEnd;
+          }).length;
+          
+          // Check if active porter count is below minimum
+          if (activePorters < assignment.minimum_porters) {
+            return true;
+          }
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error in hasStaffingShortage:', error);
+        return false;
+      }
+    },
+    
     // Check for coverage gaps in a specific service assignment (migrated from defaultServiceCoverStore)
     hasCoverageGap: (state) => (serviceId) => {
       try {

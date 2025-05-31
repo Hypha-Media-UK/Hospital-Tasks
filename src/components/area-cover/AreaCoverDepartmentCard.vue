@@ -3,7 +3,10 @@
     class="department-card" 
     :style="{ borderLeftColor: assignment.color || '#4285F4' }"
     @click="showEditModal = true"
-    :class="{ 'has-coverage-gap': hasCoverageGap }"
+    :class="{ 
+      'has-coverage-gap': hasCoverageGap,
+      'has-staffing-shortage': hasStaffingShortage 
+    }"
   >
     <div class="department-card__content">
       <div class="department-card__name">
@@ -12,9 +15,13 @@
       
       <div class="department-card__footer">
         <div v-if="porterAssignments.length > 0" class="department-card__porters">
-          <span class="porter-count" :class="{ 'has-coverage-gap': hasCoverageGap }">
+          <span class="porter-count" :class="{ 
+            'has-coverage-gap': hasCoverageGap,
+            'has-staffing-shortage': hasStaffingShortage 
+          }">
             {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
             <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
+            <span v-if="hasStaffingShortage" class="shortage-indicator">Understaffed</span>
           </span>
         </div>
         
@@ -63,6 +70,16 @@ const hasCoverageGap = computed(() => {
     return areaCoverStore.hasCoverageGap(props.assignment.id);
   } catch (error) {
     console.error('Error checking coverage gap:', error);
+    return false;
+  }
+});
+
+// Check if there's a staffing shortage
+const hasStaffingShortage = computed(() => {
+  try {
+    return areaCoverStore.hasStaffingShortage(props.assignment.id);
+  } catch (error) {
+    console.error('Error checking staffing shortage:', error);
     return false;
   }
 });
@@ -126,6 +143,21 @@ const handleRemove = (assignmentId) => {
     }
   }
   
+  &.has-staffing-shortage {
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 12px;
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 0 12px 12px 0;
+      border-color: transparent #F4B400 transparent transparent;
+      transform: rotate(90deg);
+    }
+  }
+  
   &__content {
     padding: 12px 16px;
     position: relative;
@@ -177,12 +209,21 @@ const handleRemove = (assignmentId) => {
         color: #EA4335;
       }
       
-      .gap-indicator {
+      .gap-indicator, .shortage-indicator {
         background-color: #EA4335;
         color: white;
         font-size: mix.font-size('2xs');
         padding: 1px 4px;
         border-radius: 100px;
+      }
+      
+      .shortage-indicator {
+        background-color: #F4B400;
+      }
+      
+      &.has-staffing-shortage {
+        background-color: rgba(244, 180, 0, 0.1);
+        color: #F4B400;
       }
     }
   }
