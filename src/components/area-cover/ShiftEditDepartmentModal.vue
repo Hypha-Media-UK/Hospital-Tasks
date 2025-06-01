@@ -29,6 +29,46 @@
           />
         </div>
         
+        <!-- Minimum Porter Count by Day -->
+        <div class="min-porters-setting">
+          <label class="section-label">Minimum Porter Count by Day</label>
+          
+          <div class="day-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" v-model="useSameForAllDays" @change="handleSameForAllDaysChange">
+              <span class="toggle-text">Same for all days</span>
+            </label>
+          </div>
+          
+          <div v-if="useSameForAllDays" class="single-input-wrapper">
+            <div class="min-porters-input">
+              <input 
+                type="number" 
+                v-model="sameForAllDaysValue"
+                min="0"
+                class="number-input"
+                @change="applySameValueToAllDays"
+              />
+              <div class="min-porters-description">
+                Minimum number of porters required for all days
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="days-grid">
+            <div v-for="(day, index) in days" :key="day.code" class="day-input">
+              <label :for="'min-porters-' + day.code">{{ day.code }}</label>
+              <input 
+                type="number" 
+                :id="'min-porters-' + day.code"
+                v-model="dayMinPorters[index]"
+                min="0"
+                class="number-input day-input"
+              />
+            </div>
+          </div>
+        </div>
+        
         <!-- Porter Assignments Section -->
         <div class="porter-assignments">
           <h4 class="section-title">Porter Assignments</h4>
@@ -195,8 +235,39 @@ const staffStore = useStaffStore();
 const formData = ref({
   startTime: '',
   endTime: '',
-  color: '#4285F4'
+  color: '#4285F4',
+  minimumPorters: 1
 });
+
+// Day-specific minimum porter counts
+const days = [
+  { code: 'Mo', name: 'Monday', field: 'minimum_porters_mon' },
+  { code: 'Tu', name: 'Tuesday', field: 'minimum_porters_tue' },
+  { code: 'We', name: 'Wednesday', field: 'minimum_porters_wed' },
+  { code: 'Th', name: 'Thursday', field: 'minimum_porters_thu' },
+  { code: 'Fr', name: 'Friday', field: 'minimum_porters_fri' },
+  { code: 'Sa', name: 'Saturday', field: 'minimum_porters_sat' },
+  { code: 'Su', name: 'Sunday', field: 'minimum_porters_sun' }
+];
+const useSameForAllDays = ref(true);
+const sameForAllDaysValue = ref(1);
+const dayMinPorters = ref([1, 1, 1, 1, 1, 1, 1]); // Default values for each day
+
+// Handle "Same for all days" toggle change
+const handleSameForAllDaysChange = () => {
+  if (useSameForAllDays.value) {
+    // When toggling to "same for all days", use the first day's value
+    sameForAllDaysValue.value = dayMinPorters.value[0] || 1;
+    applySameValueToAllDays();
+  }
+};
+
+// Apply the same value to all days
+const applySameValueToAllDays = () => {
+  if (useSameForAllDays.value) {
+    dayMinPorters.value = Array(7).fill(parseInt(sameForAllDaysValue.value) || 0);
+  }
+};
 
 // Form data for porter assignment
 const porterForm = ref({
@@ -219,8 +290,41 @@ onMounted(async () => {
   formData.value = {
     startTime: props.assignment.start_time ? props.assignment.start_time.substring(0, 5) : '08:00',
     endTime: props.assignment.end_time ? props.assignment.end_time.substring(0, 5) : '16:00',
-    color: props.assignment.color || '#4285F4'
+    color: props.assignment.color || '#4285F4',
+    minimumPorters: props.assignment.minimum_porters || 1
   };
+  
+  // Initialize minimum porter count (for backwards compatibility)
+  sameForAllDaysValue.value = props.assignment.minimum_porters || 1;
+  
+  // Initialize day-specific minimum porter counts
+  const hasAnyDaySpecificValues = 
+    props.assignment.minimum_porters_mon !== undefined || 
+    props.assignment.minimum_porters_tue !== undefined ||
+    props.assignment.minimum_porters_wed !== undefined ||
+    props.assignment.minimum_porters_thu !== undefined ||
+    props.assignment.minimum_porters_fri !== undefined ||
+    props.assignment.minimum_porters_sat !== undefined ||
+    props.assignment.minimum_porters_sun !== undefined;
+  
+  if (hasAnyDaySpecificValues) {
+    dayMinPorters.value = days.map(day => 
+      props.assignment[day.field] !== undefined ? props.assignment[day.field] : props.assignment.minimum_porters || 1
+    );
+    
+    // Check if all days have the same value
+    const allSameValue = dayMinPorters.value.every(val => val === dayMinPorters.value[0]);
+    useSameForAllDays.value = allSameValue;
+    if (allSameValue) {
+      sameForAllDaysValue.value = dayMinPorters.value[0];
+    }
+  } else {
+    // Default to same value for all days if no day-specific values exist
+    useSameForAllDays.value = true;
+    const defaultValue = props.assignment.minimum_porters || 1;
+    sameForAllDaysValue.value = defaultValue;
+    dayMinPorters.value = Array(7).fill(defaultValue);
+  }
   
   // Load porters if not already loaded
   if (!staffStore.porters.length) {
@@ -270,12 +374,21 @@ const saveChanges = async () => {
     const startTime = formData.value.startTime + ':00';
     const endTime = formData.value.endTime + ':00';
     
-    // Update department assignment - use shift-specific update method
-    await shiftsStore.updateShiftAreaCover(props.assignment.id, {
+    // Create update data object with day-specific minimum porter counts
+    const updateData = {
       start_time: startTime,
       end_time: endTime,
-      color: formData.value.color
+      color: formData.value.color,
+      minimum_porters: parseInt(sameForAllDaysValue.value) || 0
+    };
+    
+    // Add day-specific minimum porter counts
+    days.forEach((day, index) => {
+      updateData[day.field] = parseInt(dayMinPorters.value[index]) || 0;
     });
+    
+    // Update department assignment - use shift-specific update method
+    await shiftsStore.updateShiftAreaCover(props.assignment.id, updateData);
     
     emit('update', props.assignment.id, {
       start_time: startTime,
@@ -446,6 +559,89 @@ watch(showAddPorterModal, (newValue) => {
   padding: 16px;
   overflow-y: auto;
   flex: 1;
+}
+
+// Minimum porter settings
+.min-porters-setting {
+  margin-bottom: 20px;
+  
+  .section-label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  
+  .day-toggle {
+    margin-bottom: 8px;
+    
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      
+      .toggle-text {
+        margin-left: 8px;
+        font-size: 0.9rem;
+      }
+    }
+  }
+  
+  .min-porters-input {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    
+    .number-input {
+      width: 60px;
+      padding: 6px 8px;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: mix.radius('sm');
+      font-size: 1rem;
+      text-align: center;
+    }
+    
+    .min-porters-description {
+      font-size: 0.9rem;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+  
+  .days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+    
+    @media (max-width: 600px) {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    
+    @media (max-width: 400px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .day-input {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      
+      label {
+        font-weight: 500;
+        margin-bottom: 4px;
+        font-size: 0.8rem;
+      }
+      
+      input {
+        width: 100%;
+        padding: 6px 4px;
+        text-align: center;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: mix.radius('sm');
+        font-size: 0.9rem;
+      }
+    }
+  }
 }
 
 .modal-footer {
