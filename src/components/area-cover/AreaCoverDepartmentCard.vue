@@ -30,7 +30,6 @@
 
         <!-- Gap at start if first porter starts after department start time -->
         <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line gap-line--start">
-          <div class="gap-line-indicator"></div>
           <div class="gap-line-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(sortedPorterAssignments[0].start_time) }}</div>
         </div>
         
@@ -46,7 +45,6 @@
                 class="gap-line"
                 v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
                 :key="gap.startTime">
-              <div class="gap-line-indicator" :class="{ 'gap-type-shortage': gap.type === 'shortage' }"></div>
               <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
             </div>
           </div>
@@ -54,7 +52,6 @@
 
         <!-- Gap at end if last porter ends before department end time -->
         <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line gap-line--end">
-          <div class="gap-line-indicator"></div>
           <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
       </div>
@@ -368,6 +365,63 @@ const handleRemove = (assignmentId) => {
       }
     }
     
+      /* Generic styles for all gap lines */
+      .gap-line {
+        margin: 8px 0;
+        position: relative;
+        padding-left: 12px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        border-top: 1px solid #F4B400; /* Default orange for time discrepancies */
+        
+      .gap-line-indicator {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 20px; /* Fixed height for better visibility */
+        background-color: #F4B400; /* Default orange for time discrepancies */
+        border-radius: 2px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
+      }
+        
+        .gap-line-time {
+          font-size: mix.font-size('2xs');
+          color: rgba(0, 0, 0, 0.5);
+          padding: 2px 6px;
+          background-color: rgba(234, 67, 53, 0.05);
+          border-radius: mix.radius('sm');
+          display: inline-block;
+        }
+      }
+      
+      /* Specific styles for start/end gap lines - these are outside .porter-assignments */
+      .gap-line--start, 
+      .gap-line--end {
+        margin: 10px 0;
+        padding-top: 6px;
+        border-top: 2px solid #EA4335 !important; /* Thicker red line for start/end gaps */
+        background-color: rgba(234, 67, 53, 0.05); /* Light red background for better visibility */
+        
+        .gap-line-indicator {
+          background-color: #EA4335 !important; /* Red for start/end gaps */
+        }
+      }
+      
+      /* Direct styling for the time text in start/end gap lines */
+      .gap-line--start .gap-line-time, 
+      .gap-line--end .gap-line-time {
+        font-size: 0.75rem !important; /* Explicit small font size */
+        font-weight: normal !important;
+        line-height: 1.2 !important;
+        color: rgba(0, 0, 0, 0.5) !important;
+        padding: 2px 6px !important;
+        background-color: rgba(234, 67, 53, 0.05) !important;
+        border-radius: 4px !important;
+        display: inline-block !important;
+      }
+    
     .porter-assignments {
       margin-top: 12px;
       
@@ -388,54 +442,6 @@ const handleRemove = (assignmentId) => {
             font-size: mix.font-size('2xs');
           }
         }
-      }
-      
-      .gap-line {
-        margin: 8px 0;
-        position: relative;
-        padding-left: 12px;
-        padding-top: 4px;
-        padding-bottom: 4px;
-        
-        /* Standard gap line (between porters - orange) */
-        border-top: 1px solid #F4B400; /* Orange horizontal line for time discrepancies */
-        
-        .gap-line-indicator {
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 4px;
-          height: 20px; /* Fixed height for better visibility */
-          background-color: #F4B400; /* Default to orange for time discrepancies */
-          border-radius: 2px;
-          border: 1px solid rgba(0, 0, 0, 0.1); /* Add border for better visibility */
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
-        }
-        
-        .gap-line-time {
-          font-size: mix.font-size('2xs');
-          color: rgba(0, 0, 0, 0.5);
-          padding: 2px 6px;
-          background-color: rgba(234, 67, 53, 0.05);
-          border-radius: mix.radius('sm');
-          display: inline-block;
-        }
-      }
-      
-      /* Direct selectors for start/end gap lines */
-      .gap-line--start, 
-      .gap-line--end {
-        margin: 10px 0;
-        padding-top: 6px;
-        border-top: 2px solid #EA4335; /* Thicker red line for start/end gaps */
-        background-color: rgba(234, 67, 53, 0.05); /* Light red background for better visibility */
-      }
-      
-      /* Specific styles for the indicators in start/end gaps */
-      .gap-line--start .gap-line-indicator, 
-      .gap-line--end .gap-line-indicator {
-        background-color: #EA4335; /* Red for start/end gaps */
       }
     }
   }
