@@ -16,7 +16,7 @@
         {{ assignment.department.building?.name || 'Unknown Building' }}
       </div>
       
-      <div v-if="porterAssignments.length > 0" class="department-card__porters">
+      <div class="department-card__porters">
         <div class="porter-count-wrapper">
           <span class="porter-count" :class="{ 
             'has-coverage-gap': hasCoverageGap,
@@ -28,6 +28,12 @@
           </span>
         </div>
 
+        <!-- Gap at start if first porter starts after department start time -->
+        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line gap-line--start">
+          <div class="gap-line-indicator"></div>
+          <div class="gap-line-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(sortedPorterAssignments[0].start_time) }}</div>
+        </div>
+
         <div class="porter-assignments">
           <div v-for="(assignment, index) in sortedPorterAssignments" :key="assignment.id" class="porter-assignment">
             <div class="porter-name">
@@ -36,7 +42,7 @@
             </div>
 
             <!-- Gap indicator between assignments -->
-            <div v-if="coverageGaps.gaps.length > 0 && index < sortedPorterAssignments.length - 1" 
+            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])" 
                 class="gap-line"
                 v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
                 :key="gap.startTime">
@@ -44,6 +50,12 @@
               <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
             </div>
           </div>
+        </div>
+
+        <!-- Gap at end if last porter ends before department end time -->
+        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line gap-line--end">
+          <div class="gap-line-indicator"></div>
+          <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
       </div>
     </div>
@@ -111,6 +123,34 @@ const staffingShortages = computed(() => {
     shiftsStore.getAreaStaffingShortages(props.assignment.id) : 
     { hasShortage: false, shortages: [] };
 });
+
+// Check if there's a gap at the start of the assignment
+const hasStartGap = computed(() => {
+  if (sortedPorterAssignments.value.length === 0) return false;
+  
+  const departmentStart = timeToMinutes(props.assignment.start_time);
+  const firstPorterStart = timeToMinutes(sortedPorterAssignments.value[0].start_time);
+  
+  return firstPorterStart > departmentStart;
+});
+
+// Check if there's a gap at the end of the assignment
+const hasEndGap = computed(() => {
+  if (sortedPorterAssignments.value.length === 0) return false;
+  
+  const departmentEnd = timeToMinutes(props.assignment.end_time);
+  const lastPorterEnd = timeToMinutes(sortedPorterAssignments.value[sortedPorterAssignments.value.length - 1].end_time);
+  
+  return lastPorterEnd < departmentEnd;
+});
+
+// Helper function to check if there's a gap between two assignments
+const hasGapBetween = (current, next) => {
+  const currentEnd = timeToMinutes(current.end_time);
+  const nextStart = timeToMinutes(next.start_time);
+  
+  return nextStart > currentEnd;
+};
 
 // Helper to convert time string to minutes
 const timeToMinutes = (timeStr) => {
@@ -296,9 +336,14 @@ const handleRemove = (assignmentId) => {
       }
       
       .gap-line {
-        margin: 4px 0;
+        margin: 8px 0;
         position: relative;
         padding-left: 12px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        
+        /* Standard gap line (between porters - orange) */
+        border-top: 1px solid #F4B400; /* Orange horizontal line for time discrepancies */
         
         .gap-line-indicator {
           position: absolute;
@@ -307,14 +352,10 @@ const handleRemove = (assignmentId) => {
           transform: translateY(-50%);
           width: 4px;
           height: 20px; /* Fixed height for better visibility */
-          background-color: #EA4335;
+          background-color: #F4B400; /* Default to orange for time discrepancies */
           border-radius: 2px;
           border: 1px solid rgba(0, 0, 0, 0.1); /* Add border for better visibility */
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
-          
-          &.gap-type-shortage {
-            background-color: #F4B400;
-          }
         }
         
         .gap-line-time {
@@ -325,6 +366,21 @@ const handleRemove = (assignmentId) => {
           border-radius: mix.radius('sm');
           display: inline-block;
         }
+      }
+      
+      /* Direct selectors for start/end gap lines */
+      .gap-line--start, 
+      .gap-line--end {
+        margin: 10px 0;
+        padding-top: 6px;
+        border-top: 2px solid #EA4335; /* Thicker red line for start/end gaps */
+        background-color: rgba(234, 67, 53, 0.05); /* Light red background for better visibility */
+      }
+      
+      /* Specific styles for the indicators in start/end gaps */
+      .gap-line--start .gap-line-indicator, 
+      .gap-line--end .gap-line-indicator {
+        background-color: #EA4335; /* Red for start/end gaps */
       }
     }
   }
