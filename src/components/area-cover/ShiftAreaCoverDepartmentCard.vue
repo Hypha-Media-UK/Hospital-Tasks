@@ -224,34 +224,7 @@ const handleRemove = (assignmentId) => {
     background-color: rgba(0, 0, 0, 0.01);
   }
   
-  &.has-coverage-gap {
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      width: 0;
-      height: 0;
-      border-style: solid;
-      border-width: 0 12px 12px 0;
-      border-color: transparent #EA4335 transparent transparent;
-    }
-  }
-  
-  &.has-staffing-shortage {
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 12px;
-      width: 0;
-      height: 0;
-      border-style: solid;
-      border-width: 0 12px 12px 0;
-      border-color: transparent #F4B400 transparent transparent;
-      transform: rotate(90deg);
-    }
-  }
+  /* Coverage gap and staffing shortage indicators removed */
   
   &__content {
     padding: 12px 16px;
