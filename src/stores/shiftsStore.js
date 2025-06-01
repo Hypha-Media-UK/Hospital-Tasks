@@ -15,6 +15,13 @@ function timeToMinutes(timeStr) {
   return (hours * 60) + minutes;
 }
 
+// Helper function to convert minutes back to time string (HH:MM:SS)
+function minutesToTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+}
+
 export const useShiftsStore = defineStore('shifts', {
   state: () => ({
     activeShifts: [],
@@ -119,24 +126,43 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
-    // Check if service has a staffing shortage
-    hasServiceStaffingShortage: (state) => (serviceId) => {
+    // Get service staffing shortages with detailed information
+    getServiceStaffingShortages: (state) => (serviceId) => {
       try {
         const assignment = state.shiftSupportServiceAssignments.find(a => a.id === serviceId);
-        if (!assignment || !assignment.service || !assignment.service.id) return false;
-        
-        // Get the default service assignment to find the minimum_porters setting
-        const defaultMinPorters = localStorage.getItem(`service_${assignment.service.id}_min_porters`);
-        const minPorters = defaultMinPorters ? parseInt(defaultMinPorters) : 1;
+        if (!assignment) return { hasShortage: false, shortages: [] };
         
         // If minimum_porters is not set or is 0, there's no staffing requirement
-        if (!minPorters) return false;
+        if (!assignment.minimum_porters && 
+            !assignment.minimum_porters_mon && 
+            !assignment.minimum_porters_tue && 
+            !assignment.minimum_porters_wed && 
+            !assignment.minimum_porters_thu && 
+            !assignment.minimum_porters_fri && 
+            !assignment.minimum_porters_sat && 
+            !assignment.minimum_porters_sun) {
+          return { hasShortage: false, shortages: [] };
+        }
         
         const porterAssignments = state.shiftSupportServicePorterAssignments.filter(
           pa => pa.shift_support_service_assignment_id === serviceId
         );
         
-        if (porterAssignments.length === 0) return true; // No porters assigned
+        if (porterAssignments.length === 0) {
+          // No porters assigned - the entire period is a shortage
+          return {
+            hasShortage: true,
+            shortages: [
+              {
+                startTime: assignment.start_time,
+                endTime: assignment.end_time,
+                type: 'shortage',
+                porterCount: 0,
+                requiredCount: assignment.minimum_porters || 1
+              }
+            ]
+          };
+        }
         
         // Convert service times to minutes for easier comparison
         const serviceStart = timeToMinutes(assignment.start_time);
@@ -165,6 +191,8 @@ export const useShiftsStore = defineStore('shifts', {
         timePoints = Array.from(timePoints).sort((a, b) => a - b);
         
         // Check each time segment between time points
+        const shortages = [];
+        
         for (let i = 0; i < timePoints.length - 1; i++) {
           const segmentStart = timePoints[i];
           const segmentEnd = timePoints[i + 1];
@@ -179,17 +207,67 @@ export const useShiftsStore = defineStore('shifts', {
             return porterStart <= segmentStart && porterEnd >= segmentEnd;
           }).length;
           
+          // Get the day of week for this segment (0 = Sunday, 1 = Monday, etc.)
+          // For simplicity, we're using the start of the segment to determine the day
+          const date = new Date();
+          const hours = Math.floor(segmentStart / 60);
+          const minutes = segmentStart % 60;
+          date.setHours(hours, minutes, 0, 0);
+          const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          
+          // Get the minimum porter count for this day
+          let requiredCount = assignment.minimum_porters || 1; // Default to global minimum
+          
+          // Override with day-specific minimum if available
+          switch (dayOfWeek) {
+            case 1: // Monday
+              requiredCount = assignment.minimum_porters_mon ?? requiredCount;
+              break;
+            case 2: // Tuesday
+              requiredCount = assignment.minimum_porters_tue ?? requiredCount;
+              break;
+            case 3: // Wednesday
+              requiredCount = assignment.minimum_porters_wed ?? requiredCount;
+              break;
+            case 4: // Thursday
+              requiredCount = assignment.minimum_porters_thu ?? requiredCount;
+              break;
+            case 5: // Friday
+              requiredCount = assignment.minimum_porters_fri ?? requiredCount;
+              break;
+            case 6: // Saturday
+              requiredCount = assignment.minimum_porters_sat ?? requiredCount;
+              break;
+            case 0: // Sunday
+              requiredCount = assignment.minimum_porters_sun ?? requiredCount;
+              break;
+          }
+          
           // Check if active porter count is below minimum
-          if (activePorters < minPorters) {
-            return true;
+          if (activePorters < requiredCount) {
+            shortages.push({
+              startTime: minutesToTime(segmentStart),
+              endTime: minutesToTime(segmentEnd),
+              type: 'shortage',
+              porterCount: activePorters,
+              requiredCount: requiredCount
+            });
           }
         }
         
-        return false;
+        return {
+          hasShortage: shortages.length > 0,
+          shortages
+        };
       } catch (error) {
-        console.error('Error in hasServiceStaffingShortage:', error);
-        return false;
+        console.error('Error in getServiceStaffingShortages:', error);
+        return { hasShortage: false, shortages: [] };
       }
+    },
+    
+    // Legacy method for compatibility
+    hasServiceStaffingShortage: (state) => (serviceId) => {
+      return state.getServiceStaffingShortages(serviceId).hasShortage;
     },
     
     // Get active day shifts (week_day and weekend_day)
