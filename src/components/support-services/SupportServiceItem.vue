@@ -3,10 +3,6 @@
     class="service-card" 
     :style="{ borderLeftColor: assignment.color || '#4285F4' }"
     @click="showEditModal = true"
-    :class="{ 
-      'has-coverage-gap': hasCoverageGap,
-      'has-staffing-shortage': hasStaffingShortage 
-    }"
   >
     <div class="service-card__content">
       <div class="service-card__name">
@@ -18,13 +14,8 @@
       
       <div class="service-card__porters">
         <div class="porter-count-wrapper">
-          <span class="porter-count" :class="{ 
-            'has-coverage-gap': hasCoverageGap,
-            'has-staffing-shortage': hasStaffingShortage 
-          }">
+          <span class="porter-count" :class="{ 'no-porters': porterAssignments.length === 0 }">
             {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
-            <span v-if="hasCoverageGap" class="gap-indicator">Gap</span>
-            <span v-if="hasStaffingShortage" class="shortage-indicator">Understaffed</span>
           </span>
         </div>
         
@@ -334,26 +325,9 @@ const handleRemove = (assignmentId) => {
       font-size: mix.font-size('xs');
       font-weight: 500;
       
-      &.has-coverage-gap {
-        background-color: rgba(234, 67, 53, 0.1);
-        color: #EA4335;
-      }
-      
-      .gap-indicator, .shortage-indicator {
-        background-color: #EA4335;
-        color: white;
-        font-size: mix.font-size('2xs');
-        padding: 1px 4px;
-        border-radius: 100px;
-      }
-      
-      .shortage-indicator {
-        background-color: #F4B400;
-      }
-      
-      &.has-staffing-shortage {
-        background-color: rgba(244, 180, 0, 0.1);
-        color: #F4B400;
+      &.no-porters {
+        background-color: #EA4335; /* Red background */
+        color: white; /* White text */
       }
     }
     
