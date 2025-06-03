@@ -9,6 +9,14 @@
       </div>
       
       <div class="modal-body">
+        <div v-if="editingPorterAssignment" class="action-menu">
+          <button 
+            class="btn btn-sm btn-outline" 
+            @click="openAbsenceModal"
+          >
+            Mark as Absent
+          </button>
+        </div>
         <div class="form-group">
           <label for="porter">Select Porter</label>
           <select 
@@ -67,12 +75,30 @@
       </div>
     </div>
   </div>
+  
+  <Teleport to="body">
+    <PorterAbsenceModal
+      v-if="showAbsenceModal && porterForm.porterId"
+      :porter-id="porterForm.porterId"
+      :absence="currentPorterAbsence"
+      @close="showAbsenceModal = false"
+      @save="handleAbsenceSave"
+    />
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useStaffStore } from '../../stores/staffStore';
 import { useSupportServicesStore } from '../../stores/supportServicesStore';
+import PorterAbsenceModal from '../PorterAbsenceModal.vue';
+
+// Helper function to get porter absence
+const getPorterAbsence = (porterId) => {
+  const today = new Date();
+  const staffStore = useStaffStore();
+  return staffStore.getPorterAbsenceDetails(porterId, today);
+};
 
 const props = defineProps({
   serviceAssignment: {
@@ -102,6 +128,8 @@ const porterForm = ref({
 });
 const saving = ref(false);
 const editingPorterAssignment = computed(() => !!props.porterAssignment);
+const showAbsenceModal = ref(false);
+const currentPorterAbsence = ref(null);
 
 // Available porters
 const availablePorters = computed(() => {
@@ -119,6 +147,14 @@ const availablePorters = computed(() => {
   }
   
   return allPorters;
+});
+
+// Get the absence for the current porter
+const porterAbsence = computed(() => {
+  if (!editingPorterAssignment.value || !porterForm.value.porterId) return null;
+  
+  const today = new Date();
+  return staffStore.getPorterAbsenceDetails(porterForm.value.porterId, today);
 });
 
 // Validation
@@ -158,6 +194,21 @@ onMounted(async () => {
     };
   }
 });
+
+// Open absence modal
+const openAbsenceModal = async () => {
+  if (!porterForm.value.porterId) return;
+  
+  const today = new Date();
+  currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterForm.value.porterId, today);
+  showAbsenceModal.value = true;
+};
+
+// Handle absence save
+const handleAbsenceSave = () => {
+  // Refresh the porterAbsence computed property
+  currentPorterAbsence.value = null;
+};
 
 // Save porter assignment
 const savePorterAssignment = async () => {
@@ -285,6 +336,14 @@ const savePorterAssignment = async () => {
   }
 }
 
+.action-menu {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 12px;
+}
+
 .btn {
   padding: 8px 16px;
   border-radius: mix.radius('md');
@@ -292,6 +351,20 @@ const savePorterAssignment = async () => {
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
+  
+  &.btn-sm {
+    padding: 4px 10px;
+    font-size: mix.font-size('sm');
+  }
+  
+  &.btn-outline {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: transparent;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
   
   &.btn-primary {
     background-color: mix.color('primary');

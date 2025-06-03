@@ -5,10 +5,12 @@ export const useStaffStore = defineStore('staff', {
   state: () => ({
     supervisors: [],
     porters: [],
+    porterAbsences: [],
     loading: {
       supervisors: false,
       porters: false,
-      staff: false
+      staff: false,
+      absences: false
     },
     sortBy: 'firstName', // 'firstName' or 'lastName'
     porterTypeFilter: 'all', // 'all', 'shift', or 'relief'
@@ -78,6 +80,34 @@ export const useStaffStore = defineStore('staff', {
     // Get staff member by ID
     getStaffById: (state) => (id) => {
       return [...state.supervisors, ...state.porters].find(staff => staff.id === id);
+    },
+    
+    // Check if a porter is absent for a given date
+    isPorterAbsent: (state) => (porterId, date) => {
+      // Convert string date to Date object if needed
+      const checkDate = typeof date === 'string' ? new Date(date) : date;
+      
+      return state.porterAbsences.some(absence => {
+        const startDate = new Date(absence.start_date);
+        const endDate = new Date(absence.end_date);
+        return absence.porter_id === porterId && 
+               checkDate >= startDate && 
+               checkDate <= endDate;
+      });
+    },
+    
+    // Get absence details for a porter on a specific date
+    getPorterAbsenceDetails: (state) => (porterId, date) => {
+      // Convert string date to Date object if needed
+      const checkDate = typeof date === 'string' ? new Date(date) : date;
+      
+      return state.porterAbsences.find(absence => {
+        const startDate = new Date(absence.start_date);
+        const endDate = new Date(absence.end_date);
+        return absence.porter_id === porterId && 
+               checkDate >= startDate && 
+               checkDate <= endDate;
+      }) || null;
     },
     
     // Format availability for display
@@ -320,11 +350,120 @@ export const useStaffStore = defineStore('staff', {
       return this.assignDepartment(staffId, null);
     },
     
+    // Fetch porter absences
+    async fetchPorterAbsences() {
+      this.loading.absences = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('porter_absences')
+          .select('*, porter:porter_id(id, first_name, last_name)')
+          .order('start_date');
+        
+        if (error) throw error;
+        
+        this.porterAbsences = data || [];
+        return this.porterAbsences;
+      } catch (error) {
+        console.error('Error fetching porter absences:', error);
+        this.error = 'Failed to load porter absences';
+        return [];
+      } finally {
+        this.loading.absences = false;
+      }
+    },
+    
+    // Add a new porter absence
+    async addPorterAbsence(porterAbsence) {
+      this.loading.absences = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('porter_absences')
+          .insert(porterAbsence)
+          .select('*, porter:porter_id(id, first_name, last_name)');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          this.porterAbsences.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding porter absence:', error);
+        this.error = 'Failed to add porter absence';
+        return null;
+      } finally {
+        this.loading.absences = false;
+      }
+    },
+    
+    // Update a porter absence
+    async updatePorterAbsence(id, updates) {
+      this.loading.absences = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('porter_absences')
+          .update(updates)
+          .eq('id', id)
+          .select('*, porter:porter_id(id, first_name, last_name)');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const index = this.porterAbsences.findIndex(a => a.id === id);
+          if (index !== -1) {
+            this.porterAbsences[index] = data[0];
+          }
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error updating porter absence:', error);
+        this.error = 'Failed to update porter absence';
+        return null;
+      } finally {
+        this.loading.absences = false;
+      }
+    },
+    
+    // Delete a porter absence
+    async deletePorterAbsence(id) {
+      this.loading.absences = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('porter_absences')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.porterAbsences = this.porterAbsences.filter(a => a.id !== id);
+        
+        return true;
+      } catch (error) {
+        console.error('Error deleting porter absence:', error);
+        this.error = 'Failed to delete porter absence';
+        return false;
+      } finally {
+        this.loading.absences = false;
+      }
+    },
+    
     // Initialize data
     async initialize() {
       await Promise.all([
         this.fetchSupervisors(),
-        this.fetchPorters()
+        this.fetchPorters(),
+        this.fetchPorterAbsences()
       ]);
     }
   }

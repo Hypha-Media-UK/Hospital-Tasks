@@ -103,8 +103,18 @@
               class="porter-assignment-item"
             >
               <div class="porter-pill">
-                <span class="porter-name">
+                <span 
+                  class="porter-name" 
+                  :class="{
+                    'porter-absent': getPorterAbsence(porterAssignment.porter_id),
+                    'porter-illness': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness',
+                    'porter-annual-leave': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'
+                  }"
+                  @click="openAbsenceModalForPorter(porterAssignment.porter_id)"
+                >
                   {{ porterAssignment.porter.first_name }} {{ porterAssignment.porter.last_name }}
+                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
+                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
                 </span>
               </div>
               
@@ -220,12 +230,23 @@
       </div>
     </div>
   </div>
+  
+  <Teleport to="body">
+    <PorterAbsenceModal
+      v-if="showAbsenceModal && selectedPorterId"
+      :porter-id="selectedPorterId"
+      :absence="currentPorterAbsence"
+      @close="showAbsenceModal = false"
+      @save="handleAbsenceSave"
+    />
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import { useStaffStore } from '../../stores/staffStore';
+import PorterAbsenceModal from '../PorterAbsenceModal.vue';
 
 const props = defineProps({
   assignment: {
@@ -247,6 +268,9 @@ const localMinPorters = ref(1);
 const localPorterAssignments = ref([]);
 const showAddPorter = ref(false);
 const removedPorterIds = ref([]);
+const showAbsenceModal = ref(false);
+const selectedPorterId = ref(null);
+const currentPorterAbsence = ref(null);
 
 // Day-specific minimum porter counts
 const days = [
@@ -302,8 +326,17 @@ const hasLocalCoverageGap = computed(() => {
   const departmentStart = timeToMinutes(localStartTime.value + ':00');
   const departmentEnd = timeToMinutes(localEndTime.value + ':00');
   
-  // First check if any single porter covers the entire time period
-  const fullCoverageExists = localPorterAssignments.value.some(assignment => {
+  // Filter out porters who are absent
+  const availablePorters = localPorterAssignments.value.filter(assignment => {
+    // Check if porter is absent
+    return !staffStore.isPorterAbsent(assignment.porter_id, new Date());
+  });
+  
+  // If all porters are absent, there's definitely a gap
+  if (availablePorters.length === 0) return true;
+  
+  // First check if any single non-absent porter covers the entire time period
+  const fullCoverageExists = availablePorters.some(assignment => {
     const porterStart = timeToMinutes(assignment.start_time_display + ':00');
     const porterEnd = timeToMinutes(assignment.end_time_display + ':00');
     return porterStart <= departmentStart && porterEnd >= departmentEnd;
@@ -346,6 +379,28 @@ const hasLocalCoverageGap = computed(() => {
 // Methods
 const closeModal = () => {
   emit('close');
+};
+
+// Get porter absence details
+const getPorterAbsence = (porterId) => {
+  const today = new Date();
+  return staffStore.getPorterAbsenceDetails(porterId, today);
+};
+
+// Open absence modal for a specific porter
+const openAbsenceModalForPorter = (porterId) => {
+  if (!porterId) return;
+  
+  selectedPorterId.value = porterId;
+  const today = new Date();
+  currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterId, today);
+  showAbsenceModal.value = true;
+};
+
+// Handle absence save
+const handleAbsenceSave = () => {
+  // Refresh the absence data
+  currentPorterAbsence.value = null;
 };
 
 const addLocalPorterAssignment = () => {
@@ -842,6 +897,41 @@ onMounted(async () => {
       font-size: mix.font-size('sm');
       font-weight: 500;
       white-space: nowrap;
+      cursor: pointer;
+      position: relative;
+      
+      &.porter-absent {
+        opacity: 0.9;
+      }
+      
+      &.porter-illness {
+        background-color: rgba(234, 67, 53, 0.15);
+        color: #d32f2f;
+      }
+      
+      &.porter-annual-leave {
+        background-color: rgba(251, 192, 45, 0.2);
+        color: #f57c00;
+      }
+      
+      .absence-badge {
+        display: inline-block;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 4px;
+        border-radius: 3px;
+        margin-left: 5px;
+        
+        &.illness {
+          background-color: #d32f2f;
+          color: white;
+        }
+        
+        &.annual-leave {
+          background-color: #f57c00;
+          color: white;
+        }
+      }
     }
   }
   

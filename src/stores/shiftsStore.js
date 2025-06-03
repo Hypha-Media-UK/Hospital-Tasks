@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
+import { useStaffStore } from './staffStore';
 
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {
@@ -301,6 +302,18 @@ export const useShiftsStore = defineStore('shifts', {
       });
     },
     
+    // Check if a porter is absent for the current shift
+    isPorterAbsent: () => (porterId, date) => {
+      const staffStore = useStaffStore();
+      return staffStore.isPorterAbsent(porterId, date);
+    },
+    
+    // Get absence details for a porter
+    getPorterAbsenceDetails: () => (porterId, date) => {
+      const staffStore = useStaffStore();
+      return staffStore.getPorterAbsenceDetails(porterId, date);
+    },
+    
     // Get support service assignments for current shift sorted by service name
     sortedSupportServiceAssignments: (state) => {
       return [...state.shiftSupportServiceAssignments].sort((a, b) => {
@@ -355,12 +368,21 @@ export const useShiftsStore = defineStore('shifts', {
         const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
         if (!assignment) return { hasGap: false, gaps: [] };
         
+        // Get shift date from the current shift
+        const shiftDate = new Date();
+        const staffStore = useStaffStore();
+        
         const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
           pa => pa.shift_area_cover_assignment_id === areaCoverId
         );
         
-        if (porterAssignments.length === 0) {
-          // No porters assigned - the entire period is a gap
+        // Filter out absent porters
+        const availablePorterAssignments = porterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, shiftDate)
+        );
+        
+        if (porterAssignments.length === 0 || availablePorterAssignments.length === 0) {
+          // No porters assigned or all porters are absent - the entire period is a gap
           return {
             hasGap: true,
             gaps: [
@@ -377,8 +399,8 @@ export const useShiftsStore = defineStore('shifts', {
         const departmentStart = timeToMinutes(assignment.start_time);
         const departmentEnd = timeToMinutes(assignment.end_time);
       
-        // First check if any single porter covers the entire time period
-        const fullCoverageExists = porterAssignments.some(assignment => {
+        // First check if any single non-absent porter covers the entire time period
+        const fullCoverageExists = availablePorterAssignments.some(assignment => {
           const porterStart = timeToMinutes(assignment.start_time);
           const porterEnd = timeToMinutes(assignment.end_time);
           return porterStart <= departmentStart && porterEnd >= departmentEnd;
@@ -389,8 +411,8 @@ export const useShiftsStore = defineStore('shifts', {
           return { hasGap: false, gaps: [] };
         }
         
-        // Sort porter assignments by start time
-        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+        // Sort available porter assignments by start time
+        const sortedAssignments = [...availablePorterAssignments].sort((a, b) => {
           return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
         });
         
@@ -450,18 +472,27 @@ export const useShiftsStore = defineStore('shifts', {
         const assignment = state.shiftAreaCoverAssignments.find(a => a.id === areaCoverId);
         if (!assignment) return false;
         
+        // Get shift date from the current shift
+        const shiftDate = new Date();
+        const staffStore = useStaffStore();
+        
         const porterAssignments = state.shiftAreaCoverPorterAssignments.filter(
           pa => pa.shift_area_cover_assignment_id === areaCoverId
         );
         
-        if (porterAssignments.length === 0) return true; // No porters means complete gap
+        // Filter out absent porters
+        const availablePorterAssignments = porterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, shiftDate)
+        );
+        
+        if (porterAssignments.length === 0 || availablePorterAssignments.length === 0) return true; // No porters or all porters absent means complete gap
         
         // Convert department times to minutes for easier comparison
         const departmentStart = timeToMinutes(assignment.start_time);
         const departmentEnd = timeToMinutes(assignment.end_time);
         
-        // First check if any single porter covers the entire time period
-        const fullCoverageExists = porterAssignments.some(assignment => {
+        // First check if any single non-absent porter covers the entire time period
+        const fullCoverageExists = availablePorterAssignments.some(assignment => {
           const porterStart = timeToMinutes(assignment.start_time);
           const porterEnd = timeToMinutes(assignment.end_time);
           return porterStart <= departmentStart && porterEnd >= departmentEnd;
@@ -472,8 +503,8 @@ export const useShiftsStore = defineStore('shifts', {
           return false;
         }
         
-        // Sort porter assignments by start time
-        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+        // Sort available porter assignments by start time
+        const sortedAssignments = [...availablePorterAssignments].sort((a, b) => {
           return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
         });
         
@@ -511,12 +542,21 @@ export const useShiftsStore = defineStore('shifts', {
         const assignment = state.shiftSupportServiceAssignments.find(a => a.id === serviceId);
         if (!assignment) return { hasGap: false, gaps: [] };
         
+        // Get shift date from the current shift
+        const shiftDate = new Date();
+        const staffStore = useStaffStore();
+        
         const porterAssignments = state.shiftSupportServicePorterAssignments.filter(
           pa => pa.shift_support_service_assignment_id === serviceId
         );
         
-        if (porterAssignments.length === 0) {
-          // No porters assigned - the entire period is a gap
+        // Filter out absent porters
+        const availablePorterAssignments = porterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, shiftDate)
+        );
+        
+        if (porterAssignments.length === 0 || availablePorterAssignments.length === 0) {
+          // No porters assigned or all porters are absent - the entire period is a gap
           return {
             hasGap: true,
             gaps: [
@@ -533,8 +573,8 @@ export const useShiftsStore = defineStore('shifts', {
         const serviceStart = timeToMinutes(assignment.start_time);
         const serviceEnd = timeToMinutes(assignment.end_time);
       
-        // First check if any single porter covers the entire time period
-        const fullCoverageExists = porterAssignments.some(assignment => {
+        // First check if any single non-absent porter covers the entire time period
+        const fullCoverageExists = availablePorterAssignments.some(assignment => {
           const porterStart = timeToMinutes(assignment.start_time);
           const porterEnd = timeToMinutes(assignment.end_time);
           return porterStart <= serviceStart && porterEnd >= serviceEnd;
@@ -545,8 +585,8 @@ export const useShiftsStore = defineStore('shifts', {
           return { hasGap: false, gaps: [] };
         }
         
-        // Sort porter assignments by start time
-        const sortedAssignments = [...porterAssignments].sort((a, b) => {
+        // Sort available porter assignments by start time
+        const sortedAssignments = [...availablePorterAssignments].sort((a, b) => {
           return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
         });
         
