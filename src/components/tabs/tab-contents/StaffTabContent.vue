@@ -180,7 +180,6 @@
                       'porter-illness': staffStore.getPorterAbsenceDetails(porter.id, new Date())?.absence_type === 'illness',
                       'porter-annual-leave': staffStore.getPorterAbsenceDetails(porter.id, new Date())?.absence_type === 'annual_leave'
                     }"
-                    @click="openAbsenceModal(porter.id)"
                   >
                     <span 
                       class="porter-type-dot"
@@ -242,26 +241,28 @@
         
         <div class="modal-body">
           <form @submit.prevent="saveStaff('supervisor')">
-            <div class="form-group">
-              <label for="firstName">First Name</label>
-              <input 
-                id="firstName"
-                v-model="staffForm.firstName"
-                type="text"
-                required
-                class="form-control"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label for="lastName">Last Name</label>
-              <input 
-                id="lastName"
-                v-model="staffForm.lastName"
-                type="text"
-                required
-                class="form-control"
-              />
+            <div class="form-row">
+              <div class="form-group form-group--half">
+                <label for="firstName">First Name</label>
+                <input 
+                  id="firstName"
+                  v-model="staffForm.firstName"
+                  type="text"
+                  required
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group form-group--half">
+                <label for="lastName">Last Name</label>
+                <input 
+                  id="lastName"
+                  v-model="staffForm.lastName"
+                  type="text"
+                  required
+                  class="form-control"
+                />
+              </div>
             </div>
             
             
@@ -285,28 +286,47 @@
           <button class="modal-close" @click="closeStaffForm">&times;</button>
         </div>
         
+        <div class="modal-tabs" v-if="showEditPorterForm">
+          <button 
+            class="modal-tab" 
+            :class="{ 'modal-tab--active': activeModalTab === 'details' }"
+            @click="activeModalTab = 'details'"
+          >
+            Details
+          </button>
+          <button 
+            class="modal-tab" 
+            :class="{ 'modal-tab--active': activeModalTab === 'absence' }"
+            @click="activeModalTab = 'absence'"
+          >
+            Absence
+          </button>
+        </div>
+        
         <div class="modal-body">
-          <form @submit.prevent="saveStaff('porter')">
-            <div class="form-group">
-              <label for="firstName">First Name</label>
-              <input 
-                id="firstName"
-                v-model="staffForm.firstName"
-                type="text"
-                required
-                class="form-control"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label for="lastName">Last Name</label>
-              <input 
-                id="lastName"
-                v-model="staffForm.lastName"
-                type="text"
-                required
-                class="form-control"
-              />
+          <form @submit.prevent="saveStaff('porter')" v-if="!showEditPorterForm || activeModalTab === 'details'">
+            <div class="form-row">
+              <div class="form-group form-group--half">
+                <label for="firstName">First Name</label>
+                <input 
+                  id="firstName"
+                  v-model="staffForm.firstName"
+                  type="text"
+                  required
+                  class="form-control"
+                />
+              </div>
+              
+              <div class="form-group form-group--half">
+                <label for="lastName">Last Name</label>
+                <input 
+                  id="lastName"
+                  v-model="staffForm.lastName"
+                  type="text"
+                  required
+                  class="form-control"
+                />
+              </div>
             </div>
             
             <div class="form-group">
@@ -322,49 +342,46 @@
             </div>
 
             <div class="form-group">
-              <label>Availability</label>
-              <div class="availability-container">
-                <div class="pattern-select">
-                  <label for="availabilityPattern">Work Pattern</label>
-                  <select 
-                    id="availabilityPattern" 
-                    v-model="staffForm.availabilityPattern"
-                    class="form-control"
-                    @change="checkHideContractedHours"
-                  >
-                    <option value="">Select a work pattern</option>
-                    <option 
-                      v-for="pattern in staffStore.availabilityPatterns" 
-                      :key="pattern" 
-                      :value="pattern"
-                    >
-                      {{ pattern }}
-                    </option>
-                  </select>
-                </div>
-                
-                <div v-if="hideContractedHours" class="availability-info">
-                  Assumes this porter can be moved between shifts
-                </div>
-                
-                <div v-else class="time-inputs">
-                  <label for="contractedHoursStart">Contracted Hours</label>
-                  <div class="time-range">
-                    <input 
-                      type="time" 
-                      id="contractedHoursStart" 
-                      v-model="staffForm.contractedHoursStart"
-                      class="time-input"
-                    />
-                    <span class="time-separator">to</span>
-                    <input 
-                      type="time" 
-                      id="contractedHoursEnd" 
-                      v-model="staffForm.contractedHoursEnd"
-                      class="time-input"
-                    />
-                  </div>
-                </div>
+              <label for="availabilityPattern">Work Pattern</label>
+              <select 
+                id="availabilityPattern" 
+                v-model="staffForm.availabilityPattern"
+                class="form-control"
+                @change="checkHideContractedHours"
+              >
+                <option value="">Select a work pattern</option>
+                <option 
+                  v-for="pattern in staffStore.availabilityPatterns" 
+                  :key="pattern" 
+                  :value="pattern"
+                >
+                  {{ pattern }}
+                </option>
+              </select>
+            </div>
+            
+            <div v-if="hideContractedHours" class="form-group">
+              <div class="availability-info">
+                Assumes this porter can be moved between shifts
+              </div>
+            </div>
+            
+            <div v-else class="form-group">
+              <label for="contractedHoursStart">Contracted Hours</label>
+              <div class="time-range">
+                <input 
+                  type="time" 
+                  id="contractedHoursStart" 
+                  v-model="staffForm.contractedHoursStart"
+                  class="time-input"
+                />
+                <span class="time-separator">to</span>
+                <input 
+                  type="time" 
+                  id="contractedHoursEnd" 
+                  v-model="staffForm.contractedHoursEnd"
+                  class="time-input"
+                />
               </div>
             </div>
             
@@ -377,6 +394,88 @@
               </button>
             </div>
           </form>
+          
+          <!-- Absence Management Form -->
+          <div v-if="showEditPorterForm && activeModalTab === 'absence'" class="absence-form">
+            <div v-if="staffStore.loading.porters" class="loading-state">
+              Loading porter details...
+            </div>
+            
+            <form v-else @submit.prevent="saveAbsence">
+              <div class="form-group">
+                <label for="absence-type">Absence Type</label>
+                <select id="absence-type" v-model="absenceForm.absence_type" class="form-control">
+                  <option value="">No Absence</option>
+                  <option value="illness">Illness</option>
+                  <option value="annual_leave">Annual Leave</option>
+                </select>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group form-group--half">
+                  <label for="start-date">Start Date</label>
+                  <input
+                    type="date"
+                    id="start-date"
+                    v-model="absenceForm.start_date"
+                    class="form-control"
+                    required
+                    :min="today"
+                  />
+                </div>
+                
+                <div class="form-group form-group--half">
+                  <label for="end-date">End Date</label>
+                  <input
+                    type="date"
+                    id="end-date"
+                    v-model="absenceForm.end_date"
+                    class="form-control"
+                    required
+                    :min="absenceForm.start_date || today"
+                  />
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="notes">Notes (Optional)</label>
+                <textarea
+                  id="notes"
+                  v-model="absenceForm.notes"
+                  class="form-control textarea"
+                  placeholder="Additional details about this absence"
+                  rows="3"
+                ></textarea>
+              </div>
+              
+              <div v-if="hasExistingAbsence" class="existing-absence-warning">
+                <p>This porter already has an absence record for the selected period. Saving will update the existing record.</p>
+              </div>
+              
+              <div v-if="currentAbsence && currentAbsence.id" class="form-actions">
+                <button 
+                  type="button"
+                  @click="confirmDeleteAbsence" 
+                  class="btn btn--danger"
+                >
+                  Delete Absence
+                </button>
+              </div>
+              
+              <div class="form-actions">
+                <button type="button" class="btn btn--secondary" @click="closeStaffForm">
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  class="btn btn--primary"
+                  :disabled="absenceForm.absence_type && (!absenceForm.start_date || !absenceForm.end_date)"
+                >
+                  {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -386,16 +485,7 @@
       <p>Note: Porter department assignments are now managed in the Area Support tab, where you can also specify time ranges and coverage.</p>
     </div>
     
-    <!-- Porter Absence Modal -->
-    <Teleport to="body">
-      <PorterAbsenceModal
-        v-if="showAbsenceModal && selectedPorterId"
-        :porter-id="selectedPorterId"
-        :absence="currentPorterAbsence"
-        @close="showAbsenceModal = false"
-        @save="handleAbsenceSave"
-      />
-    </Teleport>
+    <!-- Porter absence is now handled in the porter edit modal -->
   </div>
 </template>
 
@@ -407,7 +497,7 @@ import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import IconButton from '../../IconButton.vue';
 import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
-import PorterAbsenceModal from '../../PorterAbsenceModal.vue';
+// PorterAbsenceModal is no longer needed as we've integrated the functionality
 
 const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
@@ -423,9 +513,10 @@ const showEditSupervisorForm = ref(false);
 const showAddPorterForm = ref(false);
 const showEditPorterForm = ref(false);
 const hideContractedHours = ref(false);
-const showAbsenceModal = ref(false);
-const selectedPorterId = ref(null);
-const currentPorterAbsence = ref(null);
+// These are now handled within the edit porter modal
+// const showAbsenceModal = ref(false);
+// const selectedPorterId = ref(null);
+// const currentPorterAbsence = ref(null);
 const staffForm = ref({
   id: null,
   firstName: '',
@@ -435,6 +526,51 @@ const staffForm = ref({
   availabilityPattern: '',
   contractedHoursStart: '09:00',
   contractedHoursEnd: '17:00'
+});
+
+// Modal tabs for porter edit form
+const activeModalTab = ref('details');
+
+// Absence form state
+const absenceForm = ref({
+  porter_id: null,
+  absence_type: '',
+  start_date: '',
+  end_date: '',
+  notes: ''
+});
+const currentAbsence = ref(null);
+
+// Get today's date in YYYY-MM-DD format for date input min attribute
+const today = computed(() => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+});
+
+// Check if there's an existing absence that overlaps with the selected dates
+const hasExistingAbsence = computed(() => {
+  if (!absenceForm.value.start_date || !absenceForm.value.end_date || !absenceForm.value.porter_id) {
+    return false;
+  }
+  
+  const startDate = new Date(absenceForm.value.start_date);
+  const endDate = new Date(absenceForm.value.end_date);
+  
+  // Check if any existing absence overlaps with these dates
+  return staffStore.porterAbsences.some(absence => {
+    // Skip the current absence being edited
+    if (currentAbsence.value && absence.id === currentAbsence.value.id) {
+      return false;
+    }
+    
+    const absStart = new Date(absence.start_date);
+    const absEnd = new Date(absence.end_date);
+    
+    // Check for overlap
+    return absence.porter_id === absenceForm.value.porter_id && (
+      (startDate <= absEnd && endDate >= absStart) // Dates overlap
+    );
+  });
 });
 
 // Initialize data
@@ -532,7 +668,31 @@ const editPorter = (porter) => {
     contractedHoursEnd: porter.contracted_hours_end ? porter.contracted_hours_end.substring(0, 5) : '17:00'
   };
   showEditPorterForm.value = true;
+  activeModalTab.value = 'details';
   checkHideContractedHours();
+  
+  // Initialize absence form if porter exists
+  if (porter.id) {
+    absenceForm.value = {
+      porter_id: porter.id,
+      absence_type: '',
+      start_date: '',
+      end_date: '',
+      notes: ''
+    };
+    
+    // Check if porter has an active absence
+    const today = new Date();
+    currentAbsence.value = staffStore.getPorterAbsenceDetails(porter.id, today);
+    
+    if (currentAbsence.value) {
+      // Format dates for form
+      absenceForm.value.absence_type = currentAbsence.value.absence_type;
+      absenceForm.value.start_date = currentAbsence.value.start_date ? new Date(currentAbsence.value.start_date).toISOString().split('T')[0] : '';
+      absenceForm.value.end_date = currentAbsence.value.end_date ? new Date(currentAbsence.value.end_date).toISOString().split('T')[0] : '';
+      absenceForm.value.notes = currentAbsence.value.notes || '';
+    }
+  }
 };
 
 const closeStaffForm = () => {
@@ -633,20 +793,68 @@ const clearSearch = () => {
   staffStore.setSearchQuery('');
 };
 
-// Open absence modal for a specific porter
-const openAbsenceModal = (porterId) => {
-  if (!porterId) return;
+// Now handled within the edit porter modal
+// const openAbsenceModal = (porterId) => {
+//   if (!porterId) return;
+//   
+//   selectedPorterId.value = porterId;
+//   const today = new Date();
+//   currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterId, today);
+//   showAbsenceModal.value = true;
+// };
+// 
+// // Handle absence save
+// const handleAbsenceSave = () => {
+//   // Refresh the absence data
+//   currentPorterAbsence.value = null;
+// };
+
+// Save porter absence from the edit form
+const saveAbsence = async () => {
+  // If no absence type is selected, it means we want to clear any existing absence
+  if (!absenceForm.value.absence_type) {
+    if (currentAbsence.value && currentAbsence.value.id) {
+      await staffStore.deletePorterAbsence(currentAbsence.value.id);
+      currentAbsence.value = null;
+    }
+    closeStaffForm();
+    return;
+  }
   
-  selectedPorterId.value = porterId;
-  const today = new Date();
-  currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterId, today);
-  showAbsenceModal.value = true;
+  // Make sure we have the required data
+  if (!absenceForm.value.porter_id || !absenceForm.value.start_date || !absenceForm.value.end_date) {
+    return;
+  }
+  
+  try {
+    let result;
+    
+    if (currentAbsence.value && currentAbsence.value.id) {
+      // Update existing absence
+      result = await staffStore.updatePorterAbsence(currentAbsence.value.id, absenceForm.value);
+    } else {
+      // Create new absence
+      result = await staffStore.addPorterAbsence(absenceForm.value);
+    }
+    
+    closeStaffForm();
+  } catch (error) {
+    console.error('Error saving porter absence:', error);
+  }
 };
 
-// Handle absence save
-const handleAbsenceSave = () => {
-  // Refresh the absence data
-  currentPorterAbsence.value = null;
+// Delete absence
+const confirmDeleteAbsence = async () => {
+  if (!currentAbsence.value || !currentAbsence.value.id) return;
+  
+  if (confirm('Are you sure you want to delete this absence record?')) {
+    try {
+      await staffStore.deletePorterAbsence(currentAbsence.value.id);
+      closeStaffForm();
+    } catch (error) {
+      console.error('Error deleting porter absence:', error);
+    }
+  }
 };
 </script>
 
@@ -981,10 +1189,68 @@ const handleAbsenceSave = () => {
   line-height: 1;
 }
 
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.modal-tab {
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  font-size: mix.font-size('md');
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+  }
+  
+  &--active {
+    color: mix.color('primary');
+    box-shadow: inset 0 -2px 0 mix.color('primary');
+  }
+}
+
 .modal-body {
   padding: 16px;
   overflow-y: auto;
   flex: 1;
+}
+
+.absence-form {
+  .form-control.textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .absence-details {
+    background-color: rgba(0, 0, 0, 0.02);
+    padding: 12px;
+    border-radius: mix.radius('md');
+    margin-top: 12px;
+  }
+  
+  .existing-absence-warning {
+    margin-top: 16px;
+    padding: 12px;
+    background-color: rgba(244, 180, 0, 0.1);
+    border-left: 3px solid #F4B400;
+    border-radius: mix.radius('sm');
+    font-size: mix.font-size('sm');
+    
+    p {
+      margin: 0;
+      color: rgba(0, 0, 0, 0.7);
+    }
+  }
+  
+  .loading-state {
+    padding: 20px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.6);
+  }
 }
 
 .modal-footer {
@@ -996,8 +1262,20 @@ const handleAbsenceSave = () => {
 }
 
 // Form styles
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .form-group {
   margin-bottom: 16px;
+  
+  &--half {
+    flex: 1;
+    min-width: 120px;
+  }
   
   label {
     display: block;
@@ -1060,9 +1338,12 @@ const handleAbsenceSave = () => {
         
         .time-input {
           flex: 1;
-          padding: 8px;
+          padding: 8px 12px;
           border: 1px solid rgba(0, 0, 0, 0.2);
           border-radius: mix.radius('md');
+          font-size: mix.font-size('md');
+          width: auto;
+          min-width: 110px;
         }
         
         .time-separator {
