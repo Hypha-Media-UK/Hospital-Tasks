@@ -752,6 +752,8 @@ watch(showAddPorterModal, (newValue) => {
     cursor: pointer;
     position: relative;
     display: inline-block;
+    border-radius: mix.radius('sm');
+    padding: 2px 6px;
     
     &.porter-absent {
       opacity: 0.9;
@@ -759,10 +761,12 @@ watch(showAddPorterModal, (newValue) => {
     
     &.porter-illness {
       color: #d32f2f;
+      background-color: rgba(234, 67, 53, 0.1);
     }
     
     &.porter-annual-leave {
       color: #f57c00;
+      background-color: rgba(251, 192, 45, 0.1);
     }
     
     .absence-badge {

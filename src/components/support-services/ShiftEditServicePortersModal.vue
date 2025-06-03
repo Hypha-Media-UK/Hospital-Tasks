@@ -29,8 +29,20 @@
               class="porter-item"
             >
               <div class="porter-info">
-                <div class="porter-name">
+                <div 
+                  class="porter-name" 
+                  :class="{
+                    'porter-absent': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date()),
+                    'porter-illness': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness',
+                    'porter-annual-leave': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'
+                  }"
+                  @click="openAbsenceModal(assignment.porter_id)"
+                >
                   {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+                  <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness'" 
+                        class="absence-badge illness">ILL</span>
+                  <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'" 
+                        class="absence-badge annual-leave">AL</span>
                 </div>
                 <div class="porter-time">
                   {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
@@ -68,6 +80,23 @@
             {{ hasCoverageGap ? 'Coverage gap detected! Some time slots are not covered.' : 'Full coverage for this service.' }}
           </div>
         </div>
+        
+        <!-- Absent porters section -->
+        <div v-if="absentPorters.length > 0" class="absent-porters-section">
+          <h4 class="section-title">Absent Porters</h4>
+          <div v-for="porter in absentPorters" :key="porter.id" class="absent-porter-item">
+            <span class="absent-porter-name" 
+                  :class="{'illness': getPorterAbsence(porter.porter_id)?.absence_type === 'illness',
+                          'annual-leave': getPorterAbsence(porter.porter_id)?.absence_type === 'annual_leave'}">
+              {{ porter.porter.first_name }} {{ porter.porter.last_name }}
+              <span v-if="getPorterAbsence(porter.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
+              <span v-if="getPorterAbsence(porter.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
+            </span>
+            <div class="absent-porter-dates">
+              {{ formatAbsenceDates(getPorterAbsence(porter.porter_id)) }}
+            </div>
+          </div>
+        </div>
       </div>
       
       <div class="modal-footer">
@@ -91,6 +120,15 @@
         </div>
         
         <div class="modal-body">
+          <div v-if="editingPorterAssignment" class="action-menu">
+            <button 
+              class="btn btn-sm btn-outline" 
+              @click="openAbsenceModal(porterForm.porterId)"
+            >
+              Mark as Absent
+            </button>
+          </div>
+          
           <div class="form-group">
             <label for="porter">Select Porter</label>
             <select 
@@ -150,12 +188,23 @@
       </div>
     </div>
   </div>
+  
+  <Teleport to="body">
+    <PorterAbsenceModal
+      v-if="showAbsenceModal && selectedPorterId"
+      :porter-id="selectedPorterId"
+      :absence="currentPorterAbsence"
+      @close="showAbsenceModal = false"
+      @save="handleAbsenceSave"
+    />
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
+import PorterAbsenceModal from '../../components/PorterAbsenceModal.vue';
 
 const props = defineProps({
   assignment: {
@@ -182,12 +231,20 @@ const showAddPorterModal = ref(false);
 const editingPorterAssignment = ref(false);
 const editingPorterAssignmentId = ref(null);
 const savingPorter = ref(false);
+const showAbsenceModal = ref(false);
+const selectedPorterId = ref(null);
+const currentPorterAbsence = ref(null);
 
 // Initialize data
 onMounted(async () => {
   // Load porters if not already loaded
   if (!staffStore.porters.length) {
     await staffStore.fetchPorters();
+  }
+  
+  // Load porter absences if not already loaded
+  if (!staffStore.porterAbsences.length) {
+    await staffStore.fetchPorterAbsences();
   }
 });
 
@@ -196,11 +253,10 @@ const porterAssignments = computed(() => {
   return shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
 });
 
-const hasCoverageGap = computed(() => {
-  return shiftsStore.hasServiceCoverageGap(props.assignment.id);
-});
-
+// Get all available (non-absent) porters
 const availablePorters = computed(() => {
+  const today = new Date();
+  
   // Get porters from the shift pool
   const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
   
@@ -222,6 +278,42 @@ const availablePorters = computed(() => {
   return shiftPorters;
 });
 
+// Get all absent porters
+const absentPorters = computed(() => {
+  const today = new Date();
+  return porterAssignments.value.filter(assignment => {
+    return staffStore.isPorterAbsent(assignment.porter_id, today);
+  });
+});
+
+// Get porter absence details
+const getPorterAbsence = (porterId) => {
+  const today = new Date();
+  return staffStore.getPorterAbsenceDetails(porterId, today);
+};
+
+// Format absence dates
+const formatAbsenceDates = (absence) => {
+  if (!absence) return '';
+  
+  const startDate = new Date(absence.start_date);
+  const endDate = new Date(absence.end_date);
+  
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+  
+  return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+};
+
+const hasCoverageGap = computed(() => {
+  return shiftsStore.hasServiceCoverageGap(props.assignment.id);
+});
+
 const canSavePorter = computed(() => {
   return porterForm.value.porterId && 
          porterForm.value.startTime && 
@@ -240,6 +332,22 @@ const editPorterAssignment = (assignment) => {
   };
   
   showPorterModal.value = true;
+};
+
+// Open absence modal for a specific porter
+const openAbsenceModal = (porterId) => {
+  if (!porterId) return;
+  
+  selectedPorterId.value = porterId;
+  const today = new Date();
+  currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterId, today);
+  showAbsenceModal.value = true;
+};
+
+// Handle absence save
+const handleAbsenceSave = () => {
+  // Refresh the absence data
+  currentPorterAbsence.value = null;
 };
 
 const closePorterModal = () => {
@@ -386,6 +494,14 @@ watch(showAddPorterModal, (newValue) => {
   gap: 12px;
 }
 
+.action-menu {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 12px;
+}
+
 .service-time-info {
   display: flex;
   align-items: center;
@@ -456,6 +572,44 @@ watch(showAddPorterModal, (newValue) => {
 .porter-info {
   .porter-name {
     font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    display: inline-block;
+    border-radius: mix.radius('sm');
+    padding: 2px 6px;
+    
+    &.porter-absent {
+      opacity: 0.9;
+    }
+    
+    &.porter-illness {
+      color: #d32f2f;
+      background-color: rgba(234, 67, 53, 0.1);
+    }
+    
+    &.porter-annual-leave {
+      color: #f57c00;
+      background-color: rgba(251, 192, 45, 0.1);
+    }
+    
+    .absence-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 3px;
+      margin-left: 5px;
+      
+      &.illness {
+        background-color: #d32f2f;
+        color: white;
+      }
+      
+      &.annual-leave {
+        background-color: #f57c00;
+        color: white;
+      }
+    }
   }
   
   .porter-time {
@@ -496,6 +650,59 @@ watch(showAddPorterModal, (newValue) => {
   
   .status-text {
     font-weight: 500;
+  }
+}
+
+.absent-porters-section {
+  margin-top: 20px;
+  
+  .absent-porter-item {
+    padding: 8px 12px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: mix.radius('md');
+    margin-bottom: 8px;
+    
+    .absent-porter-name {
+      font-weight: 500;
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: mix.radius('sm');
+      
+      &.illness {
+        color: #d32f2f;
+        background-color: rgba(234, 67, 53, 0.1);
+      }
+      
+      &.annual-leave {
+        color: #f57c00;
+        background-color: rgba(251, 192, 45, 0.1);
+      }
+      
+      .absence-badge {
+        display: inline-block;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 4px;
+        border-radius: 3px;
+        margin-left: 5px;
+        
+        &.illness {
+          background-color: #d32f2f;
+          color: white;
+        }
+        
+        &.annual-leave {
+          background-color: #f57c00;
+          color: white;
+        }
+      }
+    }
+    
+    .absent-porter-dates {
+      margin-top: 4px;
+      font-size: mix.font-size('sm');
+      color: rgba(0, 0, 0, 0.6);
+    }
   }
 }
 
@@ -560,6 +767,20 @@ watch(showAddPorterModal, (newValue) => {
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: mix.font-size('sm');
+}
+
+.btn-outline {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background-color: transparent;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
   }
 }
 
