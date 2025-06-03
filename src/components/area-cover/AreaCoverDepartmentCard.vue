@@ -14,8 +14,15 @@
       
       <div class="department-card__porters">
         <div class="porter-count-wrapper">
-          <span class="porter-count" :class="{ 'no-porters': porterAssignments.length === 0 }">
-            {{ porterAssignments.length }} {{ porterAssignments.length === 1 ? 'Porter' : 'Porters' }}
+          <span class="porter-count" 
+                :class="{ 
+                  'no-porters': porterAssignments.length === 0 || availablePorters.length === 0,
+                  'coverage-gap': hasCoverageGap
+                }">
+            {{ availablePorters.length }} {{ availablePorters.length === 1 ? 'Porter' : 'Porters' }}
+            <span v-if="absentPorters.length > 0" class="absent-count">
+              ({{ absentPorters.length }} absent)
+            </span>
           </span>
         </div>
 
@@ -45,6 +52,25 @@
         <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line gap-line--end">
           <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
+        
+        <!-- Show absent porters section -->
+        <div v-if="absentPorters.length > 0" class="absent-porters-section">
+          <div class="absent-porters-title">Absent Porters:</div>
+          <div v-for="porter in absentPorters" :key="porter.id" class="absent-porter-item">
+            <span class="absent-porter-name" 
+                  :class="{'illness': getPorterAbsence(porter.porter_id)?.absence_type === 'illness',
+                          'annual-leave': getPorterAbsence(porter.porter_id)?.absence_type === 'annual_leave'}">
+              {{ porter.porter.first_name }} {{ porter.porter.last_name }}
+              <span v-if="getPorterAbsence(porter.porter_id)?.absence_type === 'illness'" class="absence-badge">ILL</span>
+              <span v-if="getPorterAbsence(porter.porter_id)?.absence_type === 'annual_leave'" class="absence-badge">AL</span>
+            </span>
+          </div>
+        </div>
+        
+        <!-- Show department coverage gap warning if no available porters -->
+        <div v-if="availablePorters.length === 0 && porterAssignments.length > 0" class="coverage-warning">
+          All assigned porters are absent!
+        </div>
       </div>
     </div>
     
@@ -62,6 +88,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useAreaCoverStore } from '../../stores/areaCoverStore';
+import { useStaffStore } from '../../stores/staffStore';
 import EditDepartmentModal from './EditDepartmentModal.vue';
 
 const props = defineProps({
@@ -74,6 +101,7 @@ const props = defineProps({
 const emit = defineEmits(['update', 'remove']);
 
 const areaCoverStore = useAreaCoverStore();
+const staffStore = useStaffStore();
 const showEditModal = ref(false);
 
 // Get porter assignments for this area
@@ -101,9 +129,31 @@ const hasStaffingShortage = computed(() => {
   }
 });
 
-// Sort porter assignments by start time
+// Get all available (non-absent) porters
+const availablePorters = computed(() => {
+  const today = new Date();
+  return porterAssignments.value.filter(assignment => {
+    return !staffStore.isPorterAbsent(assignment.porter_id, today);
+  });
+});
+
+// Get all absent porters
+const absentPorters = computed(() => {
+  const today = new Date();
+  return porterAssignments.value.filter(assignment => {
+    return staffStore.isPorterAbsent(assignment.porter_id, today);
+  });
+});
+
+// Get porter absence details
+const getPorterAbsence = (porterId) => {
+  const today = new Date();
+  return staffStore.getPorterAbsenceDetails(porterId, today);
+};
+
+// Sort porter assignments by start time (only available porters)
 const sortedPorterAssignments = computed(() => {
-  return [...porterAssignments.value].sort((a, b) => {
+  return [...availablePorters.value].sort((a, b) => {
     const aStart = timeToMinutes(a.start_time);
     const bStart = timeToMinutes(b.start_time);
     return aStart - bStart;
@@ -136,7 +186,7 @@ const staffingShortages = computed(() => {
 
 // Check if there's a gap at the start of the assignment
 const hasStartGap = computed(() => {
-  if (sortedPorterAssignments.value.length === 0) return false;
+  if (sortedPorterAssignments.value.length === 0) return true;
   
   const departmentStart = timeToMinutes(props.assignment.start_time);
   const firstPorterStart = timeToMinutes(sortedPorterAssignments.value[0].start_time);
@@ -146,7 +196,7 @@ const hasStartGap = computed(() => {
 
 // Check if there's a gap at the end of the assignment
 const hasEndGap = computed(() => {
-  if (sortedPorterAssignments.value.length === 0) return false;
+  if (sortedPorterAssignments.value.length === 0) return true;
   
   const departmentEnd = timeToMinutes(props.assignment.end_time);
   const lastPorterEnd = timeToMinutes(sortedPorterAssignments.value[sortedPorterAssignments.value.length - 1].end_time);
@@ -253,7 +303,26 @@ const handleRemove = (assignmentId) => {
     background-color: rgba(0, 0, 0, 0.01);
   }
   
-  /* Coverage gap and staffing shortage indicators removed */
+  &:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    z-index: 1;
+  }
+  
+  &.has-gap:before {
+    border-width: 0 24px 24px 0;
+    border-color: transparent #EA4335 transparent transparent;
+  }
+  
+  &.understaffed:before {
+    border-width: 0 24px 24px 0;
+    border-color: transparent #F4B400 transparent transparent;
+  }
   
   &__content {
     padding: 12px 16px;
@@ -310,17 +379,28 @@ const handleRemove = (assignmentId) => {
         background-color: #EA4335; /* Red background */
         color: white; /* White text */
       }
+      
+      &.coverage-gap {
+        background-color: rgba(234, 67, 53, 0.2);
+        color: #d32f2f;
+      }
+      
+      .absent-count {
+        font-size: mix.font-size('2xs');
+        color: #d32f2f;
+        margin-left: 4px;
+      }
     }
     
-      /* Generic styles for all gap lines */
-      .gap-line {
-        margin: 8px 0;
-        position: relative;
-        padding-left: 12px;
-        padding-top: 4px;
-        padding-bottom: 4px;
-        border-top: 1px solid #F4B400; /* Default orange for time discrepancies */
-        
+    /* Generic styles for all gap lines */
+    .gap-line {
+      margin: 8px 0;
+      position: relative;
+      padding-left: 12px;
+      padding-top: 4px;
+      padding-bottom: 4px;
+      border-top: 1px solid #F4B400; /* Default orange for time discrepancies */
+      
       .gap-line-indicator {
         position: absolute;
         left: 0;
@@ -332,42 +412,42 @@ const handleRemove = (assignmentId) => {
         border-radius: 2px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
       }
-        
-        .gap-line-time {
-          font-size: mix.font-size('2xs');
-          color: rgba(0, 0, 0, 0.5);
-          padding: 2px 6px;
-          background-color: rgba(234, 67, 53, 0.05);
-          border-radius: mix.radius('sm');
-          display: inline-block;
-        }
-      }
       
-      /* Specific styles for start/end gap lines - these are outside .porter-assignments */
-      .gap-line--start, 
-      .gap-line--end {
-        margin: 10px 0;
-        padding-top: 6px;
-        border-top: 2px solid #EA4335 !important; /* Thicker red line for start/end gaps */
-        background-color: rgba(234, 67, 53, 0.05); /* Light red background for better visibility */
-        
-        .gap-line-indicator {
-          background-color: #EA4335 !important; /* Red for start/end gaps */
-        }
+      .gap-line-time {
+        font-size: mix.font-size('2xs');
+        color: rgba(0, 0, 0, 0.5);
+        padding: 2px 6px;
+        background-color: rgba(234, 67, 53, 0.05);
+        border-radius: mix.radius('sm');
+        display: inline-block;
       }
+    }
+    
+    /* Specific styles for start/end gap lines - these are outside .porter-assignments */
+    .gap-line--start, 
+    .gap-line--end {
+      margin: 10px 0;
+      padding-top: 6px;
+      border-top: 2px solid #EA4335 !important; /* Thicker red line for start/end gaps */
+      background-color: rgba(234, 67, 53, 0.05); /* Light red background for better visibility */
       
-      /* Direct styling for the time text in start/end gap lines */
-      .gap-line--start .gap-line-time, 
-      .gap-line--end .gap-line-time {
-        font-size: 0.75rem !important; /* Explicit small font size */
-        font-weight: normal !important;
-        line-height: 1.2 !important;
-        color: rgba(0, 0, 0, 0.5) !important;
-        padding: 2px 6px !important;
-        background-color: rgba(234, 67, 53, 0.05) !important;
-        border-radius: 4px !important;
-        display: inline-block !important;
+      .gap-line-indicator {
+        background-color: #EA4335 !important; /* Red for start/end gaps */
       }
+    }
+    
+    /* Direct styling for the time text in start/end gap lines */
+    .gap-line--start .gap-line-time, 
+    .gap-line--end .gap-line-time {
+      font-size: 0.75rem !important; /* Explicit small font size */
+      font-weight: normal !important;
+      line-height: 1.2 !important;
+      color: rgba(0, 0, 0, 0.5) !important;
+      padding: 2px 6px !important;
+      background-color: rgba(234, 67, 53, 0.05) !important;
+      border-radius: 4px !important;
+      display: inline-block !important;
+    }
     
     .porter-assignments {
       margin-top: 12px;
@@ -390,6 +470,71 @@ const handleRemove = (assignmentId) => {
           }
         }
       }
+    }
+    
+    .absent-porters-section {
+      margin-top: 16px;
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.02);
+      border-radius: mix.radius('sm');
+      
+      .absent-porters-title {
+        font-size: mix.font-size('xs');
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #d32f2f;
+      }
+      
+      .absent-porter-item {
+        margin-bottom: 4px;
+        
+        .absent-porter-name {
+          font-size: mix.font-size('xs');
+          padding: 2px 6px;
+          border-radius: mix.radius('sm');
+          display: inline-block;
+          
+          &.illness {
+            color: #d32f2f;
+            background-color: rgba(234, 67, 53, 0.1);
+          }
+          
+          &.annual-leave {
+            color: #f57c00;
+            background-color: rgba(251, 192, 45, 0.1);
+          }
+          
+          .absence-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-left: 5px;
+            
+            &.illness {
+              background-color: #d32f2f;
+              color: white;
+            }
+            
+            &.annual-leave {
+              background-color: #f57c00;
+              color: white;
+            }
+          }
+        }
+      }
+    }
+    
+    .coverage-warning {
+      margin-top: 12px;
+      padding: 8px;
+      background-color: rgba(234, 67, 53, 0.1);
+      color: #d32f2f;
+      border-radius: mix.radius('sm');
+      font-size: mix.font-size('xs');
+      font-weight: 500;
+      text-align: center;
     }
   }
 }

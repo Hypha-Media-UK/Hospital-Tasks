@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
+import { useStaffStore } from './staffStore';
 
 // Helper function to convert time string (HH:MM:SS) to minutes
 function timeToMinutes(timeStr) {
@@ -62,14 +63,23 @@ export const useAreaCoverStore = defineStore('areaCover', {
     // Check for staffing shortages based on minimum porter count
     getStaffingShortages: (state) => (areaCoverId) => {
       try {
+        const staffStore = useStaffStore();
+        const today = new Date();
+        
         const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
         if (!assignment) return { hasShortage: false, shortages: [] };
         
         // If minimum_porters is not set or is 0, there's no staffing requirement
         if (!assignment.minimum_porters) return { hasShortage: false, shortages: [] };
         
-        const porterAssignments = state.porterAssignments.filter(
+        // Get all porter assignments for this area
+        const allPorterAssignments = state.porterAssignments.filter(
           pa => pa.default_area_cover_assignment_id === areaCoverId
+        );
+        
+        // Filter out porters who are absent
+        const porterAssignments = allPorterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
         );
         
         if (porterAssignments.length === 0) {
@@ -161,11 +171,20 @@ export const useAreaCoverStore = defineStore('areaCover', {
     // Get coverage gaps with detailed information
     getCoverageGaps: (state) => (areaCoverId) => {
       try {
+        const staffStore = useStaffStore();
+        const today = new Date();
+        
         const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
         if (!assignment) return { hasGap: false, gaps: [] };
         
-        const porterAssignments = state.porterAssignments.filter(
+        // Get all porter assignments for this area
+        const allPorterAssignments = state.porterAssignments.filter(
           pa => pa.default_area_cover_assignment_id === areaCoverId
+        );
+        
+        // Filter out porters who are absent
+        const porterAssignments = allPorterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
         );
         
         if (porterAssignments.length === 0) {

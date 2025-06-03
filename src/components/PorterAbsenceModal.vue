@@ -3,91 +3,104 @@
     <div class="modal-container" @click.stop>
       <div class="modal-header">
         <h3 class="modal-title">
-          {{ editing ? 'Edit Absence' : 'Mark Porter as Absent' }}
+          {{ porter ? `${porter.first_name} ${porter.last_name} Absence` : 'Porter Absence' }}
         </h3>
         <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
       
       <div class="modal-body">
-        <div v-if="!editing" class="porter-info">
-          <strong>{{ porterName }}</strong>
+        <div v-if="loading" class="loading-state">
+          Loading porter details...
         </div>
         
-        <div class="form-group">
-          <label>Absence Type</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input 
-                type="radio" 
-                v-model="absenceForm.absenceType" 
-                value="illness"
-              > 
-              Illness
-            </label>
-            <label class="radio-label">
-              <input 
-                type="radio" 
-                v-model="absenceForm.absenceType" 
-                value="annual_leave"
-              > 
-              Annual Leave
-            </label>
+        <div v-else-if="!porter" class="error-state">
+          Porter not found. Please try again.
+        </div>
+        
+        <form v-else @submit.prevent="saveAbsence">
+          <div class="form-group">
+            <label for="absence-type">Absence Type</label>
+            <select id="absence-type" v-model="absenceData.absence_type" class="form-control" required>
+              <option value="" disabled>Select an absence type</option>
+              <option value="illness">Illness</option>
+              <option value="annual_leave">Annual Leave</option>
+            </select>
           </div>
-        </div>
-        
-        <div class="form-group">
-          <label for="start-date">Start Date</label>
-          <input 
-            type="date" 
-            id="start-date" 
-            v-model="absenceForm.startDate"
-            class="form-control"
-            :min="today"
-          >
-        </div>
-        
-        <div class="form-group">
-          <label for="end-date">End Date</label>
-          <input 
-            type="date" 
-            id="end-date" 
-            v-model="absenceForm.endDate"
-            class="form-control"
-            :min="absenceForm.startDate || today"
-          >
-        </div>
+          
+          <div class="form-group">
+            <label for="start-date">Start Date</label>
+            <input
+              type="date"
+              id="start-date"
+              v-model="absenceData.start_date"
+              class="form-control"
+              required
+              :min="today"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label for="end-date">End Date</label>
+            <input
+              type="date"
+              id="end-date"
+              v-model="absenceData.end_date"
+              class="form-control"
+              required
+              :min="absenceData.start_date || today"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label for="notes">Notes (Optional)</label>
+            <textarea
+              id="notes"
+              v-model="absenceData.notes"
+              class="form-control textarea"
+              placeholder="Additional details about this absence"
+              rows="3"
+            ></textarea>
+          </div>
+          
+          <div v-if="hasExistingAbsence" class="existing-absence-warning">
+            <p>This porter already has an absence record for the selected period. Saving will update the existing record.</p>
+          </div>
+        </form>
       </div>
       
       <div class="modal-footer">
         <button 
-          @click="saveAbsence" 
-          class="btn btn-primary"
-          :disabled="!isValid || saving"
-        >
-          {{ saving ? 'Saving...' : (editing ? 'Update' : 'Save') }}
-        </button>
-        <button 
-          v-if="editing" 
-          @click="deleteAbsence" 
-          class="btn btn-danger"
+          v-if="absence && absence.id" 
+          @click="confirmDelete" 
+          class="btn btn--danger"
           :disabled="saving"
         >
-          Delete
+          Delete Absence
         </button>
-        <button 
-          @click="$emit('close')" 
-          class="btn btn-secondary"
-          :disabled="saving"
-        >
-          Cancel
-        </button>
+        
+        <div class="modal-actions">
+          <button 
+            @click="saveAbsence" 
+            class="btn btn--primary"
+            :disabled="!canSave || saving"
+          >
+            {{ saving ? 'Saving...' : 'Save' }}
+          </button>
+          <button 
+            @click.stop="$emit('close')" 
+            class="btn btn--secondary"
+            :disabled="saving"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useStaffStore } from '../stores/staffStore';
 
 const props = defineProps({
@@ -101,75 +114,114 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'save', 'delete']);
+const emit = defineEmits(['close', 'save']);
 
 const staffStore = useStaffStore();
+const loading = ref(false);
 const saving = ref(false);
-const editing = computed(() => !!props.absence);
+const porter = ref(null);
 
-const absenceForm = ref({
-  absenceType: 'illness',
-  startDate: '',
-  endDate: ''
+// Absence data form
+const absenceData = ref({
+  porter_id: props.porterId,
+  absence_type: '',
+  start_date: '',
+  end_date: '',
+  notes: ''
 });
 
+// Get today's date in YYYY-MM-DD format for date input min attribute
 const today = computed(() => {
-  const now = new Date();
-  return now.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+  const today = new Date();
+  return today.toISOString().split('T')[0];
 });
 
-const porterName = computed(() => {
-  const porter = staffStore.getStaffById(props.porterId);
-  return porter ? `${porter.first_name} ${porter.last_name}` : '';
-});
-
-const isValid = computed(() => {
-  return absenceForm.value.absenceType && 
-         absenceForm.value.startDate && 
-         absenceForm.value.endDate &&
-         absenceForm.value.startDate <= absenceForm.value.endDate;
-});
-
-onMounted(() => {
-  if (props.absence) {
-    absenceForm.value = {
-      absenceType: props.absence.absence_type,
-      startDate: props.absence.start_date,
-      endDate: props.absence.end_date
-    };
-  } else {
-    // Default to today and one week from today
-    const now = new Date();
-    const oneWeekLater = new Date();
-    oneWeekLater.setDate(now.getDate() + 7);
+// Check if there's an existing absence that overlaps with the selected dates
+const hasExistingAbsence = computed(() => {
+  if (!absenceData.value.start_date || !absenceData.value.end_date) {
+    return false;
+  }
+  
+  const startDate = new Date(absenceData.value.start_date);
+  const endDate = new Date(absenceData.value.end_date);
+  
+  // Check if any existing absence overlaps with these dates
+  return staffStore.porterAbsences.some(absence => {
+    // Skip the current absence being edited
+    if (props.absence && absence.id === props.absence.id) {
+      return false;
+    }
     
-    absenceForm.value = {
-      absenceType: 'illness',
-      startDate: now.toISOString().split('T')[0],
-      endDate: oneWeekLater.toISOString().split('T')[0]
-    };
+    const absStart = new Date(absence.start_date);
+    const absEnd = new Date(absence.end_date);
+    
+    // Check for overlap
+    return absence.porter_id === props.porterId && (
+      (startDate <= absEnd && endDate >= absStart) // Dates overlap
+    );
+  });
+});
+
+// Check if the form can be saved
+const canSave = computed(() => {
+  return absenceData.value.absence_type && 
+         absenceData.value.start_date && 
+         absenceData.value.end_date &&
+         new Date(absenceData.value.start_date) <= new Date(absenceData.value.end_date);
+});
+
+// Load porter details and populate form if editing existing absence
+onMounted(async () => {
+  loading.value = true;
+  
+  try {
+    // Make sure porters are loaded
+    if (staffStore.porters.length === 0) {
+      await staffStore.fetchPorters();
+    }
+    
+    // Get the porter
+    porter.value = staffStore.porters.find(p => p.id === props.porterId);
+    
+    // If we have an existing absence, populate the form
+    if (props.absence) {
+      absenceData.value = {
+        porter_id: props.porterId,
+        absence_type: props.absence.absence_type || '',
+        start_date: props.absence.start_date ? new Date(props.absence.start_date).toISOString().split('T')[0] : '',
+        end_date: props.absence.end_date ? new Date(props.absence.end_date).toISOString().split('T')[0] : '',
+        notes: props.absence.notes || ''
+      };
+    }
+  } catch (error) {
+    console.error('Error loading porter details:', error);
+  } finally {
+    loading.value = false;
   }
 });
 
+// Save the absence
 const saveAbsence = async () => {
-  if (!isValid.value || saving.value) return;
+  if (!canSave.value || saving.value) return;
   
   saving.value = true;
   
   try {
-    const absenceData = {
-      porter_id: props.porterId,
-      absence_type: absenceForm.value.absenceType,
-      start_date: absenceForm.value.startDate,
-      end_date: absenceForm.value.endDate
+    // Make sure absence dates are in the correct format (YYYY-MM-DD)
+    const formattedData = {
+      ...absenceData.value,
+      start_date: new Date(absenceData.value.start_date).toISOString().split('T')[0],
+      end_date: new Date(absenceData.value.end_date).toISOString().split('T')[0]
     };
     
     let result;
     
-    if (editing.value) {
-      result = await staffStore.updatePorterAbsence(props.absence.id, absenceData);
+    if (props.absence && props.absence.id) {
+      // Update existing absence
+      result = await staffStore.updatePorterAbsence(props.absence.id, formattedData);
     } else {
-      result = await staffStore.addPorterAbsence(absenceData);
+      // Create new absence
+      result = await staffStore.addPorterAbsence(formattedData);
     }
     
     if (result) {
@@ -177,37 +229,36 @@ const saveAbsence = async () => {
       emit('close');
     }
   } catch (error) {
-    console.error('Error saving absence:', error);
+    console.error('Error saving porter absence:', error);
   } finally {
     saving.value = false;
   }
 };
 
-const deleteAbsence = async () => {
-  if (!props.absence || saving.value) return;
+// Delete the absence
+const confirmDelete = async () => {
+  if (!props.absence || !props.absence.id || saving.value) return;
   
-  if (!confirm('Are you sure you want to delete this absence record?')) {
-    return;
-  }
-  
-  saving.value = true;
-  
-  try {
-    const success = await staffStore.deletePorterAbsence(props.absence.id);
-    if (success) {
-      emit('delete', props.absence.id);
-      emit('close');
+  if (confirm('Are you sure you want to delete this absence record?')) {
+    saving.value = true;
+    
+    try {
+      const success = await staffStore.deletePorterAbsence(props.absence.id);
+      
+      if (success) {
+        emit('save', null); // Notify parent that absence was deleted
+        emit('close');
+      }
+    } catch (error) {
+      console.error('Error deleting porter absence:', error);
+    } finally {
+      saving.value = false;
     }
-  } catch (error) {
-    console.error('Error deleting absence:', error);
-  } finally {
-    saving.value = false;
   }
 };
 </script>
 
 <style lang="scss" scoped>
-@use "sass:color";
 @use '../assets/scss/mixins' as mix;
 
 .modal-overlay {
@@ -216,11 +267,11 @@ const deleteAbsence = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1001;
+  z-index: 1000;
 }
 
 .modal-container {
@@ -267,15 +318,13 @@ const deleteAbsence = async () => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.porter-info {
-  margin-bottom: 16px;
-  padding: 8px;
-  background-color: rgba(0, 0, 0, 0.05);
-  border-radius: mix.radius('md');
+.modal-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .form-group {
@@ -294,28 +343,36 @@ const deleteAbsence = async () => {
     border-radius: mix.radius('md');
     font-size: mix.font-size('md');
     
-    &:focus {
-      outline: none;
-      border-color: mix.color('primary');
-      box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.2);
+    &.textarea {
+      resize: vertical;
+      min-height: 80px;
     }
   }
 }
 
-.radio-group {
-  display: flex;
-  gap: 16px;
+.existing-absence-warning {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: rgba(244, 180, 0, 0.1);
+  border-left: 3px solid #F4B400;
+  border-radius: mix.radius('sm');
+  font-size: mix.font-size('sm');
   
-  .radio-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    
-    input {
-      cursor: pointer;
-    }
+  p {
+    margin: 0;
+    color: rgba(0, 0, 0, 0.7);
   }
+}
+
+.loading-state,
+.error-state {
+  padding: 20px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.error-state {
+  color: #EA4335;
 }
 
 .btn {
@@ -326,30 +383,30 @@ const deleteAbsence = async () => {
   border: none;
   transition: all 0.2s ease;
   
-  &.btn-primary {
+  &--primary {
     background-color: mix.color('primary');
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(mix.color('primary'), $lightness: -10%);
+      background-color: rgba(66, 133, 244, 0.8);
     }
   }
   
-  &.btn-secondary {
+  &--secondary {
     background-color: #f1f1f1;
     color: mix.color('text');
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#f1f1f1, $lightness: -5%);
+      background-color: #e5e5e5;
     }
   }
   
-  &.btn-danger {
-    background-color: #dc3545;
+  &--danger {
+    background-color: #EA4335;
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#dc3545, $lightness: -10%);
+      background-color: rgba(234, 67, 53, 0.8);
     }
   }
   

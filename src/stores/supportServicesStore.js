@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
+import { useStaffStore } from './staffStore';
 
 // Helper function to convert time string (HH:MM:SS) to minutes
 function timeToMinutes(timeStr) {
@@ -66,6 +67,9 @@ export const useSupportServicesStore = defineStore('supportServices', {
     // Get staffing shortages with detailed information
     getStaffingShortages: (state) => (serviceId) => {
       try {
+        const staffStore = useStaffStore();
+        const today = new Date();
+        
         const assignment = state.serviceAssignments.find(a => a.id === serviceId);
         if (!assignment) return { hasShortage: false, shortages: [] };
         
@@ -81,13 +85,19 @@ export const useSupportServicesStore = defineStore('supportServices', {
           return { hasShortage: false, shortages: [] };
         }
         
-        const porterAssignments = state.porterAssignments.filter(
+        // Get all porter assignments for this service
+        const allPorterAssignments = state.porterAssignments.filter(
           pa => pa.default_service_cover_assignment_id === serviceId ||
                 pa.support_service_assignment_id === serviceId
         );
         
+        // Filter out porters who are absent
+        const porterAssignments = allPorterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
+        );
+        
         if (porterAssignments.length === 0) {
-          // No porters assigned - the entire period is a shortage
+          // No porters assigned or all porters are absent - the entire period is a shortage
           return {
             hasShortage: true,
             shortages: [
@@ -211,16 +221,25 @@ export const useSupportServicesStore = defineStore('supportServices', {
     // Get coverage gaps with detailed information
     getCoverageGaps: (state) => (serviceId) => {
       try {
+        const staffStore = useStaffStore();
+        const today = new Date();
+        
         const assignment = state.serviceAssignments.find(a => a.id === serviceId);
         if (!assignment) return { hasGap: false, gaps: [] };
         
-        const porterAssignments = state.porterAssignments.filter(
+        // Get all porter assignments for this service
+        const allPorterAssignments = state.porterAssignments.filter(
           pa => pa.default_service_cover_assignment_id === serviceId ||
                 pa.support_service_assignment_id === serviceId
         );
         
+        // Filter out porters who are absent
+        const porterAssignments = allPorterAssignments.filter(
+          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
+        );
+        
         if (porterAssignments.length === 0) {
-          // No porters assigned - the entire period is a gap
+          // No porters assigned or all porters are absent - the entire period is a gap
           return {
             hasGap: true,
             gaps: [
