@@ -243,6 +243,17 @@ const formatTime = (timeStr) => {
   return timeStr.substring(0, 5); // Extract HH:MM part
 };
 
+// Helper function to format time range
+function formatTimeRange(startTime, endTime) {
+  if (!startTime || !endTime) return '';
+  
+  // Format times (assumes HH:MM format)
+  const startFormatted = formatTime(startTime);
+  const endFormatted = formatTime(endTime);
+  
+  return `${startFormatted} - ${endFormatted}`;
+}
+
 // Forward events from modal to parent
 const handleUpdate = (assignmentId, updates) => {
   emit('update', assignmentId, updates);
