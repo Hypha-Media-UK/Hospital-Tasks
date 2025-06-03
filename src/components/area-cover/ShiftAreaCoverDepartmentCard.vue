@@ -5,8 +5,13 @@
     @click="showEditModal = true"
   >
     <div class="department-card__content">
-      <div class="department-card__name">
-        {{ assignment.department.name }}
+      <div class="department-card__header">
+        <div class="department-card__name">
+          {{ assignment.department.name }}
+        </div>
+        <div class="department-card__time">
+          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+        </div>
       </div>
       <div class="department-card__building">
         {{ assignment.department.building?.name || 'Unknown Building' }}
@@ -292,10 +297,17 @@ const handleRemove = (assignmentId) => {
     padding: 12px 16px;
   }
   
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  
   &__name {
     font-weight: 600;
     font-size: mix.font-size('md');
-    margin-bottom: 4px;
   }
   
   &__building {
@@ -483,6 +495,14 @@ const handleRemove = (assignmentId) => {
       font-weight: 500;
       text-align: center;
     }
+  }
+  
+  &__time {
+    font-size: mix.font-size('sm');
+    color: rgba(0, 0, 0, 0.7);
+    padding: 2px 6px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: mix.radius('sm');
   }
 }
 </style>

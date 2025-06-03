@@ -5,11 +5,13 @@
     @click="showEditModal = true"
   >
     <div class="department-card__content">
-      <div class="department-card__name">
-        {{ assignment.department.name }}
-      </div>
-      <div class="department-card__time">
-        {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+      <div class="department-card__header">
+        <div class="department-card__name">
+          {{ assignment.department.name }}
+        </div>
+        <div class="department-card__time">
+          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+        </div>
       </div>
       
       <div class="department-card__porters">
@@ -330,10 +332,17 @@ const handleRemove = (assignmentId) => {
     min-height: 80px;
   }
   
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+  
   &__name {
     font-weight: 600;
     font-size: mix.font-size('md');
-    margin-bottom: 4px;
   }
   
   &__footer {
