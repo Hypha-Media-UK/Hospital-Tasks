@@ -136,17 +136,23 @@ const availablePorters = computed(() => {
   // Get all porters
   const allPorters = staffStore.porters.filter(p => p.role === 'porter' || p.role === 'runner');
   
-  // If editing, make sure current porter is included
+  // Get current date for absence check
+  const today = new Date();
+  
+  // Filter out absent porters
+  const nonAbsentPorters = allPorters.filter(porter => !staffStore.isPorterAbsent(porter.id, today));
+  
+  // If editing, make sure current porter is included even if absent
   if (editingPorterAssignment.value && porterForm.value.porterId) {
     const currentPorter = staffStore.porters.find(p => p.id === porterForm.value.porterId);
-    const alreadyInList = allPorters.some(p => p.id === porterForm.value.porterId);
+    const alreadyInList = nonAbsentPorters.some(p => p.id === porterForm.value.porterId);
     
     if (currentPorter && !alreadyInList) {
-      return [...allPorters, currentPorter];
+      return [...nonAbsentPorters, currentPorter];
     }
   }
   
-  return allPorters;
+  return nonAbsentPorters;
 });
 
 // Get the absence for the current porter

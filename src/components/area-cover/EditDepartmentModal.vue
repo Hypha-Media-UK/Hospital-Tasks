@@ -315,7 +315,23 @@ const availablePorters = computed(() => {
   
   // Filter out porters that are already in our local assignments
   const assignedPorterIds = localPorterAssignments.value.map(pa => pa.porter_id);
-  return allPorters.filter(porter => !assignedPorterIds.includes(porter.id));
+  
+  // Get current date for absence check
+  const today = new Date();
+  
+  return allPorters.filter(porter => {
+    // Filter out porters that are already assigned
+    if (assignedPorterIds.includes(porter.id)) {
+      return false;
+    }
+    
+    // Filter out porters that are absent
+    if (staffStore.isPorterAbsent(porter.id, today)) {
+      return false;
+    }
+    
+    return true;
+  });
 });
 
 // Check for coverage gaps with local data

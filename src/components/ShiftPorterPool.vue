@@ -17,8 +17,16 @@
     <div v-else class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card">
         <div class="porter-card__content">
-          <div class="porter-card__name" :class="{ 'assigned': getPorterAssignments(entry.porter_id).length > 0 }">
+          <div class="porter-card__name" 
+               :class="{ 
+                 'assigned': getPorterAssignments(entry.porter_id).length > 0,
+                 'porter-absent': isPorterAbsent(entry.porter_id),
+                 'porter-illness': getPorterAbsenceType(entry.porter_id) === 'illness',
+                 'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave'
+               }">
             {{ entry.porter.first_name }} {{ entry.porter.last_name }}
+            <span v-if="getPorterAbsenceType(entry.porter_id) === 'illness'" class="absence-badge illness">ILL</span>
+            <span v-if="getPorterAbsenceType(entry.porter_id) === 'annual_leave'" class="absence-badge annual-leave">AL</span>
           </div>
           
           <div class="porter-card__assignments">
@@ -62,7 +70,7 @@
         
         <div class="modal-body">
           <div v-if="availablePorters.length === 0" class="empty-state">
-            No porters available to add. All porters are already assigned to this shift or are assigned to departments in settings.
+            No porters available to add. All porters are already assigned to this shift, are absent, or are assigned to departments in settings.
           </div>
           
           <div v-else class="porter-selector">
@@ -210,8 +218,21 @@ const availablePorters = computed(() => {
   // Combine all excluded porter IDs
   const excludedPorterIds = [...new Set([...poolPorterIds, ...departmentPorterIds, ...shiftDepartmentPorterIds, ...shiftServicePorterIds])];
   
-  // Return porters not in the excluded list
-  return allPorters.filter(p => !excludedPorterIds.includes(p.id));
+  // Filter out porters who are absent
+  const today = new Date();
+  return allPorters.filter(p => {
+    // First check if porter is in excluded list
+    if (excludedPorterIds.includes(p.id)) {
+      return false;
+    }
+    
+    // Then check if porter is absent
+    if (staffStore.isPorterAbsent(p.id, today)) {
+      return false;
+    }
+    
+    return true;
+  });
 });
 
 // Check if all porters are selected
@@ -219,6 +240,19 @@ const isAllSelected = computed(() => {
   return availablePorters.value.length > 0 && 
          selectedPorters.value.length === availablePorters.value.length;
 });
+
+// Check if a porter is absent
+const isPorterAbsent = (porterId) => {
+  const today = new Date();
+  return staffStore.isPorterAbsent(porterId, today);
+};
+
+// Get the absence type for a porter (illness or annual_leave)
+const getPorterAbsenceType = (porterId) => {
+  const today = new Date();
+  const absence = staffStore.getPorterAbsenceDetails(porterId, today);
+  return absence ? absence.absence_type : null;
+};
 
 // Methods
 const addPorter = async (porterId) => {
@@ -451,9 +485,50 @@ onMounted(async () => {
   &__name {
     font-weight: 600;
     margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     
     &.assigned {
       color: rgba(0, 0, 0, 0.4); /* Lighter gray for assigned porters */
+    }
+    
+    // Absence styling
+    &.porter-absent {
+      opacity: 0.9;
+    }
+    
+    &.porter-illness {
+      color: #d32f2f;
+      background-color: rgba(234, 67, 53, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
+    &.porter-annual-leave {
+      color: #f57c00;
+      background-color: rgba(251, 192, 45, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
+    .absence-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 3px;
+      margin-left: 5px;
+      
+      &.illness {
+        background-color: #d32f2f;
+        color: white;
+      }
+      
+      &.annual-leave {
+        background-color: #f57c00;
+        color: white;
+      }
     }
   }
   

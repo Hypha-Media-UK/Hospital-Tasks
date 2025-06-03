@@ -173,15 +173,41 @@
               class="staff-item"
             >
                 <div class="staff-item__content">
-                  <div class="staff-item__name">
+                  <div 
+                    class="staff-item__name" 
+                    :class="{
+                      'porter-absent': staffStore.getPorterAbsenceDetails(porter.id, new Date()),
+                      'porter-illness': staffStore.getPorterAbsenceDetails(porter.id, new Date())?.absence_type === 'illness',
+                      'porter-annual-leave': staffStore.getPorterAbsenceDetails(porter.id, new Date())?.absence_type === 'annual_leave'
+                    }"
+                    @click="openAbsenceModal(porter.id)"
+                  >
                     <span 
                       class="porter-type-dot"
                       :class="{ 'porter-type-dot--shift': porter.porter_type === 'shift', 'porter-type-dot--relief': porter.porter_type === 'relief' }"
                     ></span>
                     {{ porter.first_name }} {{ porter.last_name }}
+                    <span v-if="staffStore.getPorterAbsenceDetails(porter.id, new Date())?.absence_type === 'illness'" 
+                          class="absence-badge illness">ILL</span>
+                    <span v-if="staffStore.getPorterAbsenceDetails(porter.id, new Date())?.absence_type === 'annual_leave'" 
+                          class="absence-badge annual-leave">AL</span>
                   </div>
                   <div class="staff-item__department">
                     {{ staffStore.formatAvailability(porter) }}
+                    
+                    <!-- Department and service assignments -->
+                    <div v-if="getPorterAssignments(porter.id).length > 0" class="porter-assignments">
+                      <div v-for="(assignment, index) in getPorterAssignments(porter.id)" 
+                           :key="index" 
+                           class="porter-assignment">
+                        <span class="department-name" :style="{ color: assignment.color }">
+                          {{ assignment.name }}
+                        </span>
+                        <span class="assignment-details">
+                          | {{ assignment.pattern }} ({{ assignment.startTime }}-{{ assignment.endTime }})
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               
@@ -359,17 +385,33 @@
     <div class="info-message">
       <p>Note: Porter department assignments are now managed in the Area Support tab, where you can also specify time ranges and coverage.</p>
     </div>
+    
+    <!-- Porter Absence Modal -->
+    <Teleport to="body">
+      <PorterAbsenceModal
+        v-if="showAbsenceModal && selectedPorterId"
+        :porter-id="selectedPorterId"
+        :absence="currentPorterAbsence"
+        @close="showAbsenceModal = false"
+        @save="handleAbsenceSave"
+      />
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useStaffStore } from '../../../stores/staffStore';
+import { useAreaCoverStore } from '../../../stores/areaCoverStore';
+import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import IconButton from '../../IconButton.vue';
 import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
+import PorterAbsenceModal from '../../PorterAbsenceModal.vue';
 
 const staffStore = useStaffStore();
+const areaCoverStore = useAreaCoverStore();
+const supportServicesStore = useSupportServicesStore();
 
 // Tab state
 const activeTab = ref('porters');
@@ -381,6 +423,9 @@ const showEditSupervisorForm = ref(false);
 const showAddPorterForm = ref(false);
 const showEditPorterForm = ref(false);
 const hideContractedHours = ref(false);
+const showAbsenceModal = ref(false);
+const selectedPorterId = ref(null);
+const currentPorterAbsence = ref(null);
 const staffForm = ref({
   id: null,
   firstName: '',
@@ -395,7 +440,75 @@ const staffForm = ref({
 // Initialize data
 onMounted(async () => {
   await staffStore.initialize();
+  await areaCoverStore.initialize();
+  await supportServicesStore.initialize();
 });
+
+// Get area assignments for a porter
+const getPorterAreaAssignments = (porterId) => {
+  const assignments = [];
+  
+  // Check all area assignments for this porter
+  for (const assignment of areaCoverStore.areaAssignments) {
+    const porterAssignments = areaCoverStore.getPorterAssignmentsByAreaId(assignment.id)
+      .filter(pa => pa.porter_id === porterId);
+    
+    if (porterAssignments.length > 0) {
+      for (const pa of porterAssignments) {
+        assignments.push({
+          type: 'area',
+          name: assignment.department.name,
+          color: assignment.color,
+          pattern: assignment.shift_type === 'week_day' ? 'Weekdays - Days' :
+                  assignment.shift_type === 'week_night' ? 'Weekdays - Nights' :
+                  assignment.shift_type === 'weekend_day' ? 'Weekends - Days' :
+                  assignment.shift_type === 'weekend_night' ? 'Weekends - Nights' : '',
+          startTime: pa.start_time ? pa.start_time.substring(0, 5) : '',
+          endTime: pa.end_time ? pa.end_time.substring(0, 5) : ''
+        });
+      }
+    }
+  }
+  
+  return assignments;
+};
+
+// Get service assignments for a porter
+const getPorterServiceAssignments = (porterId) => {
+  const assignments = [];
+  
+  // Check all service assignments for this porter
+  for (const assignment of supportServicesStore.serviceAssignments) {
+    const porterAssignments = supportServicesStore.getPorterAssignmentsByServiceId(assignment.id)
+      .filter(pa => pa.porter_id === porterId);
+    
+    if (porterAssignments.length > 0) {
+      for (const pa of porterAssignments) {
+        assignments.push({
+          type: 'service',
+          name: assignment.service.name,
+          color: assignment.color,
+          pattern: assignment.shift_type === 'week_day' ? 'Weekdays - Days' :
+                  assignment.shift_type === 'week_night' ? 'Weekdays - Nights' :
+                  assignment.shift_type === 'weekend_day' ? 'Weekends - Days' :
+                  assignment.shift_type === 'weekend_night' ? 'Weekends - Nights' : '',
+          startTime: pa.start_time ? pa.start_time.substring(0, 5) : '',
+          endTime: pa.end_time ? pa.end_time.substring(0, 5) : ''
+        });
+      }
+    }
+  }
+  
+  return assignments;
+};
+
+// Get all assignments (area and service) for a porter
+const getPorterAssignments = (porterId) => {
+  const areaAssignments = getPorterAreaAssignments(porterId);
+  const serviceAssignments = getPorterServiceAssignments(porterId);
+  
+  return [...areaAssignments, ...serviceAssignments];
+};
 
 // Staff form methods
 const editSupervisor = (supervisor) => {
@@ -518,6 +631,22 @@ const onSearchInput = () => {
 const clearSearch = () => {
   searchQuery.value = '';
   staffStore.setSearchQuery('');
+};
+
+// Open absence modal for a specific porter
+const openAbsenceModal = (porterId) => {
+  if (!porterId) return;
+  
+  selectedPorterId.value = porterId;
+  const today = new Date();
+  currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterId, today);
+  showAbsenceModal.value = true;
+};
+
+// Handle absence save
+const handleAbsenceSave = () => {
+  // Refresh the absence data
+  currentPorterAbsence.value = null;
 };
 </script>
 
@@ -709,6 +838,43 @@ const clearSearch = () => {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 3px;
+    border-radius: mix.radius('sm');
+    cursor: pointer;
+    
+    // Absence indicators
+    &.porter-absent {
+      opacity: 0.9;
+    }
+    
+    &.porter-illness {
+      color: #d32f2f;
+      background-color: rgba(234, 67, 53, 0.1);
+    }
+    
+    &.porter-annual-leave {
+      color: #f57c00;
+      background-color: rgba(251, 192, 45, 0.1);
+    }
+    
+    .absence-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 3px;
+      margin-left: 5px;
+      
+      &.illness {
+        background-color: #d32f2f;
+        color: white;
+      }
+      
+      &.annual-leave {
+        background-color: #f57c00;
+        color: white;
+      }
+    }
     
     .porter-type-dot {
       width: 10px;
@@ -730,6 +896,29 @@ const clearSearch = () => {
   &__department {
     font-size: mix.font-size('sm');
     color: rgba(0, 0, 0, 0.6);
+    
+    .porter-assignments {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      
+      .porter-assignment {
+        font-size: mix.font-size('xs');
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        
+        .department-name {
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        
+        .assignment-details {
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+    }
   }
   
   &__actions {
