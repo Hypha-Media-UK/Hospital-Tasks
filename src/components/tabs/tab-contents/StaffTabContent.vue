@@ -368,20 +368,24 @@
             
             <div v-else class="form-group">
               <label for="contractedHoursStart">Contracted Hours</label>
-              <div class="time-range">
-                <input 
-                  type="time" 
-                  id="contractedHoursStart" 
-                  v-model="staffForm.contractedHoursStart"
-                  class="time-input"
-                />
+              <div class="form-row time-row">
+                <div class="form-group form-group--half">
+                  <input 
+                    type="time" 
+                    id="contractedHoursStart" 
+                    v-model="staffForm.contractedHoursStart"
+                    class="form-control"
+                  />
+                </div>
                 <span class="time-separator">to</span>
-                <input 
-                  type="time" 
-                  id="contractedHoursEnd" 
-                  v-model="staffForm.contractedHoursEnd"
-                  class="time-input"
-                />
+                <div class="form-group form-group--half">
+                  <input 
+                    type="time" 
+                    id="contractedHoursEnd" 
+                    v-model="staffForm.contractedHoursEnd"
+                    class="form-control"
+                  />
+                </div>
               </div>
             </div>
             
@@ -1267,6 +1271,16 @@ const confirmDeleteAbsence = async () => {
   flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 16px;
+  
+  &.time-row {
+    align-items: center;
+    
+    .time-separator {
+      margin-top: -8px;
+      color: rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+    }
+  }
 }
 
 .form-group {
