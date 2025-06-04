@@ -9,24 +9,26 @@
       </div>
       
       <div class="modal-body">
-        <div class="form-group">
-          <label for="start-time">Start Time</label>
-          <input 
-            type="time"
-            id="start-time"
-            v-model="formData.startTime"
-            class="form-control"
-          />
-        </div>
-        
-        <div class="form-group">
-          <label for="end-time">End Time</label>
-          <input 
-            type="time"
-            id="end-time"
-            v-model="formData.endTime"
-            class="form-control"
-          />
+        <div class="time-range-container">
+          <div class="form-group">
+            <label for="start-time">Start Time</label>
+            <input 
+              type="time"
+              id="start-time"
+              v-model="formData.startTime"
+              class="form-control"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label for="end-time">End Time</label>
+            <input 
+              type="time"
+              id="end-time"
+              v-model="formData.endTime"
+              class="form-control"
+            />
+          </div>
         </div>
         
         <!-- Minimum Porter Count by Day -->
@@ -203,24 +205,26 @@
             </select>
           </div>
           
-          <div class="form-group">
-            <label for="porter-start-time">Start Time</label>
-            <input 
-              type="time"
-              id="porter-start-time"
-              v-model="porterForm.startTime"
-              class="form-control"
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="porter-end-time">End Time</label>
-            <input 
-              type="time"
-              id="porter-end-time"
-              v-model="porterForm.endTime"
-              class="form-control"
-            />
+          <div class="time-range-container">
+            <div class="form-group">
+              <label for="porter-start-time">Start Time</label>
+              <input 
+                type="time"
+                id="porter-start-time"
+                v-model="porterForm.startTime"
+                class="form-control"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="porter-end-time">End Time</label>
+              <input 
+                type="time"
+                id="porter-end-time"
+                v-model="porterForm.endTime"
+                class="form-control"
+              />
+            </div>
           </div>
         </div>
         
@@ -630,6 +634,16 @@ watch(showAddPorterModal, (newValue) => {
   padding: 16px;
   overflow-y: auto;
   flex: 1;
+}
+
+.time-range-container {
+  display: flex;
+  gap: 16px;
+  
+  .form-group {
+    flex: 1;
+    margin-bottom: 16px;
+  }
 }
 
 // Minimum porter settings
