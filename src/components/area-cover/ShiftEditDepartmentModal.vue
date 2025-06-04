@@ -126,6 +126,25 @@
           <button @click="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2">
             Add Porter
           </button>
+          
+          <!-- Coverage Status -->
+          <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap || hasStaffingShortage }">
+            <div class="status-icon">{{ hasCoverageGap || hasStaffingShortage ? '⚠️' : '✅' }}</div>
+            <div class="status-text">
+              <span v-if="hasCoverageGap && hasStaffingShortage">
+                Coverage gap and staffing shortage detected!
+              </span>
+              <span v-else-if="hasCoverageGap">
+                Coverage gap detected! Some time slots are not covered.
+              </span>
+              <span v-else-if="hasStaffingShortage">
+                Staffing shortage detected! Below minimum porter requirement.
+              </span>
+              <span v-else>
+                Full coverage for this department.
+              </span>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -361,6 +380,16 @@ onMounted(async () => {
 // Computed properties
 const porterAssignments = computed(() => {
   return shiftsStore.getPorterAssignmentsByAreaId(props.assignment.id);
+});
+
+// Check if there's a coverage gap
+const hasCoverageGap = computed(() => {
+  return shiftsStore.hasAreaCoverageGap(props.assignment.id);
+});
+
+// Check if there's a staffing shortage
+const hasStaffingShortage = computed(() => {
+  return shiftsStore.hasAreaStaffingShortage?.(props.assignment.id) || false;
 });
 
 const availablePorters = computed(() => {
@@ -806,6 +835,24 @@ watch(showAddPorterModal, (newValue) => {
   color: rgba(0, 0, 0, 0.6);
   background-color: rgba(0, 0, 0, 0.02);
   border-radius: mix.radius('md');
+}
+
+.coverage-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: mix.radius('md');
+  margin-top: 16px;
+  background-color: rgba(52, 168, 83, 0.1);
+  
+  &.has-gap {
+    background-color: rgba(234, 67, 53, 0.1);
+  }
+  
+  .status-text {
+    font-weight: 500;
+  }
 }
 
 .btn {

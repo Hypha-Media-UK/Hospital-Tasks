@@ -131,10 +131,21 @@
           </button>
           
           <!-- Coverage Status -->
-          <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap }">
-            <div class="status-icon">{{ hasCoverageGap ? '⚠️' : '✅' }}</div>
+          <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap || hasStaffingShortage }">
+            <div class="status-icon">{{ hasCoverageGap || hasStaffingShortage ? '⚠️' : '✅' }}</div>
             <div class="status-text">
-              {{ hasCoverageGap ? 'Coverage gap detected! Some time slots are not covered.' : 'Full coverage for this service.' }}
+              <span v-if="hasCoverageGap && hasStaffingShortage">
+                Coverage gap and staffing shortage detected!
+              </span>
+              <span v-else-if="hasCoverageGap">
+                Coverage gap detected! Some time slots are not covered.
+              </span>
+              <span v-else-if="hasStaffingShortage">
+                Staffing shortage detected! Below minimum porter requirement.
+              </span>
+              <span v-else>
+                Full coverage for this service.
+              </span>
             </div>
           </div>
         </div>
@@ -327,6 +338,11 @@ const porterAssignments = computed(() => {
 // Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
   return shiftsStore.hasServiceCoverageGap(props.assignment.id);
+});
+
+// Check if there's a staffing shortage
+const hasStaffingShortage = computed(() => {
+  return shiftsStore.hasServiceStaffingShortage?.(props.assignment.id) || false;
 });
 
 // Get available porters for assignment
