@@ -381,9 +381,16 @@ const handleRemove = (assignmentId) => {
 
   &__porters {
     margin-top: 8px;
+    position: relative;
+    padding-bottom: 36px; /* Add space for the absolutely positioned porter count */
     
     .porter-count-wrapper {
-      margin-top: 12px;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin-top: 0;
+      padding-top: 12px;
     }
     
     .porter-count {
