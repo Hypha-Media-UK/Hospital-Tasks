@@ -378,12 +378,7 @@ const handleRemove = (assignmentId) => {
     border-radius: mix.radius('sm');
   }
   
-  &__description {
-    font-size: mix.font-size('sm');
-    color: rgba(0, 0, 0, 0.6);
-    margin-bottom: 8px;
-  }
-  
+
   &__porters {
     margin-top: 8px;
     

@@ -13,9 +13,6 @@
           {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
         </div>
       </div>
-      <div class="department-card__building">
-        {{ assignment.department.building?.name || 'Unknown Building' }}
-      </div>
       
       <div class="department-card__porters">
         <div class="porter-count-wrapper">
@@ -318,12 +315,7 @@ const handleRemove = (assignmentId) => {
     font-size: mix.font-size('md');
   }
   
-  &__building {
-    font-size: mix.font-size('sm');
-    color: rgba(0, 0, 0, 0.6);
-    margin-bottom: 8px;
-  }
-  
+
   &__porters {
     margin-top: 8px;
     
