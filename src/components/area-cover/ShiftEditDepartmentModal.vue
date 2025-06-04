@@ -112,14 +112,14 @@
                   class="btn btn--icon"
                   title="Edit porter assignment"
                 >
-                  <span class="icon">✏️</span>
+                  <EditIcon />
                 </button>
                 <button 
                   @click="removePorterAssignment(assignment.id)"
                   class="btn btn--icon btn--danger"
                   title="Remove porter assignment"
                 >
-                  <span class="icon">🗑️</span>
+                  <TrashIcon />
                 </button>
               </div>
             </div>
@@ -131,24 +131,7 @@
             </button>
           </div>
           
-          <!-- Coverage Status -->
-          <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap || hasStaffingShortage }">
-            <div class="status-icon">{{ hasCoverageGap || hasStaffingShortage ? '⚠️' : '✅' }}</div>
-            <div class="status-text">
-              <span v-if="hasCoverageGap && hasStaffingShortage">
-                Coverage gap and staffing shortage detected!
-              </span>
-              <span v-else-if="hasCoverageGap">
-                Coverage gap detected! Some time slots are not covered.
-              </span>
-              <span v-else-if="hasStaffingShortage">
-                Staffing shortage detected! Below minimum porter requirement.
-              </span>
-              <span v-else>
-                Full coverage for this department.
-              </span>
-            </div>
-          </div>
+          <!-- Coverage Status removed as requested -->
         </div>
       </div>
       
@@ -266,6 +249,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
+import EditIcon from '../icons/EditIcon.vue';
+import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
   assignment: {
@@ -804,7 +789,7 @@ watch(showAddPorterModal, (newValue) => {
   
   .porter-name {
     font-weight: 500;
-    font-size: mix.font-size('xs');
+    font-size: mix.font-size('sm');
     cursor: pointer;
     position: relative;
     display: inline-block;
@@ -892,6 +877,11 @@ watch(showAddPorterModal, (newValue) => {
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
+  
+  /* Make SVG icons black */
+  :deep(svg) {
+    color: #000;
+  }
   
   &--primary {
     background-color: mix.color('primary');
