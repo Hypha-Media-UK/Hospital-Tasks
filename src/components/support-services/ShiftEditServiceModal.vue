@@ -2,15 +2,13 @@
   <div class="modal-overlay" @click.stop="$emit('close')">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">Edit Service Assignment</h3>
+        <h3 class="modal-title">
+          Edit {{ assignment.service.name }} Coverage
+        </h3>
         <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
       
       <div class="modal-body">
-        <div class="form-group">
-          <label>Service Name</label>
-          <div class="static-field">{{ assignment.service.name }}</div>
-        </div>
         
         <div class="form-group">
           <label for="edit-start-time">Start Time</label>
@@ -116,7 +114,7 @@
             </div>
           </div>
           
-          <button @click.stop="showAddPorterModal = true" class="btn btn-primary btn-sm mt-2">
+          <button @click.stop="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2">
             Add Porter
           </button>
           
@@ -131,29 +129,25 @@
       </div>
       
       <div class="modal-footer">
-        <div class="modal-footer-left">
-          <button 
-            class="btn btn-danger" 
-            @click.stop="confirmDelete"
-          >
-            Remove Service
-          </button>
-        </div>
-        <div class="modal-footer-right">
-          <button 
-            @click.stop="$emit('close')" 
-            class="btn btn-secondary"
-          >
-            Cancel
-          </button>
-          <button 
-            @click.stop="saveChanges" 
-            class="btn btn-primary"
-            :disabled="saving || !isFormValid"
-          >
-            {{ saving ? 'Saving...' : 'Save Changes' }}
-          </button>
-        </div>
+        <button 
+          @click.stop="saveChanges" 
+          class="btn btn--primary"
+          :disabled="saving || !isFormValid"
+        >
+          {{ saving ? 'Saving...' : 'Save Changes' }}
+        </button>
+        <button 
+          @click.stop="$emit('close')" 
+          class="btn btn--secondary"
+        >
+          Cancel
+        </button>
+        <button 
+          @click.stop="confirmDelete" 
+          class="btn btn--danger ml-auto"
+        >
+          Remove Service
+        </button>
       </div>
     </div>
     <!-- Add/Edit Porter Modal -->
@@ -209,16 +203,16 @@
         
         <div class="modal-footer">
           <button 
-            @click.stop="savePorterAssignment" 
-            class="btn btn-primary"
-            :disabled="!canSavePorter || savingPorter"
+          @click.stop="savePorterAssignment" 
+          class="btn btn--primary"
+          :disabled="!canSavePorter || savingPorter"
           >
             {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
           </button>
           <button 
-            @click.stop="closePorterModal" 
-            class="btn btn-secondary"
-            :disabled="savingPorter"
+          @click.stop="closePorterModal" 
+          class="btn btn--secondary"
+          :disabled="savingPorter"
           >
             Cancel
           </button>
@@ -807,34 +801,34 @@ watch(showAddPorterModal, (newValue) => {
   border: none;
   transition: all 0.2s ease;
   
-  &.btn-primary {
+  &--primary {
     background-color: mix.color('primary');
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(mix.color('primary'), $lightness: -10%);
+      background-color: rgba(66, 133, 244, 0.8);
     }
   }
   
-  &.btn-secondary {
+  &--secondary {
     background-color: #f1f1f1;
     color: mix.color('text');
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#f1f1f1, $lightness: -5%);
+      background-color: #e5e5e5;
     }
   }
   
-  &.btn-danger {
-    background-color: #dc3545;
+  &--danger {
+    background-color: #EA4335;
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#dc3545, $lightness: -10%);
+      background-color: color.scale(#EA4335, $lightness: -10%);
     }
   }
   
-  &.btn-sm {
+  &--sm {
     padding: 6px 12px;
     font-size: mix.font-size('sm');
   }

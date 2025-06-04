@@ -2,7 +2,9 @@
   <div class="modal-overlay" @click.stop="closeModal">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">Edit {{ props.service.name }}</h3>
+        <h3 class="modal-title">
+          Edit {{ props.service.name }} Coverage
+        </h3>
         <button class="modal-close" @click.stop="closeModal">&times;</button>
       </div>
       
@@ -203,29 +205,25 @@
       </div>
       
       <div class="modal-footer">
-        <div class="modal-footer-left">
-          <button 
-            class="btn btn--danger" 
-            @click.stop="confirmDelete"
-          >
-            Delete Service
-          </button>
-        </div>
-        <div class="modal-footer-right">
-          <button 
-            class="btn btn--secondary" 
-            @click.stop="closeModal"
-          >
-            Cancel
-          </button>
-          <button 
-            class="btn btn--primary" 
-            @click.stop="saveAllChanges"
-            :disabled="!localName.trim()"
-          >
-            Update
-          </button>
-        </div>
+        <button 
+          class="btn btn--primary" 
+          @click.stop="saveAllChanges"
+          :disabled="!localName.trim()"
+        >
+          Update
+        </button>
+        <button 
+          class="btn btn--secondary" 
+          @click.stop="closeModal"
+        >
+          Cancel
+        </button>
+        <button 
+          class="btn btn--danger ml-auto" 
+          @click.stop="confirmDelete"
+        >
+          Delete Service
+        </button>
       </div>
     </div>
   </div>
@@ -646,16 +644,12 @@ onMounted(async () => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: space-between;
-  
-  &-left {
-    // Left side of footer
-  }
-  
-  &-right {
-    display: flex;
-    gap: 12px;
-  }
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.ml-auto {
+  margin-left: auto;
 }
 
 // Section title
