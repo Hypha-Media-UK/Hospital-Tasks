@@ -128,9 +128,11 @@
             </div>
           </div>
           
-          <button @click.stop="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2">
-            Add Porter
-          </button>
+          <div class="button-container">
+            <button @click.stop="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2 ml-auto">
+              Add Porter
+            </button>
+          </div>
           
           <!-- Coverage Status -->
           <div class="coverage-status" :class="{ 'has-gap': hasCoverageGap || hasStaffingShortage }">
@@ -155,11 +157,10 @@
       
       <div class="modal-footer">
         <button 
-          @click.stop="saveChanges" 
-          class="btn btn--primary"
-          :disabled="saving || !isFormValid"
+          @click.stop="confirmDelete" 
+          class="btn btn--danger"
         >
-          {{ saving ? 'Saving...' : 'Save Changes' }}
+          Remove Service
         </button>
         <button 
           @click.stop="$emit('close')" 
@@ -168,10 +169,11 @@
           Cancel
         </button>
         <button 
-          @click.stop="confirmDelete" 
-          class="btn btn--danger ml-auto"
+          @click.stop="saveChanges" 
+          class="btn btn--primary ml-auto"
+          :disabled="saving || !isFormValid"
         >
-          Remove Service
+          {{ saving ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>
     </div>
@@ -805,6 +807,12 @@ watch(showAddPorterModal, (newValue) => {
   margin-bottom: 16px;
 }
 
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
 .porter-item {
   display: flex;
   justify-content: space-between;
@@ -819,8 +827,13 @@ watch(showAddPorterModal, (newValue) => {
 }
 
 .porter-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
   .porter-name {
     font-weight: 500;
+    font-size: mix.font-size('xs');
     cursor: pointer;
     position: relative;
     display: inline-block;
@@ -864,6 +877,9 @@ watch(showAddPorterModal, (newValue) => {
   .porter-time {
     font-size: mix.font-size('sm');
     color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: mix.radius('sm');
   }
 }
 
