@@ -15,19 +15,6 @@
       </div>
       
       <div class="service-card__porters">
-        <div class="porter-count-wrapper">
-          <span class="porter-count" 
-                :class="{ 
-                  'no-porters': porterAssignments.length === 0 || availablePorters.length === 0,
-                  'coverage-gap': hasCoverageGap
-                }">
-            {{ availablePorters.length }} {{ availablePorters.length === 1 ? 'Porter' : 'Porters' }}
-            <span v-if="absentPorters.length > 0" class="absent-count">
-              ({{ absentPorters.length }} absent)
-            </span>
-          </span>
-        </div>
-        
         <!-- Gap at start if first porter starts after service start time -->
         <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line gap-line--start">
           <div class="gap-line-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(sortedPorterAssignments[0].start_time) }}</div>
@@ -70,6 +57,19 @@
         <!-- Absent porters are now shown directly in the porter assignments list above -->
         
         <!-- Coverage warning removed as requested -->
+        
+        <div class="porter-count-wrapper">
+          <span class="porter-count" 
+                :class="{ 
+                  'no-porters': porterAssignments.length === 0 || availablePorters.length === 0,
+                  'coverage-gap': hasCoverageGap
+                }">
+            {{ availablePorters.length }} {{ availablePorters.length === 1 ? 'Porter' : 'Porters' }}
+            <span v-if="absentPorters.length > 0" class="absent-count">
+              ({{ absentPorters.length }} absent)
+            </span>
+          </span>
+        </div>
       </div>
     </div>
     
@@ -383,7 +383,7 @@ const handleRemove = (assignmentId) => {
     margin-top: 8px;
     
     .porter-count-wrapper {
-      margin-bottom: 10px;
+      margin-top: 12px;
     }
     
     .porter-count {
