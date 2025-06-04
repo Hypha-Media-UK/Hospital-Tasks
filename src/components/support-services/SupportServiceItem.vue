@@ -441,12 +441,18 @@ const handleRemove = (assignmentId) => {
       }
       
       .gap-line-time {
-        font-size: mix.font-size('2xs');
+        position: absolute;
+        top: -12px;
+        right: 0;
+        font-size: mix.font-size('3xs');
         color: rgba(0, 0, 0, 0.5);
         padding: 2px 6px;
-        background-color: rgba(234, 67, 53, 0.05);
+        background-color: white;
+        border: 1px solid rgba(234, 67, 53, 0.3);
         border-radius: mix.radius('sm');
         display: inline-block;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        z-index: 5;
       }
     }
     
@@ -466,14 +472,20 @@ const handleRemove = (assignmentId) => {
     /* Direct styling for the time text in start/end gap lines */
     .gap-line--start .gap-line-time, 
     .gap-line--end .gap-line-time {
-      font-size: 0.75rem !important; /* Explicit small font size */
+      position: absolute !important;
+      top: -12px !important;
+      right: 0 !important;
+      font-size: 0.7rem !important;
       font-weight: normal !important;
       line-height: 1.2 !important;
       color: rgba(0, 0, 0, 0.5) !important;
       padding: 2px 6px !important;
-      background-color: rgba(234, 67, 53, 0.05) !important;
+      background-color: white !important;
+      border: 1px solid rgba(234, 67, 53, 0.3) !important;
       border-radius: 4px !important;
       display: inline-block !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+      z-index: 5 !important;
     }
     
     .porter-assignments {
