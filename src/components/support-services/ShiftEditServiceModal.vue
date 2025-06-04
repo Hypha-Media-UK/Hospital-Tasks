@@ -87,8 +87,20 @@
               class="porter-item"
             >
               <div class="porter-info">
-                <div class="porter-name">
+                <div 
+                  class="porter-name" 
+                  :class="{
+                    'porter-absent': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date()),
+                    'porter-illness': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness',
+                    'porter-annual-leave': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'
+                  }"
+                  @click="openAbsenceModal(assignment.porter_id)"
+                >
                   {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+                  <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness'" 
+                        class="absence-badge illness">ILL</span>
+                  <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'" 
+                        class="absence-badge annual-leave">AL</span>
                 </div>
                 <div class="porter-time">
                   {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
@@ -203,16 +215,16 @@
         
         <div class="modal-footer">
           <button 
-          @click.stop="savePorterAssignment" 
-          class="btn btn--primary"
-          :disabled="!canSavePorter || savingPorter"
+            @click.stop="savePorterAssignment" 
+            class="btn btn--primary"
+            :disabled="!canSavePorter || savingPorter"
           >
             {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
           </button>
           <button 
-          @click.stop="closePorterModal" 
-          class="btn btn--secondary"
-          :disabled="savingPorter"
+            @click.stop="closePorterModal" 
+            class="btn btn--secondary"
+            :disabled="savingPorter"
           >
             Cancel
           </button>
@@ -220,12 +232,22 @@
       </div>
     </div>
   </div>
+  <Teleport to="body">
+    <PorterAbsenceModal
+      v-if="showAbsenceModal && selectedPorterId"
+      :porter-id="selectedPorterId"
+      :absence="currentPorterAbsence"
+      @close="showAbsenceModal = false"
+      @save="handleAbsenceSave"
+    ></PorterAbsenceModal>
+  </Teleport>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
+import PorterAbsenceModal from '../PorterAbsenceModal.vue';
 
 const props = defineProps({
   assignment: {
@@ -281,6 +303,9 @@ const showAddPorterModal = ref(false);
 const editingPorterAssignment = ref(false);
 const editingPorterAssignmentId = ref(null);
 const savingPorter = ref(false);
+const showAbsenceModal = ref(false);
+const selectedPorterId = ref(null);
+const currentPorterAbsence = ref(null);
 
 // Form data for porter assignment
 const porterForm = ref({
@@ -488,6 +513,22 @@ async function removePorterAssignment(assignmentId) {
 function formatTime(timeStr) {
   if (!timeStr) return '';
   return timeStr.substring(0, 5); // Extract HH:MM from HH:MM:SS
+}
+
+// Open absence modal for a specific porter
+function openAbsenceModal(porterId) {
+  if (!porterId) return;
+  
+  selectedPorterId.value = porterId;
+  const today = new Date();
+  currentPorterAbsence.value = staffStore.getPorterAbsenceDetails(porterId, today);
+  showAbsenceModal.value = true;
+}
+
+// Handle absence save
+function handleAbsenceSave() {
+  // Refresh the absence data
+  currentPorterAbsence.value = null;
 }
 
 // Watch for "Add Porter" button click
@@ -750,6 +791,44 @@ watch(showAddPorterModal, (newValue) => {
 .porter-info {
   .porter-name {
     font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    display: inline-block;
+    border-radius: mix.radius('sm');
+    padding: 2px 6px;
+    
+    &.porter-absent {
+      opacity: 0.9;
+    }
+    
+    &.porter-illness {
+      color: #d32f2f;
+      background-color: rgba(234, 67, 53, 0.1);
+    }
+    
+    &.porter-annual-leave {
+      color: #f57c00;
+      background-color: rgba(251, 192, 45, 0.1);
+    }
+    
+    .absence-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 3px;
+      margin-left: 5px;
+      
+      &.illness {
+        background-color: #d32f2f;
+        color: white;
+      }
+      
+      &.annual-leave {
+        background-color: #f57c00;
+        color: white;
+      }
+    }
   }
   
   .porter-time {

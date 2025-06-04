@@ -662,6 +662,7 @@ onMounted(async () => {
     // Load supporting data for task management
     await Promise.all([
       staffStore.fetchPorters(),
+      staffStore.fetchPorterAbsences(), // Explicitly load porter absences
       taskTypesStore.fetchTaskTypes(),
       locationsStore.fetchDepartments(),
       settingsStore.loadSettings()
