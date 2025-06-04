@@ -388,7 +388,7 @@ const handleRemove = (assignmentId) => {
         color: rgba(0, 0, 0, 0.5);
         padding: 2px 6px;
         background-color: white;
-        border: 1px solid rgba(234, 67, 53, 0.3);
+        border: 1px solid rgba(234, 67, 53, 0.2);
         border-radius: mix.radius('sm');
         display: inline-block;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -401,11 +401,10 @@ const handleRemove = (assignmentId) => {
     .gap-line--end {
       margin: 10px 0;
       padding-top: 6px;
-      border-top: 2px solid #EA4335 !important; /* Thicker red line for start/end gaps */
-      background-color: rgba(234, 67, 53, 0.05); /* Light red background for better visibility */
+      border-top: 1px solid rgba(234, 67, 53, 0.2) !important; /* Pale red line for start/end gaps */
       
       .gap-line-indicator {
-        background-color: #EA4335 !important; /* Red for start/end gaps */
+        background-color: rgba(234, 67, 53, 0.3) !important; /* Pale red for start/end gaps */
       }
     }
     
@@ -421,7 +420,7 @@ const handleRemove = (assignmentId) => {
       color: rgba(0, 0, 0, 0.5) !important;
       padding: 2px 6px !important;
       background-color: white !important;
-      border: 1px solid rgba(234, 67, 53, 0.3) !important;
+      border: 1px solid rgba(234, 67, 53, 0.2) !important;
       border-radius: 4px !important;
       display: inline-block !important;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
