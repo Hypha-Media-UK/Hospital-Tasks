@@ -38,9 +38,21 @@
         
         <div class="porter-assignments">
           <div v-for="(assignment, index) in sortedPorterAssignments" :key="assignment.id" class="porter-assignment">
-            <div class="porter-name">
+            <div class="porter-name" 
+                 :class="{
+                   'porter-absent': getPorterAbsence(assignment.porter_id),
+                   'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
+                   'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'
+                 }">
               {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
-              <span class="porter-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}</span>
+              <!-- Show time for available porters, absence badge for absent porters -->
+              <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
+                {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+              </span>
+              <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'illness'" 
+                    class="absence-badge illness">ILL</span>
+              <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'" 
+                    class="absence-badge annual-leave">AL</span>
             </div>
 
             <!-- Gap indicator between assignments -->
@@ -58,24 +70,9 @@
           <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
         
-        <!-- Show absent porters section -->
-        <div v-if="absentPorters.length > 0" class="absent-porters-section">
-          <div class="absent-porters-title">Absent Porters:</div>
-          <div v-for="porter in absentPorters" :key="porter.id" class="absent-porter-item">
-            <span class="absent-porter-name" 
-                  :class="{'illness': getPorterAbsence(porter.porter_id)?.absence_type === 'illness',
-                          'annual-leave': getPorterAbsence(porter.porter_id)?.absence_type === 'annual_leave'}">
-              {{ porter.porter.first_name }} {{ porter.porter.last_name }}
-              <span v-if="getPorterAbsence(porter.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
-              <span v-if="getPorterAbsence(porter.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
-            </span>
-          </div>
-        </div>
+        <!-- Absent porters are now shown directly in the porter assignments list above -->
         
-        <!-- Show department coverage gap warning if no available porters -->
-        <div v-if="availablePorters.length === 0 && porterAssignments.length > 0" class="coverage-warning">
-          All assigned porters are absent!
-        </div>
+        <!-- Coverage warning removed as requested -->
       </div>
     </div>
     
@@ -148,9 +145,9 @@ const hasStaffingShortage = computed(() => {
     false;
 });
 
-// Sort porter assignments by start time (only available porters)
+// Sort porter assignments by start time (all porters, not just available ones)
 const sortedPorterAssignments = computed(() => {
-  return [...availablePorters.value].sort((a, b) => {
+  return [...porterAssignments.value].sort((a, b) => {
     const aStart = timeToMinutes(a.start_time);
     const bStart = timeToMinutes(b.start_time);
     return aStart - bStart;
@@ -434,9 +431,38 @@ const handleRemove = (assignmentId) => {
           background-color: rgba(0, 0, 0, 0.02);
           border-radius: mix.radius('sm');
           
+          &.porter-illness {
+            color: #d32f2f;
+            background-color: rgba(234, 67, 53, 0.1);
+          }
+          
+          &.porter-annual-leave {
+            color: #f57c00;
+            background-color: rgba(251, 192, 45, 0.1);
+          }
+          
           .porter-time {
             color: rgba(0, 0, 0, 0.5);
             font-size: mix.font-size('2xs');
+          }
+          
+          .absence-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 4px;
+            border-radius: 3px;
+            margin-left: 5px;
+            
+            &.illness {
+              background-color: #d32f2f;
+              color: white;
+            }
+            
+            &.annual-leave {
+              background-color: #f57c00;
+              color: white;
+            }
           }
         }
       }
