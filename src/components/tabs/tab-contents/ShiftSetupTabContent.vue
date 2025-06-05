@@ -73,6 +73,7 @@ const props = defineProps({
 </script>
 
 <style lang="scss" scoped>
+@use "sass:color";
 .mb-4 {
   margin-bottom: 1rem;
 }
@@ -138,7 +139,7 @@ const props = defineProps({
     color: white;
     
     &:hover {
-      background-color: darken(#4285F4, 10%);
+      background-color: color.adjust(#4285F4, $lightness: -10%);
     }
   }
 }

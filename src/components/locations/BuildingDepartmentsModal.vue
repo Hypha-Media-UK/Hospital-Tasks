@@ -888,7 +888,7 @@ const confirmDelete = async () => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(mix.color('primary'), $lightness: -10%);
+      background-color: color.adjust(mix.color('primary'), $lightness: -10%);
     }
   }
   
@@ -897,7 +897,7 @@ const confirmDelete = async () => {
     color: mix.color('text');
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#f1f1f1, $lightness: -5%);
+      background-color: color.adjust(#f1f1f1, $lightness: -5%);
     }
   }
   
@@ -906,7 +906,7 @@ const confirmDelete = async () => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#dc3545, $lightness: -10%);
+      background-color: color.adjust(#dc3545, $lightness: -10%);
     }
   }
   

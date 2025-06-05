@@ -991,7 +991,7 @@ onMounted(async () => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.adjust(mix.color('primary'), $lightness: -5%);
+      background-color: color.adjust(mix.color('primary'), $lightness: -10%);
     }
   }
   
@@ -1000,7 +1000,7 @@ onMounted(async () => {
     color: mix.color('text');
     
     &:hover:not(:disabled) {
-      background-color: #e5e5e5;
+      background-color: color.adjust(#f1f1f1, $lightness: -5%);
     }
   }
   
@@ -1009,7 +1009,7 @@ onMounted(async () => {
     color: #EA4335;
     
     &:hover:not(:disabled) {
-      background-color: rgba(234, 67, 53, 0.2);
+      background-color: color.adjust(#EA4335, $lightness: -10%);
     }
   }
   

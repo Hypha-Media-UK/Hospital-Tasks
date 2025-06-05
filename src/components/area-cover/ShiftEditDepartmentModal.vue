@@ -902,7 +902,7 @@ watch(showAddPorterModal, (newValue) => {
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#EA4335, $lightness: -10%);
+      background-color: color.adjust(#EA4335, $lightness: -10%);
     }
   }
   
