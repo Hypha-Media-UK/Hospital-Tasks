@@ -268,7 +268,6 @@ const staffStore = useStaffStore();
 const formData = ref({
   startTime: '',
   endTime: '',
-  color: '#4285F4',
   minimumPorters: 1
 });
 
@@ -320,13 +319,12 @@ const showAbsenceModal = ref(false);
 const selectedPorterId = ref(null);
 const currentPorterAbsence = ref(null);
 
-// Initialize form data
+  // Initialize form data
 onMounted(async () => {
   // Load department data
   formData.value = {
     startTime: props.assignment.start_time ? props.assignment.start_time.substring(0, 5) : '08:00',
     endTime: props.assignment.end_time ? props.assignment.end_time.substring(0, 5) : '16:00',
-    color: props.assignment.color || '#4285F4',
     minimumPorters: props.assignment.minimum_porters || 1
   };
   
@@ -424,7 +422,6 @@ const saveChanges = async () => {
     const updateData = {
       start_time: startTime,
       end_time: endTime,
-      color: formData.value.color,
       minimum_porters: parseInt(sameForAllDaysValue.value) || 0
     };
     
@@ -438,8 +435,7 @@ const saveChanges = async () => {
     
     emit('update', props.assignment.id, {
       start_time: startTime,
-      end_time: endTime,
-      color: formData.value.color
+      end_time: endTime
     });
     
     emit('close');

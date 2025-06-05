@@ -1,7 +1,7 @@
 <template>
   <div 
     class="service-card" 
-    :style="{ borderLeftColor: assignment.color || '#4285F4' }"
+    :style="{ borderLeftColor: assignment.service.color || '#CCCCCC' }"
     @click="showEditModal = true"
   >
     <div class="service-card__content">

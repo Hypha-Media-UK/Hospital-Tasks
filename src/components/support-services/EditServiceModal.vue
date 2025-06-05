@@ -23,12 +23,6 @@
                 />
               </div>
             </div>
-            <input 
-              type="color" 
-              id="color" 
-              v-model="localColor" 
-              class="color-picker"
-            />
           </div>
         </div>
         
@@ -255,7 +249,6 @@ const supportServicesStore = useSupportServicesStore();
 const localName = ref('');
 const localStartTime = ref('');
 const localEndTime = ref('');
-const localColor = ref('#4285F4');
 const localMinPorters = ref(1);
 const localPorterAssignments = ref([]);
 const showAddPorter = ref(false);
@@ -440,7 +433,6 @@ const saveAllChanges = async () => {
       const updateData = {
         start_time: localStartTime.value + ':00',
         end_time: localEndTime.value + ':00',
-        color: localColor.value,
         minimum_porters: parseInt(sameForAllDaysValue.value) || 0
       };
       
@@ -507,9 +499,6 @@ const initializeState = () => {
   } else {
     localEndTime.value = '16:00';
   }
-  
-  // Initialize color
-  localColor.value = serviceAssignment.value ? serviceAssignment.value.color : '#4285F4';
   
   // Initialize minimum porter count (for backwards compatibility)
   localMinPorters.value = serviceAssignment.value ? serviceAssignment.value.minimum_porters || 1 : 1;

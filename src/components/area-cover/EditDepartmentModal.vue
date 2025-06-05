@@ -13,12 +13,6 @@
               <div class="department-name">{{ assignment.department.name }}</div>
               <div class="department-building">{{ assignment.department.building?.name || 'Unknown Building' }}</div>
             </div>
-            <input 
-              type="color" 
-              id="color" 
-              v-model="localColor" 
-              class="color-picker"
-            />
           </div>
         </div>
         
@@ -263,7 +257,6 @@ const staffStore = useStaffStore();
 // Local state for all editable properties
 const localStartTime = ref('');
 const localEndTime = ref('');
-const localColor = ref('#4285F4');
 const localMinPorters = ref(1);
 const localPorterAssignments = ref([]);
 const showAddPorter = ref(false);
@@ -472,7 +465,6 @@ const saveAllChanges = async () => {
     const updateData = {
       start_time: localStartTime.value + ':00',
       end_time: localEndTime.value + ':00',
-      color: localColor.value,
       minimum_porters: parseInt(sameForAllDaysValue.value) || 0
     };
     
@@ -532,9 +524,6 @@ const initializeState = () => {
   if (props.assignment.end_time) {
     localEndTime.value = props.assignment.end_time.slice(0, 5);
   }
-  
-  // Initialize color
-  localColor.value = props.assignment.color || '#4285F4';
   
   // Initialize minimum porter count (for backwards compatibility)
   localMinPorters.value = props.assignment.minimum_porters || 1;

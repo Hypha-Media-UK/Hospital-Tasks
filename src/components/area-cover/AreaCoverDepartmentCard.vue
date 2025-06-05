@@ -1,7 +1,7 @@
 <template>
   <div 
     class="department-card" 
-    :style="{ borderLeftColor: assignment.color || '#4285F4' }"
+    :style="{ borderLeftColor: assignment.department.color || '#CCCCCC' }"
     @click="showEditModal = true"
   >
     <div class="department-card__content">

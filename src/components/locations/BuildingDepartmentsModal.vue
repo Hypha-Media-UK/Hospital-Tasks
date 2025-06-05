@@ -66,14 +66,25 @@
           >
             <template #item="{element}">
               <div class="department-item frequent-item">
-                <div v-if="editingDepartment === element.id" class="department-edit">
+              <div v-if="editingDepartment === element.id" class="department-edit">
+                <div class="edit-form-group">
                   <input 
                     v-model="editDepartmentName" 
                     class="form-control"
                     @keyup.enter="saveDepartment(element)"
                     @keyup.esc="cancelEditDepartment"
+                    placeholder="Department name"
                   />
-                  <div class="edit-actions">
+                  <div class="color-picker-wrapper">
+                    <label class="color-picker-label">Color:</label>
+                    <input 
+                      type="color" 
+                      v-model="editDepartmentColor" 
+                      class="color-picker"
+                    />
+                  </div>
+                </div>
+                <div class="edit-actions">
                     <button 
                       class="btn btn-small btn-primary" 
                       @click="saveDepartment(element)"
@@ -148,12 +159,23 @@
           <div v-else class="departments-list">
             <div v-for="department in sortedBuildingDepartments" :key="department.id" class="department-item">
               <div v-if="editingDepartment === department.id" class="department-edit">
-                <input 
-                  v-model="editDepartmentName" 
-                  class="form-control"
-                  @keyup.enter="saveDepartment(department)"
-                  @keyup.esc="cancelEditDepartment"
-                />
+                <div class="edit-form-group">
+                  <input 
+                    v-model="editDepartmentName" 
+                    class="form-control"
+                    @keyup.enter="saveDepartment(department)"
+                    @keyup.esc="cancelEditDepartment"
+                    placeholder="Department name"
+                  />
+                  <div class="color-picker-wrapper">
+                    <label class="color-picker-label">Color:</label>
+                    <input 
+                      type="color" 
+                      v-model="editDepartmentColor" 
+                      class="color-picker"
+                    />
+                  </div>
+                </div>
                 <div class="edit-actions">
                   <button 
                     class="btn btn-small btn-primary" 
@@ -249,6 +271,7 @@ const buildingNameInput = ref(null);
 const newDepartmentName = ref('');
 const editingDepartment = ref(null);
 const editDepartmentName = ref('');
+const editDepartmentColor = ref('#CCCCCC'); // Default grey color
 const localFrequentDepartments = ref([]);
 
 // Building name editing
@@ -350,7 +373,8 @@ const addDepartment = async () => {
   await locationsStore.addDepartment({
     building_id: props.building.id,
     name: newDepartmentName.value.trim(),
-    is_frequent: false
+    is_frequent: false,
+    color: '#CCCCCC' // Default grey color
   });
   
   newDepartmentName.value = '';
@@ -360,6 +384,7 @@ const addDepartment = async () => {
 const editDepartment = (department) => {
   editingDepartment.value = department.id;
   editDepartmentName.value = department.name;
+  editDepartmentColor.value = department.color || '#CCCCCC'; // Initialize with existing color or default
 };
 
 // Save department changes
@@ -369,9 +394,11 @@ const saveDepartment = async (department) => {
     return;
   }
   
-  if (editDepartmentName.value !== department.name) {
+  // Check if name or color has changed
+  if (editDepartmentName.value !== department.name || editDepartmentColor.value !== department.color) {
     await locationsStore.updateDepartment(department.id, {
-      name: editDepartmentName.value.trim()
+      name: editDepartmentName.value.trim(),
+      color: editDepartmentColor.value
     });
   }
   
@@ -382,6 +409,7 @@ const saveDepartment = async (department) => {
 const cancelEditDepartment = () => {
   editingDepartment.value = null;
   editDepartmentName.value = '';
+  editDepartmentColor.value = '#CCCCCC'; // Reset to default
 };
 
 // Toggle frequent status
@@ -792,6 +820,10 @@ const confirmDelete = async () => {
   .department-edit {
     padding: 10px 16px;
     
+    .edit-form-group {
+      margin-bottom: 12px;
+    }
+    
     .form-control {
       width: 100%;
       padding: 8px 12px;
@@ -803,6 +835,34 @@ const confirmDelete = async () => {
       &:focus {
         outline: none;
         box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.1);
+      }
+    }
+    
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      
+      .color-picker-label {
+        font-size: mix.font-size('sm');
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.7);
+      }
+      
+      .color-picker {
+        width: 32px;
+        height: 32px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: mix.radius('sm');
+        padding: 0;
+        cursor: pointer;
+        
+        &:focus {
+          outline: none;
+          border-color: mix.color('primary');
+          box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
       }
     }
     

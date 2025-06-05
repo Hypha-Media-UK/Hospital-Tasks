@@ -333,6 +333,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
               id,
               name,
               building_id,
+              color,
               building:building_id(id, name)
             )
           `)
@@ -392,6 +393,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
               id,
               name,
               building_id,
+              color,
               building:building_id(id, name)
             )
           `);
@@ -428,6 +430,7 @@ export const useAreaCoverStore = defineStore('areaCover', {
               id,
               name,
               building_id,
+              color,
               building:building_id(id, name)
             )
           `);

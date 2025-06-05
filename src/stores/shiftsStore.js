@@ -1217,18 +1217,19 @@ export const useShiftsStore = defineStore('shifts', {
         
         // Query shift area cover assignments
         console.log(`Fetching area cover assignments for shift: ${shiftId}`);
-        const { data, error } = await supabase
-          .from('shift_area_cover_assignments')
-          .select(`
-            *,
-            department:department_id(
-              id,
-              name,
-              building_id,
-              building:building_id(id, name)
-            )
-          `)
-          .eq('shift_id', shiftId);
+          const { data, error } = await supabase
+            .from('shift_area_cover_assignments')
+            .select(`
+              *,
+              department:department_id(
+                id,
+                name,
+                building_id,
+                color,
+                building:building_id(id, name)
+              )
+            `)
+            .eq('shift_id', shiftId);
         
         if (error) {
           console.error('Error fetching shift area cover assignments:', error);
@@ -1304,6 +1305,7 @@ export const useShiftsStore = defineStore('shifts', {
               id,
               name,
               building_id,
+              color,
               building:building_id(id, name)
             )
           `);
