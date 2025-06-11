@@ -721,49 +721,46 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
   
   console.log('Origin department changed to:', newDepartmentId);
   
-  // Only auto-populate if task type is not already selected
-  if (!taskForm.value.taskTypeId) {
-    // Check if this department has a task assignment
-    const assignment = locationsStore.getDepartmentTaskAssignment(newDepartmentId);
-    console.log('Department task assignment:', assignment);
+  // Always check if this department has a task assignment when department changes
+  const assignment = locationsStore.getDepartmentTaskAssignment(newDepartmentId);
+  console.log('Department task assignment:', assignment);
+  
+  if (assignment && assignment.task_type_id) {
+    console.log('Setting task type to:', assignment.task_type_id);
     
-    if (assignment && assignment.task_type_id) {
-      console.log('Setting task type to:', assignment.task_type_id);
-      
-      // Set task type ID
-      taskForm.value.taskTypeId = assignment.task_type_id;
-      
-      // Visual feedback for auto-population
-      taskTypeAutoPopulated.value = true;
-      // Reset the flag after animation completes
-      setTimeout(() => {
-        taskTypeAutoPopulated.value = false;
-      }, 1500);
-      
-      // Load task items for this type
-      loadTaskItems().then(() => {
-        // After loading items, set task item if specified in assignment
-        if (assignment.task_item_id) {
-          console.log('Setting task item to:', assignment.task_item_id);
+    // Set task type ID
+    taskForm.value.taskTypeId = assignment.task_type_id;
+    
+    // Visual feedback for auto-population
+    taskTypeAutoPopulated.value = true;
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      taskTypeAutoPopulated.value = false;
+    }, 1500);
+    
+    // Load task items for this type
+    loadTaskItems().then(() => {
+      // After loading items, set task item if specified in assignment
+      if (assignment.task_item_id) {
+        console.log('Setting task item to:', assignment.task_item_id);
+        
+        // Check if this task item exists in the loaded items
+        const itemExists = taskItems.value.some(item => item.id === assignment.task_item_id);
+        
+        if (itemExists) {
+          taskForm.value.taskItemId = assignment.task_item_id;
           
-          // Check if this task item exists in the loaded items
-          const itemExists = taskItems.value.some(item => item.id === assignment.task_item_id);
-          
-          if (itemExists) {
-            taskForm.value.taskItemId = assignment.task_item_id;
-            
-            // Visual feedback for auto-population
-            taskItemAutoPopulated.value = true;
-            setTimeout(() => {
-              taskItemAutoPopulated.value = false;
-            }, 1500);
-          }
+          // Visual feedback for auto-population
+          taskItemAutoPopulated.value = true;
+          setTimeout(() => {
+            taskItemAutoPopulated.value = false;
+          }, 1500);
         }
-      });
-    } else {
-      // Check task type assignments from taskTypesStore as a fallback
-      checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
-    }
+      }
+    });
+  } else {
+    // Check task type assignments from taskTypesStore as a fallback
+    checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
   }
 });
 
