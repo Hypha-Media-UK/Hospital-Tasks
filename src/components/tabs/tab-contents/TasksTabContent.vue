@@ -1,22 +1,41 @@
 <template>
   <div class="tasks-tab">
+    <!-- Activity Sheet Modal -->
+    <ActivitySheetModal 
+      v-if="showingActivitySheet" 
+      :shift="currentShift"
+      :tasks="allTasks"
+      @close="closeActivitySheet"
+    />
+    
     <!-- Tasks List -->
     <div class="tasks-container">
-      <!-- Task Tabs -->
-      <div class="task-tabs">
+      <!-- Task Tabs and Actions -->
+      <div class="tasks-header">
+        <div class="task-tabs">
+          <button 
+            @click="activeTab = 'pending'" 
+            class="tab-button" 
+            :class="{ active: activeTab === 'pending' }"
+          >
+            Pending ({{ pendingTasks.length }})
+          </button>
+          <button 
+            @click="activeTab = 'completed'" 
+            class="tab-button" 
+            :class="{ active: activeTab === 'completed' }"
+          >
+            Completed ({{ completedTasks.length }})
+          </button>
+        </div>
+        
         <button 
-          @click="activeTab = 'pending'" 
-          class="tab-button" 
-          :class="{ active: activeTab === 'pending' }"
+          @click="showActivitySheet" 
+          class="btn btn-primary activity-sheet-btn"
+          :disabled="allTasks.length === 0"
+          title="View and print activity sheet"
         >
-          Pending ({{ pendingTasks.length }})
-        </button>
-        <button 
-          @click="activeTab = 'completed'" 
-          class="tab-button" 
-          :class="{ active: activeTab === 'completed' }"
-        >
-          Completed ({{ completedTasks.length }})
+          Activity Sheet
         </button>
       </div>
       
@@ -151,6 +170,7 @@
 import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import ActivitySheetModal from '../../ActivitySheetModal.vue';
 
 // Define props to receive shift ID and functions from parent
 const props = defineProps({
@@ -170,14 +190,25 @@ const settingsStore = useSettingsStore();
 // Local state
 const activeTab = ref('pending');
 const updatingTask = ref(false);
+const showingActivitySheet = ref(false);
 
 // Computed properties
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
+const allTasks = computed(() => [...pendingTasks.value, ...completedTasks.value]);
+const currentShift = computed(() => shiftsStore.currentShift);
 
 // Methods
 function editTask(task) {
   emit('editTask', task);
+}
+
+function showActivitySheet() {
+  showingActivitySheet.value = true;
+}
+
+function closeActivitySheet() {
+  showingActivitySheet.value = false;
 }
 
 async function markTaskCompleted(taskId) {
@@ -253,6 +284,19 @@ function formatTime(timeString) {
 
 <style lang="scss" scoped>
 @use "sass:color";
+
+.tasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.activity-sheet-btn {
+  white-space: nowrap;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
 .task-tabs {
   display: flex;
   border-bottom: 1px solid #e0e0e0;

@@ -476,6 +476,10 @@ const destinationFieldAutoPopulated = ref(false);
 const taskItemAutoPopulated = ref(false);
 const taskTypeAutoPopulated = ref(false);
 
+// Track which fields have been touched first to prevent circular auto-population
+const taskTypeFieldTouched = ref(false);
+const departmentFieldTouched = ref(false);
+
 // Task form data
 const taskForm = ref({
   taskTypeId: '',
@@ -707,10 +711,19 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 });
 
+// Watch for task type changes to set the taskTypeFieldTouched flag
+watch(() => taskForm.value.taskTypeId, (newTaskTypeId) => {
+  if (newTaskTypeId) {
+    // Mark that task type was touched first
+    taskTypeFieldTouched.value = true;
+  }
+});
+
 // Watch for task item changes to auto-populate department fields
 watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
-  if (newTaskItemId) {
-    // Check for item-specific department assignments and auto-populate
+  if (newTaskItemId && taskTypeFieldTouched.value && !departmentFieldTouched.value) {
+    // Only auto-populate departments if task type/item was selected first
+    // and department hasn't been touched yet
     checkTaskItemDepartmentAssignments(newTaskItemId);
   }
 });
@@ -721,46 +734,53 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
   
   console.log('Origin department changed to:', newDepartmentId);
   
-  // Always check if this department has a task assignment when department changes
-  const assignment = locationsStore.getDepartmentTaskAssignment(newDepartmentId);
-  console.log('Department task assignment:', assignment);
+  // Mark that department was touched
+  departmentFieldTouched.value = true;
   
-  if (assignment && assignment.task_type_id) {
-    console.log('Setting task type to:', assignment.task_type_id);
+  // Only auto-populate task type/item if department was touched first
+  // and task type hasn't been touched yet
+  if (!taskTypeFieldTouched.value) {
+    // Check if this department has a task assignment
+    const assignment = locationsStore.getDepartmentTaskAssignment(newDepartmentId);
+    console.log('Department task assignment:', assignment);
     
-    // Set task type ID
-    taskForm.value.taskTypeId = assignment.task_type_id;
-    
-    // Visual feedback for auto-population
-    taskTypeAutoPopulated.value = true;
-    // Reset the flag after animation completes
-    setTimeout(() => {
-      taskTypeAutoPopulated.value = false;
-    }, 1500);
-    
-    // Load task items for this type
-    loadTaskItems().then(() => {
-      // After loading items, set task item if specified in assignment
-      if (assignment.task_item_id) {
-        console.log('Setting task item to:', assignment.task_item_id);
-        
-        // Check if this task item exists in the loaded items
-        const itemExists = taskItems.value.some(item => item.id === assignment.task_item_id);
-        
-        if (itemExists) {
-          taskForm.value.taskItemId = assignment.task_item_id;
+    if (assignment && assignment.task_type_id) {
+      console.log('Setting task type to:', assignment.task_type_id);
+      
+      // Set task type ID
+      taskForm.value.taskTypeId = assignment.task_type_id;
+      
+      // Visual feedback for auto-population
+      taskTypeAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        taskTypeAutoPopulated.value = false;
+      }, 1500);
+      
+      // Load task items for this type
+      loadTaskItems().then(() => {
+        // After loading items, set task item if specified in assignment
+        if (assignment.task_item_id) {
+          console.log('Setting task item to:', assignment.task_item_id);
           
-          // Visual feedback for auto-population
-          taskItemAutoPopulated.value = true;
-          setTimeout(() => {
-            taskItemAutoPopulated.value = false;
-          }, 1500);
+          // Check if this task item exists in the loaded items
+          const itemExists = taskItems.value.some(item => item.id === assignment.task_item_id);
+          
+          if (itemExists) {
+            taskForm.value.taskItemId = assignment.task_item_id;
+            
+            // Visual feedback for auto-population
+            taskItemAutoPopulated.value = true;
+            setTimeout(() => {
+              taskItemAutoPopulated.value = false;
+            }, 1500);
+          }
         }
-      }
-    });
-  } else {
-    // Check task type assignments from taskTypesStore as a fallback
-    checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+      });
+    } else {
+      // Check task type assignments from taskTypesStore as a fallback
+      checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+    }
   }
 });
 
@@ -901,6 +921,10 @@ function resetTaskForm() {
   };
   taskItems.value = [];
   taskFormError.value = '';
+  
+  // Reset touch tracking flags
+  taskTypeFieldTouched.value = false;
+  departmentFieldTouched.value = false;
 }
 
 // Load task items for a task type
@@ -917,7 +941,10 @@ async function loadTaskItems() {
     taskItems.value = taskTypesStore.getTaskItemsByType(taskForm.value.taskTypeId);
     
     // Check for task type department assignments and auto-populate
-    checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+    // but only if task type was touched first
+    if (taskTypeFieldTouched.value) {
+      checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+    }
     
     // Check for regular task item and auto-select it
     const regularItem = taskItems.value.find(item => item.is_regular);
@@ -949,36 +976,38 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
   const taskType = taskTypesStore.taskTypes.find(t => t.id === taskTypeId);
   console.log('Task type name:', taskType?.name);
   
-  // Only apply default departments if fields are empty
-  const assignments = taskTypesStore.getTypeAssignmentsByTypeId(taskTypeId);
-  console.log('Found assignments for this task type:', assignments);
-  
-  // Look for origin department
-  const originAssignment = assignments.find(a => a.is_origin);
-  console.log('Origin assignment:', originAssignment);
-  
-  if (originAssignment && !taskForm.value.originDepartmentId) {
-    console.log('Setting origin department ID to:', originAssignment.department_id);
-    taskForm.value.originDepartmentId = originAssignment.department_id;
-    originFieldAutoPopulated.value = true;
-    // Reset the flag after animation completes
-    setTimeout(() => {
-      originFieldAutoPopulated.value = false;
-    }, 1500);
-  }
-  
-  // Look for destination department
-  const destinationAssignment = assignments.find(a => a.is_destination);
-  console.log('Destination assignment:', destinationAssignment);
-  
-  if (destinationAssignment && !taskForm.value.destinationDepartmentId) {
-    console.log('Setting destination department ID to:', destinationAssignment.department_id);
-    taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
-    destinationFieldAutoPopulated.value = true;
-    // Reset the flag after animation completes
-    setTimeout(() => {
-      destinationFieldAutoPopulated.value = false;
-    }, 1500);
+  // Only apply default departments if department fields haven't been touched yet
+  if (!departmentFieldTouched.value) {
+    const assignments = taskTypesStore.getTypeAssignmentsByTypeId(taskTypeId);
+    console.log('Found assignments for this task type:', assignments);
+    
+    // Look for origin department
+    const originAssignment = assignments.find(a => a.is_origin);
+    console.log('Origin assignment:', originAssignment);
+    
+    if (originAssignment && !taskForm.value.originDepartmentId) {
+      console.log('Setting origin department ID to:', originAssignment.department_id);
+      taskForm.value.originDepartmentId = originAssignment.department_id;
+      originFieldAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        originFieldAutoPopulated.value = false;
+      }, 1500);
+    }
+    
+    // Look for destination department
+    const destinationAssignment = assignments.find(a => a.is_destination);
+    console.log('Destination assignment:', destinationAssignment);
+    
+    if (destinationAssignment && !taskForm.value.destinationDepartmentId) {
+      console.log('Setting destination department ID to:', destinationAssignment.department_id);
+      taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
+      destinationFieldAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        destinationFieldAutoPopulated.value = false;
+      }, 1500);
+    }
   }
 }
 
@@ -992,35 +1021,38 @@ function checkTaskItemDepartmentAssignments(taskItemId) {
   const taskItem = taskItems.value.find(i => i.id === taskItemId);
   console.log('Task item name:', taskItem?.name);
   
-  const assignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
-  console.log('Found assignments for this task item:', assignments);
-  
-  // Look for origin department
-  const originAssignment = assignments.find(a => a.is_origin);
-  console.log('Origin assignment:', originAssignment);
-  
-  if (originAssignment) {
-    console.log('Setting origin department ID to:', originAssignment.department_id);
-    taskForm.value.originDepartmentId = originAssignment.department_id;
-    originFieldAutoPopulated.value = true;
-    // Reset the flag after animation completes
-    setTimeout(() => {
-      originFieldAutoPopulated.value = false;
-    }, 1500);
-  }
-  
-  // Look for destination department
-  const destinationAssignment = assignments.find(a => a.is_destination);
-  console.log('Destination assignment:', destinationAssignment);
-  
-  if (destinationAssignment) {
-    console.log('Setting destination department ID to:', destinationAssignment.department_id);
-    taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
-    destinationFieldAutoPopulated.value = true;
-    // Reset the flag after animation completes
-    setTimeout(() => {
-      destinationFieldAutoPopulated.value = false;
-    }, 1500);
+  // Only auto-populate departments if they haven't been touched yet
+  if (!departmentFieldTouched.value) {
+    const assignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
+    console.log('Found assignments for this task item:', assignments);
+    
+    // Look for origin department
+    const originAssignment = assignments.find(a => a.is_origin);
+    console.log('Origin assignment:', originAssignment);
+    
+    if (originAssignment) {
+      console.log('Setting origin department ID to:', originAssignment.department_id);
+      taskForm.value.originDepartmentId = originAssignment.department_id;
+      originFieldAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        originFieldAutoPopulated.value = false;
+      }, 1500);
+    }
+    
+    // Look for destination department
+    const destinationAssignment = assignments.find(a => a.is_destination);
+    console.log('Destination assignment:', destinationAssignment);
+    
+    if (destinationAssignment) {
+      console.log('Setting destination department ID to:', destinationAssignment.department_id);
+      taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
+      destinationFieldAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        destinationFieldAutoPopulated.value = false;
+      }, 1500);
+    }
   }
 }
 

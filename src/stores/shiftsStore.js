@@ -770,7 +770,13 @@ export const useShiftsStore = defineStore('shifts', {
           .from('shift_tasks')
           .select(`
             *,
-            task_item:task_item_id(id, name, description, task_type_id),
+            task_item:task_item_id(
+              id, 
+              name, 
+              description, 
+              task_type_id,
+              task_type:task_type_id(id, name)
+            ),
             porter:porter_id(id, first_name, last_name),
             origin_department:origin_department_id(id, name, building_id),
             destination_department:destination_department_id(id, name, building_id)
@@ -938,7 +944,13 @@ export const useShiftsStore = defineStore('shifts', {
           .insert(taskInsertData)
           .select(`
             *,
-            task_item:task_item_id(id, name, description, task_type_id),
+            task_item:task_item_id(
+              id, 
+              name, 
+              description, 
+              task_type_id,
+              task_type:task_type_id(id, name)
+            ),
             porter:porter_id(id, first_name, last_name),
             origin_department:origin_department_id(id, name, building_id),
             destination_department:destination_department_id(id, name, building_id)
@@ -1024,7 +1036,13 @@ export const useShiftsStore = defineStore('shifts', {
           .eq('id', taskId)
           .select(`
             *,
-            task_item:task_item_id(id, name, description, task_type_id),
+            task_item:task_item_id(
+              id, 
+              name, 
+              description, 
+              task_type_id,
+              task_type:task_type_id(id, name)
+            ),
             porter:porter_id(id, first_name, last_name),
             origin_department:origin_department_id(id, name, building_id),
             destination_department:destination_department_id(id, name, building_id)
@@ -1063,7 +1081,13 @@ export const useShiftsStore = defineStore('shifts', {
           .eq('id', taskId)
           .select(`
             *,
-            task_item:task_item_id(id, name, description, task_type_id),
+            task_item:task_item_id(
+              id, 
+              name, 
+              description, 
+              task_type_id,
+              task_type:task_type_id(id, name)
+            ),
             porter:porter_id(id, first_name, last_name),
             origin_department:origin_department_id(id, name, building_id),
             destination_department:destination_department_id(id, name, building_id)
@@ -1148,7 +1172,13 @@ export const useShiftsStore = defineStore('shifts', {
           .eq('id', taskId)
           .select(`
             *,
-            task_item:task_item_id(id, name, description, task_type_id),
+            task_item:task_item_id(
+              id, 
+              name, 
+              description, 
+              task_type_id,
+              task_type:task_type_id(id, name)
+            ),
             porter:porter_id(id, first_name, last_name),
             origin_department:origin_department_id(id, name, building_id),
             destination_department:destination_department_id(id, name, building_id)
