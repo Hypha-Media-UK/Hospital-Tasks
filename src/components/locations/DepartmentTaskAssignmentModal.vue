@@ -61,6 +61,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
 import { useLocationsStore } from '../../stores/locationsStore';
+// For logging
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 const props = defineProps({
   department: {
@@ -94,12 +96,37 @@ const canSave = computed(() => {
 // Load existing assignment if it exists
 onMounted(async () => {
   await taskTypesStore.fetchTaskTypes();
+  await taskTypesStore.fetchTypeAssignments();
   
+  // First check if there's a department task assignment in locations store
   const assignment = locationsStore.getDepartmentTaskAssignment(props.department.id);
+  
+  // Also check if there's an assignment in task types store where this department is an origin
+  const typeAssignments = taskTypesStore.typeAssignments.filter(
+    a => a.department_id === props.department.id && a.is_origin
+  );
+  
+  if (isDevelopment) {
+    console.log("Department task assignment:", assignment);
+    console.log("Task type assignments:", typeAssignments);
+  }
+  
   if (assignment) {
+    // If we have a department task assignment, use it
     selectedTaskTypeId.value = assignment.task_type_id;
     await loadTaskItems();
     selectedTaskItemId.value = assignment.task_item_id;
+  } else if (typeAssignments.length > 0) {
+    // If we have task type assignments where this department is an origin,
+    // use the first one
+    selectedTaskTypeId.value = typeAssignments[0].task_type_id;
+    await loadTaskItems();
+    
+    // Look for a regular item
+    const regularItem = taskItems.value.find(item => item.is_regular);
+    if (regularItem) {
+      selectedTaskItemId.value = regularItem.id;
+    }
   }
 });
 
@@ -139,13 +166,49 @@ async function saveAssignment() {
   saving.value = true;
   
   try {
-    const result = await locationsStore.updateDepartmentTaskAssignment(
+    // First, create or update the department task assignment in locations store
+    const locationResult = await locationsStore.updateDepartmentTaskAssignment(
       props.department.id,
       selectedTaskTypeId.value,
       selectedTaskItemId.value
     );
     
-    if (result) {
+    // Then, create or update the task type department assignment in task types store
+    // Get current assignments for this task type
+    const currentAssignments = taskTypesStore.getTypeAssignmentsByTypeId(selectedTaskTypeId.value);
+    
+    // Prepare the new assignment list - keep all existing assignments, but update/add the one for this department
+    const newAssignments = currentAssignments.filter(a => a.department_id !== props.department.id);
+    
+    // Add the current department as an origin
+    newAssignments.push({
+      task_type_id: selectedTaskTypeId.value,
+      department_id: props.department.id,
+      is_origin: true,
+      is_destination: false
+    });
+    
+    // Check if there's a destination department in any of the current assignments
+    // Find assignments where this task type has a destination
+    const destinationAssignment = currentAssignments.find(a => a.is_destination);
+    if (destinationAssignment) {
+      // Add this as a destination assignment too
+      newAssignments.push({
+        task_type_id: selectedTaskTypeId.value,
+        department_id: destinationAssignment.department_id,
+        is_origin: false,
+        is_destination: true
+      });
+    }
+    
+    // Update task type assignments
+    const typeResult = await taskTypesStore.updateTypeAssignments(selectedTaskTypeId.value, newAssignments);
+    
+    if (locationResult && typeResult) {
+      if (isDevelopment) {
+        console.log("Updated department task assignment in locations store");
+        console.log("Updated task type department assignments in task types store");
+      }
       emit('saved');
       emit('close');
     }
@@ -163,9 +226,37 @@ async function clearAssignment() {
   saving.value = true;
   
   try {
-    const result = await locationsStore.removeDepartmentTaskAssignment(props.department.id);
+    // First, remove the department task assignment from locations store
+    const locationResult = await locationsStore.removeDepartmentTaskAssignment(props.department.id);
     
-    if (result) {
+    // Then, remove this department from task type department assignments
+    // Get current task type assignments
+    const currentAssignments = taskTypesStore.typeAssignments.filter(
+      a => a.department_id === props.department.id && a.is_origin
+    );
+    
+    // Remove each assignment
+    let typeResult = true;
+    for (const assignment of currentAssignments) {
+      // Get all assignments for this task type
+      const taskTypeAssignments = taskTypesStore.getTypeAssignmentsByTypeId(assignment.task_type_id);
+      
+      // Filter out the one for this department
+      const updatedAssignments = taskTypeAssignments.filter(a => a.department_id !== props.department.id);
+      
+      // Update task type assignments
+      const result = await taskTypesStore.updateTypeAssignments(assignment.task_type_id, updatedAssignments);
+      
+      if (!result) {
+        typeResult = false;
+      }
+    }
+    
+    if (locationResult && typeResult) {
+      if (isDevelopment) {
+        console.log("Removed department task assignment from locations store");
+        console.log("Removed department from task type department assignments");
+      }
       emit('saved');
       emit('close');
     }
