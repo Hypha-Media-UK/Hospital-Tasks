@@ -42,9 +42,9 @@
             <tr>
               <th>Time</th>
               <th>From</th>
+              <th>To</th>
               <th>Task</th>
               <th>Task Info</th>
-              <th>To</th>
               <th>Allocated</th>
               <th>Porter</th>
               <th>Completed</th>
@@ -55,9 +55,9 @@
             <tr v-for="task in sortedTasks" :key="task.id">
               <td>{{ formatTime(task.time_received) }}</td>
               <td>{{ task.origin_department?.name || '-' }}</td>
+              <td>{{ task.destination_department?.name || '-' }}</td>
               <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
               <td>{{ task.task_item.name }}</td>
-              <td>{{ task.destination_department?.name || '-' }}</td>
               <td>{{ formatTime(task.time_allocated) }}</td>
               <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
               <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
@@ -68,33 +68,14 @@
         
         <div class="department-summary">
           <p class="summary-title">Department Task Summary</p>
-          
-          <div class="department-list">
-            <div v-for="(summary, index) in departmentSummaries" :key="index" class="department-item">
-              <div class="department-name">{{ summary.departmentName }}</div>
-              <div class="task-breakdown">
-                <span v-for="(count, type, typeIndex) in summary.taskTypes" :key="type" class="task-type-item">
-                  <span class="task-count">{{ count }}</span>
-                  <span class="task-type">{{ type }}</span>
-                  <span v-if="typeIndex < Object.keys(summary.taskTypes).length - 1" class="separator">|</span>
-                </span>
-              </div>
-              <div class="task-total">({{ summary.totalTasks }} {{ summary.totalTasks === 1 ? 'Task' : 'Tasks' }})</div>
-            </div>
-            
-            <!-- All departments summary -->
-            <div class="department-item totals-item">
-              <div class="department-name">All Departments</div>
-              <div class="task-breakdown">
-                <span v-for="(taskType, index) in uniqueTaskTypes" :key="taskType" class="task-type-item">
-                  <span class="task-count">{{ getTaskTypeTotal(taskType) }}</span>
-                  <span class="task-type">{{ taskType }}</span>
-                  <span v-if="index < uniqueTaskTypes.length - 1" class="separator">|</span>
-                </span>
-              </div>
-              <div class="task-total">({{ tasks.length }} {{ tasks.length === 1 ? 'Task' : 'Tasks' }})</div>
-            </div>
-          </div>
+          <ul class="simple-list">
+            <li v-for="(summary, index) in departmentSummaries" :key="index">
+              {{ summary.departmentName }}: {{ summary.totalTasks }} {{ summary.totalTasks === 1 ? 'Request' : 'Requests' }}
+            </li>
+            <li class="total-item">
+              <strong>All Departments: {{ tasks.length }} {{ tasks.length === 1 ? 'Request' : 'Requests' }}</strong>
+            </li>
+          </ul>
         </div>
       </div>
     </main>
@@ -246,9 +227,9 @@ function exportToExcel() {
     const excelData = sortedTasks.value.map(task => ({
       'Time': formatTime(task.time_received),
       'From': task.origin_department?.name || '-',
+      'To': task.destination_department?.name || '-',
       'Task': task.task_item.task_type?.name || 'Unknown',
       'Task Info': task.task_item.name,
-      'To': task.destination_department?.name || '-',
       'Allocated': formatTime(task.time_allocated),
       'Porter': task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-',
       'Completed': task.status === 'completed' ? formatTime(task.time_completed) : '-',
@@ -262,9 +243,9 @@ function exportToExcel() {
     const columnWidths = [
       { wch: 10 }, // Time
       { wch: 20 }, // From
+      { wch: 20 }, // To
       { wch: 15 }, // Task
       { wch: 25 }, // Task Info
-      { wch: 20 }, // To
       { wch: 10 }, // Allocated
       { wch: 20 }, // Porter
       { wch: 10 }, // Completed
@@ -522,51 +503,21 @@ function getShiftTypeDisplayName() {
     }
   }
   
-  .department-list {
-    .department-item {
-      margin-bottom: 12pt !important;
-      padding: 8pt 10pt !important;
-      background-color: #f9f9f9 !important;
-      border-radius: 4pt !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
+  .simple-list {
+    list-style-type: none !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
     
-    .department-name {
-      font-weight: bold !important;
+    li {
       font-size: 14pt !important;
-      margin-bottom: 4pt !important;
-    }
-    
-    .task-breakdown {
-      margin-left: 10pt !important;
+      margin-bottom: 8pt !important;
       line-height: 1.4 !important;
     }
     
-    .task-type-item {
-      display: inline-block !important;
-      margin-right: 4pt !important;
-    }
-    
-    .task-count {
-      font-weight: bold !important;
-    }
-    
-    .separator {
-      margin: 0 4pt !important;
-      color: #666 !important;
-    }
-    
-    .task-total {
-      margin-left: 10pt !important;
-      margin-top: 4pt !important;
-      font-weight: 500 !important;
-    }
-    
-    .totals-item {
+    .total-item {
       margin-top: 16pt !important;
-      background-color: #f2f2f2 !important;
-      border-top: 2px solid #333 !important;
+      padding-top: 8pt !important;
+      border-top: 1px solid #333 !important;
     }
   }
 }
@@ -650,52 +601,23 @@ function getShiftTypeDisplayName() {
     margin-top: 0;
   }
   
-  .department-list {
-    .department-item {
-      margin-bottom: 15px;
-      padding: 15px;
-      background-color: #f9f9f9;
-      border-radius: 6px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    }
+  .simple-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin-left: 0;
     
-    .department-name {
-      font-weight: bold;
+    li {
       font-size: 18px;
-      margin-bottom: 8px;
+      font-weight: 400;
       color: #333;
-    }
-    
-    .task-breakdown {
-      margin-left: 15px;
+      margin-bottom: 12px;
       line-height: 1.5;
     }
     
-    .task-type-item {
-      display: inline-block;
-      margin-right: 6px;
-    }
-    
-    .task-count {
-      font-weight: bold;
-    }
-    
-    .separator {
-      margin: 0 6px;
-      color: #666;
-    }
-    
-    .task-total {
-      margin-left: 15px;
-      margin-top: 8px;
-      font-weight: 500;
-      color: #444;
-    }
-    
-    .totals-item {
-      margin-top: 25px;
-      background-color: #f2f2f2;
-      border-top: 2px solid #333;
+    .total-item {
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #333;
     }
   }
 }
