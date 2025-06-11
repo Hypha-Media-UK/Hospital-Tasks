@@ -110,6 +110,14 @@
                   
                   <div class="department-actions">
                     <button 
+                      @click="showTaskAssignment(element)"
+                      class="btn-action"
+                      :class="{ 'btn-active': hasDepartmentTaskAssignment(element.id) }"
+                      title="Assign Task Type & Item"
+                    >
+                      <TaskIcon size="16" :filled="hasDepartmentTaskAssignment(element.id)" />
+                    </button>
+                    <button 
                       @click="toggleFrequent(element)"
                       class="btn-action btn-remove-frequent" 
                       title="Remove from frequent"
@@ -207,6 +215,14 @@
                     <StarIcon size="16" />
                   </button>
                   <button 
+                    @click="showTaskAssignment(department)"
+                    class="btn-action"
+                    :class="{ 'btn-active': hasDepartmentTaskAssignment(department.id) }"
+                    title="Assign Task Type & Item"
+                  >
+                    <TaskIcon size="16" :filled="hasDepartmentTaskAssignment(department.id)" />
+                  </button>
+                  <button 
                     @click="editDepartment(department)"
                     class="btn-action"
                     title="Edit department"
@@ -240,6 +256,14 @@
         </div>
       </div>
     </div>
+    
+    <!-- Department Task Assignment Modal -->
+    <DepartmentTaskAssignmentModal
+      v-if="showTaskAssignmentModal && selectedDepartment"
+      :department="selectedDepartment"
+      @close="showTaskAssignmentModal = false"
+      @saved="onTaskAssignmentSaved"
+    />
   </div>
 </template>
 
@@ -249,6 +273,8 @@ import { useLocationsStore } from '../../stores/locationsStore';
 import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 import StarIcon from '../icons/StarIcon.vue';
+import TaskIcon from '../icons/TaskIcon.vue';
+import DepartmentTaskAssignmentModal from './DepartmentTaskAssignmentModal.vue';
 import draggable from 'vuedraggable';
 
 const props = defineProps({
@@ -273,6 +299,8 @@ const editingDepartment = ref(null);
 const editDepartmentName = ref('');
 const editDepartmentColor = ref('#CCCCCC'); // Default grey color
 const localFrequentDepartments = ref([]);
+const showTaskAssignmentModal = ref(false);
+const selectedDepartment = ref(null);
 
 // Building name editing
 const startEditBuildingName = async () => {
@@ -432,6 +460,23 @@ const confirmDelete = async () => {
     await locationsStore.deleteBuilding(props.building.id);
     emit('close');
   }
+};
+
+// Check if a department has a task type/item assignment
+const hasDepartmentTaskAssignment = (departmentId) => {
+  return !!locationsStore.getDepartmentTaskAssignment(departmentId);
+};
+
+// Show task assignment modal for a department
+const showTaskAssignment = (department) => {
+  selectedDepartment.value = department;
+  showTaskAssignmentModal.value = true;
+};
+
+// Handle task assignment saved
+const onTaskAssignmentSaved = () => {
+  // This is just a hook in case we want to do something after saving
+  // We could potentially reload data here if needed
 };
 </script>
 

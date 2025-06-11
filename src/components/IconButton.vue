@@ -36,10 +36,12 @@ defineEmits(['click']);
   background: transparent;
   border: none;
   border-radius: mix.radius('full');
-  padding: 6px;
+  padding: 8px;
   cursor: pointer;
   color: mix.color('text');
   transition: all 0.2s ease;
+  min-width: 32px;
+  min-height: 32px;
   
   &:hover, &:focus {
     background-color: rgba(0, 0, 0, 0.05);
@@ -52,6 +54,7 @@ defineEmits(['click']);
   
   &--active {
     color: mix.color('primary');
+    background-color: rgba(66, 133, 244, 0.1);
   }
 }
 </style>

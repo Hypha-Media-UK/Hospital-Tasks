@@ -132,7 +132,8 @@
                 <select 
                   id="taskType" 
                   v-model="taskForm.taskTypeId" 
-                  class="form-control" 
+                  class="form-control"
+                  :class="{ 'field-auto-populated': taskTypeAutoPopulated }"
                   @change="loadTaskItems"
                   :disabled="isEditingTask"
                 >
@@ -473,6 +474,7 @@ const taskFormError = ref('');
 const originFieldAutoPopulated = ref(false);
 const destinationFieldAutoPopulated = ref(false);
 const taskItemAutoPopulated = ref(false);
+const taskTypeAutoPopulated = ref(false);
 
 // Task form data
 const taskForm = ref({
@@ -710,6 +712,58 @@ watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
   if (newTaskItemId) {
     // Check for item-specific department assignments and auto-populate
     checkTaskItemDepartmentAssignments(newTaskItemId);
+  }
+});
+
+// Watch for origin department changes to auto-populate task type and task item
+watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
+  if (!newDepartmentId) return;
+  
+  console.log('Origin department changed to:', newDepartmentId);
+  
+  // Only auto-populate if task type is not already selected
+  if (!taskForm.value.taskTypeId) {
+    // Check if this department has a task assignment
+    const assignment = locationsStore.getDepartmentTaskAssignment(newDepartmentId);
+    console.log('Department task assignment:', assignment);
+    
+    if (assignment && assignment.task_type_id) {
+      console.log('Setting task type to:', assignment.task_type_id);
+      
+      // Set task type ID
+      taskForm.value.taskTypeId = assignment.task_type_id;
+      
+      // Visual feedback for auto-population
+      taskTypeAutoPopulated.value = true;
+      // Reset the flag after animation completes
+      setTimeout(() => {
+        taskTypeAutoPopulated.value = false;
+      }, 1500);
+      
+      // Load task items for this type
+      loadTaskItems().then(() => {
+        // After loading items, set task item if specified in assignment
+        if (assignment.task_item_id) {
+          console.log('Setting task item to:', assignment.task_item_id);
+          
+          // Check if this task item exists in the loaded items
+          const itemExists = taskItems.value.some(item => item.id === assignment.task_item_id);
+          
+          if (itemExists) {
+            taskForm.value.taskItemId = assignment.task_item_id;
+            
+            // Visual feedback for auto-population
+            taskItemAutoPopulated.value = true;
+            setTimeout(() => {
+              taskItemAutoPopulated.value = false;
+            }, 1500);
+          }
+        }
+      });
+    } else {
+      // Check task type assignments from taskTypesStore as a fallback
+      checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+    }
   }
 });
 

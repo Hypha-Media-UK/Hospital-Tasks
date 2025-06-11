@@ -22,6 +22,14 @@
         </IconButton>
         
         <IconButton 
+          title="Assign Task Type & Item"
+          :active="hasTaskAssignment"
+          @click="showTaskAssignment"
+        >
+          <TaskIcon :filled="hasTaskAssignment" />
+        </IconButton>
+        
+        <IconButton 
           title="Edit Department"
           @click="startEdit"
         >
@@ -36,6 +44,14 @@
         </IconButton>
       </div>
     </div>
+    
+    <!-- Task Assignment Modal -->
+    <DepartmentTaskAssignmentModal
+      v-if="showTaskAssignmentModal"
+      :department="department"
+      @close="showTaskAssignmentModal = false"
+      @saved="onTaskAssignmentSaved"
+    />
   </div>
 </template>
 
@@ -46,6 +62,8 @@ import IconButton from '../IconButton.vue';
 import StarIcon from '../icons/StarIcon.vue';
 import EditIcon from '../icons/EditIcon.vue';
 import CloseIcon from '../icons/CloseIcon.vue';
+import TaskIcon from '../icons/TaskIcon.vue';
+import DepartmentTaskAssignmentModal from './DepartmentTaskAssignmentModal.vue';
 
 const props = defineProps({
   department: {
@@ -60,6 +78,13 @@ const locationsStore = useLocationsStore();
 const isEditing = ref(false);
 const editName = ref('');
 const editInput = ref(null);
+const showTaskAssignmentModal = ref(false);
+
+// Check if this department has a task assignment
+const hasTaskAssignment = computed(() => {
+  const assignment = locationsStore.getDepartmentTaskAssignment(props.department.id);
+  return !!assignment;
+});
 
 // Start editing the department name
 const startEdit = async () => {
@@ -104,6 +129,16 @@ const confirmDelete = async () => {
     emit('deleted', props.department.id);
   }
 };
+
+// Show task assignment modal
+const showTaskAssignment = () => {
+  showTaskAssignmentModal.value = true;
+};
+
+// Handle task assignment saved
+const onTaskAssignmentSaved = () => {
+  // This is just a hook in case we want to do something after saving
+};
 </script>
 
 <style lang="scss" scoped>
@@ -133,7 +168,10 @@ const confirmDelete = async () => {
   
   &__actions {
     display: flex;
-    gap: 4px;
+    gap: 8px;
+    padding: 4px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: mix.radius('md');
   }
   
   &__edit {

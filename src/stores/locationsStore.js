@@ -5,10 +5,12 @@ export const useLocationsStore = defineStore('locations', {
   state: () => ({
     buildings: [],
     departments: [],
+    departmentTaskAssignments: [],
     loading: {
       buildings: false,
       departments: false,
-      sorting: false
+      sorting: false,
+      departmentTaskAssignments: false
     },
     error: null
   }),
@@ -110,6 +112,13 @@ export const useLocationsStore = defineStore('locations', {
       
       // Return frequent departments first, then regular departments
       return [...frequentDepts, ...regularDepts];
+    },
+    
+    // Get task type and item assignment for a department
+    getDepartmentTaskAssignment: (state) => (departmentId) => {
+      return state.departmentTaskAssignments.find(
+        assignment => assignment.department_id === departmentId
+      ) || null;
     }
   },
   
@@ -490,11 +499,121 @@ export const useLocationsStore = defineStore('locations', {
       }
     },
     
+    // Department Task Assignment operations
+    async fetchDepartmentTaskAssignments() {
+      this.loading.departmentTaskAssignments = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('department_task_assignments')
+          .select('*');
+        
+        if (error) throw error;
+        
+        this.departmentTaskAssignments = data || [];
+        console.log('Loaded department task assignments:', this.departmentTaskAssignments);
+      } catch (error) {
+        console.error('Error fetching department task assignments:', error);
+        this.error = 'Failed to load department task assignments';
+      } finally {
+        this.loading.departmentTaskAssignments = false;
+      }
+    },
+    
+    async updateDepartmentTaskAssignment(departmentId, taskTypeId, taskItemId) {
+      this.loading.departmentTaskAssignments = true;
+      this.error = null;
+      
+      try {
+        // First check if assignment already exists
+        const existingAssignment = this.getDepartmentTaskAssignment(departmentId);
+        
+        if (existingAssignment) {
+          // Update existing assignment
+          const { error } = await supabase
+            .from('department_task_assignments')
+            .update({
+              task_type_id: taskTypeId,
+              task_item_id: taskItemId
+            })
+            .eq('department_id', departmentId);
+          
+          if (error) throw error;
+          
+          // Update in local state
+          const index = this.departmentTaskAssignments.findIndex(
+            a => a.department_id === departmentId
+          );
+          
+          if (index !== -1) {
+            this.departmentTaskAssignments[index] = {
+              ...this.departmentTaskAssignments[index],
+              task_type_id: taskTypeId,
+              task_item_id: taskItemId
+            };
+          }
+        } else {
+          // Create new assignment
+          const { data, error } = await supabase
+            .from('department_task_assignments')
+            .insert({
+              department_id: departmentId,
+              task_type_id: taskTypeId,
+              task_item_id: taskItemId
+            })
+            .select();
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            this.departmentTaskAssignments.push(data[0]);
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error updating department task assignment:', error);
+        this.error = 'Failed to update department task assignment';
+        return false;
+      } finally {
+        this.loading.departmentTaskAssignments = false;
+      }
+    },
+    
+    async removeDepartmentTaskAssignment(departmentId) {
+      this.loading.departmentTaskAssignments = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('department_task_assignments')
+          .delete()
+          .eq('department_id', departmentId);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.departmentTaskAssignments = this.departmentTaskAssignments.filter(
+          a => a.department_id !== departmentId
+        );
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing department task assignment:', error);
+        this.error = 'Failed to remove department task assignment';
+        return false;
+      } finally {
+        this.loading.departmentTaskAssignments = false;
+      }
+    },
+    
     // Initialize data
     async initialize() {
       await Promise.all([
         this.fetchBuildings(),
-        this.fetchDepartments()
+        this.fetchDepartments(),
+        this.fetchDepartmentTaskAssignments()
       ]);
     }
   }
