@@ -1136,6 +1136,11 @@ const confirmDeleteAbsence = async () => {
   &__actions {
     display: flex;
     gap: 4px;
+    
+    @media screen and (max-width: 500px) {
+      flex-direction: column;
+      gap: 8px;
+    }
   }
 }
 

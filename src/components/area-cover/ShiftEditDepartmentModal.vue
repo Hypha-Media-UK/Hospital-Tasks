@@ -716,8 +716,21 @@ watch(showAddPorterModal, (newValue) => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
   gap: 12px;
+  
+  @media screen and (min-width: 700px) {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  
+  .btn {
+    width: 100%;
+    
+    @media screen and (min-width: 700px) {
+      width: auto;
+    }
+  }
 }
 
 .form-group {

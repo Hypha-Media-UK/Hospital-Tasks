@@ -15,14 +15,34 @@
   &__nav {
     @include mix.flex(row, space-between, center);
     width: 100%;
-    padding: 0 70px;
+    padding: 0 15px;
+    
+    @include mix.responsive('xs') {
+      padding: 0 20px;
+    }
+    
+    @include mix.responsive('sm') {
+      padding: 0 30px;
+    }
+    
+    @include mix.responsive('md') {
+      padding: 0 70px;
+    }
     
     &-left, &-right {
       @include mix.flex(row, center, center);
     }
     
     &-right {
-      gap: mix.spacing('lg');
+      gap: mix.spacing('sm');
+      
+      @include mix.responsive('sm') {
+        gap: mix.spacing('md');
+      }
+      
+      @include mix.responsive('md') {
+        gap: mix.spacing('lg');
+      }
     }
     
     a {
@@ -44,16 +64,31 @@
 }
 
 .icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
+  
+  @include mix.responsive('sm') {
+    width: 24px;
+    height: 24px;
+  }
   
   &--small {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+    
+    @include mix.responsive('sm') {
+      width: 20px;
+      height: 20px;
+    }
   }
   
   &--large {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
+    
+    @include mix.responsive('sm') {
+      width: 32px;
+      height: 32px;
+    }
   }
 }

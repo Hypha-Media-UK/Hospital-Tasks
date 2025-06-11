@@ -1,5 +1,24 @@
 @use 'variables' as vars;
 @use 'sass:map';
+@use 'sass:math';
+
+// Function to strip units from a value
+@function strip-unit($value) {
+  @return math.div($value, ($value * 0 + 1));
+}
+
+// Responsive font size mixin
+@mixin responsive-font($min-size, $max-size, $min-width: 360px, $max-width: 1200px) {
+  font-size: $min-size;
+  
+  @media screen and (min-width: $min-width) {
+    font-size: calc(#{$min-size} + #{strip-unit($max-size - $min-size)} * ((100vw - #{$min-width}) / #{strip-unit($max-width - $min-width)}));
+  }
+  
+  @media screen and (min-width: $max-width) {
+    font-size: $max-size;
+  }
+}
 
 @mixin responsive($breakpoint) {
   $size: map.get(vars.$breakpoints, $breakpoint);

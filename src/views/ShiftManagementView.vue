@@ -1379,7 +1379,14 @@ function isWeekend(date) {
 .duplicate-controls {
   display: flex;
   gap: 0.5rem;
-  margin-right: 0.75rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  
+  @media screen and (min-width: 500px) {
+    width: auto;
+    margin-right: 0.75rem;
+    margin-bottom: 0;
+  }
 }
 
 .date-picker {
@@ -1392,7 +1399,20 @@ function isWeekend(date) {
 
 .shift-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 0.5rem;
+  width: 100%;
+  
+  @media screen and (min-width: 500px) {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  @media screen and (min-width: 700px) {
+    width: auto;
+    margin-top: 0;
+  }
 }
 
 .loading, .error-state {
@@ -1402,11 +1422,17 @@ function isWeekend(date) {
 
 .shift-info-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2.5rem;
+  flex-direction: column;
+  padding: 1rem;
   background-color: #f8f9fa;
   border-radius: 8px;
+  
+  @media screen and (min-width: 700px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2.5rem;
+  }
   
   .shift-type {
     font-weight: 700; /* Make the colored text bolder */
@@ -1420,8 +1446,8 @@ function isWeekend(date) {
   
   .shift-header-content {
     h2 {
-      margin: 0;
-      font-size: 1.2rem;
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -1430,10 +1456,20 @@ function isWeekend(date) {
       .separator {
         margin: 0 0.5rem;
         color: #6c757d;
+        display: none;
+        
+        @media screen and (min-width: 500px) {
+          display: inline;
+        }
       }
       
-      @media (max-width: 600px) {
-        font-size: 1rem;
+      @media screen and (min-width: 500px) {
+        font-size: 1.1rem;
+      }
+      
+      @media screen and (min-width: 700px) {
+        margin-bottom: 0;
+        font-size: 1.2rem;
       }
     }
   }
@@ -1485,8 +1521,13 @@ function isWeekend(date) {
   
   .confirmation-actions {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
     margin-top: 1rem;
+    
+    @media screen and (min-width: 500px) {
+      flex-direction: row;
+    }
   }
 }
 
@@ -1717,8 +1758,21 @@ function isWeekend(date) {
     padding: 1rem;
     border-top: 1px solid #e0e0e0;
     display: flex;
-    justify-content: flex-end;
+    flex-direction: column;
     gap: 0.5rem;
+    
+    @media screen and (min-width: 500px) {
+      flex-direction: row;
+      justify-content: flex-end;
+    }
+    
+    .btn {
+      width: 100%;
+      
+      @media screen and (min-width: 500px) {
+        width: auto;
+      }
+    }
   }
 }
 

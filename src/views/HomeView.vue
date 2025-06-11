@@ -793,9 +793,15 @@ function calculateDuration(startTimeString) {
 
 .card__header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.5rem;
   margin-bottom: 1rem;
+  
+  @media screen and (min-width: 576px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .selection-controls {
@@ -849,8 +855,12 @@ function calculateDuration(startTimeString) {
 
 .shift-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
+  
+  @media screen and (min-width: 576px) {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
 }
 
 .shift-card {
@@ -938,11 +948,16 @@ function calculateDuration(startTimeString) {
   }
   
   .shift-type-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    display: flex;
+    flex-direction: column; // Stack buttons by default on mobile
     gap: 1rem;
     max-width: 600px;
     margin: 0 auto;
+    
+    @media screen and (min-width: 700px) {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
   }
   
   .date-info {

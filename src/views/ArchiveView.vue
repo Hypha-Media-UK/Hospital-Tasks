@@ -439,15 +439,24 @@ function calculateDuration(startTime, endTime) {
 
 .filter-controls {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   margin-bottom: 1rem;
   gap: 1rem;
   
+  @media screen and (min-width: 700px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
   .search-box {
-    flex: 1;
-    min-width: 200px;
+    width: 100%;
+    
+    @media screen and (min-width: 700px) {
+      flex: 1;
+      min-width: 200px;
+    }
     
     .search-input {
       width: 100%;
@@ -460,13 +469,23 @@ function calculateDuration(startTime, endTime) {
   
   .filter-group {
     display: flex;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    
+    @media screen and (min-width: 500px) {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
     
     label {
       display: flex;
       align-items: center;
       gap: 0.25rem;
       cursor: pointer;
+      
+      // Make radio buttons easier to tap on mobile
+      padding: 0.25rem 0;
     }
   }
 }

@@ -9,6 +9,8 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   background-color: mix.color('background');
   color: mix.color('text');
+  overflow-x: hidden;
+  width: 100%;
 }
 
 * {
@@ -21,8 +23,13 @@ html, body {
 }
 
 .content {
-  padding: mix.spacing('md');
-  padding-top: calc(60px + mix.spacing('md')); // Account for fixed header
+  padding: mix.spacing('sm');
+  padding-top: calc(60px + mix.spacing('sm')); // Account for fixed header
+  
+  @include mix.responsive('sm') {
+    padding: mix.spacing('md');
+    padding-top: calc(60px + mix.spacing('md'));
+  }
   
   @include mix.responsive('md') {
     padding: mix.spacing('lg');
@@ -31,14 +38,23 @@ html, body {
 }
 
 .view {
-  @include mix.grid(1fr, auto, mix.spacing('md'));
+  @include mix.grid(1fr, auto, mix.spacing('sm'));
   max-width: 1200px;
   margin: 0 auto;
   
+  @include mix.responsive('sm') {
+    @include mix.grid(1fr, auto, mix.spacing('md'));
+  }
+  
   &__title {
-    font-size: mix.font-size('xl');
+    font-size: mix.font-size('lg');
     font-weight: 600;
-    margin-bottom: mix.spacing('md');
+    margin-bottom: mix.spacing('sm');
+    
+    @include mix.responsive('md') {
+      font-size: mix.font-size('xl');
+      margin-bottom: mix.spacing('md');
+    }
   }
   
   &__content {
@@ -81,12 +97,12 @@ button {
   transition: background-color 0.2s ease;
   
   &:hover, &:focus {
-    background-color: color.adjust(mix.color('primary'), $lightness: -5%);
+    background-color: color.scale(mix.color('primary'), $lightness: -5%);
     text-decoration: none;
   }
   
   &:active {
-    background-color: color.adjust(mix.color('primary'), $lightness: -10%);
+    background-color: color.scale(mix.color('primary'), $lightness: -10%);
   }
   
   &--secondary {
@@ -94,11 +110,11 @@ button {
     color: mix.color('text');
     
     &:hover, &:focus {
-      background-color: color.adjust(mix.color('surface'), $lightness: -5%);
+      background-color: color.scale(mix.color('surface'), $lightness: -5%);
     }
     
     &:active {
-      background-color: color.adjust(mix.color('surface'), $lightness: -10%);
+      background-color: color.scale(mix.color('surface'), $lightness: -10%);
     }
   }
 }
@@ -108,9 +124,39 @@ button {
   background-color: mix.color('background');
   border-radius: mix.radius('lg');
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: mix.spacing('md');
+  padding: mix.spacing('sm');
+  
+  @include mix.responsive('sm') {
+    padding: mix.spacing('md');
+  }
   
   @include mix.responsive('md') {
     padding: mix.spacing('lg');
   }
+}
+
+// Form elements styling
+input, select, textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: mix.radius('md');
+  padding: 8px 12px;
+  width: 100%;
+  font-family: inherit;
+  font-size: inherit;
+  
+  &:focus {
+    outline: none;
+    border-color: mix.color('primary');
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+  }
+}
+
+// Time inputs specific styling
+input[type="time"] {
+  background-color: white;
+  min-height: 38px;
 }
