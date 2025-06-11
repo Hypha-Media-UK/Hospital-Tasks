@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue';
 import ArchiveView from '../views/ArchiveView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import ShiftManagementView from '../views/ShiftManagementView.vue';
+import ActivitySheetView from '../views/ActivitySheetView.vue';
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
     path: '/shift/:id',
     name: 'shift',
     component: ShiftManagementView
+  },
+  {
+    path: '/shift/:id/activity-sheet',
+    name: 'shift-activity-sheet',
+    component: ActivitySheetView
   },
   {
     path: '/default-support',

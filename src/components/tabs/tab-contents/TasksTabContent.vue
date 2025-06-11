@@ -1,12 +1,5 @@
 <template>
   <div class="tasks-tab">
-    <!-- Activity Sheet Modal -->
-    <ActivitySheetModal 
-      v-if="showingActivitySheet" 
-      :shift="currentShift"
-      :tasks="allTasks"
-      @close="closeActivitySheet"
-    />
     
     <!-- Tasks List -->
     <div class="tasks-container">
@@ -168,9 +161,9 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
-import ActivitySheetModal from '../../ActivitySheetModal.vue';
 
 // Define props to receive shift ID and functions from parent
 const props = defineProps({
@@ -186,11 +179,11 @@ const emit = defineEmits(['editTask', 'markTaskCompleted', 'markTaskPending']);
 // Store instances
 const shiftsStore = useShiftsStore();
 const settingsStore = useSettingsStore();
+const router = useRouter();
 
 // Local state
 const activeTab = ref('pending');
 const updatingTask = ref(false);
-const showingActivitySheet = ref(false);
 
 // Computed properties
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
@@ -204,11 +197,8 @@ function editTask(task) {
 }
 
 function showActivitySheet() {
-  showingActivitySheet.value = true;
-}
-
-function closeActivitySheet() {
-  showingActivitySheet.value = false;
+  // Navigate to the activity sheet view
+  router.push(`/shift/${props.shiftId}/activity-sheet`);
 }
 
 async function markTaskCompleted(taskId) {
