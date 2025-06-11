@@ -1327,6 +1327,9 @@ const confirmDeleteAbsence = async () => {
       width: 18px;
       height: 18px;
       cursor: pointer;
+      -webkit-appearance: checkbox;
+      -moz-appearance: checkbox;
+      appearance: checkbox;
     }
     
     label {
