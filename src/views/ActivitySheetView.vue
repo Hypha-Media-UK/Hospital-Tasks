@@ -86,6 +86,7 @@
             <template v-if="hasPoolPorters">
               <li v-for="porterItem in poolPorters" :key="porterItem.id">
                 {{ porterItem.name }}: {{ porterItem.taskCount }} {{ porterItem.taskCount === 1 ? 'Task' : 'Tasks' }}
+                <span class="percentage-value">({{ porterItem.percentage.toFixed(1) }}%)</span>
                 <span v-if="porterItem.movedTo" class="moved-note">(Moved to {{ porterItem.movedTo }})</span>
               </li>
             </template>
@@ -316,6 +317,14 @@ const porterActivity = computed(() => {
           }
         }
       }
+      
+      // Calculate percentage of total tasks
+      const totalTasks = tasks.value.length;
+      if (totalTasks > 0) {
+        data.percentage = (data.taskCount / totalTasks) * 100;
+      } else {
+        data.percentage = 0;
+      }
     });
     
     // Convert to array and sort by task count (descending)
@@ -417,6 +426,7 @@ function exportToExcel() {
       .map(porterItem => ({
         'Porter': porterItem.name,
         'Tasks': porterItem.taskCount,
+        'Percentage': `${porterItem.percentage.toFixed(1)}%`,
         'Status': porterItem.movedTo ? `Moved to ${porterItem.movedTo}` : 'In Pool'
       }));
     
@@ -426,6 +436,7 @@ function exportToExcel() {
     const porterColumnWidths = [
       { wch: 25 }, // Porter
       { wch: 10 }, // Tasks
+      { wch: 12 }, // Percentage
       { wch: 20 }  // Status
     ];
     porterWorksheet['!cols'] = porterColumnWidths;
@@ -655,6 +666,7 @@ function getShiftTypeDisplayName() {
     table-layout: fixed;
     border-collapse: collapse;
     letter-spacing: -0.1pt !important;
+    margin-bottom: 0.3cm !important;
     
     th, td {
       padding: 1px 2px !important;
@@ -687,23 +699,19 @@ function getShiftTypeDisplayName() {
   }
   
   .department-summary, .porter-summary {
-    font-size: 8pt;
-    margin-top: 0 !important;
-    padding-top: 0.8cm !important;
+    font-size: 6.5pt !important;
+    margin-top: 0.5cm !important;
+    padding-top: 0 !important;
     
     .summary-title {
-      font-size: 12pt !important;
+      font-size: 8pt !important;
       font-weight: bold;
-      margin-bottom: 8px !important;
+      margin-bottom: 5px !important;
     }
   }
   
-  .department-summary {
-    break-before: page;
-  }
-  
   .porter-summary {
-    margin-top: 1cm !important;
+    margin-top: 0.5cm !important;
   }
   
   .simple-list {
@@ -712,15 +720,20 @@ function getShiftTypeDisplayName() {
     margin-left: 0 !important;
     
     li {
-      font-size: 8pt !important;
-      margin-bottom: 3pt !important;
-      line-height: 1.2 !important;
+      font-size: 6.5pt !important;
+      margin-bottom: 2pt !important;
+      line-height: 1.1 !important;
     }
     
     .total-item {
-      margin-top: 8pt !important;
-      padding-top: 4pt !important;
-      border-top: 1px solid #333 !important;
+      margin-top: 5pt !important;
+      padding-top: 3pt !important;
+      border-top: 0.5pt solid #333 !important;
+    }
+    
+    .percentage-value {
+      color: #666 !important;
+      margin-left: 3px !important;
     }
     
     .moved-note {
@@ -824,12 +837,12 @@ function getShiftTypeDisplayName() {
 }
 
 .department-summary, .porter-summary {
-  margin-top: 40px;
+  margin-top: 30px;
   
   .summary-title {
-    font-size: 22px;
+    font-size: 1rem;
     font-weight: bold;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     margin-top: 0;
   }
   
@@ -839,23 +852,28 @@ function getShiftTypeDisplayName() {
     margin-left: 0;
     
     li {
-      font-size: 18px;
+      font-size: 0.85rem;
       font-weight: 400;
       color: #333;
-      margin-bottom: 12px;
-      line-height: 1.5;
+      margin-bottom: 8px;
+      line-height: 1.3;
     }
     
     .total-item {
-      margin-top: 20px;
-      padding-top: 10px;
+      margin-top: 15px;
+      padding-top: 8px;
       border-top: 1px solid #333;
+    }
+    
+    .percentage-value {
+      color: #666;
+      margin-left: 4px;
     }
     
     .moved-note {
       font-style: italic;
       color: #555;
-      margin-left: 5px;
+      margin-left: 4px;
     }
     
     .empty-state {
@@ -866,7 +884,7 @@ function getShiftTypeDisplayName() {
 }
 
 .porter-summary {
-  margin-top: 35px;
+  margin-top: 25px;
 }
 
 .btn {
