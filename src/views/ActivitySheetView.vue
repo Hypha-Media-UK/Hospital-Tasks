@@ -457,10 +457,16 @@ function getShiftTypeDisplayName() {
 <style lang="scss">
 // Global styles (applied to the whole document when printing)
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 0.7cm;
+  }
+  
   body {
     margin: 0;
     padding: 0;
     background-color: white;
+    font-size: 6.5pt;
   }
   
   button, .actions-bar {
@@ -469,37 +475,67 @@ function getShiftTypeDisplayName() {
   
   .sheet-title {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
   }
   
   .sheet-header {
-    font-size: 24pt !important;
+    font-size: 16pt !important;
     font-weight: bold;
-    margin-bottom: 8pt !important;
+    margin-bottom: 4pt !important;
   }
   
   .sheet-info {
-    font-size: 14pt !important;
+    font-size: 10pt !important;
     margin: 0 !important;
   }
   
   .tasks-table {
-    font-size: 11pt;
+    font-size: 6.5pt !important;
     width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    letter-spacing: -0.1pt !important;
     
     th, td {
-      padding: 6px !important;
+      padding: 1px 2px !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border: 0.25pt solid black !important;
     }
+    
+    th {
+      font-weight: bold !important;
+      font-size: 7pt !important;
+      background-color: #f2f2f2 !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      padding-top: 2px !important;
+      padding-bottom: 2px !important;
+    }
+    
+    /* Set specific column widths */
+    th:nth-child(1) { width: 5.5%; }  /* Time */
+    th:nth-child(2) { width: 14%; }   /* From */
+    th:nth-child(3) { width: 14%; }   /* To */
+    th:nth-child(4) { width: 13%; }   /* Task */
+    th:nth-child(5) { width: 16%; }   /* Task Info */
+    th:nth-child(6) { width: 6.5%; }  /* Allocated */
+    th:nth-child(7) { width: 14.5%; } /* Porter */
+    th:nth-child(8) { width: 6.5%; }  /* Completed */
+    th:nth-child(9) { width: 10%; }   /* Duration */
   }
   
   .department-summary {
-    font-size: 12pt;
+    font-size: 8pt;
     break-before: page;
+    margin-top: 0 !important;
+    padding-top: 0.8cm !important;
     
     .summary-title {
-      font-size: 18pt !important;
+      font-size: 12pt !important;
       font-weight: bold;
-      margin-bottom: 15px !important;
+      margin-bottom: 8px !important;
     }
   }
   
@@ -509,14 +545,14 @@ function getShiftTypeDisplayName() {
     margin-left: 0 !important;
     
     li {
-      font-size: 14pt !important;
-      margin-bottom: 8pt !important;
-      line-height: 1.4 !important;
+      font-size: 8pt !important;
+      margin-bottom: 3pt !important;
+      line-height: 1.2 !important;
     }
     
     .total-item {
-      margin-top: 16pt !important;
-      padding-top: 8pt !important;
+      margin-top: 8pt !important;
+      padding-top: 4pt !important;
       border-top: 1px solid #333 !important;
     }
   }
@@ -574,21 +610,40 @@ function getShiftTypeDisplayName() {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 30px;
+  font-size: 0.85rem;
+  table-layout: fixed;
   
   th, td {
-    border: 1px solid black;
-    padding: 10px;
+    border: 0.5px solid #ccc;
+    padding: 6px 8px;
     text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   
   th {
     background-color: #f8f9fa;
     font-weight: bold;
+    font-size: 0.9rem;
+    position: sticky;
+    top: 0;
   }
   
   tr:nth-child(even) {
     background-color: #f8f9fa;
   }
+  
+  /* Column widths for better display */
+  th:nth-child(1) { width: 5.5%; }  /* Time */
+  th:nth-child(2) { width: 14%; }   /* From */
+  th:nth-child(3) { width: 14%; }   /* To */
+  th:nth-child(4) { width: 13%; }   /* Task */
+  th:nth-child(5) { width: 16%; }   /* Task Info */
+  th:nth-child(6) { width: 6.5%; }  /* Allocated */
+  th:nth-child(7) { width: 14.5%; } /* Porter */
+  th:nth-child(8) { width: 6.5%; }  /* Completed */
+  th:nth-child(9) { width: 10%; }   /* Duration */
 }
 
 .department-summary {
