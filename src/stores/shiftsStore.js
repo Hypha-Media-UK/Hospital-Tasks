@@ -2006,6 +2006,263 @@ export const useShiftsStore = defineStore('shifts', {
       } finally {
         this.loading.currentShift = false;
       }
+    },
+    
+    // Duplicate a shift (copy all setup but not tasks)
+    async duplicateShift(shiftId, newDate) {
+      this.loading.createShift = true;
+      this.error = null;
+      
+      try {
+        console.log(`Duplicating shift ${shiftId} to date ${newDate}`);
+        
+        // 1. Get the original shift details
+        const { data: origShift, error: shiftError } = await supabase
+          .from('shifts')
+          .select(`
+            *,
+            supervisor:supervisor_id(id, first_name, last_name, role)
+          `)
+          .eq('id', shiftId)
+          .single();
+        
+        if (shiftError) throw shiftError;
+        
+        if (!origShift) {
+          throw new Error('Original shift not found');
+        }
+        
+        // 2. Create a new shift with the same type but new date
+        const newDateObj = new Date(newDate);
+        
+        // Format the date part, keeping the time part from the original shift
+        const origDateTime = new Date(origShift.start_time);
+        newDateObj.setHours(origDateTime.getHours());
+        newDateObj.setMinutes(origDateTime.getMinutes());
+        newDateObj.setSeconds(origDateTime.getSeconds());
+        
+        const newShiftStartTime = newDateObj.toISOString();
+        
+        const { data: newShiftData, error: createError } = await supabase
+          .from('shifts')
+          .insert({
+            supervisor_id: origShift.supervisor_id,
+            shift_type: origShift.shift_type,
+            start_time: newShiftStartTime,
+            is_active: true
+          })
+          .select();
+        
+        if (createError) throw createError;
+        
+        if (!newShiftData || newShiftData.length === 0) {
+          throw new Error('Failed to create new shift');
+        }
+        
+        const newShift = newShiftData[0];
+        console.log(`Created new shift with ID: ${newShift.id}`);
+        
+        // 3. Duplicate porter pool
+        console.log('Duplicating porter pool...');
+        const { data: porterPool, error: porterPoolError } = await supabase
+          .from('shift_porter_pool')
+          .select('*')
+          .eq('shift_id', shiftId);
+          
+        if (porterPoolError) throw porterPoolError;
+        
+        if (porterPool && porterPool.length > 0) {
+          // Create porter pool entries for new shift
+          const newPorterPoolEntries = porterPool.map(porter => ({
+            shift_id: newShift.id,
+            porter_id: porter.porter_id
+          }));
+          
+          const { error: insertPorterError } = await supabase
+            .from('shift_porter_pool')
+            .insert(newPorterPoolEntries);
+            
+          if (insertPorterError) throw insertPorterError;
+          
+          console.log(`Duplicated ${porterPool.length} porter pool entries`);
+        }
+        
+        // 4. Duplicate area cover assignments
+        console.log('Duplicating area cover assignments...');
+        const { data: areaCover, error: areaCoverError } = await supabase
+          .from('shift_area_cover_assignments')
+          .select('*')
+          .eq('shift_id', shiftId);
+          
+        if (areaCoverError) throw areaCoverError;
+        
+        // Map to store old area cover assignment ID to new ID
+        const areaCoverIdMap = new Map();
+        
+        if (areaCover && areaCover.length > 0) {
+          // Create area cover entries for new shift
+          const newAreaCoverEntries = areaCover.map(area => ({
+            shift_id: newShift.id,
+            department_id: area.department_id,
+            start_time: area.start_time,
+            end_time: area.end_time,
+            color: area.color,
+            minimum_porters: area.minimum_porters
+          }));
+          
+          const { data: newAreaCover, error: insertAreaError } = await supabase
+            .from('shift_area_cover_assignments')
+            .insert(newAreaCoverEntries)
+            .select();
+            
+          if (insertAreaError) throw insertAreaError;
+          
+          console.log(`Duplicated ${areaCover.length} area cover assignments`);
+          
+          // Create mapping from old to new area cover assignment IDs
+          if (newAreaCover) {
+            for (let i = 0; i < areaCover.length; i++) {
+              areaCoverIdMap.set(areaCover[i].id, newAreaCover[i].id);
+            }
+          }
+          
+          // 5. Duplicate area cover porter assignments
+          console.log('Duplicating area cover porter assignments...');
+          
+          for (const oldAreaId of areaCoverIdMap.keys()) {
+            const { data: areaPorters, error: areaPortersError } = await supabase
+              .from('shift_area_cover_porter_assignments')
+              .select('*')
+              .eq('shift_area_cover_assignment_id', oldAreaId);
+              
+            if (areaPortersError) throw areaPortersError;
+            
+            if (areaPorters && areaPorters.length > 0) {
+              const newAreaId = areaCoverIdMap.get(oldAreaId);
+              
+              // Create porter assignments for new area cover
+              const newAreaPorterEntries = areaPorters.map(porter => ({
+                shift_area_cover_assignment_id: newAreaId,
+                porter_id: porter.porter_id,
+                start_time: porter.start_time,
+                end_time: porter.end_time
+              }));
+              
+              const { error: insertAreaPorterError } = await supabase
+                .from('shift_area_cover_porter_assignments')
+                .insert(newAreaPorterEntries);
+                
+              if (insertAreaPorterError) throw insertAreaPorterError;
+              
+              console.log(`Duplicated ${areaPorters.length} porter assignments for area ${oldAreaId}`);
+            }
+          }
+        }
+        
+        // 6. Duplicate support service assignments
+        console.log('Duplicating support service assignments...');
+        const { data: services, error: servicesError } = await supabase
+          .from('shift_support_service_assignments')
+          .select('*')
+          .eq('shift_id', shiftId);
+          
+        if (servicesError) throw servicesError;
+        
+        // Map to store old service assignment ID to new ID
+        const serviceIdMap = new Map();
+        
+        if (services && services.length > 0) {
+          // Create service entries for new shift
+          const newServiceEntries = services.map(service => ({
+            shift_id: newShift.id,
+            service_id: service.service_id,
+            start_time: service.start_time,
+            end_time: service.end_time,
+            color: service.color,
+            minimum_porters: service.minimum_porters,
+            minimum_porters_mon: service.minimum_porters_mon,
+            minimum_porters_tue: service.minimum_porters_tue,
+            minimum_porters_wed: service.minimum_porters_wed,
+            minimum_porters_thu: service.minimum_porters_thu,
+            minimum_porters_fri: service.minimum_porters_fri,
+            minimum_porters_sat: service.minimum_porters_sat,
+            minimum_porters_sun: service.minimum_porters_sun
+          }));
+          
+          const { data: newServices, error: insertServiceError } = await supabase
+            .from('shift_support_service_assignments')
+            .insert(newServiceEntries)
+            .select();
+            
+          if (insertServiceError) throw insertServiceError;
+          
+          console.log(`Duplicated ${services.length} support service assignments`);
+          
+          // Create mapping from old to new service assignment IDs
+          if (newServices) {
+            for (let i = 0; i < services.length; i++) {
+              serviceIdMap.set(services[i].id, newServices[i].id);
+            }
+          }
+          
+          // 7. Duplicate support service porter assignments
+          console.log('Duplicating support service porter assignments...');
+          
+          for (const oldServiceId of serviceIdMap.keys()) {
+            const { data: servicePorters, error: servicePortersError } = await supabase
+              .from('shift_support_service_porter_assignments')
+              .select('*')
+              .eq('shift_support_service_assignment_id', oldServiceId);
+              
+            if (servicePortersError) throw servicePortersError;
+            
+            if (servicePorters && servicePorters.length > 0) {
+              const newServiceId = serviceIdMap.get(oldServiceId);
+              
+              // Create porter assignments for new service
+              const newServicePorterEntries = servicePorters.map(porter => ({
+                shift_support_service_assignment_id: newServiceId,
+                porter_id: porter.porter_id,
+                start_time: porter.start_time,
+                end_time: porter.end_time
+              }));
+              
+              const { error: insertServicePorterError } = await supabase
+                .from('shift_support_service_porter_assignments')
+                .insert(newServicePorterEntries);
+                
+              if (insertServicePorterError) throw insertServicePorterError;
+              
+              console.log(`Duplicated ${servicePorters.length} porter assignments for service ${oldServiceId}`);
+            }
+          }
+        }
+        
+        // Add the new shift to activeShifts array
+        if (newShift) {
+          // Get the complete shift with supervisor info
+          const { data: completeShift, error: fetchError } = await supabase
+            .from('shifts')
+            .select(`
+              *,
+              supervisor:supervisor_id(id, first_name, last_name, role)
+            `)
+            .eq('id', newShift.id)
+            .single();
+            
+          if (!fetchError && completeShift) {
+            this.activeShifts.unshift(completeShift);
+          }
+        }
+        
+        return newShift;
+      } catch (error) {
+        console.error('Error duplicating shift:', error);
+        this.error = 'Failed to duplicate shift';
+        return null;
+      } finally {
+        this.loading.createShift = false;
+      }
     }
   }
 });
