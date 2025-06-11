@@ -77,6 +77,23 @@
             </li>
           </ul>
         </div>
+        
+        <!-- Porter Activity Summary -->
+        <div class="porter-summary">
+          <p class="summary-title">Porter Activity</p>
+          <ul class="simple-list">
+            <!-- Only render this section if we have pool porters -->
+            <template v-if="hasPoolPorters">
+              <li v-for="porterItem in poolPorters" :key="porterItem.id">
+                {{ porterItem.name }}: {{ porterItem.taskCount }} {{ porterItem.taskCount === 1 ? 'Task' : 'Tasks' }}
+                <span v-if="porterItem.movedTo" class="moved-note">(Moved to {{ porterItem.movedTo }})</span>
+              </li>
+            </template>
+            <li v-else class="empty-state">
+              No porters in the pool with assigned tasks
+            </li>
+          </ul>
+        </div>
       </div>
     </main>
   </div>
@@ -124,6 +141,12 @@ onMounted(async () => {
     // Fetch tasks for this shift
     const tasksData = await shiftsStore.fetchShiftTasks(shiftId.value);
     tasks.value = tasksData || [];
+    
+    // Fetch porter pool for this shift (needed for Porter Activity section)
+    await shiftsStore.fetchShiftPorterPool(shiftId.value);
+    
+    // Fetch area cover assignments to determine porter department assignments
+    await shiftsStore.fetchShiftAreaCover(shiftId.value);
     
     // Load task types if needed
     if (taskTypesStore.taskTypes.length === 0) {
@@ -203,6 +226,124 @@ const uniqueTaskTypes = computed(() => {
   return Array.from(taskTypes).sort();
 });
 
+// Debug log to track when porterActivity is recalculated
+const debug = (msg, data) => {
+  console.log(`[PorterActivity] ${msg}`, data);
+};
+
+// Porter activity summary - tracks porters and their task counts
+const porterActivity = computed(() => {
+  // If required data isn't loaded yet, return empty array
+  if (!tasks.value || !shiftsStore.shiftPorterPool) {
+    debug("Missing required data", { tasks: !!tasks.value, porterPool: !!shiftsStore.shiftPorterPool });
+    return [];
+  }
+  
+  try {
+    debug("Calculating porterActivity", { 
+      taskCount: tasks.value.length, 
+      poolSize: shiftsStore.shiftPorterPool.length,
+      areaCoverCount: shiftsStore.shiftAreaCoverPorterAssignments?.length || 0
+    });
+    
+    // Track porter task counts and department assignments
+    const porterData = new Map();
+    
+    // Count tasks assigned to each porter
+    tasks.value.forEach(task => {
+      if (task.porter && task.porter.id) {
+        const porterId = task.porter.id;
+        const porterName = `${task.porter.first_name} ${task.porter.last_name}`;
+        
+        if (!porterData.has(porterId)) {
+          porterData.set(porterId, {
+            id: porterId,
+            name: porterName,
+            taskCount: 0,
+            inPool: true, // Default assumption
+            movedTo: null // Will be set if the porter was moved to a department
+          });
+        }
+        
+        // Increment task count
+        const data = porterData.get(porterId);
+        data.taskCount++;
+      }
+    });
+    
+    // Check pool assignments
+    const porterPool = shiftsStore.shiftPorterPool || [];
+    const poolPorterIds = new Set(porterPool.map(p => p?.porter_id).filter(Boolean));
+    
+    // Check area cover assignments (department assignments)
+    const areaCoverAssignments = shiftsStore.shiftAreaCoverPorterAssignments || [];
+    
+    // Track department assignments
+    const departmentAssignments = new Map();
+    
+    // Check area cover assignments
+    areaCoverAssignments.forEach(assignment => {
+      if (!assignment || !assignment.porter_id) return;
+      
+      const porterId = assignment.porter_id;
+      if (!departmentAssignments.has(porterId)) {
+        departmentAssignments.set(porterId, []);
+      }
+      
+      // Add department to porter's assignments if it has a department
+      if (assignment.shift_area_cover_assignment && 
+          assignment.shift_area_cover_assignment.department) {
+        departmentAssignments.get(porterId).push(
+          assignment.shift_area_cover_assignment.department.name
+        );
+      }
+    });
+    
+    // Update porter data with pool and department status
+    porterData.forEach((data, porterId) => {
+      // Check if porter is in the pool
+      data.inPool = poolPorterIds.has(porterId);
+      
+      // Check if porter is assigned to any departments
+      if (departmentAssignments.has(porterId)) {
+        const depts = departmentAssignments.get(porterId);
+        if (depts && depts.length > 0) {
+          // If in pool but also has department assignments, they were moved mid-shift
+          if (data.inPool) {
+            data.movedTo = depts[0]; // Just use the first department
+          } else {
+            data.inPool = false;
+          }
+        }
+      }
+    });
+    
+    // Convert to array and sort by task count (descending)
+    const result = Array.from(porterData.values());
+    const sortedResult = result.sort((a, b) => b.taskCount - a.taskCount);
+    
+    debug("Porter activity result", { 
+      porterCount: sortedResult.length,
+      poolPorters: sortedResult.filter(p => p.inPool).length
+    });
+    
+    return sortedResult;
+  } catch (error) {
+    console.error('Error generating porter activity data:', error);
+    return []; // Return empty array on error
+  }
+});
+
+// Derived computed property to get only porters in the pool
+const poolPorters = computed(() => {
+  return porterActivity.value.filter(p => p && p.inPool);
+});
+
+// Check if we have any porters in the pool to display
+const hasPoolPorters = computed(() => {
+  return poolPorters.value.length > 0;
+});
+
 // Get total count for a specific task type across all departments
 function getTaskTypeTotal(taskType) {
   return tasks.value.filter(task => 
@@ -271,10 +412,29 @@ function exportToExcel() {
     
     const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
     
+    // Create porter activity worksheet
+    const porterData = poolPorters.value
+      .map(porterItem => ({
+        'Porter': porterItem.name,
+        'Tasks': porterItem.taskCount,
+        'Status': porterItem.movedTo ? `Moved to ${porterItem.movedTo}` : 'In Pool'
+      }));
+    
+    const porterWorksheet = XLSX.utils.json_to_sheet(porterData);
+    
+    // Set column widths for porter worksheet
+    const porterColumnWidths = [
+      { wch: 25 }, // Porter
+      { wch: 10 }, // Tasks
+      { wch: 20 }  // Status
+    ];
+    porterWorksheet['!cols'] = porterColumnWidths;
+    
     // Create workbook and append worksheets
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
     XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Department Summary');
+    XLSX.utils.book_append_sheet(workbook, porterWorksheet, 'Porter Activity');
     
     // Generate filename based on shift info
     const shiftDate = shift.value?.start_time 
@@ -526,9 +686,8 @@ function getShiftTypeDisplayName() {
     th:nth-child(9) { width: 10%; }   /* Duration */
   }
   
-  .department-summary {
+  .department-summary, .porter-summary {
     font-size: 8pt;
-    break-before: page;
     margin-top: 0 !important;
     padding-top: 0.8cm !important;
     
@@ -537,6 +696,14 @@ function getShiftTypeDisplayName() {
       font-weight: bold;
       margin-bottom: 8px !important;
     }
+  }
+  
+  .department-summary {
+    break-before: page;
+  }
+  
+  .porter-summary {
+    margin-top: 1cm !important;
   }
   
   .simple-list {
@@ -554,6 +721,16 @@ function getShiftTypeDisplayName() {
       margin-top: 8pt !important;
       padding-top: 4pt !important;
       border-top: 1px solid #333 !important;
+    }
+    
+    .moved-note {
+      font-style: italic !important;
+      color: #555 !important;
+    }
+    
+    .empty-state {
+      font-style: italic !important;
+      color: #666 !important;
     }
   }
 }
@@ -646,7 +823,7 @@ function getShiftTypeDisplayName() {
   th:nth-child(9) { width: 10%; }   /* Duration */
 }
 
-.department-summary {
+.department-summary, .porter-summary {
   margin-top: 40px;
   
   .summary-title {
@@ -674,7 +851,22 @@ function getShiftTypeDisplayName() {
       padding-top: 10px;
       border-top: 1px solid #333;
     }
+    
+    .moved-note {
+      font-style: italic;
+      color: #555;
+      margin-left: 5px;
+    }
+    
+    .empty-state {
+      font-style: italic;
+      color: #666;
+    }
   }
+}
+
+.porter-summary {
+  margin-top: 35px;
 }
 
 .btn {
