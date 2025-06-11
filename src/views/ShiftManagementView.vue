@@ -884,8 +884,9 @@ function resetTaskForm() {
   // Calculate time_allocated (+1 minute from now)
   const timeAllocated = new Date(now.getTime() + 60000); // 60000 ms = 1 minute
   
-  // Calculate time_completed (+20 minutes from now)
-  const timeCompleted = new Date(now.getTime() + 1200000); // 1200000 ms = 20 minutes
+  // Calculate time_completed (random between 15-30 minutes from now)
+  const randomMinutes = Math.floor(Math.random() * (30 - 15 + 1)) + 15; // Random between 15-30
+  const timeCompleted = new Date(now.getTime() + (randomMinutes * 60000)); // Convert minutes to ms
   
   taskForm.value = {
     taskTypeId: '',
