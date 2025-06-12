@@ -110,7 +110,7 @@
           
           <div class="modal-body">
             <div class="form-grid">
-              <!-- Task Type | Task Item -->
+              <!-- Task Type -->
               <div class="form-group">
                 <label for="taskType">Task Type</label>
                 <select 
@@ -127,6 +127,75 @@
                 </select>
               </div>
               
+              <!-- From -->
+              <div class="form-group">
+                <label for="originDepartment">From</label>
+                <select 
+                  id="originDepartment" 
+                  v-model="taskForm.originDepartmentId" 
+                  class="form-control"
+                  :class="{ 'field-auto-populated': originFieldAutoPopulated }"
+                >
+                  <option value="">Select origin department (optional)</option>
+                  
+                  <!-- Frequent departments (if any) -->
+                  <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
+                    <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </optgroup>
+                  
+                  <!-- All departments -->
+                  <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
+                    <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </optgroup>
+                  
+                  <!-- If no frequent departments, just show all departments without grouping -->
+                  <template v-if="frequentDepartments.length === 0">
+                    <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </template>
+                </select>
+              </div>
+              
+              <!-- To -->
+              <div class="form-group">
+                <label for="destinationDepartment">To</label>
+                <select 
+                  id="destinationDepartment" 
+                  v-model="taskForm.destinationDepartmentId" 
+                  class="form-control"
+                  :class="{ 'field-auto-populated': destinationFieldAutoPopulated }"
+                >
+                  <option value="">Select destination department (optional)</option>
+                  
+                  <!-- Frequent departments (if any) -->
+                  <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
+                    <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </optgroup>
+                  
+                  <!-- All departments -->
+                  <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
+                    <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </optgroup>
+                  
+                  <!-- If no frequent departments, just show all departments without grouping -->
+                  <template v-if="frequentDepartments.length === 0">
+                    <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
+                      {{ dept.name }}
+                    </option>
+                  </template>
+                </select>
+              </div>
+              
+              <!-- Task Item -->
               <div class="form-group">
                 <label for="taskItem">Task Item</label>
                 <select 
@@ -143,84 +212,7 @@
                 </select>
               </div>
               
-<!-- From | To -->
-<div class="form-group">
-  <label for="originDepartment">From</label>
-  <select 
-    id="originDepartment" 
-    v-model="taskForm.originDepartmentId" 
-    class="form-control"
-    :class="{ 'field-auto-populated': originFieldAutoPopulated }"
-  >
-    <option value="">Select origin department (optional)</option>
-    
-    <!-- Frequent departments (if any) -->
-    <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
-      <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
-        {{ dept.name }}
-      </option>
-    </optgroup>
-    
-    <!-- All departments -->
-    <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
-      <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
-        {{ dept.name }}
-      </option>
-    </optgroup>
-    
-    <!-- If no frequent departments, just show all departments without grouping -->
-    <template v-if="frequentDepartments.length === 0">
-      <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
-        {{ dept.name }}
-      </option>
-    </template>
-  </select>
-</div>
-
-<div class="form-group">
-  <label for="destinationDepartment">To</label>
-  <select 
-    id="destinationDepartment" 
-    v-model="taskForm.destinationDepartmentId" 
-    class="form-control"
-    :class="{ 'field-auto-populated': destinationFieldAutoPopulated }"
-  >
-    <option value="">Select destination department (optional)</option>
-    
-    <!-- Frequent departments (if any) -->
-    <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
-      <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
-        {{ dept.name }}
-      </option>
-    </optgroup>
-    
-    <!-- All departments -->
-    <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
-      <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
-        {{ dept.name }}
-      </option>
-    </optgroup>
-    
-    <!-- If no frequent departments, just show all departments without grouping -->
-    <template v-if="frequentDepartments.length === 0">
-      <option v-for="dept in sortedDepartments" :key="dept.id" :value="dept.id">
-        {{ dept.name }}
-      </option>
-    </template>
-  </select>
-</div>
-              
-              <!-- Received | Porter -->
-              <div class="form-group">
-                <label for="timeReceived">Received</label>
-                <input 
-                  type="time" 
-                  id="timeReceived" 
-                  v-model="taskForm.timeReceived" 
-                  class="form-control"
-                />
-              </div>
-              
+              <!-- Porter -->
               <div class="form-group">
                 <label for="porter">Porter</label>
                 <select id="porter" v-model="taskForm.porterId" class="form-control">
@@ -231,7 +223,7 @@
                 </select>
               </div>
               
-              <!-- Allocated | Exp. Completion -->
+              <!-- Allocated -->
               <div class="form-group">
                 <label for="timeAllocated">Allocated</label>
                 <input 
@@ -242,6 +234,18 @@
                 />
               </div>
               
+              <!-- Received -->
+              <div class="form-group">
+                <label for="timeReceived">Received</label>
+                <input 
+                  type="time" 
+                  id="timeReceived" 
+                  v-model="taskForm.timeReceived" 
+                  class="form-control"
+                />
+              </div>
+              
+              <!-- Exp. Completion -->
               <div class="form-group">
                 <label for="timeCompleted">Exp. Completion</label>
                 <input 
