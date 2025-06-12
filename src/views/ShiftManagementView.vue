@@ -1891,11 +1891,11 @@ function isWeekend(date) {
   }
   
   &-secondary {
-    background-color: #9e9e9e;
-    color: white;
+    background-color: #f1f1f1;
+    color: #1D1D1F;
     
     &:hover:not(:disabled) {
-      background-color: color.scale(#9e9e9e, $lightness: -10%);
+      background-color: color.scale(#f1f1f1, $lightness: -5%);
     }
   }
   
