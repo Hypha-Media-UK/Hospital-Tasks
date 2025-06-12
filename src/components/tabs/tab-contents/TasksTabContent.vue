@@ -78,17 +78,19 @@
           <div class="task-actions">
             <button 
               @click="editTask(task)" 
-              class="btn btn-small btn-primary"
+              class="icon-btn btn-primary"
               :disabled="updatingTask"
+              title="Edit Task"
             >
-              Edit
+              <EditIcon :size="18" />
             </button>
             <button 
               @click="markTaskCompleted(task.id)" 
-              class="btn btn-small btn-success"
+              class="icon-btn btn-success"
               :disabled="updatingTask"
+              title="Mark as Completed"
             >
-              Mark Completed
+              <CheckIcon :size="18" />
             </button>
           </div>
         </div>
@@ -140,17 +142,19 @@
           <div class="task-actions">
             <button 
               @click="editTask(task)" 
-              class="btn btn-small btn-primary"
+              class="icon-btn btn-primary"
               :disabled="updatingTask"
+              title="Edit Task"
             >
-              Edit
+              <EditIcon :size="18" />
             </button>
             <button 
               @click="markTaskPending(task.id)" 
-              class="btn btn-small btn-outline"
+              class="icon-btn btn-warning"
               :disabled="updatingTask"
+              title="Mark as Pending"
             >
-              Mark Pending
+              <ClockIcon :size="18" />
             </button>
           </div>
         </div>
@@ -164,6 +168,9 @@ import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import EditIcon from '../../icons/EditIcon.vue';
+import CheckIcon from '../../icons/CheckIcon.vue';
+import ClockIcon from '../../icons/ClockIcon.vue';
 
 // Define props to receive shift ID and functions from parent
 const props = defineProps({
@@ -413,9 +420,36 @@ function formatTime(timeString) {
     }
   }
   
+  &-warning {
+    background-color: #F4B400;
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: color.scale(#F4B400, $lightness: -10%);
+    }
+  }
+  
   &-small {
     padding: 0.25rem 0.5rem;
     font-size: 0.9rem;
+  }
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.2s, background-color 0.2s;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 }
 </style>
