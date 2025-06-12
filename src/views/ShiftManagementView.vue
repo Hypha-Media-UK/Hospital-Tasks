@@ -2326,12 +2326,13 @@ function isWeekend(date) {
 .timing-toggle-btn {
   position: absolute;
   top: -18px; /* Negative offset to position button at top */
-  left: 0;
-  width: 100%;
+  left: 50%;
+  transform: translateX(-50%); /* Center horizontally */
+  width: 60px; /* Fixed width for square button */
   height: 36px;
-  background-color: #f5f5f5;
+  background-color: #555; /* Darker grey background */
   border: none;
-  border-top: 1px solid #e0e0e0;
+  border-radius: 8px 8px 0 0; /* Rounded corners only at top */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -2340,11 +2341,11 @@ function isWeekend(date) {
   transition: background-color 0.2s;
   
   &:hover {
-    background-color: #eeeeee;
+    background-color: #444; /* Darker hover state */
   }
   
   .timing-toggle-icon {
-    color: #4285F4;
+    color: white; /* Icon color changed to white */
   }
 }
 </style>
