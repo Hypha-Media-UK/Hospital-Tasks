@@ -223,20 +223,22 @@
                 </select>
               </div>
               
-              <!-- Toggle button for time fields -->
-              <div class="form-group timing-toggle-container">
-                <button 
-                  type="button"
-                  @click="showTimeFields = !showTimeFields" 
-                  class="timing-toggle-btn"
-                >
-                  <ClockIcon class="timing-toggle-icon" :size="18" />
-                  {{ showTimeFields ? 'Hide Estimated Timings' : 'Adjust Estimated Timings' }}
-                </button>
-              </div>
+              <!-- Status buttons removed from here and moved to footer -->
+            </div>
+            
+            <!-- Time fields wrapper moved inside modal-body -->
+            <div class="time-fields-wrapper">
+              <button 
+                type="button"
+                @click="toggleTimeFields" 
+                class="timing-toggle-btn"
+                :class="{ 'expanded': showTimeFields }"
+              >
+                <ClockIcon class="timing-toggle-icon" :size="20" />
+              </button>
               
-              <!-- Time fields container with animation -->
-              <div class="time-fields-container" :class="{ 'visible': showTimeFields, 'hidden': !showTimeFields }">
+              <!-- Time fields container -->
+              <div class="time-fields-container" :class="{ 'visible': showTimeFields }">
                 <!-- Allocated -->
                 <div class="form-group">
                   <label for="timeAllocated">Allocated</label>
@@ -270,8 +272,6 @@
                   />
                 </div>
               </div>
-              
-              <!-- Status buttons removed from here and moved to footer -->
             </div>
           </div>
           
@@ -469,6 +469,29 @@ const editingTask = ref(null);
 const processingTask = ref(false);
 const taskFormError = ref('');
 const showTimeFields = ref(false); // Controls visibility of time fields
+
+// Import nextTick for DOM manipulation after state changes
+import { nextTick } from 'vue';
+
+// Handle time fields animation
+function toggleTimeFields() {
+  // Toggle the state
+  showTimeFields.value = !showTimeFields.value;
+  
+  // Handle the animation
+  nextTick(() => {
+    const container = document.querySelector('.time-fields-container');
+    if (showTimeFields.value) {
+      // Get the scrollHeight to determine the full height
+      const height = container.scrollHeight;
+      // Set the height explicitly for animation
+      container.style.height = `${height}px`;
+    } else {
+      // Set height to 0 for closing animation
+      container.style.height = '0px';
+    }
+  });
+}
 
 // Track fields auto-population for visual feedback
 const originFieldAutoPopulated = ref(false);
@@ -1974,6 +1997,8 @@ function isWeekend(date) {
   
   &-body {
     padding: 1rem;
+    position: relative; /* Create positioning context for absolute elements */
+    padding-bottom: 80px; /* Add padding to accommodate the time fields when hidden */
   }
   
   &-footer {
@@ -2049,7 +2074,7 @@ function isWeekend(date) {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
-    color: #333; /* Ensure consistent text color across platforms */
+    color: #666; /* Mid-grey color for form field text */
     font-weight: normal; /* Prevent bold text on iOS */
     -webkit-appearance: none; /* Remove iOS default styling */
     -moz-appearance: none;
@@ -2270,54 +2295,56 @@ function isWeekend(date) {
 
 /* Time fields animation and styling */
 .time-fields-container {
+  position: relative;
+  height: 0;
   overflow: hidden;
-  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s ease-out;
-  grid-column: span 2; /* Make container span both columns */
-  display: grid;
-  grid-template-columns: 1fr 1fr; /* Same grid structure as parent */
-  gap: 1rem;
-}
-
-.time-fields-container.hidden {
-  max-height: 0;
+  transition: height 0.3s ease-out, opacity 0.3s ease-out;
   opacity: 0;
-  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  border-top: 1px solid #e0e0e0;
+  padding: 0 1rem;
+  background-color: white; /* Ensure it covers content below */
+  
+  &.visible {
+    opacity: 1;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
 }
 
-.time-fields-container.visible {
-  max-height: 500px; /* More than enough height */
-  opacity: 1;
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.timing-toggle-container {
-  grid-column: span 2 !important; /* Make sure this spans both columns */
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  text-align: center;
+/* Timing toggle and fields styling */
+.time-fields-wrapper {
+  position: absolute;
+  bottom: 0; /* Position at bottom of modal-body */
+  left: 0;
+  width: 100%;
+  z-index: 10; /* Ensure it sits above other content */
 }
 
 .timing-toggle-btn {
-  background: none;
+  position: absolute;
+  top: -18px; /* Negative offset to position button at top */
+  left: 0;
+  width: 100%;
+  height: 36px;
+  background-color: #f5f5f5;
   border: none;
-  color: #4285F4;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
   justify-content: center;
-  border-radius: 4px;
+  align-items: center;
+  cursor: pointer;
+  z-index: 11; /* Higher than the wrapper to stay on top */
   transition: background-color 0.2s;
   
   &:hover {
-    background-color: rgba(66, 133, 244, 0.1);
+    background-color: #eeeeee;
   }
   
   .timing-toggle-icon {
-    margin-right: 0.5rem;
-    color: #4285F4; /* Match the button text color */
+    color: #4285F4;
   }
 }
 </style>
