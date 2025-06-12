@@ -390,7 +390,7 @@ const handleRemove = (assignmentId) => {
         font-size: 0.7rem; /* Using the smaller size consistently */
         color: rgba(0, 0, 0, 0.5);
         padding: 2px 6px;
-        background-color: white;
+        background-color: #fef6f5; /* Fully opaque light red */
         border: 1px solid rgba(234, 67, 53, 0.2);
         border-radius: mix.radius('sm');
         display: inline-block;
@@ -422,7 +422,7 @@ const handleRemove = (assignmentId) => {
       line-height: 1.2 !important;
       color: rgba(0, 0, 0, 0.5) !important;
       padding: 2px 6px !important;
-      background-color: white !important;
+      background-color: #fef6f5 !important; /* Fully opaque light red */
       border: 1px solid rgba(234, 67, 53, 0.2) !important;
       border-radius: 4px !important;
       display: inline-block !important;
