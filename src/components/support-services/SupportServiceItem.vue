@@ -573,7 +573,7 @@ const handleRemove = (assignmentId) => {
           }
           
           &.pool-porter {
-            background-color: rgba(66, 133, 244, 0.15);  /* Light blue background */
+            background-color: rgba(255, 152, 0, 0.15);  /* Pale orange background */
             font-style: italic;
           }
           
