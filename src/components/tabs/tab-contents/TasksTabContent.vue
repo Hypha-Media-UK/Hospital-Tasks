@@ -7,18 +7,18 @@
       <div class="tasks-header">
         <div class="task-tabs">
           <button 
-            @click="activeTab = 'pending'" 
-            class="tab-button" 
-            :class="{ active: activeTab === 'pending' }"
-          >
-            Pending ({{ pendingTasks.length }})
-          </button>
-          <button 
             @click="activeTab = 'completed'" 
             class="tab-button" 
             :class="{ active: activeTab === 'completed' }"
           >
             Completed ({{ completedTasks.length }})
+          </button>
+          <button 
+            @click="activeTab = 'pending'" 
+            class="tab-button" 
+            :class="{ active: activeTab === 'pending' }"
+          >
+            Pending ({{ pendingTasks.length }})
           </button>
         </div>
         
@@ -182,7 +182,7 @@ const settingsStore = useSettingsStore();
 const router = useRouter();
 
 // Local state
-const activeTab = ref('pending');
+const activeTab = ref('completed');
 const updatingTask = ref(false);
 
 // Computed properties
