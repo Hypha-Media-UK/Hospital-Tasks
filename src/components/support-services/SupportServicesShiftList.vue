@@ -260,12 +260,34 @@ onMounted(async () => {
     await staffStore.fetchPorters();
   }
   
-  if (isShiftMode.value) {
-    // If in shift mode, load support service assignments for this shift
-    await shiftsStore.fetchShiftSupportServices(props.shiftId);
-  } else {
-    // Otherwise, load default assignments for this shift type
-    await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+  try {
+    if (isShiftMode.value) {
+      console.log(`Loading support service assignments for shift: ${props.shiftId}`);
+      // If in shift mode, load support service assignments for this shift
+      await shiftsStore.fetchShiftSupportServices(props.shiftId);
+      
+      // Log the loaded assignments to check if everything is correctly loaded
+      console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
+      console.log(`Filtered for this shift: ${serviceAssignments.value.length}`);
+      
+      // Check porter assignments for each service
+      if (serviceAssignments.value.length > 0) {
+        console.log('Checking porter assignments for each service');
+        serviceAssignments.value.forEach(assignment => {
+          const porterAssignments = shiftsStore.getPorterAssignmentsByServiceId(assignment.id);
+          console.log(`Service ${assignment.id} (${assignment.service.name}) has ${porterAssignments.length} porter assignments`);
+          
+          // Check if service has coverage gaps
+          const gaps = shiftsStore.getServiceCoverageGaps(assignment.id);
+          console.log(`Service ${assignment.id} coverage gaps:`, gaps);
+        });
+      }
+    } else {
+      // Otherwise, load default assignments for this shift type
+      await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
+    }
+  } catch (error) {
+    console.error('Error loading service assignments:', error);
   }
   
   // Set default times based on shift type

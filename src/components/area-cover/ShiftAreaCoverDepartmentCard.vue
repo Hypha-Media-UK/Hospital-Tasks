@@ -398,7 +398,7 @@ const handleRemove = (assignmentId) => {
     /* Specific styles for start/end gap lines - these are outside .porter-assignments */
     .gap-line--start, 
     .gap-line--end {
-      margin: 10px 0;
+      margin: 16px 0 0 0; /* Increased top margin, removed bottom margin */
       padding-top: 6px;
       border-top: 1px solid rgba(234, 67, 53, 0.2) !important; /* Pale red line for start/end gaps */
       
@@ -427,7 +427,7 @@ const handleRemove = (assignmentId) => {
     }
     
     .porter-assignments {
-      margin-top: 12px;
+      margin-top: 0; /* Removed margin-top as requested */
       
       .porter-assignment {
         font-size: mix.font-size('xs');
