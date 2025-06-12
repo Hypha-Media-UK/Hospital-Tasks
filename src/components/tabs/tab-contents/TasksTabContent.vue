@@ -41,7 +41,7 @@
         <div 
           v-for="task in pendingTasks" 
           :key="task.id" 
-          class="task-item"
+          class="task-item pending"
         >
           <div class="task-details">
             <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
@@ -62,16 +62,6 @@
               <div class="meta-group">
                 <div class="meta-item">
                   <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                </div>
-                <div class="meta-item">
-                  <strong>Expected completion:</strong> {{ formatTime(task.time_completed) }}
-                </div>
-                <div class="meta-item">
-                  <strong>Porter:</strong> 
-                  <span v-if="task.porter">
-                    {{ task.porter.first_name }} {{ task.porter.last_name }}
-                  </span>
-                  <span v-else class="not-assigned">Not assigned</span>
                 </div>
               </div>
             </div>
@@ -338,6 +328,11 @@ function formatTime(timeString) {
   &.completed {
     background-color: #f9f9f9;
     border-left: 3px solid #34A853;
+  }
+  
+  &.pending {
+    background-color: #fefaf0;
+    border-left: 3px solid #F4B400;
   }
   
   .task-details {
