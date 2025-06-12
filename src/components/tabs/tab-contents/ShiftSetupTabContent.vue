@@ -45,22 +45,42 @@
         
     <!-- Duplicate Controls Section -->
     <div v-if="shift && shift.is_active" class="duplicate-controls-section">
-      <h3 class="duplicate-controls-header">Duplicate Shift</h3>
-      <div class="duplicate-controls">
-        <span class="duplicate-label">Duplicate this shift to:</span>
-        <input 
-          type="date" 
-          v-model="duplicateDate" 
-          class="date-picker"
-          :min="getTomorrowDate()"
-        >
+      <div class="duplicate-header">
+        <div class="duplicate-title">
+          <CopyIcon size="18" class="duplicate-icon" />
+          <h3 class="duplicate-controls-header">Duplicate Shift</h3>
+        </div>
+        <div v-if="showSuccessMessage" class="success-message">
+          <CheckIcon size="16" class="success-icon" />
+          <span>Shift successfully duplicated to {{ successDate }}</span>
+        </div>
+      </div>
+      
+      <div class="duplicate-form">
+        <div class="form-group">
+          <label for="duplicateDate" class="form-label">Select Target Date:</label>
+          <input 
+            id="duplicateDate"
+            type="date" 
+            v-model="duplicateDate" 
+            class="date-picker"
+            :min="getTomorrowDate()"
+            :disabled="duplicating"
+          >
+        </div>
+        
         <button 
           @click="duplicateShift" 
-          class="btn btn-secondary"
+          class="btn btn-duplicate"
           :disabled="!duplicateDate || duplicating"
-          title="Duplicate this shift setup to selected date"
+          :class="{ 'duplicating': duplicating }"
         >
-          {{ duplicating ? 'Duplicating...' : 'Duplicate' }}
+          <span v-if="!duplicating">Duplicate Shift</span>
+          <span v-else class="duplicate-loading">
+            <span class="loading-dot"></span>
+            <span class="loading-dot"></span>
+            <span class="loading-dot"></span>
+          </span>
         </button>
       </div>
     </div>
@@ -73,12 +93,16 @@ import { useShiftsStore } from '../../../stores/shiftsStore';
 import ShiftPorterPool from '../../ShiftPorterPool.vue';
 import ShiftAreaCoverList from '../../area-cover/ShiftAreaCoverList.vue';
 import SupportServicesShiftList from '../../support-services/SupportServicesShiftList.vue';
+import CopyIcon from '../../icons/CopyIcon.vue';
+import CheckIcon from '../../icons/CheckIcon.vue';
 
 const porterPoolRef = ref(null);
 const areaCoverListRef = ref(null);
 const supportServicesListRef = ref(null);
 const duplicateDate = ref('');
 const duplicating = ref(false);
+const showSuccessMessage = ref(false);
+const successDate = ref('');
 
 const shiftsStore = useShiftsStore();
 
@@ -142,17 +166,26 @@ async function duplicateShift() {
   if (!duplicateDate.value || duplicating.value) return;
   
   duplicating.value = true;
+  showSuccessMessage.value = false;
   
   try {
     const result = await shiftsStore.duplicateShift(props.shiftId, duplicateDate.value);
     
     if (result) {
-      // Show success notification
-      alert(`Shift successfully duplicated to ${formatShortDate(result.start_time)}`);
+      // Show success message in the UI
+      successDate.value = formatShortDate(result.start_time);
+      showSuccessMessage.value = true;
       
       // Reset date picker
       duplicateDate.value = '';
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        showSuccessMessage.value = false;
+      }, 5000);
     } else {
+      // Show error in the UI instead of an alert
+      console.error('Failed to duplicate shift:', shiftsStore.error);
       alert('Failed to duplicate shift: ' + (shiftsStore.error || 'Unknown error'));
     }
   } catch (error) {
@@ -220,42 +253,177 @@ async function duplicateShift() {
 
 /* Duplicate Controls Section */
 .duplicate-controls-section {
-  margin-top: 24px;
-  padding: 16px;
-  background-color: #f8f9fa;
-  border: 1px solid #e0e0e0;
+  margin-top: 32px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 20px;
+  background-color: #f0f7ff;
+  border: 1px solid #c2d8f5;
   border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  max-width: 600px;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.duplicate-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.duplicate-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.duplicate-icon {
+  color: #4285F4;
 }
 
 .duplicate-controls-header {
   font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  margin: 0;
   color: #333;
 }
 
-.duplicate-controls {
+
+.duplicate-form {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 16px;
   
-  @media screen and (min-width: 500px) {
+  @media screen and (min-width: 600px) {
     flex-direction: row;
-    align-items: center;
+    align-items: flex-end;
   }
 }
 
-.duplicate-label {
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
   font-weight: 500;
-  margin-right: 0.75rem;
+  color: #555;
+  font-size: 0.9rem;
 }
 
 .date-picker {
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 10px 12px;
+  border: 1px solid #c2d8f5;
+  border-radius: 6px;
   font-family: inherit;
+  font-size: 0.95rem;
+  background-color: white;
+  transition: border-color 0.2s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: #4285F4;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+  }
+  
+  &:disabled {
+    background-color: #f8f8f8;
+    cursor: not-allowed;
+  }
+}
+
+.btn-duplicate {
+  padding: 10px 16px;
+  background-color: #4285F4;
+  color: white;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  min-width: 150px;
+  
+  &:hover:not(:disabled) {
+    background-color: #3367d6;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  &.duplicating {
+    background-color: #3367d6;
+  }
+}
+
+.duplicate-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.loading-dot {
+  width: 6px;
+  height: 6px;
+  background-color: white;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 1.4s infinite ease-in-out both;
+  
+  &:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+  
+  &:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+}
+
+@keyframes pulse {
+  0%, 80%, 100% { 
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  40% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.success-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: rgba(52, 168, 83, 0.1);
+  border-radius: 6px;
   font-size: 0.9rem;
+  color: #34A853;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.success-icon {
+  color: #34A853;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Button styling */

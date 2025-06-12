@@ -427,13 +427,13 @@ const settingsStore = useSettingsStore();
 // Local state
 const loading = ref(true);
 const activeTab = ref('pending'); // For task list tabs (pending/completed)
-const activeTabId = ref('shiftSetup'); // For main view tabs (shift setup/tasks)
+const activeTabId = ref('tasks'); // For main view tabs (shift setup/tasks)
 const showSupervisorModal = ref(false);
 const changingSupervisor = ref(false);
 const selectedSupervisor = ref('');
 const tabs = [
-  { id: 'shiftSetup', label: 'Shift Setup' },
-  { id: 'tasks', label: 'Tasks' }
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'shiftSetup', label: 'Shift Setup' }
 ];
 const showEndShiftConfirm = ref(false);
 const endingShift = ref(false);
@@ -1642,7 +1642,7 @@ function isWeekend(date) {
   .shift-header-content {
     h2 {
       margin: 0 0 0.5rem 0;
-      font-size: 1rem;
+      font-size: 0.875rem;
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -1659,12 +1659,12 @@ function isWeekend(date) {
       }
       
       @media screen and (min-width: 500px) {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
       }
       
       @media screen and (min-width: 700px) {
         margin-bottom: 0;
-        font-size: 1.2rem;
+        font-size: 1rem;
       }
     }
   }
