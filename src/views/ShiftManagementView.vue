@@ -1986,7 +1986,7 @@ function isWeekend(date) {
 }
 
 .form-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   
   label {
     display: block;
