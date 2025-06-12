@@ -21,32 +21,36 @@
         </div>
         
         <div class="porter-assignments">
-          <div v-for="(assignment, index) in sortedPorterAssignments" :key="assignment.id" class="porter-assignment">
-            <div class="porter-name" 
-                 :class="{
-                   'porter-absent': getPorterAbsence(assignment.porter_id),
-                   'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
-                   'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'
-                 }">
-              {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
-              <!-- Show time for available porters, absence badge for absent porters -->
-              <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
-                {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
-              </span>
-              <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'illness'" 
-                    class="absence-badge illness">ILL</span>
-              <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'" 
-                    class="absence-badge annual-leave">AL</span>
+          <!-- Loop through each porter assignment -->
+          <template v-for="(assignment, index) in sortedPorterAssignments" :key="assignment.id">
+            <!-- Porter assignment -->
+            <div class="porter-assignment">
+              <div class="porter-name" 
+                   :class="{
+                     'porter-absent': getPorterAbsence(assignment.porter_id),
+                     'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
+                     'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'
+                   }">
+                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+                <!-- Show time for available porters, absence badge for absent porters -->
+                <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
+                  {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                </span>
+                <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'illness'" 
+                      class="absence-badge illness">ILL</span>
+                <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'" 
+                      class="absence-badge annual-leave">AL</span>
+              </div>
             </div>
 
-            <!-- Gap indicator between assignments -->
-            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])" 
-                class="gap-line"
-                v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
-                :key="gap.startTime">
+            <!-- Gap indicator between assignments (now a direct child of porter-assignments) -->
+            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])"
+                 v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
+                 :key="`gap-${assignment.id}-${gap.startTime}`"
+                 class="gap-line">
               <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
             </div>
-          </div>
+          </template>
         </div>
         
         <!-- Gap at end if last porter ends before department end time -->
