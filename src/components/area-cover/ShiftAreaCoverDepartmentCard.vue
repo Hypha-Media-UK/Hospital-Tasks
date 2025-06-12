@@ -32,10 +32,10 @@
                      'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave',
                      'pool-porter': isPoolPorter(assignment.porter_id)
                    }">
-                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}{{ isPoolPorter(assignment.porter_id) ? ' Cover' : '' }}
+                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
                 <!-- Show time for available porters, absence badge for absent porters -->
                 <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
-                  {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                  {{ isPoolPorter(assignment.porter_id) ? 'Cover: ' : '' }}{{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
                 </span>
                 <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'illness'" 
                       class="absence-badge illness">ILL</span>
