@@ -2000,6 +2000,29 @@ function isWeekend(date) {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
+    color: #333; /* Ensure consistent text color across platforms */
+    font-weight: normal; /* Prevent bold text on iOS */
+    -webkit-appearance: none; /* Remove iOS default styling */
+    -moz-appearance: none;
+    appearance: none;
+    background-color: white; /* Ensure consistent background */
+    font-family: inherit; /* Use the same font as the rest of the app */
+  }
+  
+  /* Special handling for select elements */
+  select.form-control {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%23333' d='M2 0L0 2h4zm0 5L0 3h4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 8px 10px;
+    padding-right: 1.5rem; /* Space for the arrow */
+  }
+  
+  /* Special handling for time inputs on iOS */
+  input[type="time"].form-control {
+    min-height: 38px; /* Ensure consistent height on iOS */
+    line-height: normal; /* Fix vertical alignment */
+    text-align: left; /* Left align text */
   }
 }
 
