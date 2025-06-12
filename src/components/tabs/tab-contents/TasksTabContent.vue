@@ -48,14 +48,14 @@
             
             <div class="task-meta">
               <div class="meta-group">
-                <div class="meta-item">
-                  <strong>Type:</strong> {{ task.task_item.name }}
-                </div>
                 <div v-if="task.origin_department" class="meta-item">
                   <strong>From:</strong> {{ task.origin_department.name }}
                 </div>
                 <div v-if="task.destination_department" class="meta-item">
                   <strong>To:</strong> {{ task.destination_department.name }}
+                </div>
+                <div class="meta-item">
+                  <strong>Type:</strong> {{ task.task_item.name }}
                 </div>
               </div>
               
@@ -114,14 +114,14 @@
             
             <div class="task-meta">
               <div class="meta-group">
-                <div class="meta-item">
-                  <strong>Type:</strong> {{ task.task_item.name }}
-                </div>
                 <div v-if="task.origin_department" class="meta-item">
                   <strong>From:</strong> {{ task.origin_department.name }}
                 </div>
                 <div v-if="task.destination_department" class="meta-item">
                   <strong>To:</strong> {{ task.destination_department.name }}
+                </div>
+                <div class="meta-item">
+                  <strong>Type:</strong> {{ task.task_item.name }}
                 </div>
               </div>
               
