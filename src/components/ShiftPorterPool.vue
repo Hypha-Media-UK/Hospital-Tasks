@@ -465,8 +465,16 @@ onMounted(async () => {
 
 .porter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: 1fr; /* Default: single column for mobile */
   gap: 16px;
+  
+  @media (min-width: 700px) {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns from 700px to 960px */
+  }
+  
+  @media (min-width: 961px) {
+    grid-template-columns: repeat(3, 1fr); /* 3 columns from 961px and up */
+  }
 }
 
 .porter-card {
@@ -483,6 +491,7 @@ onMounted(async () => {
   }
   
   &__name {
+    font-size: 0.95rem;
     font-weight: 600;
     margin-bottom: 8px;
     display: flex;
@@ -533,7 +542,7 @@ onMounted(async () => {
   }
   
   &__assignments {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: rgba(0, 0, 0, 0.6);
     
     .assignments-list {

@@ -34,22 +34,6 @@
           </div>
           
           <div class="shift-actions">
-            <div v-if="shift.is_active" class="duplicate-controls">
-              <input 
-                type="date" 
-                v-model="duplicateDate" 
-                class="date-picker"
-                :min="getTomorrowDate()"
-              >
-              <button 
-                @click="duplicateShift" 
-                class="btn btn-secondary"
-                :disabled="!duplicateDate || duplicating"
-                title="Duplicate this shift setup to selected date"
-              >
-                {{ duplicating ? 'Duplicating...' : 'Duplicate' }}
-              </button>
-            </div>
             <button 
               v-if="shift.is_active" 
               @click="confirmEndShift" 
@@ -399,6 +383,7 @@
         </div>
       </div>
 
+      
       <!-- Floating Action Button for Adding Tasks -->
       <div class="floating-action-container">
         <button 
@@ -450,8 +435,6 @@ const activeTabId = ref('shiftSetup'); // For main view tabs (shift setup/tasks)
 const showSupervisorModal = ref(false);
 const changingSupervisor = ref(false);
 const selectedSupervisor = ref('');
-const duplicateDate = ref('');
-const duplicating = ref(false);
 const tabs = [
   { id: 'shiftSetup', label: 'Shift Setup' },
   { id: 'tasks', label: 'Tasks' }
@@ -859,38 +842,6 @@ function navigateToHome() {
   router.push('/');
 }
 
-// Get tomorrow's date in YYYY-MM-DD format for date picker min attribute
-function getTomorrowDate() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
-}
-
-// Duplicate the current shift to a new date
-async function duplicateShift() {
-  if (!duplicateDate.value || duplicating.value) return;
-  
-  duplicating.value = true;
-  
-  try {
-    const result = await shiftsStore.duplicateShift(shift.value.id, duplicateDate.value);
-    
-    if (result) {
-      // Show success notification
-      alert(`Shift successfully duplicated to ${formatShortDate(result.start_time)}`);
-      
-      // Reset date picker
-      duplicateDate.value = '';
-    } else {
-      alert('Failed to duplicate shift: ' + (shiftsStore.error || 'Unknown error'));
-    }
-  } catch (error) {
-    console.error('Error duplicating shift:', error);
-    alert('Error duplicating shift: ' + error.message);
-  } finally {
-    duplicating.value = false;
-  }
-}
 
 function confirmEndShift() {
   showEndShiftConfirm.value = true;
@@ -1528,17 +1479,35 @@ function isWeekend(date) {
   margin-bottom: 1rem;
 }
 
+.duplicate-controls-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.duplicate-controls-header {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
 .duplicate-controls {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  width: 100%;
   
   @media screen and (min-width: 500px) {
-    width: auto;
-    margin-right: 0.75rem;
-    margin-bottom: 0;
+    flex-direction: row;
+    align-items: center;
   }
+}
+
+.duplicate-label {
+  font-weight: 500;
+  margin-right: 0.75rem;
 }
 
 .date-picker {
