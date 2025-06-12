@@ -368,7 +368,7 @@ const handleRemove = (assignmentId) => {
       position: relative;
       padding-left: 12px;
       padding-top: 4px;
-      padding-bottom: 4px;
+      padding-bottom: 0; /* Removed bottom padding */
       border-top: 1px solid rgba(234, 67, 53, 0.2); /* Using pale red consistently for all gap lines */
       
       .gap-line-indicator {
@@ -445,8 +445,9 @@ const handleRemove = (assignmentId) => {
       
       /* Add extra space above gap-line elements to prevent overlap */
       > .gap-line {
-        margin-top: 12px !important; /* Increase from 3px to 12px for gap lines */
-        padding-top: 8px; /* Add additional padding */
+        margin-top: 15px !important; /* Increased to 15px as requested */
+        padding-top: 8px; /* Additional padding at top */
+        padding-bottom: 0; /* Removing bottom padding as requested */
       }
       
       /* Special case if the last child is also the first child */
