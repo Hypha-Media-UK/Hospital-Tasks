@@ -443,6 +443,12 @@ const handleRemove = (assignmentId) => {
         margin-top: 3px;
       }
       
+      /* Add extra space above gap-line elements to prevent overlap */
+      > .gap-line {
+        margin-top: 12px !important; /* Increase from 3px to 12px for gap lines */
+        padding-top: 8px; /* Add additional padding */
+      }
+      
       /* Special case if the last child is also the first child */
       > *:first-child:last-child {
         margin-bottom: 3px;
