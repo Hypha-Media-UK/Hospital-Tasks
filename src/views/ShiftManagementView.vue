@@ -119,7 +119,6 @@
                   class="form-control"
                   :class="{ 'field-auto-populated': taskTypeAutoPopulated }"
                   @change="loadTaskItems"
-                  :disabled="isEditingTask"
                 >
                   <option value="">Select a task type</option>
                   <option v-for="type in taskTypes" :key="type.id" :value="type.id">
@@ -135,7 +134,7 @@
                   v-model="taskForm.taskItemId" 
                   class="form-control"
                   :class="{ 'field-auto-populated': taskItemAutoPopulated }"
-                  :disabled="!taskForm.taskTypeId || loadingTaskItems || isEditingTask"
+                  :disabled="!taskForm.taskTypeId || loadingTaskItems"
                 >
                   <option value="">{{ loadingTaskItems ? 'Loading items...' : 'Select a task item' }}</option>
                   <option v-for="item in taskItems" :key="item.id" :value="item.id">
