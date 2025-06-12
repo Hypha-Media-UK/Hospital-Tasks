@@ -454,7 +454,7 @@ const handleRemove = (assignmentId) => {
       padding-left: 12px;
       padding-top: 4px;
       padding-bottom: 4px;
-      border-top: 1px solid #F4B400; /* Default orange for time discrepancies */
+      border-top: 1px solid rgba(234, 67, 53, 0.2); /* Using pale red consistently for all gap lines */
       
       .gap-line-indicator {
         position: absolute;
@@ -463,7 +463,7 @@ const handleRemove = (assignmentId) => {
         transform: translateY(-50%);
         width: 4px;
         height: 20px; /* Fixed height for better visibility */
-        background-color: #F4B400; /* Default orange for time discrepancies */
+        background-color: rgba(234, 67, 53, 0.3); /* Using pale red consistently for all gap indicators */
         border-radius: 2px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* Add shadow for better visibility */
       }
