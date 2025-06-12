@@ -1124,23 +1124,48 @@ async function saveTask() {
     // Get base dates for each time field if we're editing
     let receivedBaseDate, allocatedBaseDate, completedBaseDate;
     
-    try {
-      receivedBaseDate = isEditingTask.value && editingTask.value.time_received 
-        ? new Date(editingTask.value.time_received).toISOString().split('T')[0]
-        : null;
+    // Helper function to safely extract date part from a date string
+    function extractDatePart(dateString) {
+      if (!dateString) return null;
+      
+      // If it's already in YYYY-MM-DD format, use it directly
+      if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+        return dateString.split('T')[0];
+      }
+      
+      // Otherwise, try to create a date and extract the date part
+      try {
+        const date = new Date(dateString);
         
-      allocatedBaseDate = isEditingTask.value && editingTask.value.time_allocated
-        ? new Date(editingTask.value.time_allocated).toISOString().split('T')[0]
-        : null;
+        // Check if date is valid before calling toISOString()
+        if (isNaN(date.getTime())) {
+          return null;
+        }
         
-      completedBaseDate = isEditingTask.value && editingTask.value.time_completed
-        ? new Date(editingTask.value.time_completed).toISOString().split('T')[0]
-        : null;
-    } catch (error) {
-      console.warn("Error extracting original dates:", error);
-      // If we can't extract the original dates, we'll use current date
-      receivedBaseDate = allocatedBaseDate = completedBaseDate = null;
+        return date.toISOString().split('T')[0];
+      } catch (e) {
+        return null;
+      }
     }
+    
+    // Silently handle date extraction without console errors
+    receivedBaseDate = isEditingTask.value && editingTask.value.time_received 
+      ? extractDatePart(editingTask.value.time_received)
+      : null;
+      
+    allocatedBaseDate = isEditingTask.value && editingTask.value.time_allocated
+      ? extractDatePart(editingTask.value.time_allocated)
+      : null;
+      
+    completedBaseDate = isEditingTask.value && editingTask.value.time_completed
+      ? extractDatePart(editingTask.value.time_completed)
+      : null;
+      
+    // Fallback to current date if extraction failed
+    const currentDate = new Date().toISOString().split('T')[0];
+    receivedBaseDate = receivedBaseDate || currentDate;
+    allocatedBaseDate = allocatedBaseDate || currentDate;
+    completedBaseDate = completedBaseDate || currentDate;
     
     // Only include time fields if they are provided and valid
     const receivedDateTime = createValidDateTimeString(receivedBaseDate, taskForm.value.timeReceived);
