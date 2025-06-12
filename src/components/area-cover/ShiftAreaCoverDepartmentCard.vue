@@ -433,6 +433,22 @@ const handleRemove = (assignmentId) => {
     .porter-assignments {
       margin-top: 0; /* Removed margin-top as requested */
       
+      /* Apply margin styles to all direct children */
+      > * {
+        margin-bottom: 3px;
+      }
+      
+      /* Add top margin to all children except the first one */
+      > *:not(:first-child) {
+        margin-top: 3px;
+      }
+      
+      /* Special case if the last child is also the first child */
+      > *:first-child:last-child {
+        margin-bottom: 3px;
+        margin-top: 0;
+      }
+      
       .porter-assignment {
         font-size: mix.font-size('xs');
         margin-bottom: 0; /* Removed to balance spacing with gap-line */
