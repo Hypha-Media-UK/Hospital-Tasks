@@ -21,34 +21,71 @@
           </div>
           
           <div class="sheet-content">
-            <table class="tasks-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>From</th>
-                  <th>Task</th>
-                  <th>Task Info</th>
-                  <th>To</th>
-                  <th>Allocated</th>
-                  <th>Porter</th>
-                  <th>Completed</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="task in sortedTasks" :key="task.id">
-                  <td>{{ formatTime(task.time_received) }}</td>
-                  <td>{{ task.origin_department?.name || '-' }}</td>
-                  <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
-                  <td>{{ task.task_item.name }}</td>
-                  <td>{{ task.destination_department?.name || '-' }}</td>
-                  <td>{{ formatTime(task.time_allocated) }}</td>
-                  <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
-                  <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
-                  <td>{{ calculateDuration(task) }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <!-- Pending Tasks Table (only shown if there are pending tasks) -->
+            <div v-if="hasPendingTasks" class="pending-tasks-section">
+              <h3 class="table-title">Pending Tasks</h3>
+              <table class="tasks-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>From</th>
+                    <th>Task</th>
+                    <th>Task Info</th>
+                    <th>To</th>
+                    <th>Allocated</th>
+                    <th>Porter</th>
+                    <th>Completed</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="task in pendingTasks" :key="task.id">
+                    <td>{{ formatTime(task.time_received) }}</td>
+                    <td>{{ task.origin_department?.name || '-' }}</td>
+                    <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
+                    <td>{{ task.task_item.name }}</td>
+                    <td>{{ task.destination_department?.name || '-' }}</td>
+                    <td>{{ formatTime(task.time_allocated) }}</td>
+                    <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
+                    <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
+                    <td>{{ calculateDuration(task) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <!-- Completed Tasks Table -->
+            <div class="completed-tasks-section">
+              <h3 class="table-title">Completed Tasks</h3>
+              <table class="tasks-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>From</th>
+                    <th>Task</th>
+                    <th>Task Info</th>
+                    <th>To</th>
+                    <th>Allocated</th>
+                    <th>Porter</th>
+                    <th>Completed</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="task in completedTasks" :key="task.id">
+                    <td>{{ formatTime(task.time_received) }}</td>
+                    <td>{{ task.origin_department?.name || '-' }}</td>
+                    <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
+                    <td>{{ task.task_item.name }}</td>
+                    <td>{{ task.destination_department?.name || '-' }}</td>
+                    <td>{{ formatTime(task.time_allocated) }}</td>
+                    <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
+                    <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
+                    <td>{{ calculateDuration(task) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
             
             <div class="department-summary">
               <h3>Department Task Summary</h3>
@@ -98,6 +135,21 @@ const sortedTasks = computed(() => {
     const timeB = b.time_received ? new Date(`2025-01-01T${b.time_received}`) : new Date(0);
     return timeA - timeB;
   });
+});
+
+// Filter for pending tasks only
+const pendingTasks = computed(() => {
+  return sortedTasks.value.filter(task => task.status === 'pending');
+});
+
+// Filter for completed tasks only
+const completedTasks = computed(() => {
+  return sortedTasks.value.filter(task => task.status === 'completed');
+});
+
+// Check if there are any pending tasks
+const hasPendingTasks = computed(() => {
+  return pendingTasks.value.length > 0;
 });
 
 // Generate department summaries
@@ -351,10 +403,23 @@ function getShiftTypeDisplayName() {
   }
   
   .sheet-content {
+    .pending-tasks-section,
+    .completed-tasks-section {
+      margin-bottom: 2rem;
+    }
+    
+    .table-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      margin-top: 0;
+      color: #333;
+    }
+    
     .tasks-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       
       th, td {
         border: 1px solid #000;
@@ -416,6 +481,17 @@ function getShiftTypeDisplayName() {
     position: absolute;
   }
   
+  .table-title {
+    font-size: 9pt !important;
+    font-weight: bold !important;
+    margin-bottom: 5pt !important;
+    margin-top: 0 !important;
+  }
+  
+  .pending-tasks-section {
+    margin-bottom: 15pt !important;
+  }
+  
   .activity-sheet-modal {
     width: 100%;
     max-width: none;
@@ -433,12 +509,12 @@ function getShiftTypeDisplayName() {
   }
   
   .sheet-header h2 {
-    text-align: center;
-    font-size: 18pt;
+    text-align: left;
+    font-size: 14pt;
   }
   
   .sheet-info {
-    text-align: center;
+    text-align: left;
     font-size: 12pt;
   }
   

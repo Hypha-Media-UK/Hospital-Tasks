@@ -37,34 +37,71 @@
       </div>
       
       <div v-else class="activity-sheet-container">
-        <table class="tasks-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Task</th>
-              <th>Task Info</th>
-              <th>Allocated</th>
-              <th>Porter</th>
-              <th>Completed</th>
-              <th>Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="task in sortedTasks" :key="task.id">
-              <td>{{ formatTime(task.time_received) }}</td>
-              <td>{{ task.origin_department?.name || '-' }}</td>
-              <td>{{ task.destination_department?.name || '-' }}</td>
-              <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
-              <td>{{ task.task_item.name }}</td>
-              <td>{{ formatTime(task.time_allocated) }}</td>
-              <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
-              <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
-              <td>{{ calculateDuration(task) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- Pending Tasks Table (only shown if there are pending tasks) -->
+        <div v-if="hasPendingTasks" class="pending-tasks-section">
+          <h3 class="table-title">Pending Tasks</h3>
+          <table class="tasks-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Task</th>
+                <th>Task Info</th>
+                <th>Allocated</th>
+                <th>Porter</th>
+                <th>Completed</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="task in pendingTasks" :key="task.id">
+                <td>{{ formatTime(task.time_received) }}</td>
+                <td>{{ task.origin_department?.name || '-' }}</td>
+                <td>{{ task.destination_department?.name || '-' }}</td>
+                <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
+                <td>{{ task.task_item.name }}</td>
+                <td>{{ formatTime(task.time_allocated) }}</td>
+                <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
+                <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
+                <td>{{ calculateDuration(task) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Completed Tasks Table -->
+        <div class="completed-tasks-section">
+          <h3 class="table-title">Completed Tasks</h3>
+          <table class="tasks-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Task</th>
+                <th>Task Info</th>
+                <th>Allocated</th>
+                <th>Porter</th>
+                <th>Completed</th>
+                <th>Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="task in completedTasks" :key="task.id">
+                <td>{{ formatTime(task.time_received) }}</td>
+                <td>{{ task.origin_department?.name || '-' }}</td>
+                <td>{{ task.destination_department?.name || '-' }}</td>
+                <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
+                <td>{{ task.task_item.name }}</td>
+                <td>{{ formatTime(task.time_allocated) }}</td>
+                <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
+                <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
+                <td>{{ calculateDuration(task) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         
         <div class="department-summary">
           <p class="summary-title">Department Task Summary</p>
@@ -174,6 +211,21 @@ const sortedTasks = computed(() => {
     const timeB = b.time_received ? new Date(`2025-01-01T${b.time_received}`) : new Date(0);
     return timeA - timeB;
   });
+});
+
+// Filter for pending tasks only
+const pendingTasks = computed(() => {
+  return sortedTasks.value.filter(task => task.status === 'pending');
+});
+
+// Filter for completed tasks only
+const completedTasks = computed(() => {
+  return sortedTasks.value.filter(task => task.status === 'completed');
+});
+
+// Check if there are any pending tasks
+const hasPendingTasks = computed(() => {
+  return pendingTasks.value.length > 0;
 });
 
 // Generate department summaries
@@ -373,8 +425,8 @@ function printSheet() {
 // Export to Excel
 function exportToExcel() {
   try {
-    // Prepare data for export - flatten the task objects
-    const excelData = sortedTasks.value.map(task => ({
+    // Function to create a task data row
+    const createTaskRow = (task) => ({
       'Time': formatTime(task.time_received),
       'From': task.origin_department?.name || '-',
       'To': task.destination_department?.name || '-',
@@ -384,12 +436,9 @@ function exportToExcel() {
       'Porter': task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-',
       'Completed': task.status === 'completed' ? formatTime(task.time_completed) : '-',
       'Duration': calculateDuration(task)
-    }));
+    });
     
-    // Create worksheet
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    
-    // Set column widths for better readability
+    // Prepare column widths for task worksheets
     const columnWidths = [
       { wch: 10 }, // Time
       { wch: 20 }, // From
@@ -401,7 +450,19 @@ function exportToExcel() {
       { wch: 10 }, // Completed
       { wch: 10 }  // Duration
     ];
-    worksheet['!cols'] = columnWidths;
+    
+    // Create pending tasks worksheet if there are pending tasks
+    let pendingWorksheet = null;
+    if (pendingTasks.value.length > 0) {
+      const pendingData = pendingTasks.value.map(createTaskRow);
+      pendingWorksheet = XLSX.utils.json_to_sheet(pendingData);
+      pendingWorksheet['!cols'] = columnWidths;
+    }
+    
+    // Create completed tasks worksheet
+    const completedData = completedTasks.value.map(createTaskRow);
+    const completedWorksheet = XLSX.utils.json_to_sheet(completedData);
+    completedWorksheet['!cols'] = columnWidths;
     
     // Create department summary worksheet
     const summaryData = departmentSummaries.value.map(summary => {
@@ -443,7 +504,25 @@ function exportToExcel() {
     
     // Create workbook and append worksheets
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+    
+    // Set workbook properties for sans-serif font
+    workbook.Styles = {
+      "fonts": [
+        { "name": "Arial", "family": 2 }  // Sans-serif font
+      ],
+      "numFmts": [],
+      "cellStyles": [
+        { "fontId": 0 }
+      ]
+    };
+    
+    // Add pending tasks worksheet if it exists
+    if (pendingWorksheet) {
+      XLSX.utils.book_append_sheet(workbook, pendingWorksheet, 'Pending Tasks');
+    }
+    
+    // Add completed tasks and other worksheets
+    XLSX.utils.book_append_sheet(workbook, completedWorksheet, 'Completed Tasks');
     XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Department Summary');
     XLSX.utils.book_append_sheet(workbook, porterWorksheet, 'Porter Activity');
     
@@ -633,6 +712,17 @@ function getShiftTypeDisplayName() {
     margin: 0.7cm;
   }
   
+  .table-title {
+    font-size: 9pt !important;
+    font-weight: bold !important;
+    margin-bottom: 5pt !important;
+    margin-top: 0 !important;
+  }
+  
+  .pending-tasks-section {
+    margin-bottom: 15pt !important;
+  }
+  
   body {
     margin: 0;
     padding: 0;
@@ -645,12 +735,12 @@ function getShiftTypeDisplayName() {
   }
   
   .sheet-title {
-    text-align: center;
+    text-align: left;
     margin-bottom: 10px;
   }
   
   .sheet-header {
-    font-size: 16pt !important;
+    font-size: 14pt !important;
     font-weight: bold;
     margin-bottom: 4pt !important;
   }
@@ -658,6 +748,7 @@ function getShiftTypeDisplayName() {
   .sheet-info {
     font-size: 10pt !important;
     margin: 0 !important;
+    text-align: left !important;
   }
   
   .tasks-table {
@@ -794,6 +885,19 @@ function getShiftTypeDisplayName() {
   p {
     margin-bottom: 20px;
   }
+}
+
+.pending-tasks-section,
+.completed-tasks-section {
+  margin-bottom: 40px;
+}
+
+.table-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+  margin-top: 0;
+  color: #333;
 }
 
 .tasks-table {
