@@ -15,11 +15,11 @@
     </div>
     
     <div v-else class="porter-grid">
-      <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card">
+      <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
+           :class="{ 'assigned': getPorterAssignments(entry.porter_id).length > 0 }">
         <div class="porter-card__content">
           <div class="porter-card__name" 
                :class="{ 
-                 'assigned': getPorterAssignments(entry.porter_id).length > 0,
                  'porter-absent': isPorterAbsent(entry.porter_id),
                  'porter-illness': getPorterAbsenceType(entry.porter_id) === 'illness',
                  'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave'
@@ -485,6 +485,11 @@ onMounted(async () => {
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  
+  &.assigned {
+    background-color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+  }
   
   &__content {
     flex: 1;

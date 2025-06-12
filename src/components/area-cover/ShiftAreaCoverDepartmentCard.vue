@@ -29,9 +29,10 @@
                    :class="{
                      'porter-absent': getPorterAbsence(assignment.porter_id),
                      'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
-                     'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'
+                     'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave',
+                     'pool-porter': isPoolPorter(assignment.porter_id)
                    }">
-                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}{{ isPoolPorter(assignment.porter_id) ? ' Cover' : '' }}
                 <!-- Show time for available porters, absence badge for absent porters -->
                 <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
                   {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
@@ -106,6 +107,14 @@ const emit = defineEmits(['update', 'remove']);
 const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const showEditModal = ref(false);
+
+// Function to check if a porter is in the porter pool
+const isPoolPorter = (porterId) => {
+  // Get the porter pool for the current shift
+  const porterPool = shiftsStore.shiftPorterPool || [];
+  // Check if the porter exists in the pool
+  return porterPool.some(entry => entry.porter_id === porterId);
+};
 
 // Get porter assignments for this area
 const porterAssignments = computed(() => {
@@ -476,6 +485,11 @@ const handleRemove = (assignmentId) => {
           &.porter-annual-leave {
             color: #f57c00;
             background-color: rgba(251, 192, 45, 0.1);
+          }
+          
+          &.pool-porter {
+            background-color: rgba(66, 133, 244, 0.15);  /* Light blue background */
+            font-style: italic;
           }
           
           .porter-time {
