@@ -472,8 +472,8 @@ const handleRemove = (assignmentId) => {
         position: absolute;
         top: -12px;
         right: 0;
-        font-size: 0.7rem; /* Using the smaller size consistently */
-        color: rgba(0, 0, 0, 0.5);
+        font-size: 0.6rem; /* Further reduced font size */
+        color: #d32f2f; /* Red text color */
         padding: 2px 6px;
         background-color: #fef6f5; /* Fully opaque light red */
         border: 1px solid rgba(234, 67, 53, 0.2);
@@ -502,10 +502,10 @@ const handleRemove = (assignmentId) => {
       position: absolute !important;
       top: -12px !important;
       right: 0 !important;
-      font-size: 0.7rem !important;
+      font-size: 0.6rem !important; /* Further reduced font size */
       font-weight: normal !important;
       line-height: 1.2 !important;
-      color: rgba(0, 0, 0, 0.5) !important;
+      color: #d32f2f !important; /* Red text color */
       padding: 2px 6px !important;
       background-color: #fef6f5 !important; /* Fully opaque light red */
       border: 1px solid rgba(234, 67, 53, 0.2) !important;
