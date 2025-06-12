@@ -326,7 +326,7 @@ function formatTime(timeString) {
   border-radius: 4px;
   
   &.completed {
-    background-color: #f0fff5;
+    background-color: #f1f8e9;
     border-left: 3px solid #34A853;
   }
   
