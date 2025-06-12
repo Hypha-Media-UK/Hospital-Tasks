@@ -484,10 +484,9 @@ onMounted(async () => {
   background-color: white;
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   
   &.assigned {
-    background-color: rgba(255, 255, 255, 0.5);
+    background-color: #FFF8ED;  /* Extremely pale orange background */
     border: 1px solid rgba(0, 0, 0, 0.15);
   }
   
