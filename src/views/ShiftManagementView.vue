@@ -253,34 +253,13 @@
                 />
               </div>
               
-              <!-- Status buttons moved to footer for new tasks, but kept here for editing -->
-              <div v-if="isEditingTask" class="form-group">
-                <label>Status</label>
-                <div class="status-buttons">
-                  <button 
-                    type="button"
-                    @click="taskForm.status = 'pending'"
-                    class="status-btn pending-btn" 
-                    :class="{ active: taskForm.status === 'pending' }"
-                  >
-                    Pending
-                  </button>
-                  <button 
-                    type="button"
-                    @click="taskForm.status = 'completed'"
-                    class="status-btn completed-btn" 
-                    :class="{ active: taskForm.status === 'completed' }"
-                  >
-                    Completed
-                  </button>
-                </div>
-              </div>
+              <!-- Status buttons removed from here and moved to footer -->
             </div>
           </div>
           
           <!-- Different footer for new vs edit task -->
           <div class="modal-footer">
-            <!-- Edit mode: Update | Cancel -->
+            <!-- Edit mode: Update | Status Change | Cancel -->
             <template v-if="isEditingTask">
               <button 
                 @click="closeTaskModal" 
@@ -288,6 +267,24 @@
                 :disabled="processingTask"
               >
                 Cancel
+              </button>
+              <!-- Show "Pending" button only for completed tasks -->
+              <button 
+                v-if="taskForm.status === 'completed'"
+                @click="taskForm.status = 'pending'; saveTask()" 
+                class="btn pending-btn" 
+                :disabled="processingTask"
+              >
+                {{ processingTask ? 'Updating...' : 'Mark Pending' }}
+              </button>
+              <!-- Show "Completed" button only for pending tasks -->
+              <button 
+                v-if="taskForm.status === 'pending'"
+                @click="taskForm.status = 'completed'; saveTask()" 
+                class="btn completed-btn" 
+                :disabled="processingTask"
+              >
+                {{ processingTask ? 'Updating...' : 'Mark Completed' }}
               </button>
               <button 
                 @click="saveTask()" 
@@ -1075,6 +1072,38 @@ function checkTaskItemDepartmentAssignments(taskItemId) {
   }
 }
 
+// Helper function to safely create a valid ISO date string
+function createValidDateTimeString(dateStr, timeStr) {
+  if (!timeStr) return null;
+  
+  try {
+    // Make sure time format is valid (HH:MM)
+    if (!/^\d{1,2}:\d{2}$/.test(timeStr)) {
+      console.warn("Invalid time format:", timeStr);
+      return null;
+    }
+    
+    // Get current date if no date string provided
+    const currentDate = new Date().toISOString().split('T')[0];
+    const baseDate = dateStr || currentDate;
+    
+    // Create the datetime string
+    const dateTimeStr = `${baseDate}T${timeStr}:00`;
+    
+    // Validate by creating a date object and checking if it's valid
+    const testDate = new Date(dateTimeStr);
+    if (isNaN(testDate.getTime())) {
+      console.warn("Invalid date created:", dateTimeStr);
+      return null;
+    }
+    
+    return dateTimeStr;
+  } catch (error) {
+    console.error("Error creating date string:", error);
+    return null;
+  }
+}
+
 // Save task (add or update)
 async function saveTask() {
   if (!canSaveTask.value || processingTask.value) return;
@@ -1083,10 +1112,6 @@ async function saveTask() {
   taskFormError.value = '';
   
   try {
-    // For time inputs, we need to create proper datetime objects with the current date
-    // but using the times from the form
-    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    
     // Transform form data to match the API requirements
     const taskData = {
       taskItemId: taskForm.value.taskItemId,
@@ -1096,27 +1121,41 @@ async function saveTask() {
       status: taskForm.value.status
     };
     
-    // Only include time fields if they are provided
-    if (taskForm.value.timeReceived) {
-      // Use original date with new time for editing
-      const originalDate = isEditingTask.value && editingTask.value.time_received 
+    // Get base dates for each time field if we're editing
+    let receivedBaseDate, allocatedBaseDate, completedBaseDate;
+    
+    try {
+      receivedBaseDate = isEditingTask.value && editingTask.value.time_received 
         ? new Date(editingTask.value.time_received).toISOString().split('T')[0]
-        : currentDate;
-      taskData.time_received = `${originalDate}T${taskForm.value.timeReceived}:00`;
-    }
-    
-    if (taskForm.value.timeAllocated) {
-      const originalDate = isEditingTask.value && editingTask.value.time_allocated
+        : null;
+        
+      allocatedBaseDate = isEditingTask.value && editingTask.value.time_allocated
         ? new Date(editingTask.value.time_allocated).toISOString().split('T')[0]
-        : currentDate;
-      taskData.time_allocated = `${originalDate}T${taskForm.value.timeAllocated}:00`;
+        : null;
+        
+      completedBaseDate = isEditingTask.value && editingTask.value.time_completed
+        ? new Date(editingTask.value.time_completed).toISOString().split('T')[0]
+        : null;
+    } catch (error) {
+      console.warn("Error extracting original dates:", error);
+      // If we can't extract the original dates, we'll use current date
+      receivedBaseDate = allocatedBaseDate = completedBaseDate = null;
     }
     
-    if (taskForm.value.timeCompleted) {
-      const originalDate = isEditingTask.value && editingTask.value.time_completed
-        ? new Date(editingTask.value.time_completed).toISOString().split('T')[0]
-        : currentDate;
-      taskData.time_completed = `${originalDate}T${taskForm.value.timeCompleted}:00`;
+    // Only include time fields if they are provided and valid
+    const receivedDateTime = createValidDateTimeString(receivedBaseDate, taskForm.value.timeReceived);
+    if (receivedDateTime) {
+      taskData.time_received = receivedDateTime;
+    }
+    
+    const allocatedDateTime = createValidDateTimeString(allocatedBaseDate, taskForm.value.timeAllocated);
+    if (allocatedDateTime) {
+      taskData.time_allocated = allocatedDateTime;
+    }
+    
+    const completedDateTime = createValidDateTimeString(completedBaseDate, taskForm.value.timeCompleted);
+    if (completedDateTime) {
+      taskData.time_completed = completedDateTime;
     }
     
     let result;
@@ -1138,7 +1177,13 @@ async function saveTask() {
     }
   } catch (error) {
     console.error(`Error ${isEditingTask.value ? 'updating' : 'adding'} task:`, error);
-    taskFormError.value = 'An unexpected error occurred';
+    
+    // Provide more helpful error messages for time-related errors
+    if (error instanceof RangeError && error.message.includes('Invalid time value')) {
+      taskFormError.value = 'Invalid time format. Please check all time fields.';
+    } else {
+      taskFormError.value = 'An unexpected error occurred';
+    }
   } finally {
     processingTask.value = false;
   }
@@ -1184,10 +1229,6 @@ async function saveTaskWithStatus(status) {
   taskFormError.value = '';
   
   try {
-    // For time inputs, we need to create proper datetime objects with the current date
-    // but using the times from the form
-    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    
     // Transform form data to match the API requirements
     const taskData = {
       taskItemId: taskForm.value.taskItemId,
@@ -1197,17 +1238,20 @@ async function saveTaskWithStatus(status) {
       status: taskForm.value.status
     };
     
-    // Only include time fields if they are provided
-    if (taskForm.value.timeReceived) {
-      taskData.time_received = `${currentDate}T${taskForm.value.timeReceived}:00`;
+    // Only include time fields if they are provided and valid
+    const receivedDateTime = createValidDateTimeString(null, taskForm.value.timeReceived);
+    if (receivedDateTime) {
+      taskData.time_received = receivedDateTime;
     }
     
-    if (taskForm.value.timeAllocated) {
-      taskData.time_allocated = `${currentDate}T${taskForm.value.timeAllocated}:00`;
+    const allocatedDateTime = createValidDateTimeString(null, taskForm.value.timeAllocated);
+    if (allocatedDateTime) {
+      taskData.time_allocated = allocatedDateTime;
     }
     
-    if (taskForm.value.timeCompleted) {
-      taskData.time_completed = `${currentDate}T${taskForm.value.timeCompleted}:00`;
+    const completedDateTime = createValidDateTimeString(null, taskForm.value.timeCompleted);
+    if (completedDateTime) {
+      taskData.time_completed = completedDateTime;
     }
     
     // Add new task
@@ -1222,7 +1266,13 @@ async function saveTaskWithStatus(status) {
     }
   } catch (error) {
     console.error('Error adding task:', error);
-    taskFormError.value = 'An unexpected error occurred';
+    
+    // Provide more helpful error messages for time-related errors
+    if (error instanceof RangeError && error.message.includes('Invalid time value')) {
+      taskFormError.value = 'Invalid time format. Please check all time fields.';
+    } else {
+      taskFormError.value = 'An unexpected error occurred';
+    }
   } finally {
     processingTask.value = false;
   }
