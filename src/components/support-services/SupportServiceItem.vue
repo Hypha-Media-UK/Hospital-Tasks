@@ -384,7 +384,7 @@ const handleRemove = (assignmentId) => {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    margin-bottom: 4px;
+    margin-bottom: 12px; /* Increased from 4px to 12px as requested */
   }
   
   &__name {
