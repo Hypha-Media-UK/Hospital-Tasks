@@ -472,7 +472,7 @@ const handleRemove = (assignmentId) => {
         position: absolute;
         top: -12px;
         right: 0;
-        font-size: mix.font-size('3xs');
+        font-size: 0.7rem; /* Using the smaller size consistently */
         color: rgba(0, 0, 0, 0.5);
         padding: 2px 6px;
         background-color: white;
