@@ -2298,17 +2298,15 @@ function isWeekend(date) {
   position: relative;
   height: 0;
   overflow: hidden;
-  transition: height 0.3s ease-out, opacity 0.3s ease-out;
-  opacity: 0;
+  transition: height 0.3s ease-out;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   border-top: 1px solid #e0e0e0;
   padding: 0 1rem;
-  background-color: white; /* Ensure it covers content below */
+  background-color: #f8f8f8; /* Very pale grey background */
   
   &.visible {
-    opacity: 1;
     padding-top: 1rem;
     padding-bottom: 1rem;
   }
@@ -2325,7 +2323,7 @@ function isWeekend(date) {
 
 .timing-toggle-btn {
   position: absolute;
-  top: -18px; /* Negative offset to position button at top */
+  top: -35px; /* 1px less than the height (36px - 1px = 35px) */
   left: 50%;
   transform: translateX(-50%); /* Center horizontally */
   width: 60px; /* Fixed width for square button */
