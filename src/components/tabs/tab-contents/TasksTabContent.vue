@@ -44,12 +44,12 @@
           class="task-item"
         >
           <div class="task-details">
-            <h3 class="task-name">{{ task.task_item.name }}</h3>
-            <p v-if="task.task_item.description" class="task-description">
-              {{ task.task_item.description }}
-            </p>
+            <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
             
             <div class="task-meta">
+              <div class="meta-item">
+                <strong>Type:</strong> {{ task.task_item.name }}
+              </div>
               <div v-if="task.origin_department" class="meta-item">
                 <strong>From:</strong> {{ task.origin_department.name }}
               </div>
@@ -65,9 +65,6 @@
               </div>
               <div class="meta-item">
                 <strong>Received:</strong> {{ formatTime(task.time_received) }}
-              </div>
-              <div class="meta-item">
-                <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
               </div>
               <div class="meta-item">
                 <strong>Expected completion:</strong> {{ formatTime(task.time_completed) }}
@@ -108,12 +105,12 @@
           class="task-item completed"
         >
           <div class="task-details">
-            <h3 class="task-name">{{ task.task_item.name }}</h3>
-            <p v-if="task.task_item.description" class="task-description">
-              {{ task.task_item.description }}
-            </p>
+            <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
             
             <div class="task-meta">
+              <div class="meta-item">
+                <strong>Type:</strong> {{ task.task_item.name }}
+              </div>
               <div v-if="task.origin_department" class="meta-item">
                 <strong>From:</strong> {{ task.origin_department.name }}
               </div>
@@ -129,9 +126,6 @@
               </div>
               <div class="meta-item">
                 <strong>Received:</strong> {{ formatTime(task.time_received) }}
-              </div>
-              <div class="meta-item">
-                <strong>Allocated:</strong> {{ formatTime(task.time_allocated) }}
               </div>
               <div class="meta-item">
                 <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
@@ -341,19 +335,16 @@ function formatTime(timeString) {
     
     .task-name {
       margin-top: 0;
-      margin-bottom: 0.25rem;
-    }
-    
-    .task-description {
-      margin: 0.25rem 0 0.75rem;
-      color: #666;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
     }
   }
   
   .task-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
     
     .meta-item {
       font-size: 0.9rem;
@@ -370,6 +361,11 @@ function formatTime(timeString) {
     flex-direction: column;
     gap: 0.5rem;
     align-self: center;
+    
+    @media (min-width: 500px) {
+      flex-direction: row;
+      gap: 0.5rem;
+    }
   }
 }
 
@@ -439,8 +435,8 @@ function formatTime(timeString) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
   border-radius: 4px;
