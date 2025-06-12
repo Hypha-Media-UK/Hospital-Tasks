@@ -223,37 +223,52 @@
                 </select>
               </div>
               
-              <!-- Allocated -->
-              <div class="form-group">
-                <label for="timeAllocated">Allocated</label>
-                <input 
-                  type="time" 
-                  id="timeAllocated" 
-                  v-model="taskForm.timeAllocated" 
-                  class="form-control"
-                />
+              <!-- Toggle button for time fields -->
+              <div class="form-group timing-toggle-container">
+                <button 
+                  type="button"
+                  @click="showTimeFields = !showTimeFields" 
+                  class="timing-toggle-btn"
+                >
+                  <ClockIcon class="timing-toggle-icon" :size="18" />
+                  {{ showTimeFields ? 'Hide Estimated Timings' : 'Adjust Estimated Timings' }}
+                </button>
               </div>
               
-              <!-- Received -->
-              <div class="form-group">
-                <label for="timeReceived">Received</label>
-                <input 
-                  type="time" 
-                  id="timeReceived" 
-                  v-model="taskForm.timeReceived" 
-                  class="form-control"
-                />
-              </div>
-              
-              <!-- Exp. Completion -->
-              <div class="form-group">
-                <label for="timeCompleted">Exp. Completion</label>
-                <input 
-                  type="time" 
-                  id="timeCompleted" 
-                  v-model="taskForm.timeCompleted" 
-                  class="form-control"
-                />
+              <!-- Time fields container with animation -->
+              <div class="time-fields-container" :class="{ 'visible': showTimeFields, 'hidden': !showTimeFields }">
+                <!-- Allocated -->
+                <div class="form-group">
+                  <label for="timeAllocated">Allocated</label>
+                  <input 
+                    type="time" 
+                    id="timeAllocated" 
+                    v-model="taskForm.timeAllocated" 
+                    class="form-control"
+                  />
+                </div>
+                
+                <!-- Received -->
+                <div class="form-group">
+                  <label for="timeReceived">Received</label>
+                  <input 
+                    type="time" 
+                    id="timeReceived" 
+                    v-model="taskForm.timeReceived" 
+                    class="form-control"
+                  />
+                </div>
+                
+                <!-- Exp. Completion -->
+                <div class="form-group">
+                  <label for="timeCompleted">Exp. Completion</label>
+                  <input 
+                    type="time" 
+                    id="timeCompleted" 
+                    v-model="taskForm.timeCompleted" 
+                    class="form-control"
+                  />
+                </div>
               </div>
               
               <!-- Status buttons removed from here and moved to footer -->
@@ -419,6 +434,7 @@ import TabContent from '../components/tabs/TabContent.vue';
 import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabContent.vue';
 import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
 import EditIcon from '../components/icons/EditIcon.vue';
+import ClockIcon from '../components/icons/ClockIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -452,6 +468,7 @@ const editingTaskId = ref(null);
 const editingTask = ref(null);
 const processingTask = ref(false);
 const taskFormError = ref('');
+const showTimeFields = ref(false); // Controls visibility of time fields
 
 // Track fields auto-population for visual feedback
 const originFieldAutoPopulated = ref(false);
@@ -900,6 +917,11 @@ function editTask(task) {
     timeCompleted: task.time_completed ? formatDateTimeForInput(task.time_completed) : ''
   };
   
+  // If any time field has a value, show the time fields section
+  if (task.time_received || task.time_allocated || task.time_completed) {
+    showTimeFields.value = true;
+  }
+  
   // Load task items for this task type
   loadTaskItems();
   
@@ -938,6 +960,7 @@ function resetTaskForm() {
   };
   taskItems.value = [];
   taskFormError.value = '';
+  showTimeFields.value = false; // Reset time fields visibility
   
   // Reset touch tracking flags
   taskTypeFieldTouched.value = false;
@@ -1994,11 +2017,20 @@ function isWeekend(date) {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* Prevent columns from growing beyond available space */
   gap: 1rem;
   
   @media (max-width: 500px) {
-    grid-template-columns: 1fr;
+    /* Keep 2 columns for all screens */
+    .form-group {
+      grid-column: span 2; /* Make all form groups span both columns by default */
+    }
+    
+    /* Exception: Make these two fields take one column each on the same row */
+    .form-group:nth-child(6), /* Allocated - inside time-fields-container */
+    .form-group:nth-child(7) { /* Received - inside time-fields-container */
+      grid-column: span 1;
+    }
   }
 }
 
@@ -2234,5 +2266,58 @@ function isWeekend(date) {
 
 .supervisor-modal-content {
   max-width: 400px;
+}
+
+/* Time fields animation and styling */
+.time-fields-container {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s ease-out;
+  grid-column: span 2; /* Make container span both columns */
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* Same grid structure as parent */
+  gap: 1rem;
+}
+
+.time-fields-container.hidden {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.time-fields-container.visible {
+  max-height: 500px; /* More than enough height */
+  opacity: 1;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.timing-toggle-container {
+  grid-column: span 2 !important; /* Make sure this spans both columns */
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.timing-toggle-btn {
+  background: none;
+  border: none;
+  color: #4285F4;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: rgba(66, 133, 244, 0.1);
+  }
+  
+  .timing-toggle-icon {
+    margin-right: 0.5rem;
+    color: #4285F4; /* Match the button text color */
+  }
 }
 </style>
