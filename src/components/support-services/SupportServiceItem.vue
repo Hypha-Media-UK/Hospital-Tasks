@@ -449,7 +449,7 @@ const handleRemove = (assignmentId) => {
     
     /* Generic styles for all gap lines */
     .gap-line {
-      margin: 8px 0;
+      margin: 12px 0 0 0; /* Top margin only, no bottom margin */
       position: relative;
       padding-left: 12px;
       padding-top: 4px;
@@ -520,7 +520,7 @@ const handleRemove = (assignmentId) => {
       
       .porter-assignment {
         font-size: mix.font-size('xs');
-        margin-bottom: 8px;
+        margin-bottom: 0; /* Removed to balance spacing with gap-line */
         
         .porter-name {
           display: flex;
