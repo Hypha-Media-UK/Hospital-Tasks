@@ -1965,6 +1965,23 @@ function isWeekend(date) {
       justify-content: flex-end;
     }
     
+    /* Use grid layout for buttons on smaller screens */
+    @media screen and (max-width: 499px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      
+      .btn {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+      }
+      
+      .completed-btn {
+        grid-column: span 2;
+      }
+    }
+    
     .btn {
       width: 100%;
       
