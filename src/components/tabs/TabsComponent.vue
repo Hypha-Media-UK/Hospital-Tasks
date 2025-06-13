@@ -125,8 +125,17 @@ function updateIndicatorPosition() {
     const activeIndex = tabs.findIndex(tab => tab.id === activeTab.value);
     if (activeIndex === -1) return;
     
-    const activeTabElement = tabRefs.value[activeIndex]?.tabRef;
-    if (!activeTabElement) return;
+    // The ref might be an object with a tabRef property, or it might be a direct DOM ref
+    // Handle both cases safely
+    const activeTabRef = tabRefs.value[activeIndex];
+    if (!activeTabRef) return;
+    
+    // Get the actual DOM element, whether from tabRef property or direct ref
+    const activeTabElement = activeTabRef.tabRef || activeTabRef.$el || activeTabRef;
+    if (!activeTabElement || typeof activeTabElement.getBoundingClientRect !== 'function') return;
+    
+    // Make sure tabsHeaderRef exists and is a DOM element
+    if (!tabsHeaderRef.value || typeof tabsHeaderRef.value.getBoundingClientRect !== 'function') return;
     
     const tabHeaderRect = tabsHeaderRef.value.getBoundingClientRect();
     const activeTabRect = activeTabElement.getBoundingClientRect();

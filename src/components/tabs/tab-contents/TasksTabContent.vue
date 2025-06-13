@@ -255,14 +255,13 @@ const indicatorPosition = ref(0);
 const indicatorWidth = ref(0);
 
 // Define styles for active and inactive states
+// Font weight is now handled via CSS classes instead of animation
 const activeStyle = {
-  color: '#4285F4',
-  fontWeight: '600'
+  color: '#4285F4'
 };
 
 const inactiveStyle = {
-  color: '#666',
-  fontWeight: '500'
+  color: '#666'
 };
 
 // Computed properties
@@ -329,12 +328,20 @@ function setActiveTab(tabId) {
 function updateIndicatorPosition() {
   if (!tabsContainerRef.value) return;
   
-  const containerRect = tabsContainerRef.value.getBoundingClientRect();
-  const activeTabRef = activeTab.value === 'completed' ? completedTabRef.value : pendingTabRef.value;
+  // Make sure tabsContainerRef is a DOM element with getBoundingClientRect method
+  if (typeof tabsContainerRef.value.getBoundingClientRect !== 'function') return;
   
+  const containerRect = tabsContainerRef.value.getBoundingClientRect();
+  
+  // Get the reference to the active tab
+  const activeTabRef = activeTab.value === 'completed' ? completedTabRef.value : pendingTabRef.value;
   if (!activeTabRef) return;
   
-  const tabRect = activeTabRef.getBoundingClientRect();
+  // Get the actual DOM element, whether from a property or direct ref
+  const activeTabElement = activeTabRef.$el || activeTabRef;
+  if (!activeTabElement || typeof activeTabElement.getBoundingClientRect !== 'function') return;
+  
+  const tabRect = activeTabElement.getBoundingClientRect();
   
   // Calculate position relative to the container
   indicatorPosition.value = tabRect.left - containerRect.left;
@@ -423,6 +430,11 @@ nextTick(() => {
     color: #666;
     position: relative;
     z-index: 1;
+    transition: font-weight 0.01s; /* Quick transition for font-weight */
+    
+    &.active {
+      font-weight: 600; /* Set font-weight via CSS for active state */
+    }
     
     &:hover:not(.active) {
       background-color: #f5f5f5;
