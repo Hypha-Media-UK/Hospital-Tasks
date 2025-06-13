@@ -2177,7 +2177,7 @@ function isWeekend(date) {
     @media screen and (min-width: 768px) {
       width: 90%;
       max-width: 500px;
-      border-radius: 16px; /* Full rounded corners on desktop */
+      border-radius: 16px 16px 0 0; /* Keep only top corners rounded on desktop too */
     }
   }
   
