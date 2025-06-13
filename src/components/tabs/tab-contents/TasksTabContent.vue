@@ -5,21 +5,51 @@
     <div class="tasks-container">
       <!-- Task Tabs and Actions -->
       <div class="tasks-header">
-        <div class="task-tabs">
-          <button 
-            @click="activeTab = 'completed'" 
+        <div class="task-tabs" ref="tabsContainerRef">
+          <motion.button 
+            @click="setActiveTab('completed')" 
             class="tab-button" 
             :class="{ active: activeTab === 'completed' }"
+            ref="completedTabRef"
+            :animate="activeTab === 'completed' ? activeStyle : inactiveStyle"
+            :transition="{ 
+              type: 'spring',
+              stiffness: 300,
+              damping: 30
+            }"
           >
             Completed ({{ completedTasks.length }})
-          </button>
-          <button 
-            @click="activeTab = 'pending'" 
+          </motion.button>
+          <motion.button 
+            @click="setActiveTab('pending')" 
             class="tab-button" 
             :class="{ active: activeTab === 'pending' }"
+            ref="pendingTabRef"
+            :animate="activeTab === 'pending' ? activeStyle : inactiveStyle"
+            :transition="{ 
+              type: 'spring',
+              stiffness: 300,
+              damping: 30
+            }"
           >
             Pending ({{ pendingTasks.length }})
-          </button>
+          </motion.button>
+          
+          <!-- Sliding active indicator -->
+          <motion.div 
+            class="active-indicator"
+            :animate="{ 
+              x: indicatorPosition, 
+              width: indicatorWidth,
+              opacity: 1
+            }"
+            :initial="{ opacity: 0 }"
+            :transition="{ 
+              type: 'spring', 
+              stiffness: 500, 
+              damping: 30 
+            }"
+          ></motion.div>
         </div>
         
         <button 
@@ -32,134 +62,164 @@
         </button>
       </div>
       
-      <!-- Pending Tasks -->
-      <div v-if="activeTab === 'pending'" class="tasks-list">
-        <div v-if="pendingTasks.length === 0" class="empty-state">
-          <p>No pending tasks.</p>
-        </div>
-        
-        <div 
-          v-for="task in pendingTasks" 
-          :key="task.id" 
-          class="task-item pending"
+      <!-- Task Content -->
+      <div class="tasks-content-wrapper">
+        <!-- Pending Tasks -->
+        <motion.div 
+          v-if="activeTab === 'pending'" 
+          class="tasks-list"
+          :initial="{ opacity: 0, x: transitionDirection * 40 }"
+          :animate="{ opacity: 1, x: 0 }"
+          :exit="{ opacity: 0, x: -transitionDirection * 40 }"
+          :transition="{ 
+            type: 'spring', 
+            stiffness: 300, 
+            damping: 30,
+            mass: 1
+          }"
+          :key="'pending-list'"
         >
-          <div class="task-details">
-            <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
-            
-            <div class="task-meta">
-              <div class="meta-group">
-                <div v-if="task.origin_department" class="meta-item">
-                  <strong>From:</strong> {{ task.origin_department.name }}
-                </div>
-                <div v-if="task.destination_department" class="meta-item">
-                  <strong>To:</strong> {{ task.destination_department.name }}
-                </div>
-                <div class="meta-item">
-                  <strong>Type:</strong> {{ task.task_item.name }}
-                </div>
-              </div>
+          <div v-if="pendingTasks.length === 0" class="empty-state">
+            <p>No pending tasks.</p>
+          </div>
+          
+          <div 
+            v-for="task in pendingTasks" 
+            :key="task.id" 
+            class="task-item pending"
+          >
+            <div class="task-details">
+              <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
               
-              <div class="meta-group">
-                <div class="meta-item">
-                  <strong>Received:</strong> {{ formatTime(task.time_received) }}
+              <div class="task-meta">
+                <div class="meta-group">
+                  <div v-if="task.origin_department" class="meta-item">
+                    <strong>From:</strong> {{ task.origin_department.name }}
+                  </div>
+                  <div v-if="task.destination_department" class="meta-item">
+                    <strong>To:</strong> {{ task.destination_department.name }}
+                  </div>
+                  <div class="meta-item">
+                    <strong>Type:</strong> {{ task.task_item.name }}
+                  </div>
+                </div>
+                
+                <div class="meta-group">
+                  <div class="meta-item">
+                    <strong>Received:</strong> {{ formatTime(task.time_received) }}
+                  </div>
                 </div>
               </div>
             </div>
+            
+            <div class="task-actions">
+              <button 
+                @click="editTask(task)" 
+                class="icon-btn btn-primary"
+                :disabled="updatingTask"
+                title="Edit Task"
+              >
+                <EditIcon :size="18" />
+              </button>
+              <button 
+                @click="markTaskCompleted(task.id)" 
+                class="icon-btn btn-success"
+                :disabled="updatingTask"
+                title="Mark as Completed"
+              >
+                <CheckIcon :size="18" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+        
+        <!-- Completed Tasks -->
+        <motion.div 
+          v-if="activeTab === 'completed'" 
+          class="tasks-list"
+          :initial="{ opacity: 0, x: transitionDirection * 40 }"
+          :animate="{ opacity: 1, x: 0 }"
+          :exit="{ opacity: 0, x: -transitionDirection * 40 }"
+          :transition="{ 
+            type: 'spring', 
+            stiffness: 300, 
+            damping: 30,
+            mass: 1
+          }"
+          :key="'completed-list'"
+        >
+          <div v-if="completedTasks.length === 0" class="empty-state">
+            <p>No completed tasks.</p>
           </div>
           
-          <div class="task-actions">
-            <button 
-              @click="editTask(task)" 
-              class="icon-btn btn-primary"
-              :disabled="updatingTask"
-              title="Edit Task"
-            >
-              <EditIcon :size="18" />
-            </button>
-            <button 
-              @click="markTaskCompleted(task.id)" 
-              class="icon-btn btn-success"
-              :disabled="updatingTask"
-              title="Mark as Completed"
-            >
-              <CheckIcon :size="18" />
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Completed Tasks -->
-      <div v-if="activeTab === 'completed'" class="tasks-list">
-        <div v-if="completedTasks.length === 0" class="empty-state">
-          <p>No completed tasks.</p>
-        </div>
-        
-        <div 
-          v-for="task in completedTasks" 
-          :key="task.id" 
-          class="task-item completed"
-        >
-          <div class="task-details">
-            <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
-            
-            <div class="task-meta">
-              <div class="meta-group">
-                <div v-if="task.origin_department" class="meta-item">
-                  <strong>From:</strong> {{ task.origin_department.name }}
-                </div>
-                <div v-if="task.destination_department" class="meta-item">
-                  <strong>To:</strong> {{ task.destination_department.name }}
-                </div>
-                <div class="meta-item">
-                  <strong>Type:</strong> {{ task.task_item.name }}
-                </div>
-              </div>
+          <div 
+            v-for="task in completedTasks" 
+            :key="task.id" 
+            class="task-item completed"
+          >
+            <div class="task-details">
+              <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
               
-              <div class="meta-group">
-                <div class="meta-item">
-                  <strong>Received:</strong> {{ formatTime(task.time_received) }}
+              <div class="task-meta">
+                <div class="meta-group">
+                  <div v-if="task.origin_department" class="meta-item">
+                    <strong>From:</strong> {{ task.origin_department.name }}
+                  </div>
+                  <div v-if="task.destination_department" class="meta-item">
+                    <strong>To:</strong> {{ task.destination_department.name }}
+                  </div>
+                  <div class="meta-item">
+                    <strong>Type:</strong> {{ task.task_item.name }}
+                  </div>
                 </div>
-                <div class="meta-item">
-                  <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
-                </div>
-                <div class="meta-item">
-                  <strong>Porter:</strong> 
-                  <span v-if="task.porter">
-                    {{ task.porter.first_name }} {{ task.porter.last_name }}
-                  </span>
-                  <span v-else class="not-assigned">Not assigned</span>
+                
+                <div class="meta-group">
+                  <div class="meta-item">
+                    <strong>Received:</strong> {{ formatTime(task.time_received) }}
+                  </div>
+                  <div class="meta-item">
+                    <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
+                  </div>
+                  <div class="meta-item">
+                    <strong>Porter:</strong> 
+                    <span v-if="task.porter">
+                      {{ task.porter.first_name }} {{ task.porter.last_name }}
+                    </span>
+                    <span v-else class="not-assigned">Not assigned</span>
+                  </div>
                 </div>
               </div>
             </div>
+            
+            <div class="task-actions">
+              <button 
+                @click="editTask(task)" 
+                class="icon-btn btn-primary"
+                :disabled="updatingTask"
+                title="Edit Task"
+              >
+                <EditIcon :size="18" />
+              </button>
+              <button 
+                @click="markTaskPending(task.id)" 
+                class="icon-btn btn-warning"
+                :disabled="updatingTask"
+                title="Mark as Pending"
+              >
+                <ClockIcon :size="18" />
+              </button>
+            </div>
           </div>
-          
-          <div class="task-actions">
-            <button 
-              @click="editTask(task)" 
-              class="icon-btn btn-primary"
-              :disabled="updatingTask"
-              title="Edit Task"
-            >
-              <EditIcon :size="18" />
-            </button>
-            <button 
-              @click="markTaskPending(task.id)" 
-              class="icon-btn btn-warning"
-              :disabled="updatingTask"
-              title="Mark as Pending"
-            >
-              <ClockIcon :size="18" />
-            </button>
-          </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { motion } from 'motion-v';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import EditIcon from '../../icons/EditIcon.vue';
@@ -183,8 +243,27 @@ const settingsStore = useSettingsStore();
 const router = useRouter();
 
 // Local state
-const activeTab = ref('completed');
+const activeTab = ref('pending');
 const updatingTask = ref(false);
+const transitionDirection = ref(1); // 1 for right-to-left, -1 for left-to-right
+
+// Tab animation states
+const tabsContainerRef = ref(null);
+const completedTabRef = ref(null);
+const pendingTabRef = ref(null);
+const indicatorPosition = ref(0);
+const indicatorWidth = ref(0);
+
+// Define styles for active and inactive states
+const activeStyle = {
+  color: '#4285F4',
+  fontWeight: '600'
+};
+
+const inactiveStyle = {
+  color: '#666',
+  fontWeight: '500'
+};
 
 // Computed properties
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
@@ -230,6 +309,38 @@ async function markTaskPending(taskId) {
   }
 }
 
+function setActiveTab(tabId) {
+  // Calculate transition direction
+  if (activeTab.value === 'pending' && tabId === 'completed') {
+    transitionDirection.value = -1; // Moving left
+  } else if (activeTab.value === 'completed' && tabId === 'pending') {
+    transitionDirection.value = 1; // Moving right
+  }
+  
+  activeTab.value = tabId;
+  
+  // Update indicator position
+  nextTick(() => {
+    updateIndicatorPosition();
+  });
+}
+
+// Calculate the indicator position based on the active tab
+function updateIndicatorPosition() {
+  if (!tabsContainerRef.value) return;
+  
+  const containerRect = tabsContainerRef.value.getBoundingClientRect();
+  const activeTabRef = activeTab.value === 'completed' ? completedTabRef.value : pendingTabRef.value;
+  
+  if (!activeTabRef) return;
+  
+  const tabRect = activeTabRef.getBoundingClientRect();
+  
+  // Calculate position relative to the container
+  indicatorPosition.value = tabRect.left - containerRect.left;
+  indicatorWidth.value = tabRect.width;
+}
+
 // Format time (e.g., "9:30 AM" or "09:30") without the date based on app settings
 function formatTime(timeString) {
   if (!timeString) return '';
@@ -271,6 +382,14 @@ function formatTime(timeString) {
     }
   }
 }
+
+// Initialize the indicator position
+nextTick(() => {
+  updateIndicatorPosition();
+  
+  // Update on window resize
+  window.addEventListener('resize', updateIndicatorPosition);
+});
 </script>
 
 <style lang="scss" scoped>
@@ -288,10 +407,12 @@ function formatTime(timeString) {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
 }
+
 .task-tabs {
   display: flex;
   border-bottom: 1px solid #e0e0e0;
   margin-bottom: 1rem;
+  position: relative;
   
   .tab-button {
     padding: 0.75rem 1rem;
@@ -300,22 +421,34 @@ function formatTime(timeString) {
     cursor: pointer;
     font-weight: 500;
     color: #666;
-    
-    &.active {
-      color: #4285F4;
-      border-bottom: 2px solid #4285F4;
-    }
+    position: relative;
+    z-index: 1;
     
     &:hover:not(.active) {
       background-color: #f5f5f5;
     }
   }
+  
+  .active-indicator {
+    position: absolute;
+    bottom: -1px;
+    height: 2px;
+    background-color: #4285F4;
+    z-index: 2;
+  }
+}
+
+.tasks-content-wrapper {
+  position: relative;
+  overflow: hidden;
 }
 
 .tasks-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  position: relative;
+  width: 100%;
 }
 
 .task-item {

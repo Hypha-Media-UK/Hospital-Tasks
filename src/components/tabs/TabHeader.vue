@@ -1,18 +1,27 @@
 <template>
-  <button 
+  <motion.button 
     class="tab-header"
     :class="{ 'tab-header--active': isActive }"
     @click="$emit('click')"
+    ref="tabRef"
+    :animate="isActive ? activeStyle : inactiveStyle"
+    :transition="{ 
+      type: 'spring',
+      stiffness: 300,
+      damping: 30
+    }"
   >
     {{ label }}
     <span v-if="badgeCount > 0" class="tab-header__badge">
       {{ badgeCount }}
     </span>
-  </button>
+  </motion.button>
 </template>
 
 <script setup>
-defineProps({
+import { ref } from 'vue';
+
+const props = defineProps({
   label: {
     type: String,
     required: true
@@ -25,6 +34,24 @@ defineProps({
     type: Number,
     default: 0
   }
+});
+
+// Define styles for active and inactive states
+const activeStyle = {
+  backgroundColor: 'rgba(66, 133, 244, 0.1)',
+  color: '#4285F4'
+};
+
+const inactiveStyle = {
+  backgroundColor: 'transparent',
+  color: 'var(--text-color, #333)'
+};
+
+const tabRef = ref(null);
+
+// Expose the element reference to the parent component
+defineExpose({
+  tabRef
 });
 
 defineEmits(['click']);
@@ -42,20 +69,11 @@ defineEmits(['click']);
   font-weight: 500;
   cursor: pointer;
   color: mix.color('text');
-  transition: color 0.2s ease;
+  transition: color 0.3s ease;
   
   &--active {
-    color: mix.color('primary');
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background-color: mix.color('primary');
-    }
+    // Base styles are now handled by motion animation
+    // We keep this class for compatibility with existing CSS
   }
   
   &:hover:not(.tab-header--active) {

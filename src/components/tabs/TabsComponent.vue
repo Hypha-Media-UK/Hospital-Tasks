@@ -1,6 +1,6 @@
 <template>
   <div class="tabs">
-    <div class="tabs__header">
+    <div class="tabs__header" ref="tabsHeaderRef">
       <!-- Desktop tabs -->
       <TabHeader 
         v-for="tab in tabs" 
@@ -9,6 +9,7 @@
         :isActive="activeTab === tab.id"
         @click="setActiveTab(tab.id)"
         class="desktop-tab"
+        ref="tabRefs"
       />
       
       <!-- Mobile menu button -->
@@ -36,9 +37,28 @@
           {{ tab.label }}
         </button>
       </div>
+      
+      <!-- Sliding active indicator for desktop -->
+      <motion.div 
+        class="active-indicator"
+        :animate="{ 
+          x: indicatorPosition, 
+          width: indicatorWidth,
+          opacity: 1
+        }"
+        :initial="{ opacity: 0 }"
+        :transition="{ 
+          type: 'spring', 
+          stiffness: 500, 
+          damping: 30 
+        }"
+      ></motion.div>
     </div>
     
-    <TabContent :activeTab="activeTab">
+    <TabContent 
+      :activeTab="activeTab"
+      :direction="tabChangeDirection"
+    >
       <template #staff>
         <StaffTabContent />
       </template>
@@ -59,8 +79,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { motion } from 'motion-v';
 import TabHeader from './TabHeader.vue';
 import TabContent from './TabContent.vue';
 import IconComponent from '../IconComponent.vue';
@@ -84,11 +105,41 @@ const tabs = [
 // Initialize active tab - will be updated in onMounted
 const activeTab = ref('staff');
 const isMobileMenuOpen = ref(false);
+const tabRefs = ref([]);
+const tabsHeaderRef = ref(null);
+const indicatorPosition = ref(0);
+const indicatorWidth = ref(0);
+const tabChangeDirection = ref(0);
 
 // Computed property to get the label of the active tab
 const activeTabLabel = computed(() => {
   const tab = tabs.find(t => t.id === activeTab.value);
   return tab ? tab.label : '';
+});
+
+// Calculate the indicator position based on the active tab
+function updateIndicatorPosition() {
+  nextTick(() => {
+    if (!tabRefs.value || tabRefs.value.length === 0) return;
+    
+    const activeIndex = tabs.findIndex(tab => tab.id === activeTab.value);
+    if (activeIndex === -1) return;
+    
+    const activeTabElement = tabRefs.value[activeIndex]?.tabRef;
+    if (!activeTabElement) return;
+    
+    const tabHeaderRect = tabsHeaderRef.value.getBoundingClientRect();
+    const activeTabRect = activeTabElement.getBoundingClientRect();
+    
+    // Calculate position relative to the tab header
+    indicatorPosition.value = activeTabRect.left - tabHeaderRect.left;
+    indicatorWidth.value = activeTabRect.width;
+  });
+}
+
+// Watch for changes to the active tab to update the indicator
+watch(activeTab, () => {
+  updateIndicatorPosition();
 });
 
 // Set active tab based on current route or query parameter
@@ -121,6 +172,12 @@ onMounted(() => {
       setActiveTab(event.detail.tabId);
     }
   });
+  
+  // Initialize the indicator position
+  updateIndicatorPosition();
+  
+  // Update indicator position on window resize
+  window.addEventListener('resize', updateIndicatorPosition);
 });
 
 // Helper function to update the URL query parameter
@@ -139,6 +196,16 @@ function updateQueryParam(tabId) {
 }
 
 function setActiveTab(tabId) {
+  // Calculate direction of tab change
+  const oldIndex = tabs.findIndex(tab => tab.id === activeTab.value);
+  const newIndex = tabs.findIndex(tab => tab.id === tabId);
+  
+  if (oldIndex !== -1 && newIndex !== -1) {
+    tabChangeDirection.value = newIndex > oldIndex ? 1 : -1;
+  } else {
+    tabChangeDirection.value = 0;
+  }
+  
   activeTab.value = tabId;
   updateQueryParam(tabId);
 }
@@ -205,6 +272,19 @@ function toggleMobileMenu() {
   .active-tab-label {
     font-weight: 600;
     color: mix.color('primary');
+  }
+}
+
+// Active indicator
+.active-indicator {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background-color: mix.color('primary');
+  z-index: 1;
+  
+  @media (max-width: 800px) {
+    display: none;
   }
 }
 

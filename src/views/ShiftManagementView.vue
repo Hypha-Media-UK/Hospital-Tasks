@@ -69,7 +69,7 @@
         <!-- Tabs Section -->
         <div class="card">
           <div class="tabs">
-            <div class="tabs__header">
+            <div class="tabs__header" ref="tabsHeaderRef">
               <TabHeader 
                 v-for="tab in tabs" 
                 :key="tab.id"
@@ -77,10 +77,30 @@
                 :isActive="activeTabId === tab.id"
                 :badge-count="tab.id === 'tasks' ? totalTasksCount : 0"
                 @click="setActiveTab(tab.id)"
+                ref="tabRefs"
               />
+              
+              <!-- Sliding active indicator -->
+              <motion.div 
+                class="active-indicator"
+                :animate="{ 
+                  x: indicatorPosition, 
+                  width: indicatorWidth,
+                  opacity: 1
+                }"
+                :initial="{ opacity: 0 }"
+                :transition="{ 
+                  type: 'spring', 
+                  stiffness: 500, 
+                  damping: 30 
+                }"
+              ></motion.div>
             </div>
             
-            <TabContent :activeTab="activeTabId">
+            <TabContent 
+              :activeTab="activeTabId"
+              :direction="tabChangeDirection"
+            >
               <template #shiftSetup>
                 <ShiftSetupTabContent 
                   :shift-id="shift.id" 
@@ -423,6 +443,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { motion } from 'motion-v';
 import { useRoute, useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
@@ -455,6 +476,13 @@ const tabs = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'shiftSetup', label: 'Shift Setup' }
 ];
+
+// Tab animation states
+const tabRefs = ref([]);
+const tabsHeaderRef = ref(null);
+const indicatorPosition = ref(0);
+const indicatorWidth = ref(0);
+const tabChangeDirection = ref(0);
 const showEndShiftConfirm = ref(false);
 const endingShift = ref(false);
 const loadingTaskItems = ref(false);
@@ -622,6 +650,14 @@ const canSaveTask = computed(() => {
 onMounted(async () => {
   loading.value = true;
   console.log('ShiftManagementView mounted - loading shift data');
+  
+  // Initialize the tab indicator position
+  nextTick(() => {
+    updateIndicatorPosition();
+  });
+  
+  // Update indicator position on window resize
+  window.addEventListener('resize', updateIndicatorPosition);
   
   try {
     const shiftId = route.params.id;
@@ -875,7 +911,40 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
 
   // Methods
 function setActiveTab(tabId) {
+  // Calculate direction of tab change
+  const oldIndex = tabs.findIndex(tab => tab.id === activeTabId.value);
+  const newIndex = tabs.findIndex(tab => tab.id === tabId);
+  
+  if (oldIndex !== -1 && newIndex !== -1) {
+    tabChangeDirection.value = newIndex > oldIndex ? 1 : -1;
+  } else {
+    tabChangeDirection.value = 0;
+  }
+  
   activeTabId.value = tabId;
+  
+  // Update indicator position on next tick
+  nextTick(() => {
+    updateIndicatorPosition();
+  });
+}
+
+// Calculate the indicator position based on the active tab
+function updateIndicatorPosition() {
+  if (!tabRefs.value || tabRefs.value.length === 0 || !tabsHeaderRef.value) return;
+  
+  const activeIndex = tabs.findIndex(tab => tab.id === activeTabId.value);
+  if (activeIndex === -1 || !tabRefs.value[activeIndex]) return;
+  
+  const activeTabElement = tabRefs.value[activeIndex].tabRef;
+  if (!activeTabElement) return;
+  
+  const tabHeaderRect = tabsHeaderRef.value.getBoundingClientRect();
+  const activeTabRect = activeTabElement.getBoundingClientRect();
+  
+  // Calculate position relative to the tab header
+  indicatorPosition.value = activeTabRect.left - tabHeaderRect.left;
+  indicatorWidth.value = activeTabRect.width;
 }
 
 function navigateToHome() {
@@ -2192,6 +2261,15 @@ function isWeekend(date) {
 
 .field-auto-populated {
   animation: field-glow 2s ease-in-out;
+}
+
+/* Active indicator styling */
+.active-indicator {
+  position: absolute;
+  bottom: -1px;
+  height: 2px;
+  background-color: #4285F4; /* Primary color */
+  z-index: 1;
 }
 
 /* Floating Action Container and Button */
