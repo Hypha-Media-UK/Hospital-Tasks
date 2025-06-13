@@ -104,23 +104,27 @@
       </template>
       
       <!-- Add/Edit Task Modal -->
-      <div v-if="showTaskModal" class="modal">
-        <motion.div class="modal-backdrop"
-          :initial="{ opacity: 0 }"
-          :animate="{ opacity: 1 }"
-          :exit="isClosing ? { opacity: 0 } : {}"
-          :transition="{ duration: 0.3 }"
-        ></motion.div>
-        <motion.div class="modal-content"
-          :initial="{ y: '100%', opacity: 0 }"
-          :animate="{ y: '0%', opacity: 1 }"
-          :exit="isClosing ? { y: '100%', opacity: 0 } : {}"
-          :transition="{ 
-            type: 'tween',
-            ease: 'easeInOut',
-            duration: 0.3
-          }"
-        >
+      <Transition
+        @before-leave="onBeforeLeave"
+        @after-leave="onAfterLeave"
+      >
+        <div v-if="showTaskModal" class="modal">
+          <motion.div class="modal-backdrop"
+            :initial="{ opacity: 0 }"
+            :animate="{ opacity: 1 }"
+            :exit="{ opacity: 0 }"
+            :transition="{ duration: 0.3 }"
+          ></motion.div>
+          <motion.div class="tray"
+            :initial="{ y: '100%' }"
+            :animate="{ y: 0 }"
+            :exit="{ y: '100%' }"
+            :transition="{ 
+              type: 'spring',
+              damping: 25,
+              stiffness: 300
+            }"
+          >
           <div class="modal-header">
             <h2>{{ isEditingTask ? 'Edit Task' : 'Add New Task' }}</h2>
             <button @click="closeTaskModal" class="close-button">&times;</button>
@@ -259,7 +263,7 @@
               <motion.div class="time-fields-container" 
                 :class="{ 'visible': showTimeFields }"
                 :initial="{ height: 0, opacity: 0.5 }"
-                :animate="showTimeFields ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0.5 }"
+                :animate="showTimeFields ? { height: timeFieldsHeight, opacity: 1 } : { height: 0, opacity: 0 }"
                 :transition="{ 
                   type: 'tween',
                   ease: 'easeInOut',
@@ -369,12 +373,32 @@
           <div v-if="taskFormError" class="error-message">
             {{ taskFormError }}
           </div>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
+      </Transition>
       
       <!-- Change Supervisor Modal -->
-      <div v-if="showSupervisorModal" class="modal">
-        <div class="modal-content supervisor-modal-content">
+      <Transition
+        @before-leave="onBeforeLeave"
+        @after-leave="onAfterLeave"
+      >
+        <div v-if="showSupervisorModal" class="modal">
+          <motion.div class="modal-backdrop"
+            :initial="{ opacity: 0 }"
+            :animate="{ opacity: 1 }"
+            :exit="{ opacity: 0 }"
+            :transition="{ duration: 0.3 }"
+          ></motion.div>
+          <motion.div class="tray supervisor-modal-content"
+            :initial="{ y: '100%' }"
+            :animate="{ y: 0 }"
+            :exit="{ y: '100%' }"
+            :transition="{ 
+              type: 'tween',
+              ease: 'easeInOut',
+              duration: 0.3
+            }"
+          >
           <div class="modal-header">
             <h2>Change Shift Supervisor</h2>
             <button @click="closeSupervisorModal" class="close-button">&times;</button>
@@ -422,8 +446,9 @@
               {{ changingSupervisor ? 'Saving...' : 'Save Changes' }}
             </button>
           </div>
+          </motion.div>
         </div>
-      </div>
+      </Transition>
 
       
       <!-- Floating Action Button for Adding Tasks -->
@@ -528,17 +553,58 @@ const timeFieldsHeight = ref(0); // Track height for time fields animation
 // Import nextTick for DOM manipulation after state changes
 import { nextTick } from 'vue';
 
+// Motion animation hooks
+function onBeforeLeave(el) {
+  // Activate exit animations for motion elements before Vue removes them
+  const tray = el.querySelector('.tray');
+  const backdrop = el.querySelector('.modal-backdrop');
+  
+  // Tell Motion these elements are exiting
+  motion.inView(tray, { once: false });
+  motion.inView(backdrop, { once: false });
+}
+
+function onAfterLeave() {
+  // Reset state after animation completes
+  isClosing.value = false;
+}
+
 // Handle time fields visibility toggle
 function toggleTimeFields() {
-  // Simply toggle the state, animation is handled by motion.div
+  // Measure height before toggling if we're going to show
+  if (!showTimeFields.value) {
+    // Get the container
+    const container = document.querySelector('.time-fields-container');
+    
+    // Set temporary styles to make it measurable but invisible
+    container.style.height = 'auto';
+    container.style.position = 'absolute';
+    container.style.visibility = 'hidden';
+    container.style.display = 'grid';
+    container.classList.add('visible'); // Add padding for accurate measurement
+    
+    // Measure the full height
+    timeFieldsHeight.value = container.offsetHeight;
+    
+    // Reset the styles
+    container.style.height = '';
+    container.style.position = '';
+    container.style.visibility = '';
+    container.style.display = '';
+    container.classList.remove('visible');
+    
+    console.log('Measured time fields height:', timeFieldsHeight.value);
+  }
+  
+  // Toggle the state
   showTimeFields.value = !showTimeFields.value;
   
-  // If showing, add visible class for padding after a slight delay to allow animation
+  // If showing, add visible class for padding after a slight delay
   if (showTimeFields.value) {
     setTimeout(() => {
       const container = document.querySelector('.time-fields-container');
       if (container) container.classList.add('visible');
-    }, 300);
+    }, 250); // Match duration of the animation
   } else {
     // Remove visible class immediately when hiding
     const container = document.querySelector('.time-fields-container');
@@ -1686,8 +1752,15 @@ function showChangeSupervisorModal() {
 
 // Close the supervisor modal
 function closeSupervisorModal() {
-  showSupervisorModal.value = false;
-  selectedSupervisor.value = '';
+  // Set the closing state to trigger exit animations
+  isClosing.value = true;
+  
+  // Wait for animation to complete before hiding the modal
+  setTimeout(() => {
+    showSupervisorModal.value = false;
+    selectedSupervisor.value = '';
+    isClosing.value = false;
+  }, 300); // Match this duration with the exit animation duration
 }
 
 // Save the new supervisor
@@ -2088,7 +2161,7 @@ function isWeekend(date) {
     z-index: 1; /* Lower z-index */
   }
   
-  &-content {
+  .tray {
     background-color: white;
     border-radius: 16px 16px 0 0; /* Rounded corners only on top */
     width: 100%; /* Full width on mobile */
@@ -2103,6 +2176,19 @@ function isWeekend(date) {
       max-width: 500px;
       border-radius: 16px; /* Full rounded corners on desktop */
     }
+  }
+  
+  &-content {
+    /* Legacy styles for supervisor modal */
+    background-color: white;
+    border-radius: 16px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 2;
+    width: 90%;
+    max-width: 500px;
   }
   
   &-header {
