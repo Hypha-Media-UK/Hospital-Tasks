@@ -105,7 +105,15 @@
       
       <!-- Add/Edit Task Modal -->
       <div v-if="showTaskModal" class="modal">
-        <div class="modal-content">
+        <motion.div class="modal-content"
+          :initial="{ y: '100%', opacity: 0 }"
+          :animate="{ y: '0%', opacity: 1 }"
+          :transition="{ 
+            type: 'spring',
+            stiffness: 300,
+            damping: 30
+          }"
+        >
           <div class="modal-header">
             <h2>{{ isEditingTask ? 'Edit Task' : 'Add New Task' }}</h2>
             <button @click="closeTaskModal" class="close-button">&times;</button>
@@ -241,7 +249,16 @@
               </button>
               
               <!-- Time fields container -->
-              <div class="time-fields-container" :class="{ 'visible': showTimeFields }">
+              <motion.div class="time-fields-container" 
+                :class="{ 'visible': showTimeFields }"
+                :initial="{ height: 0, opacity: 0.5 }"
+                :animate="showTimeFields ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0.5 }"
+                :transition="{ 
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 30
+                }"
+              >
                 <!-- Allocated -->
                 <div class="form-group">
                   <label for="timeAllocated">Allocated</label>
@@ -274,7 +291,7 @@
                     class="form-control"
                   />
                 </div>
-              </div>
+              </motion.div>
             </div>
           </div>
           
@@ -345,7 +362,7 @@
           <div v-if="taskFormError" class="error-message">
             {{ taskFormError }}
           </div>
-        </div>
+        </motion.div>
       </div>
       
       <!-- Change Supervisor Modal -->
@@ -502,24 +519,22 @@ const showTimeFields = ref(false); // Controls visibility of time fields
 // Import nextTick for DOM manipulation after state changes
 import { nextTick } from 'vue';
 
-// Handle time fields animation
+// Handle time fields visibility toggle
 function toggleTimeFields() {
-  // Toggle the state
+  // Simply toggle the state, animation is handled by motion.div
   showTimeFields.value = !showTimeFields.value;
   
-  // Handle the animation
-  nextTick(() => {
+  // If showing, add visible class for padding after a slight delay to allow animation
+  if (showTimeFields.value) {
+    setTimeout(() => {
+      const container = document.querySelector('.time-fields-container');
+      if (container) container.classList.add('visible');
+    }, 300);
+  } else {
+    // Remove visible class immediately when hiding
     const container = document.querySelector('.time-fields-container');
-    if (showTimeFields.value) {
-      // Get the scrollHeight to determine the full height
-      const height = container.scrollHeight;
-      // Set the height explicitly for animation
-      container.style.height = `${height}px`;
-    } else {
-      // Set height to 0 for closing animation
-      container.style.height = '0px';
-    }
-  });
+    if (container) container.classList.remove('visible');
+  }
 }
 
 // Track fields auto-population for visual feedback
@@ -2044,18 +2059,23 @@ function isWeekend(date) {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: center;
+  align-items: flex-end; /* Changed from center to bottom alignment */
   justify-content: center;
   z-index: 1000;
   
   &-content {
     background-color: white;
-    border-radius: 6px;
-    width: 90%;
-    max-width: 500px;
+    border-radius: 16px 16px 0 0; /* Rounded corners only on top */
+    width: 100%; /* Full width on mobile */
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1); /* Shadow coming from top */
+    
+    @media screen and (min-width: 768px) {
+      width: 90%;
+      max-width: 500px;
+      border-radius: 16px; /* Full rounded corners on desktop */
+    }
   }
   
   &-header {
@@ -2419,7 +2439,7 @@ function isWeekend(date) {
   position: relative;
   height: 0;
   overflow: hidden;
-  transition: height 0.3s ease-out;
+  /* Removed transition since Motion will handle it */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
