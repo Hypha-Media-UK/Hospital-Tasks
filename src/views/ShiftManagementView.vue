@@ -111,17 +111,20 @@
         <div v-if="showTaskModal" class="modal">
           <motion.div class="modal-backdrop"
             :initial="{ opacity: 0 }"
-            :animate="{ opacity: 1 }"
-            :exit="{ opacity: 0 }"
-            :transition="{ duration: 0.3 }"
+            :animate="isClosing ? { opacity: 0 } : { opacity: 1 }"
+            :transition="{ 
+              duration: 0.45,
+              ease: 'easeInOut'
+            }"
           ></motion.div>
           <motion.div class="tray"
             :initial="{ y: '100%' }"
             :animate="isClosing ? { y: '100%' } : { y: 0 }"
             :transition="{ 
-              type: 'tween',
-              ease: 'easeInOut',
-              duration: 0.3
+              type: 'spring',
+              stiffness: 300,
+              damping: 25,
+              mass: 1
             }"
           >
           <div class="modal-header">
@@ -384,18 +387,20 @@
         <div v-if="showSupervisorModal" class="modal">
           <motion.div class="modal-backdrop"
             :initial="{ opacity: 0 }"
-            :animate="{ opacity: 1 }"
-            :exit="{ opacity: 0 }"
-            :transition="{ duration: 0.3 }"
+            :animate="isClosing ? { opacity: 0 } : { opacity: 1 }"
+            :transition="{ 
+              duration: 0.45,
+              ease: 'easeInOut'
+            }"
           ></motion.div>
           <motion.div class="tray supervisor-modal-content"
             :initial="{ y: '100%' }"
-            :animate="{ y: 0 }"
-            :exit="{ y: '100%' }"
+            :animate="isClosing ? { y: '100%' } : { y: 0 }"
             :transition="{ 
-              type: 'tween',
-              ease: 'easeInOut',
-              duration: 0.3
+              type: 'spring',
+              stiffness: 300,
+              damping: 25,
+              mass: 1
             }"
           >
           <div class="modal-header">
@@ -1135,7 +1140,7 @@ function closeTaskModal() {
     showTaskModal.value = false;
     resetTaskForm();
     isClosing.value = false; // Reset the closing state
-  }, 350); // Animation duration + small buffer
+  }, 500); // Give spring animation enough time to complete
 }
 
 // Reset task form
@@ -1758,7 +1763,7 @@ function closeSupervisorModal() {
     showSupervisorModal.value = false;
     selectedSupervisor.value = '';
     isClosing.value = false;
-  }, 300); // Match this duration with the exit animation duration
+  }, 500); // Give spring animation enough time to complete
 }
 
 // Save the new supervisor
