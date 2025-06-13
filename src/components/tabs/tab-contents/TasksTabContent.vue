@@ -5,52 +5,138 @@
     <div class="tasks-container">
       <!-- Task Tabs and Actions -->
       <div class="tasks-header">
-        <div class="task-tabs" ref="tabsContainerRef">
-          <motion.button 
-            @click="setActiveTab('completed')" 
-            class="tab-button" 
-            :class="{ active: activeTab === 'completed' }"
-            ref="completedTabRef"
-            :animate="activeTab === 'completed' ? activeStyle : inactiveStyle"
-            :transition="{ 
-              type: 'spring',
-              stiffness: 300,
-              damping: 30
-            }"
-          >
-            Completed ({{ completedTasks.length }})
-          </motion.button>
-          <motion.button 
-            @click="setActiveTab('pending')" 
-            class="tab-button" 
-            :class="{ active: activeTab === 'pending' }"
-            ref="pendingTabRef"
-            :animate="activeTab === 'pending' ? activeStyle : inactiveStyle"
-            :transition="{ 
-              type: 'spring',
-              stiffness: 300,
-              damping: 30
-            }"
-          >
-            Pending ({{ pendingTasks.length }})
-          </motion.button>
+        <AnimatedTabs
+          v-model="activeTab"
+          :tabs="tabDefinitions"
+          @tab-change="handleTabChange"
+          class="task-tabs"
+        >
+          <!-- Pending Tasks -->
+          <template #pending>
+            <div class="tasks-list">
+              <div v-if="pendingTasks.length === 0" class="empty-state">
+                <p>No pending tasks.</p>
+              </div>
+              
+              <div 
+                v-for="task in pendingTasks" 
+                :key="task.id" 
+                class="task-item pending"
+              >
+                <div class="task-details">
+                  <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
+                  
+                  <div class="task-meta">
+                    <div class="meta-group">
+                      <div v-if="task.origin_department" class="meta-item">
+                        <strong>From:</strong> {{ task.origin_department.name }}
+                      </div>
+                      <div v-if="task.destination_department" class="meta-item">
+                        <strong>To:</strong> {{ task.destination_department.name }}
+                      </div>
+                      <div class="meta-item">
+                        <strong>Type:</strong> {{ task.task_item.name }}
+                      </div>
+                    </div>
+                    
+                    <div class="meta-group">
+                      <div class="meta-item">
+                        <strong>Received:</strong> {{ formatTime(task.time_received) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="task-actions">
+                  <button 
+                    @click="editTask(task)" 
+                    class="icon-btn btn-primary"
+                    :disabled="updatingTask"
+                    title="Edit Task"
+                  >
+                    <EditIcon :size="18" />
+                  </button>
+                  <button 
+                    @click="markTaskCompleted(task.id)" 
+                    class="icon-btn btn-success"
+                    :disabled="updatingTask"
+                    title="Mark as Completed"
+                  >
+                    <CheckIcon :size="18" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
           
-          <!-- Sliding active indicator -->
-          <motion.div 
-            class="active-indicator"
-            :animate="{ 
-              x: indicatorPosition, 
-              width: indicatorWidth,
-              opacity: 1
-            }"
-            :initial="{ opacity: 0 }"
-            :transition="{ 
-              type: 'spring', 
-              stiffness: 500, 
-              damping: 30 
-            }"
-          ></motion.div>
-        </div>
+          <!-- Completed Tasks -->
+          <template #completed>
+            <div class="tasks-list">
+              <div v-if="completedTasks.length === 0" class="empty-state">
+                <p>No completed tasks.</p>
+              </div>
+              
+              <div 
+                v-for="task in completedTasks" 
+                :key="task.id" 
+                class="task-item completed"
+              >
+                <div class="task-details">
+                  <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
+                  
+                  <div class="task-meta">
+                    <div class="meta-group">
+                      <div v-if="task.origin_department" class="meta-item">
+                        <strong>From:</strong> {{ task.origin_department.name }}
+                      </div>
+                      <div v-if="task.destination_department" class="meta-item">
+                        <strong>To:</strong> {{ task.destination_department.name }}
+                      </div>
+                      <div class="meta-item">
+                        <strong>Type:</strong> {{ task.task_item.name }}
+                      </div>
+                    </div>
+                    
+                    <div class="meta-group">
+                      <div class="meta-item">
+                        <strong>Received:</strong> {{ formatTime(task.time_received) }}
+                      </div>
+                      <div class="meta-item">
+                        <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
+                      </div>
+                      <div class="meta-item">
+                        <strong>Porter:</strong> 
+                        <span v-if="task.porter">
+                          {{ task.porter.first_name }} {{ task.porter.last_name }}
+                        </span>
+                        <span v-else class="not-assigned">Not assigned</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="task-actions">
+                  <button 
+                    @click="editTask(task)" 
+                    class="icon-btn btn-primary"
+                    :disabled="updatingTask"
+                    title="Edit Task"
+                  >
+                    <EditIcon :size="18" />
+                  </button>
+                  <button 
+                    @click="markTaskPending(task.id)" 
+                    class="icon-btn btn-warning"
+                    :disabled="updatingTask"
+                    title="Mark as Pending"
+                  >
+                    <ClockIcon :size="18" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </AnimatedTabs>
         
         <button 
           @click="showActivitySheet" 
@@ -60,157 +146,6 @@
         >
           Activity Sheet
         </button>
-      </div>
-      
-      <!-- Task Content -->
-      <div class="tasks-content-wrapper">
-        <!-- Pending Tasks -->
-        <motion.div 
-          v-if="activeTab === 'pending'" 
-          class="tasks-list"
-          :initial="{ opacity: 0, x: transitionDirection * 40 }"
-          :animate="{ opacity: 1, x: 0 }"
-          :exit="{ opacity: 0, x: -transitionDirection * 40 }"
-          :transition="{ 
-            type: 'spring', 
-            stiffness: 300, 
-            damping: 30,
-            mass: 1
-          }"
-          :key="'pending-list'"
-        >
-          <div v-if="pendingTasks.length === 0" class="empty-state">
-            <p>No pending tasks.</p>
-          </div>
-          
-          <div 
-            v-for="task in pendingTasks" 
-            :key="task.id" 
-            class="task-item pending"
-          >
-            <div class="task-details">
-              <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
-              
-              <div class="task-meta">
-                <div class="meta-group">
-                  <div v-if="task.origin_department" class="meta-item">
-                    <strong>From:</strong> {{ task.origin_department.name }}
-                  </div>
-                  <div v-if="task.destination_department" class="meta-item">
-                    <strong>To:</strong> {{ task.destination_department.name }}
-                  </div>
-                  <div class="meta-item">
-                    <strong>Type:</strong> {{ task.task_item.name }}
-                  </div>
-                </div>
-                
-                <div class="meta-group">
-                  <div class="meta-item">
-                    <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="task-actions">
-              <button 
-                @click="editTask(task)" 
-                class="icon-btn btn-primary"
-                :disabled="updatingTask"
-                title="Edit Task"
-              >
-                <EditIcon :size="18" />
-              </button>
-              <button 
-                @click="markTaskCompleted(task.id)" 
-                class="icon-btn btn-success"
-                :disabled="updatingTask"
-                title="Mark as Completed"
-              >
-                <CheckIcon :size="18" />
-              </button>
-            </div>
-          </div>
-        </motion.div>
-        
-        <!-- Completed Tasks -->
-        <motion.div 
-          v-if="activeTab === 'completed'" 
-          class="tasks-list"
-          :initial="{ opacity: 0, x: transitionDirection * 40 }"
-          :animate="{ opacity: 1, x: 0 }"
-          :exit="{ opacity: 0, x: -transitionDirection * 40 }"
-          :transition="{ 
-            type: 'spring', 
-            stiffness: 300, 
-            damping: 30,
-            mass: 1
-          }"
-          :key="'completed-list'"
-        >
-          <div v-if="completedTasks.length === 0" class="empty-state">
-            <p>No completed tasks.</p>
-          </div>
-          
-          <div 
-            v-for="task in completedTasks" 
-            :key="task.id" 
-            class="task-item completed"
-          >
-            <div class="task-details">
-              <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
-              
-              <div class="task-meta">
-                <div class="meta-group">
-                  <div v-if="task.origin_department" class="meta-item">
-                    <strong>From:</strong> {{ task.origin_department.name }}
-                  </div>
-                  <div v-if="task.destination_department" class="meta-item">
-                    <strong>To:</strong> {{ task.destination_department.name }}
-                  </div>
-                  <div class="meta-item">
-                    <strong>Type:</strong> {{ task.task_item.name }}
-                  </div>
-                </div>
-                
-                <div class="meta-group">
-                  <div class="meta-item">
-                    <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                  </div>
-                  <div class="meta-item">
-                    <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
-                  </div>
-                  <div class="meta-item">
-                    <strong>Porter:</strong> 
-                    <span v-if="task.porter">
-                      {{ task.porter.first_name }} {{ task.porter.last_name }}
-                    </span>
-                    <span v-else class="not-assigned">Not assigned</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="task-actions">
-              <button 
-                @click="editTask(task)" 
-                class="icon-btn btn-primary"
-                :disabled="updatingTask"
-                title="Edit Task"
-              >
-                <EditIcon :size="18" />
-              </button>
-              <button 
-                @click="markTaskPending(task.id)" 
-                class="icon-btn btn-warning"
-                :disabled="updatingTask"
-                title="Mark as Pending"
-              >
-                <ClockIcon :size="18" />
-              </button>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </div>
   </div>
@@ -225,6 +160,7 @@ import { useSettingsStore } from '../../../stores/settingsStore';
 import EditIcon from '../../icons/EditIcon.vue';
 import CheckIcon from '../../icons/CheckIcon.vue';
 import ClockIcon from '../../icons/ClockIcon.vue';
+import AnimatedTabs from '../../shared/AnimatedTabs.vue';
 
 // Define props to receive shift ID and functions from parent
 const props = defineProps({
@@ -269,6 +205,22 @@ const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
 const allTasks = computed(() => [...pendingTasks.value, ...completedTasks.value]);
 const currentShift = computed(() => shiftsStore.currentShift);
+
+// Tab definitions for the AnimatedTabs component
+const tabDefinitions = computed(() => [
+  { id: 'pending', label: `Pending (${pendingTasks.value.length})` },
+  { id: 'completed', label: `Completed (${completedTasks.value.length})` }
+]);
+
+// Handle tab change events from the AnimatedTabs component
+function handleTabChange(tabId) {
+  // Calculate transition direction
+  if (activeTab.value === 'pending' && tabId === 'completed') {
+    transitionDirection.value = -1; // Moving left
+  } else if (activeTab.value === 'completed' && tabId === 'pending') {
+    transitionDirection.value = 1; // Moving right
+  }
+}
 
 // Methods
 function editTask(task) {

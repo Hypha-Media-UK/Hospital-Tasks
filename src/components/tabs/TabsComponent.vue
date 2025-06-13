@@ -1,17 +1,32 @@
 <template>
   <div class="tabs">
-    <div class="tabs__header" ref="tabsHeaderRef">
-      <!-- Desktop tabs -->
-      <TabHeader 
-        v-for="tab in tabs" 
-        :key="tab.id"
-        :label="tab.label"
-        :isActive="activeTab === tab.id"
-        @click="setActiveTab(tab.id)"
-        class="desktop-tab"
-        ref="tabRefs"
-      />
-      
+    <!-- Desktop Tabs -->
+    <div class="desktop-tabs">
+      <AnimatedTabs
+        v-model="activeTab"
+        :tabs="formattedTabs"
+        @tab-change="handleTabChange"
+      >
+        <template #staff>
+          <StaffTabContent />
+        </template>
+        <template #locations>
+          <LocationsTabContent />
+        </template>
+        <template #taskTypes>
+          <TaskTypesTabContent />
+        </template>
+        <template #supportServices>
+          <SupportServicesTabContent />
+        </template>
+        <template #settings>
+          <SettingsTabContent />
+        </template>
+      </AnimatedTabs>
+    </div>
+    
+    <!-- Mobile Menu -->
+    <div class="mobile-tabs">
       <!-- Mobile menu button -->
       <button 
         class="mobile-menu-button"
@@ -37,44 +52,7 @@
           {{ tab.label }}
         </button>
       </div>
-      
-      <!-- Sliding active indicator for desktop -->
-      <motion.div 
-        class="active-indicator"
-        :animate="{ 
-          x: indicatorPosition, 
-          width: indicatorWidth,
-          opacity: 1
-        }"
-        :initial="{ opacity: 0 }"
-        :transition="{ 
-          type: 'spring', 
-          stiffness: 500, 
-          damping: 30 
-        }"
-      ></motion.div>
     </div>
-    
-    <TabContent 
-      :activeTab="activeTab"
-      :direction="tabChangeDirection"
-    >
-      <template #staff>
-        <StaffTabContent />
-      </template>
-      <template #locations>
-        <LocationsTabContent />
-      </template>
-      <template #taskTypes>
-        <TaskTypesTabContent />
-      </template>
-      <template #supportServices>
-        <SupportServicesTabContent />
-      </template>
-      <template #settings>
-        <SettingsTabContent />
-      </template>
-    </TabContent>
   </div>
 </template>
 
@@ -82,9 +60,8 @@
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { motion } from 'motion-v';
-import TabHeader from './TabHeader.vue';
-import TabContent from './TabContent.vue';
 import IconComponent from '../IconComponent.vue';
+import AnimatedTabs from '../shared/AnimatedTabs.vue';
 import StaffTabContent from './tab-contents/StaffTabContent.vue';
 import LocationsTabContent from './tab-contents/LocationsTabContent.vue';
 import TaskTypesTabContent from './tab-contents/TaskTypesTabContent.vue';
@@ -116,6 +93,19 @@ const activeTabLabel = computed(() => {
   const tab = tabs.find(t => t.id === activeTab.value);
   return tab ? tab.label : '';
 });
+
+// Format tabs for the AnimatedTabs component
+const formattedTabs = computed(() => {
+  return tabs.map(tab => ({
+    id: tab.id,
+    label: tab.label
+  }));
+});
+
+// Handle tab change from AnimatedTabs component
+function handleTabChange(tabId) {
+  setActiveTab(tabId);
+}
 
 // Calculate the indicator position based on the active tab
 function updateIndicatorPosition() {
@@ -233,23 +223,24 @@ function toggleMobileMenu() {
 @use '../../assets/scss/mixins' as mix;
 
 .tabs {
-  &__header {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    margin-bottom: 16px;
-    position: relative;
-    
-    @media (max-width: 800px) {
-      grid-template-columns: 1fr; // Single column for mobile menu button
-    }
-  }
+  position: relative;
 }
 
 // Desktop tabs
-.desktop-tab {
+.desktop-tabs {
   @media (max-width: 800px) {
     display: none;
+  }
+}
+
+// Mobile tabs
+.mobile-tabs {
+  display: none;
+  
+  @media (max-width: 800px) {
+    display: block;
+    position: relative;
+    margin-bottom: 16px;
   }
 }
 
