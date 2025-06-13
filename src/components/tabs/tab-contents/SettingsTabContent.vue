@@ -81,6 +81,24 @@ onMounted(() => {
 @use '../../../assets/scss/mixins' as mix;
 
 .settings-tab {
+  /* Make sure the content is visible in both desktop and mobile views */
+  display: block !important;
+  
+  /* Ensure nested AnimatedTabs are properly displayed */
+  :deep(.animated-tabs) {
+    @media (max-width: 800px) {
+      display: flex !important;
+      
+      .animated-tabs__content {
+        display: block !important;
+      }
+      
+      .animated-tabs__content-wrapper {
+        display: block !important;
+      }
+    }
+  }
+  
   h3 {
     margin-top: 0;
     margin-bottom: 16px;
@@ -88,6 +106,11 @@ onMounted(() => {
   
   .settings-section {
     margin-bottom: 32px;
+    
+    /* Ensure settings sections are visible in mobile */
+    @media (max-width: 800px) {
+      display: block !important;
+    }
     
     h4 {
       font-size: mix.font-size('lg');

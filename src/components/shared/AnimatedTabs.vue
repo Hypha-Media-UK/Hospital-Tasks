@@ -193,6 +193,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   
+  /* Make sure the component is visible in both desktop and mobile views */
+  display: flex !important;
+  
+  /* Handle vertical orientation */
   &--vertical {
     flex-direction: row;
     
@@ -215,15 +219,46 @@ onBeforeUnmount(() => {
     .animated-tabs__content {
       flex: 1;
     }
+    
+    /* Mobile adjustments for vertical tabs */
+    @media (max-width: 800px) {
+      flex-direction: column;
+      
+      .animated-tabs__header {
+        flex-direction: row;
+        border-right: none;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        margin-right: 0;
+        margin-bottom: 16px;
+      }
+      
+      .animated-tabs__indicator {
+        right: 0;
+        bottom: -1px;
+        top: auto;
+        width: 0;
+        height: 2px;
+      }
+    }
   }
   
+  /* Header styles */
   &__header {
     display: flex;
     position: relative;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     margin-bottom: 16px;
+    
+    /* Mobile adjustments for header */
+    @media (max-width: 800px) {
+      flex-wrap: wrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 1px; /* Ensures the border is visible */
+    }
   }
   
+  /* Indicator styles */
   &__indicator {
     position: absolute;
     bottom: -1px;
@@ -231,18 +266,37 @@ onBeforeUnmount(() => {
     height: 2px;
     background-color: #4285F4;
     z-index: 2;
+    
+    /* Make sure the indicator is visible in mobile view */
+    @media (max-width: 800px) {
+      display: block !important;
+    }
   }
   
+  /* Content area styles */
   &__content {
     position: relative;
     overflow: hidden;
+    
+    /* Ensure content is visible in mobile view */
+    @media (max-width: 800px) {
+      display: block !important;
+      width: 100% !important;
+    }
   }
   
+  /* Content wrapper styles */
   &__content-wrapper {
     width: 100%;
+    
+    /* Make sure content is visible in mobile */
+    @media (max-width: 800px) {
+      display: block !important;
+    }
   }
 }
 
+/* Badge styles */
 .tab-badge {
   display: inline-flex;
   align-items: center;

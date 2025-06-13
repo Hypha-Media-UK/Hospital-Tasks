@@ -229,7 +229,24 @@ function toggleMobileMenu() {
 // Desktop tabs
 .desktop-tabs {
   @media (max-width: 800px) {
-    display: none;
+    // Don't hide the entire container, just restructure it
+    // to work with the mobile menu
+    
+    // Hide only the tab headers, not the content
+    :deep(.animated-tabs__header) {
+      display: none;
+    }
+    
+    // Make sure content is visible
+    :deep(.animated-tabs__content) {
+      display: block !important;
+      margin-top: 16px;
+    }
+    
+    // Ensure the content wrapper is visible
+    :deep(.animated-tabs__content-wrapper) {
+      display: block !important;
+    }
   }
 }
 
@@ -241,6 +258,38 @@ function toggleMobileMenu() {
     display: block;
     position: relative;
     margin-bottom: 16px;
+    order: -1; /* Ensure mobile menu appears before desktop content */
+  }
+}
+
+// Re-order the tabs structure in mobile view
+.tabs {
+  position: relative;
+  
+  @media (max-width: 800px) {
+    display: flex;
+    flex-direction: column;
+    
+    // Ensure mobile tabs come first
+    .mobile-tabs {
+      order: 1;
+    }
+    
+    // Desktop content comes after
+    .desktop-tabs {
+      order: 2;
+    }
+  }
+}
+
+// Make sure tab content is shown even when main tabs are in mobile mode
+:deep(.animated-tabs) {
+  @media (max-width: 800px) {
+    display: flex !important;
+    
+    .animated-tabs__content {
+      display: block !important;
+    }
   }
 }
 
