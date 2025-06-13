@@ -1752,7 +1752,7 @@ function isWeekend(date) {
 .shift-info-header {
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 1rem 1.5rem;
   background-color: #f8f9fa;
   border-radius: 8px;
   
@@ -2443,16 +2443,25 @@ function isWeekend(date) {
 /* Activity Sheet Button Styling */
 .card {
   position: relative; /* Create positioning context for absolute elements */
+  padding: 1rem 1.5rem;
+  
+  @media screen and (min-width: 700px) {
+    padding: 1rem 2.5rem;
+  }
 }
 
 .activity-sheet-btn {
   position: absolute;
   top: 1rem;
-  right: 1rem;
+  right: 1.5rem;
   z-index: 10;
   white-space: nowrap;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  @media screen and (min-width: 700px) {
+    right: 2.5rem;
+  }
 }
 </style>
