@@ -105,13 +105,20 @@
       
       <!-- Add/Edit Task Modal -->
       <div v-if="showTaskModal" class="modal">
+        <motion.div class="modal-backdrop"
+          :initial="{ opacity: 0 }"
+          :animate="{ opacity: 1 }"
+          :exit="isClosing ? { opacity: 0 } : {}"
+          :transition="{ duration: 0.3 }"
+        ></motion.div>
         <motion.div class="modal-content"
           :initial="{ y: '100%', opacity: 0 }"
           :animate="{ y: '0%', opacity: 1 }"
+          :exit="isClosing ? { y: '100%', opacity: 0 } : {}"
           :transition="{ 
-            type: 'spring',
-            stiffness: 300,
-            damping: 30
+            type: 'tween',
+            ease: 'easeInOut',
+            duration: 0.3
           }"
         >
           <div class="modal-header">
@@ -254,9 +261,9 @@
                 :initial="{ height: 0, opacity: 0.5 }"
                 :animate="showTimeFields ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0.5 }"
                 :transition="{ 
-                  type: 'spring',
-                  stiffness: 300,
-                  damping: 30
+                  type: 'tween',
+                  ease: 'easeInOut',
+                  duration: 0.25
                 }"
               >
                 <!-- Allocated -->
@@ -515,6 +522,8 @@ const editingTask = ref(null);
 const processingTask = ref(false);
 const taskFormError = ref('');
 const showTimeFields = ref(false); // Controls visibility of time fields
+const isClosing = ref(false); // Track closing state for exit animations
+const timeFieldsHeight = ref(0); // Track height for time fields animation
 
 // Import nextTick for DOM manipulation after state changes
 import { nextTick } from 'vue';
@@ -1054,8 +1063,15 @@ function editTask(task) {
 
 // Close task modal
 function closeTaskModal() {
-  showTaskModal.value = false;
-  resetTaskForm();
+  // Set the closing state to trigger exit animations
+  isClosing.value = true;
+  
+  // Wait for animation to complete before hiding the modal
+  setTimeout(() => {
+    showTaskModal.value = false;
+    resetTaskForm();
+    isClosing.value = false;
+  }, 300); // Match this duration with the exit animation duration
 }
 
 // Reset task form
@@ -2057,11 +2073,20 @@ function isWeekend(date) {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: flex-end; /* Changed from center to bottom alignment */
   justify-content: center;
   z-index: 1000;
+  
+  &-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1; /* Lower z-index */
+  }
   
   &-content {
     background-color: white;
@@ -2070,6 +2095,8 @@ function isWeekend(date) {
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1); /* Shadow coming from top */
+    position: relative; /* Create stacking context */
+    z-index: 2; /* Higher z-index than backdrop */
     
     @media screen and (min-width: 768px) {
       width: 90%;
