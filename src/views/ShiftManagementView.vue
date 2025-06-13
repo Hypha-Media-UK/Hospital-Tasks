@@ -117,12 +117,11 @@
           ></motion.div>
           <motion.div class="tray"
             :initial="{ y: '100%' }"
-            :animate="{ y: 0 }"
-            :exit="{ y: '100%' }"
+            :animate="isClosing ? { y: '100%' } : { y: 0 }"
             :transition="{ 
-              type: 'spring',
-              damping: 25,
-              stiffness: 300
+              type: 'tween',
+              ease: 'easeInOut',
+              duration: 0.3
             }"
           >
           <div class="modal-header">
@@ -262,12 +261,12 @@
               <!-- Time fields container -->
               <motion.div class="time-fields-container" 
                 :class="{ 'visible': showTimeFields }"
-                :initial="{ height: 0, opacity: 0.5 }"
-                :animate="showTimeFields ? { height: timeFieldsHeight, opacity: 1 } : { height: 0, opacity: 0 }"
+                :initial="{ height: 0, opacity: 0 }"
+                :animate="showTimeFields ? { height: timeFieldsHeight || 150, opacity: 1 } : { height: 0, opacity: 0 }"
                 :transition="{ 
                   type: 'tween',
-                  ease: 'easeInOut',
-                  duration: 0.25
+                  ease: [0.04, 0.62, 0.23, 0.98],
+                  duration: 0.3
                 }"
               >
                 <!-- Allocated -->
@@ -555,18 +554,15 @@ import { nextTick } from 'vue';
 
 // Motion animation hooks
 function onBeforeLeave(el) {
-  // Activate exit animations for motion elements before Vue removes them
-  const tray = el.querySelector('.tray');
-  const backdrop = el.querySelector('.modal-backdrop');
-  
-  // Tell Motion these elements are exiting
-  motion.inView(tray, { once: false });
-  motion.inView(backdrop, { once: false });
+  // We don't need to do anything special here for Motion since we're 
+  // setting the exit animations directly on the motion.div elements
+  console.log('Before leave hook triggered');
 }
 
 function onAfterLeave() {
-  // Reset state after animation completes
+  // Reset state after animation completes and modal is fully hidden
   isClosing.value = false;
+  console.log('After leave hook triggered - animation complete');
 }
 
 // Handle time fields visibility toggle
@@ -1129,15 +1125,17 @@ function editTask(task) {
 
 // Close task modal
 function closeTaskModal() {
+  console.log('Close task modal clicked');
+  
   // Set the closing state to trigger exit animations
   isClosing.value = true;
   
-  // Wait for animation to complete before hiding the modal
+  // Use a timeout to hide the modal after animation completes
   setTimeout(() => {
     showTaskModal.value = false;
     resetTaskForm();
-    isClosing.value = false;
-  }, 300); // Match this duration with the exit animation duration
+    isClosing.value = false; // Reset the closing state
+  }, 350); // Animation duration + small buffer
 }
 
 // Reset task form
