@@ -69,37 +69,10 @@
         <!-- Tabs Section -->
         <div class="card">
           <div class="tabs">
-            <div class="tabs__header" ref="tabsHeaderRef">
-              <TabHeader 
-                v-for="tab in tabs" 
-                :key="tab.id"
-                :label="tab.label"
-                :isActive="activeTabId === tab.id"
-                :badge-count="tab.id === 'tasks' ? totalTasksCount : 0"
-                @click="setActiveTab(tab.id)"
-                ref="tabRefs"
-              />
-              
-              <!-- Sliding active indicator -->
-              <motion.div 
-                class="active-indicator"
-                :animate="{ 
-                  x: indicatorPosition, 
-                  width: indicatorWidth,
-                  opacity: 1
-                }"
-                :initial="{ opacity: 0 }"
-                :transition="{ 
-                  type: 'spring', 
-                  stiffness: 500, 
-                  damping: 30 
-                }"
-              ></motion.div>
-            </div>
-            
-            <TabContent 
-              :activeTab="activeTabId"
-              :direction="tabChangeDirection"
+            <AnimatedTabs
+              v-model="activeTabId"
+              :tabs="formattedTabs"
+              @tab-change="handleTabChange"
             >
               <template #shiftSetup>
                 <ShiftSetupTabContent 
@@ -115,7 +88,7 @@
                   @mark-task-pending="markTaskPending"
                 />
               </template>
-            </TabContent>
+            </AnimatedTabs>
           </div>
         </div>
       </template>
@@ -450,8 +423,7 @@ import { useStaffStore } from '../stores/staffStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import TabHeader from '../components/tabs/TabHeader.vue';
-import TabContent from '../components/tabs/TabContent.vue';
+import AnimatedTabs from '../components/shared/AnimatedTabs.vue';
 import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabContent.vue';
 import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
 import EditIcon from '../components/icons/EditIcon.vue';
@@ -478,16 +450,34 @@ const tabs = [
 ];
 
 // Tab animation states
-const tabRefs = ref([]);
-const tabsHeaderRef = ref(null);
-const indicatorPosition = ref(0);
-const indicatorWidth = ref(0);
 const tabChangeDirection = ref(0);
 const showEndShiftConfirm = ref(false);
 const endingShift = ref(false);
 const loadingTaskItems = ref(false);
 const updatingTask = ref(false);
 const taskItems = ref([]);
+
+// Format tabs for AnimatedTabs component
+const formattedTabs = computed(() => {
+  return tabs.map(tab => ({
+    id: tab.id,
+    label: tab.label,
+    count: tab.id === 'tasks' ? totalTasksCount.value : undefined
+  }));
+});
+
+// Handle tab change from AnimatedTabs component
+function handleTabChange(tabId) {
+  // Calculate direction of tab change
+  const oldIndex = tabs.findIndex(tab => tab.id === activeTabId.value);
+  const newIndex = tabs.findIndex(tab => tab.id === tabId);
+  
+  if (oldIndex !== -1 && newIndex !== -1) {
+    tabChangeDirection.value = newIndex > oldIndex ? 1 : -1;
+  } else {
+    tabChangeDirection.value = 0;
+  }
+}
 
 // Task modal state
 const showTaskModal = ref(false);
