@@ -147,6 +147,26 @@ onMounted(() => {
   if (route.query.tab && tabs.some(tab => tab.id === route.query.tab)) {
     // If there's a valid tab query parameter, use it
     activeTab.value = route.query.tab;
+    
+    // Special handling for settings tab to properly set settings-tab parameter
+    if (route.path === '/settings' && route.query.tab === 'settings') {
+      // If we're on settings page and tab=settings, set settings-tab parameter
+      // to ensure sub-tabs work correctly
+      const settingsTabParam = route.query['settings-tab'];
+      if (!settingsTabParam) {
+        // If no settings-tab parameter exists, add it with default value
+        router.replace({ 
+          query: { 
+            ...route.query, 
+            'settings-tab': 'shiftDefaults'  // Default sub-tab
+          }
+        }).catch(err => {
+          if (err.name !== 'NavigationDuplicated') {
+            console.error(err);
+          }
+        });
+      }
+    }
   } else if (route.path === '/settings') {
     // Check if the user was redirected from /default-support
     const redirectedFrom = route.redirectedFrom?.path;
@@ -155,9 +175,24 @@ onMounted(() => {
       // Update URL to include tab param
       updateQueryParam(activeTab.value);
     } else {
-      activeTab.value = 'staff'; // Default to first tab for settings page
+      activeTab.value = 'settings'; // Set to settings tab for settings page
       // Update URL to include tab param
       updateQueryParam(activeTab.value);
+      
+      // Also set the settings-tab parameter if not already set
+      if (!route.query['settings-tab']) {
+        router.replace({ 
+          query: { 
+            ...route.query, 
+            'tab': 'settings',
+            'settings-tab': 'shiftDefaults'  // Default sub-tab
+          }
+        }).catch(err => {
+          if (err.name !== 'NavigationDuplicated') {
+            console.error(err);
+          }
+        });
+      }
     }
   } else if (route.path === '/') {
     activeTab.value = 'staff'; // Default for home route
@@ -232,8 +267,8 @@ function toggleMobileMenu() {
     // Don't hide the entire container, just restructure it
     // to work with the mobile menu
     
-    // Hide only the tab headers, not the content
-    :deep(.animated-tabs__header) {
+    // Hide only the main level tab headers, not the content or nested tab headers
+    > :deep(.animated-tabs) > .animated-tabs__header {
       display: none;
     }
     
