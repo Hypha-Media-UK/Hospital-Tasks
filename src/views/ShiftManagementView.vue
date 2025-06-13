@@ -413,6 +413,7 @@
           :title="isShiftAccessible ? 'Add Task' : 'Cannot add tasks now - only available during shift or 1 hour before'"
         >
           <span class="plus-icon">+</span>
+          <span class="button-text">New Task</span>
         </button>
         
         <!-- Non-accessible shift message -->
@@ -2296,6 +2297,12 @@ function isWeekend(date) {
   flex-direction: column;
   align-items: flex-end;
   z-index: 900;
+  
+  @media (max-width: 499px) {
+    left: 24px; /* Add left position to stretch across */
+    right: 24px; /* Keep right position */
+    align-items: stretch; /* Make children stretch full width */
+  }
 }
 
 .floating-action-button {
@@ -2311,6 +2318,12 @@ function isWeekend(date) {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease-in-out;
+  
+  @media (max-width: 499px) {
+    width: 100%; /* Make button full width */
+    border-radius: 8px; /* Make it rectangular with rounded corners */
+    height: 50px; /* Slightly shorter height for better proportions */
+  }
   
   &:hover:not(:disabled) {
     transform: scale(1.05);
@@ -2333,6 +2346,21 @@ function isWeekend(date) {
     line-height: 0.8;
     margin-top: -4px;
     display: block; /* Ensures the text is treated as a block */
+    
+    @media (max-width: 499px) {
+      font-size: 32px; /* Slightly smaller plus icon */
+      margin-right: 8px; /* Add spacing for text */
+    }
+  }
+  
+  .button-text {
+    display: none; /* Hidden by default on larger screens */
+    
+    @media (max-width: 499px) {
+      display: inline; /* Show on small screens */
+      font-size: 16px;
+      font-weight: 500;
+    }
   }
 }
 
