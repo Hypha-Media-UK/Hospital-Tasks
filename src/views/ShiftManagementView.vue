@@ -68,6 +68,16 @@
         
         <!-- Tabs Section -->
         <div class="card">
+          <!-- Activity Sheet Button -->
+          <button 
+            v-if="shift && allTasks.length > 0"
+            @click="showActivitySheet" 
+            class="btn btn-primary activity-sheet-btn"
+            title="View and print activity sheet"
+          >
+            Activity Sheet
+          </button>
+          
           <div class="tabs">
             <AnimatedTabs
               v-model="activeTabId"
@@ -538,6 +548,7 @@ const taskForm = ref({
 const shift = computed(() => shiftsStore.currentShift);
 const pendingTasks = computed(() => shiftsStore.pendingTasks);
 const completedTasks = computed(() => shiftsStore.completedTasks);
+const allTasks = computed(() => [...pendingTasks.value, ...completedTasks.value]);
 const totalTasksCount = computed(() => pendingTasks.value.length + completedTasks.value.length);
 // Check if tasks can be added to this shift (current date and within time window)
 const isShiftAccessible = computed(() => {
@@ -948,6 +959,11 @@ function updateIndicatorPosition() {
 
 function navigateToHome() {
   router.push('/');
+}
+
+function showActivitySheet() {
+  // Navigate to the activity sheet view
+  router.push(`/shift/${shift.value.id}/activity-sheet`);
 }
 
 
@@ -2422,5 +2438,21 @@ function isWeekend(date) {
   .timing-toggle-icon {
     color: white; /* Icon color changed to white */
   }
+}
+
+/* Activity Sheet Button Styling */
+.card {
+  position: relative; /* Create positioning context for absolute elements */
+}
+
+.activity-sheet-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  white-space: nowrap;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 </style>

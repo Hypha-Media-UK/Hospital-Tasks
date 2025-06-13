@@ -138,14 +138,6 @@
           </template>
         </AnimatedTabs>
         
-        <button 
-          @click="showActivitySheet" 
-          class="btn btn-primary activity-sheet-btn"
-          :disabled="allTasks.length === 0"
-          title="View and print activity sheet"
-        >
-          Activity Sheet
-        </button>
       </div>
     </div>
   </div>
@@ -355,10 +347,8 @@ nextTick(() => {
 @use "sass:color";
 
 .tasks-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 1rem;
+  width: 100%;
 }
 
 .activity-sheet-btn {
