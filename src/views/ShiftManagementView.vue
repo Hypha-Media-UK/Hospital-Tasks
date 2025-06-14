@@ -2068,6 +2068,11 @@ function isWeekend(date) {
   cursor: pointer;
   transition: opacity 0.2s, background-color 0.2s;
   
+  @media screen and (max-width: 500px) {
+    padding: 0.75rem 1.5rem; /* Increased padding for better touch targets */
+    font-size: 1.1rem; /* Slightly larger text */
+  }
+  
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -2201,6 +2206,10 @@ function isWeekend(date) {
     padding: 1rem;
     border-bottom: 1px solid #e0e0e0;
     
+    @media screen and (max-width: 500px) {
+      padding: 1.5rem 1.25rem; /* Increased padding on small screens */
+    }
+    
     h2 {
       margin: 0;
       font-size: 1.25rem;
@@ -2220,6 +2229,11 @@ function isWeekend(date) {
     padding: 1rem;
     position: relative; /* Create positioning context for absolute elements */
     padding-bottom: 80px; /* Add padding to accommodate the time fields when hidden */
+    
+    @media screen and (max-width: 500px) {
+      padding: 1.5rem 1.25rem; /* Increased padding on small screens */
+      padding-bottom: 90px; /* Adjust bottom padding for time fields */
+    }
   }
   
   &-footer {
@@ -2228,6 +2242,10 @@ function isWeekend(date) {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    
+    @media screen and (max-width: 500px) {
+      padding: 1.5rem 1.25rem; /* Increased padding on small screens */
+    }
     
     @media screen and (min-width: 500px) {
       flex-direction: row;
