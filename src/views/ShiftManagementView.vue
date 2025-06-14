@@ -171,7 +171,7 @@
                   
                   <!-- Departments grouped by building -->
                   <template v-for="building in departmentsByBuilding" :key="`from-${building.id}`">
-                    <optgroup :label="building.name">
+                    <optgroup :label="building.name" class="building-optgroup">
                       <option v-for="dept in building.departments" :key="`from-${dept.id}`" :value="dept.id">
                         {{ dept.name }}
                       </option>
@@ -207,7 +207,7 @@
                   
                   <!-- Departments grouped by building -->
                   <template v-for="building in departmentsByBuilding" :key="`to-${building.id}`">
-                    <optgroup :label="building.name">
+                    <optgroup :label="building.name" class="building-optgroup">
                       <option v-for="dept in building.departments" :key="`to-${dept.id}`" :value="dept.id">
                         {{ dept.name }}
                       </option>
@@ -2674,5 +2674,12 @@ function isWeekend(date) {
 :deep(.frequent-departments-group) {
   background-color: #f0f7ff; /* Light blue background */
   font-weight: 600;
+}
+
+/* Style for the Building optgroups */
+:deep(.building-optgroup) {
+  background-color: #444; /* Dark grey background */
+  color: white; /* White text */
+  font-weight: 600; /* Make it bold like the Frequent Departments group */
 }
 </style>
