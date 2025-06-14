@@ -2232,7 +2232,7 @@ function isWeekend(date) {
     
     @media screen and (max-width: 500px) {
       padding: 1.5rem 1.25rem; /* Increased padding on small screens */
-      padding-bottom: 90px; /* Adjust bottom padding for time fields */
+      padding-bottom: 65px; /* Adjust bottom padding for time fields */
     }
   }
   
