@@ -2266,8 +2266,8 @@ function isWeekend(date) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* Prevent columns from growing beyond available space */
   gap: 1rem;
   
-  @media (max-width: 500px) {
-    /* Keep 2 columns for all screens */
+  @media (max-width: 360px) {
+    /* Switch to single column layout only below 360px */
     .form-group {
       grid-column: span 2; /* Make all form groups span both columns by default */
     }
