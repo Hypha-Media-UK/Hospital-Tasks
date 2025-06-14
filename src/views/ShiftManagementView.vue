@@ -163,18 +163,20 @@
                   <option value="">Select origin department (optional)</option>
                   
                   <!-- Frequent departments (if any) -->
-                  <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
+                  <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments" class="frequent-departments-group">
                     <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
                       {{ dept.name }}
                     </option>
                   </optgroup>
                   
-                  <!-- All departments -->
-                  <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
-                    <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
-                      {{ dept.name }}
-                    </option>
-                  </optgroup>
+                  <!-- Departments grouped by building -->
+                  <template v-for="building in departmentsByBuilding" :key="`from-${building.id}`">
+                    <optgroup :label="building.name">
+                      <option v-for="dept in building.departments" :key="`from-${dept.id}`" :value="dept.id">
+                        {{ dept.name }}
+                      </option>
+                    </optgroup>
+                  </template>
                   
                   <!-- If no frequent departments, just show all departments without grouping -->
                   <template v-if="frequentDepartments.length === 0">
@@ -197,18 +199,20 @@
                   <option value="">Select destination department (optional)</option>
                   
                   <!-- Frequent departments (if any) -->
-                  <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments">
+                  <optgroup v-if="frequentDepartments.length > 0" label="Frequent Departments" class="frequent-departments-group">
                     <option v-for="dept in frequentDepartments" :key="`freq-${dept.id}`" :value="dept.id">
                       {{ dept.name }}
                     </option>
                   </optgroup>
                   
-                  <!-- All departments -->
-                  <optgroup v-if="frequentDepartments.length > 0" label="All Departments">
-                    <option v-for="dept in regularDepartments" :key="dept.id" :value="dept.id">
-                      {{ dept.name }}
-                    </option>
-                  </optgroup>
+                  <!-- Departments grouped by building -->
+                  <template v-for="building in departmentsByBuilding" :key="`to-${building.id}`">
+                    <optgroup :label="building.name">
+                      <option v-for="dept in building.departments" :key="`to-${dept.id}`" :value="dept.id">
+                        {{ dept.name }}
+                      </option>
+                    </optgroup>
+                  </template>
                   
                   <!-- If no frequent departments, just show all departments without grouping -->
                   <template v-if="frequentDepartments.length === 0">
@@ -730,6 +734,24 @@ const regularDepartments = computed(() => {
 const sortedDepartments = computed(() => {
   return [...locationsStore.departments].sort((a, b) => a.name.localeCompare(b.name));
 });
+
+// Departments grouped by building for dropdowns
+const departmentsByBuilding = computed(() => {
+  // Get buildings sorted by sort_order
+  const sortedBuildings = [...locationsStore.buildings].sort((a, b) => a.sort_order - b.sort_order);
+  
+  // Create an array of objects with building and its departments
+  return sortedBuildings.map(building => {
+    const buildingDepartments = locationsStore.departments
+      .filter(dept => dept.building_id === building.id && !dept.is_frequent)
+      .sort((a, b) => a.sort_order - b.sort_order);
+      
+    return {
+      ...building,
+      departments: buildingDepartments
+    };
+  }).filter(building => building.departments.length > 0); // Only include buildings with departments
+});
 const canSaveTask = computed(() => {
   // For a new task, we need a task item
   if (!isEditingTask.value) {
@@ -841,6 +863,7 @@ onMounted(async () => {
       staffStore.fetchPorterAbsences(), // Explicitly load porter absences
       taskTypesStore.fetchTaskTypes(),
       locationsStore.fetchDepartments(),
+      locationsStore.fetchBuildings(), // Also load buildings
       settingsStore.loadSettings()
     ]);
   } catch (error) {
@@ -2645,5 +2668,11 @@ function isWeekend(date) {
   @media screen and (min-width: 700px) {
     right: 2.5rem;
   }
+}
+
+/* Style for the Frequent Departments optgroup */
+:deep(.frequent-departments-group) {
+  background-color: #f0f7ff; /* Light blue background */
+  font-weight: 600;
 }
 </style>
