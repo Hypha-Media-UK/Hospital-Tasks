@@ -48,6 +48,27 @@
                 Runner
               </div>
             </div>
+            
+            <!-- Scheduled Absences Section -->
+            <div v-if="getPorterAbsences(entry.porter_id).length > 0" class="absences-section">
+              <div class="absences-title">Scheduled Absences</div>
+              <div v-for="absence in getPorterAbsences(entry.porter_id)" :key="absence.id" 
+                   class="absence-item">
+                <div class="absence-details">
+                  {{ absence.absence_reason || 'Absence' }}: {{ formatTime(absence.start_time) }} - {{ formatTime(absence.end_time) }}
+                  <button 
+                    @click.stop="removeAbsence(absence.id)" 
+                    class="btn btn--icon btn--danger btn--small"
+                    title="Remove absence"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -287,6 +308,18 @@ const getPorterAbsenceType = (porterId) => {
   const today = new Date();
   const absence = staffStore.getPorterAbsenceDetails(porterId, today);
   return absence ? absence.absence_type : null;
+};
+
+// Get scheduled absences for a porter
+const getPorterAbsences = (porterId) => {
+  return shiftsStore.getPorterAbsences(porterId);
+};
+
+// Remove a scheduled absence
+const removeAbsence = async (absenceId) => {
+  if (confirm('Are you sure you want to remove this absence?')) {
+    await shiftsStore.removePorterAbsence(absenceId);
+  }
 };
 
 // Methods
@@ -655,6 +688,34 @@ onMounted(async () => {
     
     .no-assignments {
       font-style: italic;
+    }
+    
+    // Absences section styling
+    .absences-section {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(234, 67, 53, 0.3);
+    }
+    
+    .absences-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #ea4335;
+      margin-bottom: 6px;
+    }
+    
+    .absence-item {
+      margin-bottom: 4px;
+      
+      .absence-details {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: rgba(234, 67, 53, 0.08);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+      }
     }
   }
   
