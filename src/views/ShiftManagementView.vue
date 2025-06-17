@@ -730,18 +730,22 @@ const porters = computed(() => {
         a => a.porter_id === entry.porter_id
       );
       
-      // Check if porter has an active absence
-      const hasActiveAbsence = shiftsStore.porterAbsences && shiftsStore.porterAbsences.some(absence => {
+      // Check if porter has a global absence (illness, annual leave)
+      const isAbsent = staffStore.isPorterAbsent(entry.porter_id, now);
+      
+      // Check if porter has a scheduled absence in the shift
+      const hasScheduledAbsence = shiftsStore.shiftPorterAbsences && shiftsStore.shiftPorterAbsences.some(absence => {
         if (absence.porter_id !== entry.porter_id) return false;
         
         // Check if current time is within absence period
         return absence.start_time <= currentTimeStr && absence.end_time >= currentTimeStr;
       });
       
-      // Only include porters with no assignments (Runners) and no active absences
+      // Only include porters with no assignments (Runners) and no absences
       return areaCoverAssignments.length === 0 && 
              serviceAssignments.length === 0 && 
-             !hasActiveAbsence;
+             !isAbsent &&
+             !hasScheduledAbsence;
     })
     .map(p => p.porter);
 });
