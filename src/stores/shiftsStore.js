@@ -2059,6 +2059,87 @@ export const useShiftsStore = defineStore('shifts', {
     }
   },
   
+  // Allocate a porter to a department
+  async allocatePorterToDepartment({ porterId, shiftId, departmentAssignmentId, startTime, endTime }) {
+    this.loading.areaCover = true;
+    this.error = null;
+    
+    try {
+      // Add porter to department assignment
+      const { data, error } = await supabase
+        .from('shift_area_cover_porter_assignments')
+        .insert({
+          shift_area_cover_assignment_id: departmentAssignmentId,
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name),
+          shift_area_cover_assignment:shift_area_cover_assignment_id(
+            id,
+            color,
+            department:department_id(id, name)
+          )
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftAreaCoverPorterAssignments.push(data[0]);
+        return data[0];
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error allocating porter to department:', error);
+      this.error = 'Failed to allocate porter to department';
+      return null;
+    } finally {
+      this.loading.areaCover = false;
+    }
+  },
+  
+  // Allocate a porter to a service
+  async allocatePorterToService({ porterId, shiftId, serviceAssignmentId, startTime, endTime }) {
+    this.loading.supportServices = true;
+    this.error = null;
+    
+    try {
+      // Add porter to service assignment
+      const { data, error } = await supabase
+        .from('shift_support_service_porter_assignments')
+        .insert({
+          shift_support_service_assignment_id: serviceAssignmentId,
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftSupportServicePorterAssignments.push(data[0]);
+        return data[0];
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error allocating porter to service:', error);
+      this.error = 'Failed to allocate porter to service';
+      return null;
+    } finally {
+      this.loading.supportServices = false;
+    }
+  },
+  
   // Clean up expired porter absences
   async cleanupExpiredAbsences() {
     try {

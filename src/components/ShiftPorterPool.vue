@@ -166,6 +166,9 @@ import { useStaffStore } from '../stores/staffStore';
 import { useAreaCoverStore } from '../stores/areaCoverStore';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 
+// Event for opening allocation modal
+const emits = defineEmits(['openAllocationModal']);
+
 const props = defineProps({
   shiftId: {
     type: String,
@@ -193,8 +196,8 @@ defineExpose({
 
 // Open allocation modal for a porter
 const openAllocationModal = (porter) => {
-  selectedPorter.value = porter;
-  showAllocationModal.value = true;
+  // Emit event to parent component to open the modal
+  emits('openAllocationModal', porter);
 };
 
 // Handle when a porter has been allocated

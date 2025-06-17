@@ -88,6 +88,7 @@
                 <ShiftSetupTabContent 
                   :shift-id="shift.id" 
                   :shift-type="determineAreaCoverType(shift)"
+                  @porter-click="openAllocatePorterModal"
                 />
               </template>
               <template #tasks>
@@ -458,6 +459,14 @@
         </div>
       </Transition>
 
+      <!-- Allocate Porter Modal -->
+      <AllocatePorterModal 
+        v-if="showAllocatePorterModal" 
+        :porter="selectedPorter"
+        :shift-id="shift.id"
+        @close="showAllocatePorterModal = false"
+        @allocated="handlePorterAllocation"
+      />
       
       <!-- Floating Action Button for Adding Tasks -->
       <div class="floating-action-container">
@@ -496,6 +505,7 @@ import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabC
 import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
 import EditIcon from '../components/icons/EditIcon.vue';
 import ClockIcon from '../components/icons/ClockIcon.vue';
+import AllocatePorterModal from '../components/AllocatePorterModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -560,6 +570,10 @@ const taskFormError = ref('');
 const showTimeFields = ref(false); // Controls visibility of time fields
 const isClosing = ref(false); // Track closing state for exit animations
 const timeFieldsHeight = ref(0); // Track height for time fields animation
+
+// Porter allocation modal state
+const showAllocatePorterModal = ref(false);
+const selectedPorter = ref(null);
 
 // Import nextTick for DOM manipulation after state changes
 import { nextTick } from 'vue';
@@ -699,7 +713,11 @@ const isShiftAccessible = computed(() => {
   }
 });
 const porters = computed(() => {
-  // Only show porters from the shift pool who are "Runners" (no assignments)
+  // Get current time for absence checking
+  const now = new Date();
+  const currentTimeStr = now.toTimeString().substring(0, 8); // HH:MM:SS format
+  
+  // Only show porters from the shift pool who are "Runners" (no assignments) and not absent
   return shiftsStore.shiftPorterPool
     .filter(entry => {
       // Get area cover assignments for this porter
@@ -712,8 +730,18 @@ const porters = computed(() => {
         a => a.porter_id === entry.porter_id
       );
       
-      // Only include porters with no assignments (Runners)
-      return areaCoverAssignments.length === 0 && serviceAssignments.length === 0;
+      // Check if porter has an active absence
+      const hasActiveAbsence = shiftsStore.porterAbsences && shiftsStore.porterAbsences.some(absence => {
+        if (absence.porter_id !== entry.porter_id) return false;
+        
+        // Check if current time is within absence period
+        return absence.start_time <= currentTimeStr && absence.end_time >= currentTimeStr;
+      });
+      
+      // Only include porters with no assignments (Runners) and no active absences
+      return areaCoverAssignments.length === 0 && 
+             serviceAssignments.length === 0 && 
+             !hasActiveAbsence;
     })
     .map(p => p.porter);
 });
@@ -1649,6 +1677,26 @@ function formatTime(timeString) {
       console.error('Error formatting time:', e);
       return timeString || '';
     }
+  }
+}
+
+// Open porter allocation modal
+function openAllocatePorterModal(porter) {
+  selectedPorter.value = porter;
+  showAllocatePorterModal.value = true;
+}
+
+// Handle porter allocation result
+function handlePorterAllocation(allocation) {
+  console.log('Porter allocated:', allocation);
+  // The store and UI will update automatically due to reactivity
+  // Refresh data if needed
+  if (allocation.type === 'department') {
+    shiftsStore.fetchShiftAreaCover(shift.value.id);
+  } else if (allocation.type === 'service') {
+    shiftsStore.fetchShiftSupportServices(shift.value.id);
+  } else if (allocation.type === 'absence') {
+    shiftsStore.fetchShiftPorterAbsences(shift.value.id);
   }
 }
 

@@ -8,7 +8,11 @@
           Add Porter
         </button>
       </div>
-      <ShiftPorterPool :shift-id="shiftId" ref="porterPoolRef" />
+      <ShiftPorterPool 
+        :shift-id="shiftId" 
+        ref="porterPoolRef"
+        @openAllocationModal="handlePorterClick" 
+      />
     </div>
         
     <!-- Area Coverage Section -->
@@ -91,6 +95,8 @@
 import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import ShiftPorterPool from '../../ShiftPorterPool.vue';
+
+const emit = defineEmits(['porter-click']);
 import ShiftAreaCoverList from '../../area-cover/ShiftAreaCoverList.vue';
 import SupportServicesShiftList from '../../support-services/SupportServicesShiftList.vue';
 import CopyIcon from '../../icons/CopyIcon.vue';
@@ -159,6 +165,12 @@ function getDayOrdinalSuffix(day) {
     case 3: return 'rd';
     default: return 'th';
   }
+}
+
+// Handle porter click for allocation
+function handlePorterClick(porter) {
+  // Emit the porter data to the parent component
+  emit('porter-click', porter);
 }
 
 // Duplicate the current shift to a new date
