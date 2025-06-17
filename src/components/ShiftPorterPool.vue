@@ -16,18 +16,23 @@
     
     <div v-else class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
-           :class="{ 'assigned': getPorterAssignments(entry.porter_id).length > 0 }"
+           :class="{ 
+             'assigned': getPorterAssignments(entry.porter_id).length > 0,
+             'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
+           }"
            @click.stop="openAllocationModal(entry.porter)">
         <div class="porter-card__content">
           <div class="porter-card__name" 
                :class="{ 
                  'porter-absent': isPorterAbsent(entry.porter_id),
                  'porter-illness': getPorterAbsenceType(entry.porter_id) === 'illness',
-                 'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave'
+                 'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave',
+                 'porter-scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
                }">
             {{ entry.porter.first_name }} {{ entry.porter.last_name }}
             <span v-if="getPorterAbsenceType(entry.porter_id) === 'illness'" class="absence-badge illness">ILL</span>
             <span v-if="getPorterAbsenceType(entry.porter_id) === 'annual_leave'" class="absence-badge annual-leave">AL</span>
+            <span v-if="shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
           </div>
           
           <div class="porter-card__assignments">
@@ -174,7 +179,12 @@ const openAllocationModal = (porter) => {
 // Handle when a porter has been allocated
 const handlePorterAllocated = (allocation) => {
   console.log('Porter allocated:', allocation);
-  // No need to do anything else - the store and UI will update automatically
+  
+  // If this was an absence allocation, we need to refresh porter absences
+  if (allocation.type === 'absence') {
+    shiftsStore.fetchShiftPorterAbsences(props.shiftId);
+  }
+  // No need to do anything else - the store and UI will update automatically for other allocations
 };
 const selectedPorters = ref([]);
 const addingPorters = ref(false);
@@ -335,12 +345,25 @@ const getPorterAssignments = (porterId) => {
     a => a.porter_id === porterId
   );
   
-  // Return both types of assignments
-  return [...areaCoverAssignments, ...serviceAssignments];
+  // Get scheduled absences for this porter in this shift
+  const absenceAssignments = shiftsStore.shiftPorterAbsences.filter(
+    a => a.porter_id === porterId
+  ).map(absence => ({
+    ...absence,
+    isAbsence: true // Add a flag to identify this as an absence
+  }));
+  
+  // Return all types of assignments
+  return [...areaCoverAssignments, ...serviceAssignments, ...absenceAssignments];
 };
 
 // Get the background color for an assignment item
 const getAssignmentBackgroundColor = (assignment) => {
+  // Check if this is an absence
+  if (assignment.isAbsence) {
+    return 'rgba(234, 67, 53, 0.15)'; // Light red for absences
+  }
+  
   // Check if this is an area cover assignment or service assignment
   if (assignment.shift_area_cover_assignment_id) {
     // Area cover assignment
@@ -363,6 +386,11 @@ const getAssignmentBackgroundColor = (assignment) => {
 // Format time (e.g., "09:30") in 24-hour format
 // Get the assignment name (department or service)
 const getAssignmentName = (assignment) => {
+  // Check if this is an absence
+  if (assignment.isAbsence) {
+    return `Absence: ${assignment.absence_reason || 'Scheduled'}`;
+  }
+  
   // Check if this is an area cover assignment
   if (assignment.shift_area_cover_assignment_id) {
     // Area cover assignment - return department name
@@ -405,6 +433,7 @@ onMounted(async () => {
   try {
     // Load data in sequence
     await shiftsStore.fetchShiftPorterPool(props.shiftId);
+    // This will also fetch porter absences automatically
     
     if (!staffStore.porters.length) {
       await staffStore.fetchPorters();
@@ -415,6 +444,9 @@ onMounted(async () => {
     
     // Ensure area cover assignments load last
     await shiftsStore.fetchShiftAreaCover(props.shiftId);
+    
+    // Make sure we have support service assignments too
+    await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
     console.error('Error loading shift data:', error);
   } finally {
@@ -527,6 +559,16 @@ onMounted(async () => {
     }
   }
   
+  &.scheduled-absence {
+    background-color: #FFEBEE;  /* Extremely pale red background */
+    border: 1px solid rgba(234, 67, 53, 0.2);
+    
+    &:hover {
+      background-color: #FFEBEE;  /* Keep the same background but add shadow */
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+  
   &__content {
     flex: 1;
   }
@@ -562,6 +604,13 @@ onMounted(async () => {
       border-radius: 4px;
     }
     
+    &.porter-scheduled-absence {
+      color: #ea4335;
+      background-color: rgba(234, 67, 53, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
     .absence-badge {
       display: inline-block;
       font-size: 9px;
@@ -577,6 +626,11 @@ onMounted(async () => {
       
       &.annual-leave {
         background-color: #f57c00;
+        color: white;
+      }
+      
+      &.scheduled {
+        background-color: #ea4335;
         color: white;
       }
     }

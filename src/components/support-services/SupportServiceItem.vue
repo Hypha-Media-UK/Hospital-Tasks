@@ -30,17 +30,25 @@
                      'porter-absent': getPorterAbsence(assignment.porter_id),
                      'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
                      'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave',
+                     'porter-scheduled-absence': isShiftAssignment && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id),
                      'pool-porter': isPoolPorter(assignment.porter_id)
                    }">
                 {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
                 <!-- Show time for available porters, absence badge for absent porters -->
                 <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
-                  {{ isPoolPorter(assignment.porter_id) ? 'Cover: ' : '' }}{{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                  <template v-if="assignment.agreed_absence">
+                    <span class="absence-text">{{ assignment.agreed_absence }}</span>
+                  </template>
+                  <template v-else>
+                    {{ isPoolPorter(assignment.porter_id) ? 'Cover: ' : '' }}{{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                  </template>
                 </span>
                 <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'illness'" 
                       class="absence-badge illness">ILL</span>
                 <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'" 
                       class="absence-badge annual-leave">AL</span>
+                <span v-else-if="isShiftAssignment && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id)"
+                      class="absence-badge scheduled">ABS</span>
               </div>
             </div>
 
@@ -155,6 +163,11 @@ const availablePorters = computed(() => {
   return porterAssignments.value.filter(assignment => {
     // First check if porter is absent
     if (staffStore.isPorterAbsent(assignment.porter_id, today)) {
+      return false;
+    }
+    
+    // Check if porter has a scheduled absence (only for shift assignments)
+    if (isShiftAssignment.value && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id)) {
       return false;
     }
     
@@ -591,6 +604,11 @@ const handleRemove = (assignmentId) => {
             background-color: rgba(251, 192, 45, 0.1);
           }
           
+          &.porter-scheduled-absence {
+            color: #ea4335;
+            background-color: rgba(234, 67, 53, 0.1);
+          }
+          
           &.pool-porter {
             background-color: #FFF8ED;  /* Extremely pale orange background */
             font-style: italic;
@@ -599,6 +617,15 @@ const handleRemove = (assignmentId) => {
           .porter-time {
             color: rgba(0, 0, 0, 0.5);
             font-size: mix.font-size('2xs');
+            
+            .absence-text {
+              color: #f57c00;
+              font-style: italic;
+              background-color: rgba(245, 124, 0, 0.1);
+              padding: 2px 6px;
+              border-radius: 4px;
+              display: inline-block;
+            }
           }
           
           .absence-badge {
@@ -616,6 +643,11 @@ const handleRemove = (assignmentId) => {
             
             &.annual-leave {
               background-color: #f57c00;
+              color: white;
+            }
+            
+            &.scheduled {
+              background-color: #ea4335;
               color: white;
             }
           }

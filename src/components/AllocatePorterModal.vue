@@ -22,6 +22,7 @@
               <select id="allocationType" v-model="allocationType" class="form-control">
                 <option value="department">Department</option>
                 <option value="service">Support Service</option>
+                <option value="absence">Agreed Absence</option>
               </select>
             </div>
             
@@ -46,9 +47,9 @@
             </div>
           </div>
           
-          <div class="form-group">
-            <label for="agreedAbsence">...or Agreed Absence</label>
-            <input type="text" id="agreedAbsence" v-model="agreedAbsence" class="form-control" maxlength="15" placeholder="Max 15 chars">
+          <div class="form-group" v-if="allocationType === 'absence'">
+            <label for="agreedAbsence">Absence Reason</label>
+            <input type="text" id="agreedAbsence" v-model="agreedAbsence" class="form-control" maxlength="15" placeholder="Max 15 chars" required>
           </div>
 
           <div class="time-fields">
@@ -151,11 +152,16 @@ const canAllocate = computed(() => {
   // Time fields are always required
   if (!startTime.value || !endTime.value) return false;
   
-  // Either a department/service must be selected OR agreed absence must be specified
-  const hasAssignment = (allocationType.value === 'department' && !!selectedDepartmentId.value) || 
-                        (allocationType.value === 'service' && !!selectedServiceId.value);
+  // Check what needs to be provided based on allocation type
+  if (allocationType.value === 'department') {
+    return !!selectedDepartmentId.value;
+  } else if (allocationType.value === 'service') {
+    return !!selectedServiceId.value;
+  } else if (allocationType.value === 'absence') {
+    return !!agreedAbsence.value;
+  }
   
-  return hasAssignment || !!agreedAbsence.value;
+  return false;
 });
 
 // Initialize the component
@@ -249,73 +255,43 @@ const allocatePorter = async () => {
     
     let result;
     
-    // If there's an agreed absence but no department/service selected,
-    // we'll set a special allocation type
-    const hasAssignment = (allocationType.value === 'department' && !!selectedDepartmentId.value) || 
-                          (allocationType.value === 'service' && !!selectedServiceId.value);
-    
-    // Only proceed with department/service allocation if one is selected
-    if (hasAssignment) {
-      if (allocationType.value === 'department') {
-        // Allocate to department
-        result = await shiftsStore.addShiftAreaCoverPorter(
-          selectedDepartmentId.value,
-          props.porter.id,
-          formattedStartTime,
-          formattedEndTime,
-          agreedAbsence.value
-        );
-      } else if (allocationType.value === 'service') {
-        // Allocate to service
-        result = await shiftsStore.addShiftSupportServicePorter(
-          selectedServiceId.value,
-          props.porter.id,
-          formattedStartTime,
-          formattedEndTime,
-          agreedAbsence.value
-        );
-      }
-    } else if (agreedAbsence.value) {
-      // If only agreed absence is specified, we'll add to the first available department
-      // This is a temporary solution until a dedicated absence table is created
-      if (areaCoverAssignments.value.length > 0) {
-        result = await shiftsStore.addShiftAreaCoverPorter(
-          areaCoverAssignments.value[0].id,
-          props.porter.id,
-          formattedStartTime,
-          formattedEndTime,
-          agreedAbsence.value
-        );
-      } else if (supportServiceAssignments.value.length > 0) {
-        result = await shiftsStore.addShiftSupportServicePorter(
-          supportServiceAssignments.value[0].id,
-          props.porter.id,
-          formattedStartTime,
-          formattedEndTime,
-          agreedAbsence.value
-        );
-      }
+    if (allocationType.value === 'department') {
+      // Allocate to department
+      result = await shiftsStore.addShiftAreaCoverPorter(
+        selectedDepartmentId.value,
+        props.porter.id,
+        formattedStartTime,
+        formattedEndTime
+      );
+    } else if (allocationType.value === 'service') {
+      // Allocate to service
+      result = await shiftsStore.addShiftSupportServicePorter(
+        selectedServiceId.value,
+        props.porter.id,
+        formattedStartTime,
+        formattedEndTime
+      );
+    } else if (allocationType.value === 'absence') {
+      // Add a scheduled absence
+      result = await shiftsStore.addPorterAbsence(
+        props.shiftId,
+        props.porter.id,
+        formattedStartTime,
+        formattedEndTime,
+        agreedAbsence.value
+      );
     }
     
     if (result) {
-      // Determine the allocation type for the response
-      const hasAssignment = (allocationType.value === 'department' && !!selectedDepartmentId.value) || 
-                            (allocationType.value === 'service' && !!selectedServiceId.value);
-      
-      const responseType = hasAssignment ? allocationType.value : 'absence';
-      const responseAssignmentId = hasAssignment 
-        ? (allocationType.value === 'department' ? selectedDepartmentId.value : selectedServiceId.value)
-        : (areaCoverAssignments.value.length > 0 ? areaCoverAssignments.value[0].id : 
-           (supportServiceAssignments.value.length > 0 ? supportServiceAssignments.value[0].id : null));
-      
       // Notify parent that allocation was successful
       emit('allocated', {
         porter: props.porter,
-        type: responseType,
-        assignmentId: responseAssignmentId,
+        type: allocationType.value,
+        assignmentId: allocationType.value === 'department' ? selectedDepartmentId.value : 
+                     allocationType.value === 'service' ? selectedServiceId.value : null,
         startTime: formattedStartTime,
         endTime: formattedEndTime,
-        agreedAbsence: agreedAbsence.value
+        absenceReason: allocationType.value === 'absence' ? agreedAbsence.value : null
       });
       
       // Close the modal

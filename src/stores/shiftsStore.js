@@ -35,6 +35,7 @@ export const useShiftsStore = defineStore('shifts', {
     shiftSupportServiceAssignments: [], // Shift-specific support service assignments
     shiftSupportServicePorterAssignments: [], // Porter assignments for shift support services
     shiftPorterPool: [], // Porters assigned to the current shift
+    shiftPorterAbsences: [], // Scheduled absences for porters in the current shift
     loading: {
       activeShifts: false,
       archivedShifts: false,
@@ -46,6 +47,7 @@ export const useShiftsStore = defineStore('shifts', {
       areaCover: false, // Loading state for area cover operations
       supportServices: false, // Loading state for support service operations
       porterPool: false, // Loading state for porter pool operations
+      porterAbsences: false, // Loading state for porter absences operations
       deleteShift: false
     },
     error: null
@@ -352,15 +354,47 @@ export const useShiftsStore = defineStore('shifts', {
       );
     },
     
-    // Get porter assignments for a specific support service assignment
-    getPorterAssignmentsByServiceId: (state) => (serviceId) => {
-      if (!serviceId || !state.shiftSupportServicePorterAssignments) {
-        return [];
-      }
-      return state.shiftSupportServicePorterAssignments.filter(
-        pa => pa.shift_support_service_assignment_id === serviceId
-      ) || [];
-    },
+  // Get porter assignments for a specific support service assignment
+  getPorterAssignmentsByServiceId: (state) => (serviceId) => {
+    if (!serviceId || !state.shiftSupportServicePorterAssignments) {
+      return [];
+    }
+    return state.shiftSupportServicePorterAssignments.filter(
+      pa => pa.shift_support_service_assignment_id === serviceId
+    ) || [];
+  },
+  
+  // Get scheduled absences for a porter in the current shift
+  getPorterAbsences: (state) => (porterId) => {
+    if (!porterId || !state.shiftPorterAbsences) {
+      return [];
+    }
+    return state.shiftPorterAbsences.filter(
+      absence => absence.porter_id === porterId
+    ) || [];
+  },
+  
+  // Check if a porter is currently on a scheduled absence
+  isPorterOnScheduledAbsence: (state) => (porterId) => {
+    if (!porterId || !state.shiftPorterAbsences) {
+      return false;
+    }
+    
+    // Get current time in minutes
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTimeMinutes = (currentHours * 60) + currentMinutes;
+    
+    // Check if any absence is currently active
+    return state.shiftPorterAbsences.some(absence => {
+      const porterStart = timeToMinutes(absence.start_time);
+      const porterEnd = timeToMinutes(absence.end_time);
+      return absence.porter_id === porterId && 
+             porterStart <= currentTimeMinutes && 
+             porterEnd >= currentTimeMinutes;
+    });
+  },
     
     // Get coverage gaps with detailed information for an area
     getAreaCoverageGaps: (state) => (areaCoverId) => {
@@ -1818,75 +1852,212 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
-    // Fetch porter pool for a specific shift
-    async fetchShiftPorterPool(shiftId) {
-      this.loading.porterPool = true;
-      this.error = null;
+  // Fetch porter pool for a specific shift
+  async fetchShiftPorterPool(shiftId) {
+    this.loading.porterPool = true;
+    this.error = null;
+    
+    try {
+      // Query shift porter pool
+      const { data, error } = await supabase
+        .from('shift_porter_pool')
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `)
+        .eq('shift_id', shiftId);
       
-      try {
-        // Query shift porter pool
-        const { data, error } = await supabase
-          .from('shift_porter_pool')
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name)
-          `)
-          .eq('shift_id', shiftId);
-        
-        if (error) {
-          console.error('Error fetching shift porter pool:', error);
-          throw error;
-        }
-        
-        console.log(`Fetched ${data?.length || 0} porters in pool for shift ${shiftId}`);
-        
-        // Store the porter pool
-        this.shiftPorterPool = data || [];
-        
-        return this.shiftPorterPool;
-      } catch (error) {
+      if (error) {
         console.error('Error fetching shift porter pool:', error);
-        this.error = 'Failed to load shift porter pool';
-        return [];
-      } finally {
-        this.loading.porterPool = false;
+        throw error;
       }
-    },
-
-    // Add a porter to a shift's porter pool
-    async addPorterToShift(shiftId, porterId) {
-      this.loading.porterPool = true;
-      this.error = null;
       
-      try {
-        // Add porter to shift pool
-        const { data, error } = await supabase
-          .from('shift_porter_pool')
-          .insert({
-            shift_id: shiftId,
-            porter_id: porterId
-          })
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name)
-          `);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Add to local state
-          this.shiftPorterPool.push(data[0]);
-        }
-        
-        return data?.[0] || null;
-      } catch (error) {
-        console.error('Error adding porter to shift:', error);
-        this.error = 'Failed to add porter to shift';
-        return null;
-      } finally {
-        this.loading.porterPool = false;
+      console.log(`Fetched ${data?.length || 0} porters in pool for shift ${shiftId}`);
+      
+      // Store the porter pool
+      this.shiftPorterPool = data || [];
+      
+      // Also fetch porter absences for this shift
+      await this.fetchShiftPorterAbsences(shiftId);
+      
+      return this.shiftPorterPool;
+    } catch (error) {
+      console.error('Error fetching shift porter pool:', error);
+      this.error = 'Failed to load shift porter pool';
+      return [];
+    } finally {
+      this.loading.porterPool = false;
+    }
+  },
+  
+  // Fetch porter absences for a specific shift
+  async fetchShiftPorterAbsences(shiftId) {
+    this.loading.porterAbsences = true;
+    this.error = null;
+    
+    try {
+      // Query shift porter absences
+      const { data, error } = await supabase
+        .from('shift_porter_absences')
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `)
+        .eq('shift_id', shiftId);
+      
+      if (error) {
+        console.error('Error fetching shift porter absences:', error);
+        throw error;
       }
-    },
+      
+      console.log(`Fetched ${data?.length || 0} porter absences for shift ${shiftId}`);
+      
+      // Store the porter absences
+      this.shiftPorterAbsences = data || [];
+      
+      return this.shiftPorterAbsences;
+    } catch (error) {
+      console.error('Error fetching shift porter absences:', error);
+      this.error = 'Failed to load porter absences';
+      return [];
+    } finally {
+      this.loading.porterAbsences = false;
+    }
+  },
+
+  // Add a porter to a shift's porter pool
+  async addPorterToShift(shiftId, porterId) {
+    this.loading.porterPool = true;
+    this.error = null;
+    
+    try {
+      // Add porter to shift pool
+      const { data, error } = await supabase
+        .from('shift_porter_pool')
+        .insert({
+          shift_id: shiftId,
+          porter_id: porterId
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftPorterPool.push(data[0]);
+      }
+      
+      return data?.[0] || null;
+    } catch (error) {
+      console.error('Error adding porter to shift:', error);
+      this.error = 'Failed to add porter to shift';
+      return null;
+    } finally {
+      this.loading.porterPool = false;
+    }
+  },
+  
+  // Add a scheduled absence for a porter in a shift
+  async addPorterAbsence(shiftId, porterId, startTime, endTime, absenceReason) {
+    this.loading.porterAbsences = true;
+    this.error = null;
+    
+    try {
+      // Add porter absence
+      const { data, error } = await supabase
+        .from('shift_porter_absences')
+        .insert({
+          shift_id: shiftId,
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime,
+          absence_reason: absenceReason
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftPorterAbsences.push(data[0]);
+      }
+      
+      return data?.[0] || null;
+    } catch (error) {
+      console.error('Error adding porter absence:', error);
+      this.error = 'Failed to add porter absence';
+      return null;
+    } finally {
+      this.loading.porterAbsences = false;
+    }
+  },
+  
+  // Update a porter absence
+  async updatePorterAbsence(absenceId, updates) {
+    this.loading.porterAbsences = true;
+    this.error = null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('shift_porter_absences')
+        .update(updates)
+        .eq('id', absenceId)
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Update in local state
+        const index = this.shiftPorterAbsences.findIndex(a => a.id === absenceId);
+        if (index !== -1) {
+          this.shiftPorterAbsences[index] = data[0];
+        }
+      }
+      
+      return data?.[0] || null;
+    } catch (error) {
+      console.error('Error updating porter absence:', error);
+      this.error = 'Failed to update porter absence';
+      return null;
+    } finally {
+      this.loading.porterAbsences = false;
+    }
+  },
+  
+  // Remove a porter absence
+  async removePorterAbsence(absenceId) {
+    this.loading.porterAbsences = true;
+    this.error = null;
+    
+    try {
+      const { error } = await supabase
+        .from('shift_porter_absences')
+        .delete()
+        .eq('id', absenceId);
+      
+      if (error) throw error;
+      
+      // Remove from local state
+      this.shiftPorterAbsences = this.shiftPorterAbsences.filter(a => a.id !== absenceId);
+      
+      return true;
+    } catch (error) {
+      console.error('Error removing porter absence:', error);
+      this.error = 'Failed to remove porter absence';
+      return false;
+    } finally {
+      this.loading.porterAbsences = false;
+    }
+  },
     
     // Remove a porter from a shift's porter pool
     async removePorterFromShift(porterPoolId) {
