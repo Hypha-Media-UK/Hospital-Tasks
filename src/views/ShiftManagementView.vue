@@ -483,7 +483,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { motion } from 'motion-v';
 import { useRoute, useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
@@ -504,6 +504,9 @@ const staffStore = useStaffStore();
 const taskTypesStore = useTaskTypesStore();
 const locationsStore = useLocationsStore();
 const settingsStore = useSettingsStore();
+
+// Timer for cleaning up expired absences
+let cleanupTimer = null;
 
 // Local state
 const loading = ref(true);
@@ -762,6 +765,17 @@ const canSaveTask = computed(() => {
 });
 
 // Load data on component mount
+// Function to check and clean up expired absences
+const checkAndCleanupExpiredAbsences = async () => {
+  if (shift.value && shift.value.id) {
+    console.log('Checking for expired absences...');
+    const cleanedCount = await shiftsStore.cleanupExpiredAbsences();
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} expired absences`);
+    }
+  }
+};
+
 onMounted(async () => {
   loading.value = true;
   console.log('ShiftManagementView mounted - loading shift data');
@@ -773,6 +787,10 @@ onMounted(async () => {
   
   // Update indicator position on window resize
   window.addEventListener('resize', updateIndicatorPosition);
+  
+  // Set up periodic cleanup of expired absences (every minute)
+  checkAndCleanupExpiredAbsences(); // Initial check
+  cleanupTimer = setInterval(checkAndCleanupExpiredAbsences, 60000);
   
   try {
     const shiftId = route.params.id;
@@ -872,6 +890,19 @@ onMounted(async () => {
     loading.value = false;
     console.log('ShiftManagementView loading complete');
   }
+});
+
+// Clean up resources when component is unmounted
+onUnmounted(() => {
+  // Clear timer to prevent memory leaks
+  if (cleanupTimer) {
+    console.log('Clearing absence cleanup timer');
+    clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
+  
+  // Remove event listener
+  window.removeEventListener('resize', updateIndicatorPosition);
 });
 
 // Watch route param changes to reload data

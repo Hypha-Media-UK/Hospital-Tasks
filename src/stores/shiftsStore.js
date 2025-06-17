@@ -2058,6 +2058,40 @@ export const useShiftsStore = defineStore('shifts', {
       this.loading.porterAbsences = false;
     }
   },
+  
+  // Clean up expired porter absences
+  async cleanupExpiredAbsences() {
+    try {
+      // Get current time in HH:MM:SS format
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const currentTime = `${hours}:${minutes}:${seconds}`;
+      
+      // Find absences with end times in the past
+      const expiredAbsences = this.shiftPorterAbsences.filter(
+        absence => absence.end_time < currentTime
+      );
+      
+      if (expiredAbsences.length === 0) {
+        return 0; // No expired absences to clean up
+      }
+      
+      console.log(`Found ${expiredAbsences.length} expired absences to clean up`);
+      
+      // Remove each expired absence
+      for (const absence of expiredAbsences) {
+        await this.removePorterAbsence(absence.id);
+      }
+      
+      console.log(`Cleaned up ${expiredAbsences.length} expired absences`);
+      return expiredAbsences.length;
+    } catch (error) {
+      console.error('Error cleaning up expired absences:', error);
+      return 0;
+    }
+  },
     
     // Remove a porter from a shift's porter pool
     async removePorterFromShift(porterPoolId) {
