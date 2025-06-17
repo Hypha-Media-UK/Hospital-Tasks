@@ -16,42 +16,49 @@
             <div class="porter-name">{{ porter.first_name }} {{ porter.last_name }}</div>
           </div>
           
+          <div class="allocation-fields">
+            <div class="form-group">
+              <label for="allocationType">Allocation Type</label>
+              <select id="allocationType" v-model="allocationType" class="form-control">
+                <option value="department">Department</option>
+                <option value="service">Support Service</option>
+              </select>
+            </div>
+            
+            <div v-if="allocationType === 'department'" class="form-group">
+              <label for="department">Department</label>
+              <select id="department" v-model="selectedDepartmentId" class="form-control">
+                <option value="">Select Department</option>
+                <option v-for="assignment in areaCoverAssignments" :key="assignment.id" :value="assignment.id">
+                  {{ assignment.department.name }}
+                </option>
+              </select>
+            </div>
+            
+            <div v-if="allocationType === 'service'" class="form-group">
+              <label for="service">Support Service</label>
+              <select id="service" v-model="selectedServiceId" class="form-control">
+                <option value="">Select Service</option>
+                <option v-for="assignment in supportServiceAssignments" :key="assignment.id" :value="assignment.id">
+                  {{ assignment.service.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
           <div class="form-group">
-            <label for="allocationType">Allocation Type</label>
-            <select id="allocationType" v-model="allocationType" class="form-control">
-              <option value="department">Department</option>
-              <option value="service">Support Service</option>
-            </select>
+            <label for="agreedAbsence">...or Agreed Absence</label>
+            <input type="text" id="agreedAbsence" v-model="agreedAbsence" class="form-control" maxlength="15" placeholder="Max 15 chars">
           </div>
-          
-          <div v-if="allocationType === 'department'" class="form-group">
-            <label for="department">Department</label>
-            <select id="department" v-model="selectedDepartmentId" class="form-control">
-              <option value="">Select Department</option>
-              <option v-for="assignment in areaCoverAssignments" :key="assignment.id" :value="assignment.id">
-                {{ assignment.department.name }}
-              </option>
-            </select>
-          </div>
-          
-          <div v-if="allocationType === 'service'" class="form-group">
-            <label for="service">Support Service</label>
-            <select id="service" v-model="selectedServiceId" class="form-control">
-              <option value="">Select Service</option>
-              <option v-for="assignment in supportServiceAssignments" :key="assignment.id" :value="assignment.id">
-                {{ assignment.service.name }}
-              </option>
-            </select>
-          </div>
-          
+
           <div class="time-fields">
             <div class="form-group">
-              <label for="startTime">Start Time</label>
+              <label for="startTime">From</label>
               <input type="time" id="startTime" v-model="startTime" class="form-control" required>
             </div>
             
             <div class="form-group">
-              <label for="endTime">End Time</label>
+              <label for="endTime">To</label>
               <input type="time" id="endTime" v-model="endTime" class="form-control" required>
             </div>
           </div>
@@ -107,6 +114,7 @@ const selectedDepartmentId = ref('');
 const selectedServiceId = ref('');
 const startTime = ref('');
 const endTime = ref('');
+const agreedAbsence = ref('');
 const loading = ref(true);
 const allocating = ref(false);
 
@@ -138,17 +146,16 @@ const showFutureAllocationInfo = computed(() => {
   return startTimeMinutes > currentTimeMinutes;
 });
 
-// Check if we can allocate (all required fields filled)
+// Check if we can allocate (either allocation or agreed absence, plus times)
 const canAllocate = computed(() => {
+  // Time fields are always required
   if (!startTime.value || !endTime.value) return false;
   
-  if (allocationType.value === 'department') {
-    return !!selectedDepartmentId.value;
-  } else if (allocationType.value === 'service') {
-    return !!selectedServiceId.value;
-  }
+  // Either a department/service must be selected OR agreed absence must be specified
+  const hasAssignment = (allocationType.value === 'department' && !!selectedDepartmentId.value) || 
+                        (allocationType.value === 'service' && !!selectedServiceId.value);
   
-  return false;
+  return hasAssignment || !!agreedAbsence.value;
 });
 
 // Initialize the component
@@ -242,32 +249,73 @@ const allocatePorter = async () => {
     
     let result;
     
-    if (allocationType.value === 'department') {
-      // Allocate to department
-      result = await shiftsStore.addShiftAreaCoverPorter(
-        selectedDepartmentId.value,
-        props.porter.id,
-        formattedStartTime,
-        formattedEndTime
-      );
-    } else if (allocationType.value === 'service') {
-      // Allocate to service
-      result = await shiftsStore.addShiftSupportServicePorter(
-        selectedServiceId.value,
-        props.porter.id,
-        formattedStartTime,
-        formattedEndTime
-      );
+    // If there's an agreed absence but no department/service selected,
+    // we'll set a special allocation type
+    const hasAssignment = (allocationType.value === 'department' && !!selectedDepartmentId.value) || 
+                          (allocationType.value === 'service' && !!selectedServiceId.value);
+    
+    // Only proceed with department/service allocation if one is selected
+    if (hasAssignment) {
+      if (allocationType.value === 'department') {
+        // Allocate to department
+        result = await shiftsStore.addShiftAreaCoverPorter(
+          selectedDepartmentId.value,
+          props.porter.id,
+          formattedStartTime,
+          formattedEndTime,
+          agreedAbsence.value
+        );
+      } else if (allocationType.value === 'service') {
+        // Allocate to service
+        result = await shiftsStore.addShiftSupportServicePorter(
+          selectedServiceId.value,
+          props.porter.id,
+          formattedStartTime,
+          formattedEndTime,
+          agreedAbsence.value
+        );
+      }
+    } else if (agreedAbsence.value) {
+      // If only agreed absence is specified, we'll add to the first available department
+      // This is a temporary solution until a dedicated absence table is created
+      if (areaCoverAssignments.value.length > 0) {
+        result = await shiftsStore.addShiftAreaCoverPorter(
+          areaCoverAssignments.value[0].id,
+          props.porter.id,
+          formattedStartTime,
+          formattedEndTime,
+          agreedAbsence.value
+        );
+      } else if (supportServiceAssignments.value.length > 0) {
+        result = await shiftsStore.addShiftSupportServicePorter(
+          supportServiceAssignments.value[0].id,
+          props.porter.id,
+          formattedStartTime,
+          formattedEndTime,
+          agreedAbsence.value
+        );
+      }
     }
     
     if (result) {
+      // Determine the allocation type for the response
+      const hasAssignment = (allocationType.value === 'department' && !!selectedDepartmentId.value) || 
+                            (allocationType.value === 'service' && !!selectedServiceId.value);
+      
+      const responseType = hasAssignment ? allocationType.value : 'absence';
+      const responseAssignmentId = hasAssignment 
+        ? (allocationType.value === 'department' ? selectedDepartmentId.value : selectedServiceId.value)
+        : (areaCoverAssignments.value.length > 0 ? areaCoverAssignments.value[0].id : 
+           (supportServiceAssignments.value.length > 0 ? supportServiceAssignments.value[0].id : null));
+      
       // Notify parent that allocation was successful
       emit('allocated', {
         porter: props.porter,
-        type: allocationType.value,
-        assignmentId: allocationType.value === 'department' ? selectedDepartmentId.value : selectedServiceId.value,
+        type: responseType,
+        assignmentId: responseAssignmentId,
         startTime: formattedStartTime,
-        endTime: formattedEndTime
+        endTime: formattedEndTime,
+        agreedAbsence: agreedAbsence.value
       });
       
       // Close the modal
@@ -380,6 +428,13 @@ const allocatePorter = async () => {
     border-radius: 4px;
     font-size: 1rem;
   }
+}
+
+.allocation-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .time-fields {

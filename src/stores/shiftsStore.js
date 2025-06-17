@@ -1428,20 +1428,21 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
-    // Add a porter to a shift area cover assignment
-    async addShiftAreaCoverPorter(areaCoverId, porterId, startTime, endTime) {
-      this.loading.areaCover = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('shift_area_cover_porter_assignments')
-          .insert({
-            shift_area_cover_assignment_id: areaCoverId,
-            porter_id: porterId,
-            start_time: startTime,
-            end_time: endTime
-          })
+  // Add a porter to a shift area cover assignment
+  async addShiftAreaCoverPorter(areaCoverId, porterId, startTime, endTime, agreedAbsence = null) {
+    this.loading.areaCover = true;
+    this.error = null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('shift_area_cover_porter_assignments')
+        .insert({
+          shift_area_cover_assignment_id: areaCoverId,
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime,
+          agreed_absence: agreedAbsence
+        })
           .select(`
             *,
             porter:porter_id(id, first_name, last_name),
@@ -1717,20 +1718,21 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
-    // Add a porter to a shift support service assignment
-    async addShiftSupportServicePorter(serviceId, porterId, startTime, endTime) {
-      this.loading.supportServices = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('shift_support_service_porter_assignments')
-          .insert({
-            shift_support_service_assignment_id: serviceId,
-            porter_id: porterId,
-            start_time: startTime,
-            end_time: endTime
-          })
+  // Add a porter to a shift support service assignment
+  async addShiftSupportServicePorter(serviceId, porterId, startTime, endTime, agreedAbsence = null) {
+    this.loading.supportServices = true;
+    this.error = null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('shift_support_service_porter_assignments')
+        .insert({
+          shift_support_service_assignment_id: serviceId,
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime,
+          agreed_absence: agreedAbsence
+        })
           .select(`
             *,
             porter:porter_id(id, first_name, last_name)
