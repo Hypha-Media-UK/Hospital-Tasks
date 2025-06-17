@@ -121,11 +121,30 @@ const porterAssignments = computed(() => {
   return shiftsStore.getPorterAssignmentsByAreaId(props.assignment.id);
 });
 
-// Get all available (non-absent) porters
+// Get all available (non-absent and currently active) porters
 const availablePorters = computed(() => {
   const today = new Date();
+  const currentHours = today.getHours();
+  const currentMinutes = today.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  
   return porterAssignments.value.filter(assignment => {
-    return !staffStore.isPorterAbsent(assignment.porter_id, today);
+    // First check if porter is absent
+    if (staffStore.isPorterAbsent(assignment.porter_id, today)) {
+      return false;
+    }
+    
+    // Then check if this is a future allocation
+    if (assignment.start_time) {
+      // Convert start time to minutes for comparison
+      const [startHours, startMinutes] = assignment.start_time.split(':').map(Number);
+      const startTimeInMinutes = (startHours * 60) + startMinutes;
+      
+      // Only include porters whose allocation time has started
+      return startTimeInMinutes <= currentTimeInMinutes;
+    }
+    
+    return true;
   });
 });
 

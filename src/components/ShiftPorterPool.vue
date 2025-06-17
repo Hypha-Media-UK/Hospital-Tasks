@@ -16,7 +16,8 @@
     
     <div v-else class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
-           :class="{ 'assigned': getPorterAssignments(entry.porter_id).length > 0 }">
+           :class="{ 'assigned': getPorterAssignments(entry.porter_id).length > 0 }"
+           @click.stop="openAllocationModal(entry.porter)">
         <div class="porter-card__content">
           <div class="porter-card__name" 
                :class="{ 
@@ -59,6 +60,15 @@
         </div>
       </div>
     </div>
+    
+    <!-- Allocation Modal -->
+    <AllocatePorterModal 
+      v-if="showAllocationModal" 
+      :porter="selectedPorter"
+      :shift-id="shiftId"
+      @close="showAllocationModal = false"
+      @allocated="handlePorterAllocated"
+    />
     
     <!-- Porter Selector Modal -->
     <div v-if="showPorterSelector" class="modal-overlay" @click.self="showPorterSelector = false">
@@ -128,6 +138,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useAreaCoverStore } from '../stores/areaCoverStore';
+import AllocatePorterModal from './AllocatePorterModal.vue';
 
 const props = defineProps({
   shiftId: {
@@ -141,6 +152,8 @@ const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
 
 const showPorterSelector = ref(false);
+const showAllocationModal = ref(false);
+const selectedPorter = ref(null);
 
 // Expose showPorterSelector method to parent
 const openPorterSelector = () => {
@@ -151,6 +164,18 @@ const openPorterSelector = () => {
 defineExpose({
   openPorterSelector
 });
+
+// Open allocation modal for a porter
+const openAllocationModal = (porter) => {
+  selectedPorter.value = porter;
+  showAllocationModal.value = true;
+};
+
+// Handle when a porter has been allocated
+const handlePorterAllocated = (allocation) => {
+  console.log('Porter allocated:', allocation);
+  // No need to do anything else - the store and UI will update automatically
+};
 const selectedPorters = ref([]);
 const addingPorters = ref(false);
 const isLoading = ref(true);
@@ -484,10 +509,22 @@ onMounted(async () => {
   background-color: white;
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: rgba(66, 133, 244, 0.05);
+  }
   
   &.assigned {
     background-color: #FFF8ED;  /* Extremely pale orange background */
     border: 1px solid rgba(0, 0, 0, 0.15);
+    
+    &:hover {
+      background-color: #FFF8ED;  /* Keep the same background but add shadow */
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
   }
   
   &__content {
