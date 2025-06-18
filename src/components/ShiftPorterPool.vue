@@ -14,7 +14,28 @@
       No porters assigned to this shift yet. Add porters using the button above.
     </div>
     
-    <div v-else class="porter-grid">
+    <!-- Filter controls -->
+    <div v-else class="filter-controls">
+      <div class="filter-label">Sort by:</div>
+      <div class="filter-options">
+        <button 
+          class="filter-btn" 
+          :class="{ active: sortFilter === 'alphabetical' }"
+          @click="sortFilter = 'alphabetical'"
+        >
+          A-Z
+        </button>
+        <button 
+          class="filter-btn" 
+          :class="{ active: sortFilter === 'available' }"
+          @click="sortFilter = 'available'"
+        >
+          Available
+        </button>
+      </div>
+    </div>
+    
+    <div v-if="sortedPorterPool.length > 0" class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
            :class="{ 
              'assigned': hasActiveAssignments(entry.porter_id),
@@ -186,6 +207,7 @@ const settingsStore = useSettingsStore();
 const showPorterSelector = ref(false);
 const showAllocationModal = ref(false);
 const selectedPorter = ref(null);
+const sortFilter = ref('alphabetical'); // Default to alphabetical sorting
 
 // Expose showPorterSelector method to parent
 const openPorterSelector = () => {
@@ -222,21 +244,39 @@ const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
 });
 
-// Sorted porter pool with Runners first, then assigned porters
+// Sorted porter pool based on selected filter
 const sortedPorterPool = computed(() => {
   if (!porterPool.value.length) return [];
   
-  return [...porterPool.value].sort((a, b) => {
-    const aAssignments = getPorterAssignments(a.porter_id).length;
-    const bAssignments = getPorterAssignments(b.porter_id).length;
-    
-    // If a is a Runner (0 assignments) and b is not, a comes first
-    if (aAssignments === 0 && bAssignments > 0) return -1;
-    // If b is a Runner and a is not, b comes first
-    if (bAssignments === 0 && aAssignments > 0) return 1;
-    // Otherwise keep original order
-    return 0;
-  });
+  const porters = [...porterPool.value];
+  
+  if (sortFilter.value === 'alphabetical') {
+    // Sort alphabetically by name
+    return porters.sort((a, b) => {
+      // Sort by first name (could also sort by last name if preferred)
+      return `${a.porter.first_name} ${a.porter.last_name}`.localeCompare(
+        `${b.porter.first_name} ${b.porter.last_name}`
+      );
+    });
+  } else if (sortFilter.value === 'available') {
+    // First check which porters have active assignments
+    return porters.sort((a, b) => {
+      const aHasActiveAssignments = hasActiveAssignments(a.porter_id);
+      const bHasActiveAssignments = hasActiveAssignments(b.porter_id);
+      
+      // First, show available porters
+      if (!aHasActiveAssignments && bHasActiveAssignments) return -1;
+      if (aHasActiveAssignments && !bHasActiveAssignments) return 1;
+      
+      // For porters with the same active/inactive status, sort alphabetically
+      return `${a.porter.first_name} ${a.porter.last_name}`.localeCompare(
+        `${b.porter.first_name} ${b.porter.last_name}`
+      );
+    });
+  }
+  
+  // Fallback - just return original order
+  return porters;
 });
 
 const availablePorters = computed(() => {
@@ -621,6 +661,48 @@ onMounted(async () => {
   padding: 24px;
   text-align: center;
   color: rgba(0, 0, 0, 0.6);
+}
+
+/* Filter controls styling */
+.filter-controls {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.filter-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-right: 12px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.filter-options {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid #e0e0e0;
+  background-color: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: #f5f5f5;
+  }
+  
+  &.active {
+    background-color: #4285F4;
+    color: white;
+    border-color: #4285F4;
+  }
 }
 
 .porter-grid {
