@@ -2173,6 +2173,88 @@ export const useShiftsStore = defineStore('shifts', {
       return 0;
     }
   },
+  
+  // Clean up expired department assignments
+  async cleanupExpiredDepartmentAssignments() {
+    try {
+      // Get current time in HH:MM:SS format
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const currentTime = `${hours}:${minutes}:${seconds}`;
+      
+      // Find department assignments with end times in the past
+      const expiredAssignments = this.shiftAreaCoverPorterAssignments.filter(
+        assignment => assignment.end_time < currentTime
+      );
+      
+      if (expiredAssignments.length === 0) {
+        return 0; // No expired assignments to clean up
+      }
+      
+      console.log(`Found ${expiredAssignments.length} expired department assignments to clean up`);
+      
+      // Remove each expired department assignment
+      for (const assignment of expiredAssignments) {
+        await this.removeShiftAreaCoverPorter(assignment.id);
+      }
+      
+      console.log(`Cleaned up ${expiredAssignments.length} expired department assignments`);
+      return expiredAssignments.length;
+    } catch (error) {
+      console.error('Error cleaning up expired department assignments:', error);
+      return 0;
+    }
+  },
+  
+  // Clean up expired service assignments
+  async cleanupExpiredServiceAssignments() {
+    try {
+      // Get current time in HH:MM:SS format
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const currentTime = `${hours}:${minutes}:${seconds}`;
+      
+      // Find service assignments with end times in the past
+      const expiredAssignments = this.shiftSupportServicePorterAssignments.filter(
+        assignment => assignment.end_time < currentTime
+      );
+      
+      if (expiredAssignments.length === 0) {
+        return 0; // No expired assignments to clean up
+      }
+      
+      console.log(`Found ${expiredAssignments.length} expired service assignments to clean up`);
+      
+      // Remove each expired service assignment
+      for (const assignment of expiredAssignments) {
+        await this.removeShiftSupportServicePorter(assignment.id);
+      }
+      
+      console.log(`Cleaned up ${expiredAssignments.length} expired service assignments`);
+      return expiredAssignments.length;
+    } catch (error) {
+      console.error('Error cleaning up expired service assignments:', error);
+      return 0;
+    }
+  },
+  
+  // Clean up all expired assignments (absences, departments, and services)
+  async cleanupAllExpiredAssignments() {
+    const cleanedAbsences = await this.cleanupExpiredAbsences();
+    const cleanedDepartments = await this.cleanupExpiredDepartmentAssignments();
+    const cleanedServices = await this.cleanupExpiredServiceAssignments();
+    
+    return {
+      absences: cleanedAbsences,
+      departments: cleanedDepartments,
+      services: cleanedServices,
+      total: cleanedAbsences + cleanedDepartments + cleanedServices
+    };
+  },
     
     // Remove a porter from a shift's porter pool
     async removePorterFromShift(porterPoolId) {

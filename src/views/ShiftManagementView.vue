@@ -716,36 +716,68 @@ const porters = computed(() => {
   // Get current time for absence checking
   const now = new Date();
   const currentTimeStr = now.toTimeString().substring(0, 8); // HH:MM:SS format
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
   
-  // Only show porters from the shift pool who are "Runners" (no assignments) and not absent
+  // Helper function to convert time string (HH:MM:SS) to minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60) + minutes;
+  };
+  
+  // Helper function to check if a time period is active now
+  const isTimePeriodActive = (startTimeStr, endTimeStr) => {
+    if (!startTimeStr || !endTimeStr) return false;
+    
+    const startTimeMinutes = timeToMinutes(startTimeStr);
+    const endTimeMinutes = timeToMinutes(endTimeStr);
+    
+    return currentTimeInMinutes >= startTimeMinutes && currentTimeInMinutes <= endTimeMinutes;
+  };
+  
+  // Only show porters from the shift pool who are currently available
   return shiftsStore.shiftPorterPool
     .filter(entry => {
-      // Get area cover assignments for this porter
-      const areaCoverAssignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(
-        a => a.porter_id === entry.porter_id
-      );
-      
-      // Get service assignments for this porter
-      const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments.filter(
-        a => a.porter_id === entry.porter_id
-      );
-      
       // Check if porter has a global absence (illness, annual leave)
       const isAbsent = staffStore.isPorterAbsent(entry.porter_id, now);
+      if (isAbsent) return false;
       
-      // Check if porter has a scheduled absence in the shift
-      const hasScheduledAbsence = shiftsStore.shiftPorterAbsences && shiftsStore.shiftPorterAbsences.some(absence => {
-        if (absence.porter_id !== entry.porter_id) return false;
-        
-        // Check if current time is within absence period
-        return absence.start_time <= currentTimeStr && absence.end_time >= currentTimeStr;
-      });
+      // Check if porter has an active scheduled absence in the shift
+      const hasActiveAbsence = shiftsStore.shiftPorterAbsences && 
+        shiftsStore.shiftPorterAbsences.some(absence => {
+          if (absence.porter_id !== entry.porter_id) return false;
+          
+          // Check if current time is within absence period
+          return isTimePeriodActive(absence.start_time, absence.end_time);
+        });
+      if (hasActiveAbsence) return false;
       
-      // Only include porters with no assignments (Runners) and no absences
-      return areaCoverAssignments.length === 0 && 
-             serviceAssignments.length === 0 && 
-             !isAbsent &&
-             !hasScheduledAbsence;
+      // Check if porter has active area cover assignments
+      const hasActiveAreaCoverAssignment = shiftsStore.shiftAreaCoverPorterAssignments.some(
+        assignment => {
+          if (assignment.porter_id !== entry.porter_id) return false;
+          
+          // Check if current time is within assignment period
+          return isTimePeriodActive(assignment.start_time, assignment.end_time);
+        }
+      );
+      if (hasActiveAreaCoverAssignment) return false;
+      
+      // Check if porter has active service assignments
+      const hasActiveServiceAssignment = shiftsStore.shiftSupportServicePorterAssignments.some(
+        assignment => {
+          if (assignment.porter_id !== entry.porter_id) return false;
+          
+          // Check if current time is within assignment period
+          return isTimePeriodActive(assignment.start_time, assignment.end_time);
+        }
+      );
+      if (hasActiveServiceAssignment) return false;
+      
+      // If we've reached here, porter is available
+      return true;
     })
     .map(p => p.porter);
 });
@@ -797,13 +829,14 @@ const canSaveTask = computed(() => {
 });
 
 // Load data on component mount
-// Function to check and clean up expired absences
-const checkAndCleanupExpiredAbsences = async () => {
+// Function to check and clean up all expired allocations
+const checkAndCleanupExpiredAllocations = async () => {
   if (shift.value && shift.value.id) {
-    console.log('Checking for expired absences...');
-    const cleanedCount = await shiftsStore.cleanupExpiredAbsences();
-    if (cleanedCount > 0) {
-      console.log(`Cleaned up ${cleanedCount} expired absences`);
+    console.log('Checking for expired allocations (absences, departments, services)...');
+    const result = await shiftsStore.cleanupAllExpiredAssignments();
+    
+    if (result.total > 0) {
+      console.log(`Cleaned up ${result.total} expired allocations:`, result);
     }
   }
 };
@@ -820,9 +853,9 @@ onMounted(async () => {
   // Update indicator position on window resize
   window.addEventListener('resize', updateIndicatorPosition);
   
-  // Set up periodic cleanup of expired absences (every minute)
-  checkAndCleanupExpiredAbsences(); // Initial check
-  cleanupTimer = setInterval(checkAndCleanupExpiredAbsences, 60000);
+  // Set up periodic cleanup of all expired allocations (every minute)
+  checkAndCleanupExpiredAllocations(); // Initial check
+  cleanupTimer = setInterval(checkAndCleanupExpiredAllocations, 60000);
   
   try {
     const shiftId = route.params.id;
