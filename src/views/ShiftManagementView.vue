@@ -727,6 +727,18 @@ const porters = computed(() => {
     return (hours * 60) + minutes;
   };
   
+  // Helper function to check if current time is within a time range, handling overnight ranges
+  const isTimeInRange = (currentTimeMinutes, startTimeMinutes, endTimeMinutes) => {
+    // Handle overnight ranges (where end time is less than start time)
+    if (endTimeMinutes < startTimeMinutes) {
+      // Current time is either after start time or before end time
+      return currentTimeMinutes >= startTimeMinutes || currentTimeInMinutes <= endTimeMinutes;
+    } else {
+      // Normal case: current time is between start and end times
+      return currentTimeInMinutes >= startTimeMinutes && currentTimeInMinutes <= endTimeMinutes;
+    }
+  };
+  
   // Helper function to check if a time period is active now
   const isTimePeriodActive = (startTimeStr, endTimeStr) => {
     if (!startTimeStr || !endTimeStr) return false;
@@ -734,7 +746,26 @@ const porters = computed(() => {
     const startTimeMinutes = timeToMinutes(startTimeStr);
     const endTimeMinutes = timeToMinutes(endTimeStr);
     
-    return currentTimeInMinutes >= startTimeMinutes && currentTimeInMinutes <= endTimeMinutes;
+    return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
+  };
+  
+  // Helper function to check if porter is on duty based on contracted hours
+  const isPorterOnDuty = (porterId) => {
+    // Get the porter details
+    const porter = staffStore.porters.find(p => p.id === porterId);
+    if (!porter) return true; // Default to on duty if porter not found
+    
+    // If no contracted hours set, assume porter is on duty
+    if (!porter.contracted_hours_start || !porter.contracted_hours_end) {
+      return true;
+    }
+    
+    // Convert contracted hours to minutes
+    const startTimeMinutes = timeToMinutes(porter.contracted_hours_start);
+    const endTimeMinutes = timeToMinutes(porter.contracted_hours_end);
+    
+    // Check if current time is within contracted hours
+    return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
   };
   
   // Only show porters from the shift pool who are currently available
@@ -743,6 +774,9 @@ const porters = computed(() => {
       // Check if porter has a global absence (illness, annual leave)
       const isAbsent = staffStore.isPorterAbsent(entry.porter_id, now);
       if (isAbsent) return false;
+      
+      // Check if porter is not on duty yet based on contracted hours
+      if (!isPorterOnDuty(entry.porter_id)) return false;
       
       // Check if porter has an active scheduled absence in the shift
       const hasActiveAbsence = shiftsStore.shiftPorterAbsences && 

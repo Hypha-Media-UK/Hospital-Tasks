@@ -18,7 +18,8 @@
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
            :class="{ 
              'assigned': hasActiveAssignments(entry.porter_id),
-             'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
+             'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id),
+             'not-on-duty': !isPorterOnDuty(entry.porter_id)
            }"
            @click.stop="openAllocationModal(entry.porter)">
         <div class="porter-card__content">
@@ -164,6 +165,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useAreaCoverStore } from '../stores/areaCoverStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 
 // Event for opening allocation modal
@@ -179,6 +181,7 @@ const props = defineProps({
 const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
+const settingsStore = useSettingsStore();
 
 const showPorterSelector = ref(false);
 const showAllocationModal = ref(false);
@@ -393,19 +396,56 @@ const getPorterAssignments = (porterId) => {
   return [...areaCoverAssignments, ...serviceAssignments, ...absenceAssignments];
 };
 
+// Helper function to convert time string (HH:MM:SS) to minutes
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+};
+
+// Check if current time is within a time range, handling overnight ranges
+const isTimeInRange = (currentTimeMinutes, startTimeMinutes, endTimeMinutes) => {
+  // Handle overnight ranges (where end time is less than start time)
+  if (endTimeMinutes < startTimeMinutes) {
+    // Current time is either after start time or before end time
+    return currentTimeMinutes >= startTimeMinutes || currentTimeMinutes <= endTimeMinutes;
+  } else {
+    // Normal case: current time is between start and end times
+    return currentTimeMinutes >= startTimeMinutes && currentTimeMinutes <= endTimeMinutes;
+  }
+};
+
+// Check if a porter is currently on duty based on contracted hours
+const isPorterOnDuty = (porterId) => {
+  // Get the porter from the store
+  const porter = staffStore.porters.find(p => p.id === porterId);
+  if (!porter) return true; // Default to on duty if porter not found
+  
+  // If no contracted hours set, assume porter is on duty
+  if (!porter.contracted_hours_start || !porter.contracted_hours_end) {
+    return true;
+  }
+  
+  // Get current time in minutes
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  
+  // Convert contracted hours to minutes
+  const startTimeMinutes = timeToMinutes(porter.contracted_hours_start);
+  const endTimeMinutes = timeToMinutes(porter.contracted_hours_end);
+  
+  // Check if current time is within contracted hours
+  return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
+};
+
 // Check if a porter has any active assignments at the current time
 const hasActiveAssignments = (porterId) => {
   const now = new Date();
   const currentHours = now.getHours();
   const currentMinutes = now.getMinutes();
   const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
-  
-  // Helper function to convert time string (HH:MM:SS) to minutes
-  const timeToMinutes = (timeStr) => {
-    if (!timeStr) return 0;
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return (hours * 60) + minutes;
-  };
   
   // Get all assignments for this porter
   const assignments = getPorterAssignments(porterId);
@@ -416,7 +456,7 @@ const hasActiveAssignments = (porterId) => {
     const endTimeMinutes = timeToMinutes(assignment.end_time);
     
     // Assignment is active if current time is between start and end times
-    return currentTimeInMinutes >= startTimeMinutes && currentTimeInMinutes <= endTimeMinutes;
+    return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
   });
 };
 
@@ -601,6 +641,7 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   padding: 12px 16px;
+  position: relative; /* For absolute positioning of the badge */
   background-color: white;
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -629,6 +670,31 @@ onMounted(async () => {
     &:hover {
       background-color: #FFEBEE;  /* Keep the same background but add shadow */
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+  
+  &.not-on-duty {
+    background-color: #F5F5F5;  /* Light gray background */
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    opacity: 0.85;
+    
+    &:hover {
+      background-color: #F5F5F5;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    &::before {
+      content: "NOT YET ON DUTY";
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: #9E9E9E;
+      color: white;
+      font-size: 8px;
+      font-weight: bold;
+      padding: 2px 4px;
+      border-radius: 3px;
+      line-height: 1;
     }
   }
   
