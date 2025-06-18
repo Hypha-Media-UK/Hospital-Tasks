@@ -285,6 +285,7 @@
                     id="timeAllocated" 
                     v-model="taskForm.timeAllocated" 
                     class="form-control"
+                    :class="{ 'time-auto-updated': timeFieldsAutoUpdated }"
                   />
                 </div>
                 
@@ -307,6 +308,7 @@
                     id="timeCompleted" 
                     v-model="taskForm.timeCompleted" 
                     class="form-control"
+                    :class="{ 'time-auto-updated': timeFieldsAutoUpdated }"
                   />
                 </div>
               </motion.div>
@@ -570,6 +572,10 @@ const taskFormError = ref('');
 const showTimeFields = ref(false); // Controls visibility of time fields
 const isClosing = ref(false); // Track closing state for exit animations
 const timeFieldsHeight = ref(0); // Track height for time fields animation
+const completedTimeOffset = ref(0); // Store the random offset for completed time
+const allocatedTimeOffset = ref(1); // Store the offset for allocated time (default 1 minute)
+const originalTaskTimes = ref({ received: '', allocated: '', completed: '' }); // Store original times for reference
+const timeFieldsAutoUpdated = ref(false); // Track when time fields are auto-updated for visual feedback
 
 // Porter allocation modal state
 const showAllocatePorterModal = ref(false);
@@ -1033,6 +1039,53 @@ watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
   }
 });
 
+// Watch for changes to the received time and update other time fields accordingly
+watch(() => taskForm.value.timeReceived, (newReceivedTime, oldReceivedTime) => {
+  if (!newReceivedTime) return;
+  
+  console.log('Received time changed:', newReceivedTime, 'Previous:', oldReceivedTime);
+  console.log('Is editing task:', isEditingTask.value);
+  console.log('Original received time:', originalTaskTimes.value.received);
+  
+  // Always update the times whenever received time changes, even when editing
+  try {
+    // Parse the received time
+    const [hours, minutes] = newReceivedTime.split(':').map(Number);
+    
+    // Create a date object for the received time
+    const receivedDate = new Date();
+    receivedDate.setHours(hours, minutes, 0, 0);
+    
+    // Allocated time is always exactly 1 minute after received time
+    const allocatedDate = new Date(receivedDate.getTime() + 60000); // Always 1 minute
+    
+    // Calculate completed time (received + completed offset)
+    const completedDate = new Date(receivedDate.getTime() + (completedTimeOffset.value * 60000));
+    
+    // Update the other time fields
+    const newAllocatedTime = formatDateTimeForInput(allocatedDate);
+    const newCompletedTime = formatDateTimeForInput(completedDate);
+    
+    console.log('New allocated time will be:', newAllocatedTime);
+    console.log('New completed time will be:', newCompletedTime);
+    
+    // Always update the times
+    taskForm.value.timeAllocated = newAllocatedTime;
+    taskForm.value.timeCompleted = newCompletedTime;
+    
+    // Set flag for visual feedback
+    timeFieldsAutoUpdated.value = true;
+    
+    // Reset the flag after animation completes
+    setTimeout(() => {
+      timeFieldsAutoUpdated.value = false;
+    }, 1500);
+  } catch (error) {
+    console.error('Error updating time fields:', error);
+    // Don't update fields if there's an error parsing the time
+  }
+});
+
 // Watch for origin department changes to auto-populate task type and task item
 watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
   if (!newDepartmentId) return;
@@ -1256,6 +1309,35 @@ function editTask(task) {
   editingTaskId.value = task.id;
   editingTask.value = task; // Store the full task object for time fields display
   
+  // Store original times for reference
+  originalTaskTimes.value = {
+    received: task.time_received ? formatDateTimeForInput(task.time_received) : '',
+    allocated: task.time_allocated ? formatDateTimeForInput(task.time_allocated) : '',
+    completed: task.time_completed ? formatDateTimeForInput(task.time_completed) : ''
+  };
+  
+  // Allocated time should always be exactly 1 minute after received time
+  allocatedTimeOffset.value = 1;
+  
+  // Calculate and store time offset for completed time
+  if (task.time_received && task.time_completed) {
+    const receivedTime = new Date(task.time_received);
+    
+    // Calculate completed time offset if both received and completed times exist
+    if (task.time_completed) {
+      const completedTime = new Date(task.time_completed);
+      const completedDiffMs = completedTime.getTime() - receivedTime.getTime();
+      completedTimeOffset.value = Math.round(completedDiffMs / 60000); // Convert ms to minutes
+    } else {
+      // Default to a random offset if completed time isn't available
+      completedTimeOffset.value = Math.floor(Math.random() * (30 - 15 + 1)) + 15;
+    }
+  } else {
+    // Default values if no received time is available
+    allocatedTimeOffset.value = 1;
+    completedTimeOffset.value = Math.floor(Math.random() * (30 - 15 + 1)) + 15;
+  }
+  
   // Set up the form with the current task data
   taskForm.value = {
     taskTypeId: task.task_item.task_type_id,
@@ -1272,6 +1354,9 @@ function editTask(task) {
   // Note: We no longer automatically show the time fields section
   // This keeps the UI consistent between adding and editing tasks
   showTimeFields.value = false;
+  
+  // Reset auto-update visual feedback
+  timeFieldsAutoUpdated.value = false;
   
   // Load task items for this task type
   loadTaskItems();
@@ -1300,12 +1385,23 @@ function resetTaskForm() {
   // Get current time
   const now = new Date();
   
-  // Calculate time_allocated (+1 minute from now)
-  const timeAllocated = new Date(now.getTime() + 60000); // 60000 ms = 1 minute
+  // Reset offset values for new tasks
+  allocatedTimeOffset.value = 1; // 1 minute
   
   // Calculate time_completed (random between 15-30 minutes from now)
   const randomMinutes = Math.floor(Math.random() * (30 - 15 + 1)) + 15; // Random between 15-30
-  const timeCompleted = new Date(now.getTime() + (randomMinutes * 60000)); // Convert minutes to ms
+  completedTimeOffset.value = randomMinutes; // Store this offset for later recalculation
+  
+  // Calculate time values
+  const timeAllocated = new Date(now.getTime() + (allocatedTimeOffset.value * 60000));
+  const timeCompleted = new Date(now.getTime() + (completedTimeOffset.value * 60000));
+  
+  // Reset original times
+  originalTaskTimes.value = {
+    received: '',
+    allocated: '',
+    completed: ''
+  };
   
   taskForm.value = {
     taskTypeId: '',
@@ -1321,6 +1417,7 @@ function resetTaskForm() {
   taskItems.value = [];
   taskFormError.value = '';
   showTimeFields.value = false; // Reset time fields visibility
+  timeFieldsAutoUpdated.value = false; // Reset auto-update visual feedback
   
   // Reset touch tracking flags
   taskTypeFieldTouched.value = false;
@@ -2603,6 +2700,29 @@ function isWeekend(date) {
 
 .field-auto-populated {
   animation: field-glow 2s ease-in-out;
+}
+
+/* Animation for auto-updated time fields */
+@keyframes time-field-update {
+  0% { 
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0); 
+    background-color: white;
+    border-color: #ccc;
+  }
+  50% { 
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.6); 
+    background-color: rgba(76, 175, 80, 0.1);
+    border-color: #4CAF50;
+  }
+  100% { 
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0); 
+    background-color: white;
+    border-color: #ccc;
+  }
+}
+
+.time-auto-updated {
+  animation: time-field-update 1.5s ease-in-out;
 }
 
 /* Active indicator styling */

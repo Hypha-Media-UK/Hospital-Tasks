@@ -221,8 +221,9 @@ defineExpose({
 
 // Open allocation modal for a porter
 const openAllocationModal = (porter) => {
-  // Emit event to parent component to open the modal
-  emits('openAllocationModal', porter);
+  // Open the modal directly instead of emitting an event
+  selectedPorter.value = porter;
+  showAllocationModal.value = true;
 };
 
 // Handle when a porter has been allocated

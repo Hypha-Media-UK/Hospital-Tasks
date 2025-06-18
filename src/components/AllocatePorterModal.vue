@@ -2,146 +2,181 @@
   <div class="modal-overlay" @click.self="closeModal">
     <div class="modal-container">
       <div class="modal-header">
-        <h3 class="modal-title">Allocate Porter</h3>
-        <button class="modal-close" @click="closeModal">&times;</button>
+        <h3>Allocate Porter</h3>
+        <button class="modal-close" @click="closeModal">×</button>
       </div>
       
       <div class="modal-body">
-        <div v-if="porter" class="porter-info">
-          <div class="porter-name">{{ porter.first_name }} {{ porter.last_name }}</div>
+        <div v-if="!porter" class="empty-state">
+          No porter selected
         </div>
         
-        <div class="allocation-form">
-          <div class="allocation-type">
-            <div class="form-group">
-              <label>Allocation Type</label>
-              <div class="btn-group">
-                <button 
-                  @click="allocationType = 'department'" 
-                  :class="{ active: allocationType === 'department' }" 
-                  class="btn btn-toggle"
+        <div v-else class="porter-allocation">
+          <div class="porter-info">
+            <div class="porter-name">{{ porter.first_name }} {{ porter.last_name }}</div>
+            
+            <div v-if="porter.availability_pattern" class="porter-availability">
+              {{ porter.availability_pattern }}
+              <span v-if="porter.contracted_hours_start && porter.contracted_hours_end">
+                ({{ formatTime(porter.contracted_hours_start) }} - {{ formatTime(porter.contracted_hours_end) }})
+              </span>
+            </div>
+          </div>
+          
+          <div class="allocation-tabs">
+            <button 
+              :class="{ active: activeTab === 'department' }"
+              @click="activeTab = 'department'"
+              class="tab-button"
+            >
+              Department
+            </button>
+            <button 
+              :class="{ active: activeTab === 'service' }"
+              @click="activeTab = 'service'"
+              class="tab-button"
+            >
+              Service
+            </button>
+            <button 
+              :class="{ active: activeTab === 'absence' }"
+              @click="activeTab = 'absence'"
+              class="tab-button"
+            >
+              Absence
+            </button>
+          </div>
+          
+          <div class="tab-content">
+            <!-- Department Tab -->
+            <div v-if="activeTab === 'department'" class="tab-pane">
+              <div class="form-group">
+                <label for="departmentSelect">Department</label>
+                <select 
+                  id="departmentSelect" 
+                  v-model="departmentId"
+                  class="form-control"
+                  :disabled="processing"
                 >
-                  Department
-                </button>
-                <button 
-                  @click="allocationType = 'service'" 
-                  :class="{ active: allocationType === 'service' }" 
-                  class="btn btn-toggle"
-                >
-                  Service
-                </button>
-                <button 
-                  @click="allocationType = 'absence'" 
-                  :class="{ active: allocationType === 'absence' }" 
-                  class="btn btn-toggle"
-                >
-                  Absence
-                </button>
+                  <option value="">Select department</option>
+                  <option v-for="dept in availableDepartments" :key="dept.id" :value="dept.id">
+                    {{ dept.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="time-fields">
+                <div class="form-group">
+                  <label for="departmentStartTime">Start Time</label>
+                  <input 
+                    type="time" 
+                    id="departmentStartTime" 
+                    v-model="departmentStartTime"
+                    class="form-control"
+                    :disabled="processing"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="departmentEndTime">End Time</label>
+                  <input 
+                    type="time" 
+                    id="departmentEndTime" 
+                    v-model="departmentEndTime"
+                    class="form-control"
+                    :disabled="processing"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Department Selection (shown if allocationType is 'department') -->
-          <div v-if="allocationType === 'department'" class="form-group">
-            <label for="departmentSelect">Department</label>
-            <select 
-              id="departmentSelect" 
-              v-model="selectedDepartmentId" 
-              class="form-control"
-              required
-            >
-              <option value="">Select Department</option>
-              <option 
-                v-for="assignment in departmentAssignments" 
-                :key="assignment.id"
-                :value="assignment.id"
-              >
-                {{ assignment.department.name }} ({{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }})
-              </option>
-            </select>
-          </div>
-          
-          <!-- Service Selection (shown if allocationType is 'service') -->
-          <div v-if="allocationType === 'service'" class="form-group">
-            <label for="serviceSelect">Service</label>
-            <select 
-              id="serviceSelect" 
-              v-model="selectedServiceId" 
-              class="form-control"
-              required
-            >
-              <option value="">Select Service</option>
-              <option 
-                v-for="assignment in serviceAssignments" 
-                :key="assignment.id"
-                :value="assignment.id"
-              >
-                {{ assignment.service.name }} ({{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }})
-              </option>
-            </select>
-          </div>
-          
-          <!-- Absence Reason (shown if allocationType is 'absence') -->
-          <div v-if="allocationType === 'absence'" class="form-group">
-            <label for="absenceReason">Absence Reason</label>
-            <input 
-              type="text" 
-              id="absenceReason" 
-              v-model="absenceReason" 
-              class="form-control"
-              placeholder="E.g., Break, Training, Meeting"
-              required
-            />
-          </div>
-          
-          <!-- Time fields -->
-          <div class="form-row">
-            <div class="form-group">
-              <label for="startTime">Start Time</label>
-              <input 
-                type="time" 
-                id="startTime" 
-                v-model="startTime" 
-                class="form-control"
-                required
-              />
+            
+            <!-- Service Tab -->
+            <div v-if="activeTab === 'service'" class="tab-pane">
+              <div class="form-group">
+                <label for="serviceSelect">Service</label>
+                <select 
+                  id="serviceSelect" 
+                  v-model="serviceId"
+                  class="form-control"
+                  :disabled="processing"
+                >
+                  <option value="">Select service</option>
+                  <option v-for="service in availableServices" :key="service.id" :value="service.id">
+                    {{ service.name }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="time-fields">
+                <div class="form-group">
+                  <label for="serviceStartTime">Start Time</label>
+                  <input 
+                    type="time" 
+                    id="serviceStartTime" 
+                    v-model="serviceStartTime"
+                    class="form-control"
+                    :disabled="processing"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="serviceEndTime">End Time</label>
+                  <input 
+                    type="time" 
+                    id="serviceEndTime" 
+                    v-model="serviceEndTime"
+                    class="form-control"
+                    :disabled="processing"
+                  />
+                </div>
+              </div>
             </div>
             
-            <div class="form-group">
-              <label for="endTime">End Time</label>
-              <input 
-                type="time" 
-                id="endTime" 
-                v-model="endTime" 
-                class="form-control"
-                required
-              />
+            <!-- Absence Tab -->
+            <div v-if="activeTab === 'absence'" class="tab-pane">
+              <div class="form-group">
+                <label for="absenceReason">Absence Reason</label>
+                <input 
+                  type="text" 
+                  id="absenceReason" 
+                  v-model="absenceReason"
+                  class="form-control"
+                  placeholder="e.g., Break, Training, etc."
+                  :disabled="processing"
+                />
+              </div>
+              
+              <div class="time-fields">
+                <div class="form-group">
+                  <label for="absenceStartTime">Start Time</label>
+                  <input 
+                    type="time" 
+                    id="absenceStartTime" 
+                    v-model="absenceStartTime"
+                    class="form-control"
+                    :disabled="processing"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="absenceEndTime">End Time</label>
+                  <input 
+                    type="time" 
+                    id="absenceEndTime" 
+                    v-model="absenceEndTime"
+                    class="form-control"
+                    :disabled="processing"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          
-          <!-- Future allocation notice -->
-          <div v-if="isFutureAllocation" class="future-allocation-notice">
-            <p>
-              <strong>Note:</strong> This allocation will start at {{ formattedStartTime }}. 
-              The porter will remain in the pool until this time.
-            </p>
-          </div>
-
-          <!-- Error message -->
-          <div v-if="errorMessage" class="error-message">
-            {{ errorMessage }}
           </div>
         </div>
       </div>
       
-      <div class="modal-footer">
-        <button @click="closeModal" class="btn btn-secondary">Cancel</button>
-        <button 
-          @click="allocatePorter" 
-          class="btn btn-primary" 
-          :disabled="!isFormValid || allocating"
-        >
-          {{ allocating ? 'Allocating...' : 'Allocate Porter' }}
+      <div v-if="porter" class="modal-footer">
+        <button @click="closeModal" class="btn btn-secondary" :disabled="processing">
+          Cancel
+        </button>
+        <button @click="allocatePorter" class="btn btn-primary" :disabled="!canAllocate || processing">
+          {{ processing ? 'Allocating...' : 'Allocate Porter' }}
         </button>
       </div>
     </div>
@@ -149,13 +184,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useShiftsStore } from '../stores/shiftsStore';
+import { useLocationsStore } from '../stores/locationsStore';
+import { useSupportServicesStore } from '../stores/supportServicesStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const props = defineProps({
   porter: {
     type: Object,
-    required: true
+    default: null
   },
   shiftId: {
     type: String,
@@ -163,239 +201,236 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'allocated']);
+const emits = defineEmits(['close', 'allocated']);
 
+// Stores
 const shiftsStore = useShiftsStore();
+const locationsStore = useLocationsStore();
+const supportServicesStore = useSupportServicesStore();
+const settingsStore = useSettingsStore();
 
-// Form state
-const allocationType = ref('department'); // 'department', 'service', or 'absence'
-const selectedDepartmentId = ref('');
-const selectedServiceId = ref('');
+// State
+const activeTab = ref('department');
+const processing = ref(false);
+
+// Department allocation
+const departmentId = ref('');
+const departmentStartTime = ref('');
+const departmentEndTime = ref('');
+
+// Service allocation
+const serviceId = ref('');
+const serviceStartTime = ref('');
+const serviceEndTime = ref('');
+
+// Absence allocation
 const absenceReason = ref('');
-const startTime = ref('');
-const endTime = ref('');
-const errorMessage = ref('');
-const allocating = ref(false);
+const absenceStartTime = ref('');
+const absenceEndTime = ref('');
 
-// Get department assignments from the store
-const departmentAssignments = computed(() => {
-  return shiftsStore.shiftAreaCoverAssignments || [];
-});
-
-// Get service assignments from the store
-const serviceAssignments = computed(() => {
-  return shiftsStore.shiftSupportServiceAssignments || [];
-});
-
-// Check if this would be a future allocation
-const isFutureAllocation = computed(() => {
-  if (!startTime.value) return false;
+// Computed properties
+const availableDepartments = computed(() => {
+  // Get all departments with area cover assignments for this shift
+  const deptIds = shiftsStore.shiftAreaCoverAssignments.map(a => a.department_id);
   
+  // Return only departments that have area cover assignments in this shift
+  return locationsStore.departments.filter(dept => deptIds.includes(dept.id));
+});
+
+const availableServices = computed(() => {
+  // Get all services with assignments for this shift
+  const serviceIds = shiftsStore.shiftSupportServiceAssignments.map(a => a.service_id);
+  
+  // Return only services that have assignments in this shift
+  return supportServicesStore.services.filter(service => serviceIds.includes(service.id));
+});
+
+const canAllocate = computed(() => {
+  if (activeTab.value === 'department') {
+    return departmentId.value && departmentStartTime.value && departmentEndTime.value;
+  } else if (activeTab.value === 'service') {
+    return serviceId.value && serviceStartTime.value && serviceEndTime.value;
+  } else if (activeTab.value === 'absence') {
+    return absenceStartTime.value && absenceEndTime.value; // Reason is optional
+  }
+  return false;
+});
+
+// Initialize time fields with current time as default
+const initializeTimeFields = () => {
   const now = new Date();
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const currentTime = `${hours}:${minutes}`;
   
-  // Convert start time to minutes for comparison
-  const [startHours, startMinutes] = startTime.value.split(':').map(Number);
-  const startTimeInMinutes = (startHours * 60) + startMinutes;
+  // Add one hour to get a default end time
+  const endDate = new Date(now.getTime() + 60 * 60 * 1000);
+  const endHours = String(endDate.getHours()).padStart(2, '0');
+  const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
+  const endTime = `${endHours}:${endMinutes}`;
   
-  // It's a future allocation if the start time is after the current time
-  return startTimeInMinutes > currentTimeInMinutes;
-});
+  // Department times
+  departmentStartTime.value = currentTime;
+  departmentEndTime.value = endTime;
+  
+  // Service times
+  serviceStartTime.value = currentTime;
+  serviceEndTime.value = endTime;
+  
+  // Absence times
+  absenceStartTime.value = currentTime;
+  absenceEndTime.value = endTime;
+};
 
-// Formatted start time for display
-const formattedStartTime = computed(() => {
-  if (!startTime.value) return '';
-  
-  const [hours, minutes] = startTime.value.split(':').map(Number);
-  
-  // Format with AM/PM
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
-  
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
-});
+// Methods
+const closeModal = () => {
+  emits('close');
+};
 
-// Validate the form
-const isFormValid = computed(() => {
-  // Clear any previous error message
-  errorMessage.value = '';
+const allocatePorter = async () => {
+  if (!canAllocate.value || !props.porter || processing.value) return;
   
-  if (allocationType.value === 'department' && !selectedDepartmentId.value) {
-    return false;
-  }
-  
-  if (allocationType.value === 'service' && !selectedServiceId.value) {
-    return false;
-  }
-  
-  if (allocationType.value === 'absence' && !absenceReason.value) {
-    return false;
-  }
-  
-  if (!startTime.value || !endTime.value) {
-    return false;
-  }
-  
-  // Check if end time is after start time
-  const [startHours, startMinutes] = startTime.value.split(':').map(Number);
-  const [endHours, endMinutes] = endTime.value.split(':').map(Number);
-  
-  const startInMinutes = (startHours * 60) + startMinutes;
-  const endInMinutes = (endHours * 60) + endMinutes;
-  
-  if (endInMinutes <= startInMinutes) {
-    errorMessage.value = 'End time must be after start time';
-    return false;
-  }
-  
-  return true;
-});
-
-// Format time for display
-function formatTime(timeStr) {
-  if (!timeStr) return '';
-  return timeStr.substring(0, 5); // Extract HH:MM part
-}
-
-// Set default start/end times based on the selected department/service
-watch([selectedDepartmentId, selectedServiceId], ([newDepartmentId, newServiceId]) => {
-  // Set default times based on the selected allocation
-  if (allocationType.value === 'department' && newDepartmentId) {
-    const assignment = departmentAssignments.value.find(a => a.id === newDepartmentId);
-    if (assignment) {
-      startTime.value = formatTime(assignment.start_time);
-      endTime.value = formatTime(assignment.end_time);
-    }
-  } else if (allocationType.value === 'service' && newServiceId) {
-    const assignment = serviceAssignments.value.find(a => a.id === newServiceId);
-    if (assignment) {
-      startTime.value = formatTime(assignment.start_time);
-      endTime.value = formatTime(assignment.end_time);
-    }
-  }
-});
-
-// Reset selections when allocation type changes
-watch(allocationType, () => {
-  selectedDepartmentId.value = '';
-  selectedServiceId.value = '';
-  absenceReason.value = '';
-  
-  // Only reset time fields if not switching to absence
-  if (allocationType.value !== 'absence') {
-    startTime.value = '';
-    endTime.value = '';
-  }
-});
-
-// Allocate porter to the selected department/service
-async function allocatePorter() {
-  if (!isFormValid.value || allocating.value) return;
-  
-  allocating.value = true;
-  errorMessage.value = '';
+  processing.value = true;
   
   try {
     let result;
     
-    if (allocationType.value === 'department') {
-      // Allocate to department
-      result = await shiftsStore.allocatePorterToDepartment({
-        porterId: props.porter.id,
-        shiftId: props.shiftId,
-        departmentAssignmentId: selectedDepartmentId.value,
-        startTime: startTime.value,
-        endTime: endTime.value
-      });
-      
-      if (result) {
-        emit('allocated', { 
-          type: 'department', 
-          departmentId: selectedDepartmentId.value,
-          startTime: startTime.value,
-          endTime: endTime.value,
-          isFuture: isFutureAllocation.value
-        });
-        closeModal();
-      } else {
-        errorMessage.value = 'Failed to allocate porter to department';
-      }
-    } else if (allocationType.value === 'service') {
-      // Allocate to service
-      result = await shiftsStore.allocatePorterToService({
-        porterId: props.porter.id,
-        shiftId: props.shiftId,
-        serviceAssignmentId: selectedServiceId.value,
-        startTime: startTime.value,
-        endTime: endTime.value
-      });
-      
-      if (result) {
-        emit('allocated', { 
-          type: 'service', 
-          serviceId: selectedServiceId.value,
-          startTime: startTime.value,
-          endTime: endTime.value,
-          isFuture: isFutureAllocation.value
-        });
-        closeModal();
-      } else {
-        errorMessage.value = 'Failed to allocate porter to service';
-      }
-    } else {
-      // Allocate to absence
-      result = await shiftsStore.addPorterAbsence(
-        props.shiftId,
-        props.porter.id,
-        startTime.value,
-        endTime.value,
-        absenceReason.value
+    if (activeTab.value === 'department') {
+      // Get the area cover assignment for this department
+      const areaAssignment = shiftsStore.shiftAreaCoverAssignments.find(
+        a => a.department_id === departmentId.value
       );
       
-      if (result) {
-        emit('allocated', { 
-          type: 'absence', 
-          absenceId: result.id,
-          startTime: startTime.value,
-          endTime: endTime.value,
-          reason: absenceReason.value,
-          isFuture: isFutureAllocation.value
-        });
-        closeModal();
-      } else {
-        errorMessage.value = 'Failed to add porter absence';
+      if (!areaAssignment) {
+        throw new Error('Area assignment not found');
       }
+      
+      // Allocate porter to department
+      result = await shiftsStore.assignPorterToShiftAreaCover({
+        shift_id: props.shiftId,
+        porter_id: props.porter.id,
+        shift_area_cover_assignment_id: areaAssignment.id,
+        start_time: departmentStartTime.value + ':00', // Add seconds
+        end_time: departmentEndTime.value + ':00' // Add seconds
+      });
+      
+      // Emit allocated event with details
+      emits('allocated', {
+        type: 'department',
+        department_id: departmentId.value,
+        porter_id: props.porter.id,
+        start_time: departmentStartTime.value,
+        end_time: departmentEndTime.value
+      });
+      
+    } else if (activeTab.value === 'service') {
+      // Get the service assignment for this service
+      const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+        a => a.service_id === serviceId.value
+      );
+      
+      if (!serviceAssignment) {
+        throw new Error('Service assignment not found');
+      }
+      
+      // Allocate porter to service
+      result = await shiftsStore.assignPorterToShiftSupportService({
+        shift_id: props.shiftId,
+        porter_id: props.porter.id,
+        shift_support_service_assignment_id: serviceAssignment.id,
+        start_time: serviceStartTime.value + ':00', // Add seconds
+        end_time: serviceEndTime.value + ':00' // Add seconds
+      });
+      
+      // Emit allocated event with details
+      emits('allocated', {
+        type: 'service',
+        service_id: serviceId.value,
+        porter_id: props.porter.id,
+        start_time: serviceStartTime.value,
+        end_time: serviceEndTime.value
+      });
+      
+    } else if (activeTab.value === 'absence') {
+      // Add scheduled absence for porter
+      result = await shiftsStore.addPorterAbsenceToShift({
+        shift_id: props.shiftId,
+        porter_id: props.porter.id,
+        absence_reason: absenceReason.value,
+        start_time: absenceStartTime.value + ':00', // Add seconds
+        end_time: absenceEndTime.value + ':00' // Add seconds
+      });
+      
+      // Emit allocated event with details
+      emits('allocated', {
+        type: 'absence',
+        porter_id: props.porter.id,
+        absence_reason: absenceReason.value,
+        start_time: absenceStartTime.value,
+        end_time: absenceEndTime.value
+      });
     }
+    
+    // Close modal on success
+    closeModal();
   } catch (error) {
     console.error('Error allocating porter:', error);
-    errorMessage.value = error.message || 'An error occurred while allocating the porter';
+    alert('Failed to allocate porter: ' + (error.message || 'Unknown error'));
   } finally {
-    allocating.value = false;
+    processing.value = false;
   }
-}
+};
 
-// Close modal
-function closeModal() {
-  emit('close');
-}
+// Format time (HH:MM)
+const formatTime = (timeString) => {
+  if (!timeString) return '';
+  
+  // If it's already just HH:MM
+  if (timeString.length === 5) return timeString;
+  
+  // If it has seconds (HH:MM:SS), remove seconds
+  if (timeString.length === 8) return timeString.substring(0, 5);
+  
+  // For any other format, try to parse as date
+  try {
+    const date = new Date(timeString);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch (e) {
+    console.error('Error formatting time:', e);
+    return timeString; // Return original if parsing fails
+  }
+};
 
-// Initialize component
+// Reset form when tab changes
+watch(activeTab, () => {
+  // No need to reset completely, but could add specific logic here if needed
+});
+
+// Reset form when porter changes
+watch(() => props.porter, () => {
+  departmentId.value = '';
+  serviceId.value = '';
+  absenceReason.value = '';
+  
+  // Initialize times again
+  initializeTimeFields();
+});
+
+// On component mount
 onMounted(() => {
-  // Set default time to current time
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
+  // Make sure data is loaded
+  if (locationsStore.departments.length === 0) {
+    locationsStore.fetchDepartments();
+  }
   
-  startTime.value = `${hours}:${minutes}`;
+  if (supportServicesStore.services.length === 0) {
+    supportServicesStore.fetchServices();
+  }
   
-  // End time = current time + 1 hour
-  const endDate = new Date(now.getTime() + (60 * 60 * 1000));
-  const endHours = String(endDate.getHours()).padStart(2, '0');
-  const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
-  
-  endTime.value = `${endHours}:${endMinutes}`;
+  // Initialize time fields
+  initializeTimeFields();
 });
 </script>
 
@@ -418,114 +453,124 @@ onMounted(() => {
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
 }
 
 .modal-header {
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
+  justify-content: space-between;
   
-  &:hover {
-    color: #333;
+  h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  
+  .modal-close {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
   }
 }
 
 .modal-body {
   padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+  
+  .empty-state {
+    text-align: center;
+    padding: 16px 0;
+    color: #666;
+  }
 }
 
 .modal-footer {
   padding: 16px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
 
 .porter-info {
-  margin-bottom: 20px;
-  background-color: #f5f5f5;
-  padding: 12px;
-  border-radius: 6px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   
   .porter-name {
+    font-size: 1.2rem;
     font-weight: 600;
-    font-size: 1.1rem;
+    margin-bottom: 4px;
+  }
+  
+  .porter-availability {
+    font-size: 0.9rem;
+    color: #666;
   }
 }
 
-.allocation-form {
+.allocation-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  
+  .tab-button {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    color: #666;
+    
+    &.active {
+      color: #4285F4;
+      border-bottom-color: #4285F4;
+    }
+    
+    &:hover:not(.active) {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
 }
 
-.allocation-type {
-  margin-bottom: 8px;
+.tab-content {
+  padding: 8px 0;
 }
 
 .form-group {
-  margin-bottom: 0;
+  margin-bottom: 16px;
   
   label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 500;
   }
   
   .form-control {
     width: 100%;
-    padding: 10px;
+    padding: 8px 12px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
   }
 }
 
-.form-row {
+.time-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-}
-
-.btn-group {
-  display: flex;
-  gap: 8px;
-  
-  .btn-toggle {
-    flex: 1;
-    background-color: #f5f5f5;
-    color: #333;
-    border: 1px solid #ccc;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    
-    &.active {
-      background-color: #4285f4;
-      color: white;
-      border-color: #4285f4;
-    }
-  }
 }
 
 .btn {
@@ -534,18 +579,14 @@ onMounted(() => {
   font-weight: 500;
   cursor: pointer;
   border: none;
+  transition: background-color 0.2s;
   
   &-primary {
-    background-color: #4285f4;
+    background-color: #4285F4;
     color: white;
     
     &:hover:not(:disabled) {
-      background-color: darken(#4285f4, 10%);
-    }
-    
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+      background-color: darken(#4285F4, 10%);
     }
   }
   
@@ -553,30 +594,14 @@ onMounted(() => {
     background-color: #f1f1f1;
     color: #333;
     
-    &:hover {
+    &:hover:not(:disabled) {
       background-color: darken(#f1f1f1, 5%);
     }
   }
-}
-
-.future-allocation-notice {
-  background-color: #fff8e1;
-  border: 1px solid #ffe082;
-  border-radius: 4px;
-  padding: 12px;
-  font-size: 0.9rem;
   
-  p {
-    margin: 0;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
-}
-
-.error-message {
-  color: #d32f2f;
-  background-color: #ffebee;
-  padding: 12px;
-  border-radius: 4px;
-  margin-top: 12px;
-  font-size: 0.9rem;
 }
 </style>
