@@ -853,9 +853,9 @@ onMounted(async () => {
   // Update indicator position on window resize
   window.addEventListener('resize', updateIndicatorPosition);
   
-  // Set up periodic cleanup of all expired allocations (every minute)
+  // Set up periodic cleanup of all expired allocations (every 30 seconds)
   checkAndCleanupExpiredAllocations(); // Initial check
-  cleanupTimer = setInterval(checkAndCleanupExpiredAllocations, 60000);
+  cleanupTimer = setInterval(checkAndCleanupExpiredAllocations, 30000);
   
   try {
     const shiftId = route.params.id;

@@ -17,7 +17,7 @@
     <div v-else class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
            :class="{ 
-             'assigned': getPorterAssignments(entry.porter_id).length > 0,
+             'assigned': hasActiveAssignments(entry.porter_id),
              'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
            }"
            @click.stop="openAllocationModal(entry.porter)">
@@ -391,6 +391,33 @@ const getPorterAssignments = (porterId) => {
   
   // Return all types of assignments
   return [...areaCoverAssignments, ...serviceAssignments, ...absenceAssignments];
+};
+
+// Check if a porter has any active assignments at the current time
+const hasActiveAssignments = (porterId) => {
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  
+  // Helper function to convert time string (HH:MM:SS) to minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60) + minutes;
+  };
+  
+  // Get all assignments for this porter
+  const assignments = getPorterAssignments(porterId);
+  
+  // Check if any assignment is currently active
+  return assignments.some(assignment => {
+    const startTimeMinutes = timeToMinutes(assignment.start_time);
+    const endTimeMinutes = timeToMinutes(assignment.end_time);
+    
+    // Assignment is active if current time is between start and end times
+    return currentTimeInMinutes >= startTimeMinutes && currentTimeInMinutes <= endTimeMinutes;
+  });
 };
 
 // Get the background color for an assignment item
