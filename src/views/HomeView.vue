@@ -1,205 +1,214 @@
 <template>
   <div class="view">
     <div class="view__content">
-      <!-- Active Shifts Section -->
-      <div class="card mb-4">
-        <div class="card__header">
-          <h2 class="card__title">Active Shifts</h2>
-          <button 
-            @click="exportSelectedShifts" 
-            class="btn btn-export"
-            :disabled="selectedShifts.length === 0"
-          >
-            Export Selected Shifts
-          </button>
-        </div>
-        
-        <div v-if="loading" class="loading-indicator">
-          <p>Loading shifts...</p>
-        </div>
-        
-        <div v-else-if="activeShifts.length === 0" class="empty-state">
-          <p>No active shifts. Create a new shift to get started.</p>
-        </div>
-        
-        <div v-else>
-          <div class="selection-controls" v-if="activeShifts.length > 0">
-            <label class="select-all-container">
-              <input 
-                type="checkbox" 
-                :checked="isAllSelected" 
-                @change="toggleSelectAll" 
-              />
-              Select All
-            </label>
-          </div>
-          
-          <div class="shifts-grid">
-          <!-- Day Shifts -->
-          <div v-if="dayShifts.length > 0" class="shift-group">
-            <h3>Day Shifts</h3>
-            <div class="shift-cards">
-              <div 
-                v-for="shift in dayShifts" 
-                :key="shift.id" 
-                class="shift-card"
-                :style="{ borderColor: getShiftColor(shift.shift_type) }"
-                @click="viewShift(shift.id)"
-              >
-                <div class="shift-card__header">
-                  <div class="shift-card__selection">
-                    <input 
-                      type="checkbox" 
-                      :checked="isShiftSelected(shift)"
-                      @change="toggleShiftSelection(shift, $event)" 
-                      @click.stop
-                    />
-                    <span class="shift-type">Day Shift</span>
-                  </div>
-                  <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
-                </div>
-                <div class="shift-card__body">
-                  <p class="supervisor">
-                    <strong>Supervisor:</strong> 
-                    {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
-                  </p>
-                  <p class="time">
-                    <strong>Started:</strong> {{ formatTime(shift.start_time) }}
-                  </p>
-                  <p class="duration">
-                    <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Night Shifts -->
-          <div v-if="nightShifts.length > 0" class="shift-group">
-            <h3>Night Shifts</h3>
-            <div class="shift-cards">
-              <div 
-                v-for="shift in nightShifts" 
-                :key="shift.id" 
-                class="shift-card"
-                :style="{ borderColor: getShiftColor(shift.shift_type) }"
-                @click="viewShift(shift.id)"
-              >
-                <div class="shift-card__header">
-                  <div class="shift-card__selection">
-                    <input 
-                      type="checkbox" 
-                      :checked="isShiftSelected(shift)"
-                      @change="toggleShiftSelection(shift, $event)" 
-                      @click.stop
-                    />
-                    <span class="shift-type">Night Shift</span>
-                  </div>
-                  <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
-                </div>
-                <div class="shift-card__body">
-                  <p class="supervisor">
-                    <strong>Supervisor:</strong> 
-                    {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
-                  </p>
-                  <p class="time">
-                    <strong>Started:</strong> {{ formatTime(shift.start_time) }}
-                  </p>
-                  <p class="duration">
-                    <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Create New Shift Section -->
+      <!-- Main Tabbed Interface -->
       <div class="card">
-        <h2 class="card__title">Create New Shift</h2>
-        
-        <div class="create-shift-form">
-          <!-- Create New Shift (Single Step) -->
-          <div class="shift-type-selection">
-            <div class="form-group date-picker-container">
-              <label for="shiftDate">Shift Date</label>
-              <input 
-                type="date" 
-                id="shiftDate" 
-                v-model="selectedDate" 
-                class="form-control"
-                :disabled="creating"
-                :min="today"
-              >
-            </div>
-            
-            <div class="form-group supervisor-picker-container">
-              <label for="supervisor">Supervisor</label>
-              <select 
-                id="supervisor" 
-                v-model="selectedSupervisor" 
-                class="form-control"
-                :disabled="creating"
-              >
-                <option value="">Select a supervisor</option>
-                <option 
-                  v-for="supervisor in supervisors" 
-                  :key="supervisor.id" 
-                  :value="supervisor.id"
-                >
-                  {{ supervisor.first_name }} {{ supervisor.last_name }}
-                </option>
-              </select>
-            </div>
-            
-            <div class="shift-type-buttons">
+        <AnimatedTabs
+          v-model="activeTabId"
+          :tabs="tabDefinitions"
+          @tab-change="handleTabChange"
+          class="home-tabs"
+        >
+          <!-- Active Shifts Tab -->
+          <template #active-shifts>
+            <div class="card__header">
+              <h2 class="card__title">Active Shifts</h2>
               <button 
-                @click="createDayShift()" 
-                class="btn btn-shift-type"
-                :disabled="creating || !selectedDate || !selectedSupervisor"
-                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
+                @click="exportSelectedShifts" 
+                class="btn btn-export"
+                :disabled="selectedShifts.length === 0"
               >
-                <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Day Shift</span>
-                <span v-else class="loading-indicator">
-                  <span class="loading-spinner"></span>
-                  Creating...
-                </span>
+                Export Selected Shifts
               </button>
+            </div>
+            
+            <div v-if="loading" class="loading-indicator">
+              <p>Loading shifts...</p>
+            </div>
+            
+            <div v-else-if="activeShifts.length === 0" class="empty-state">
+              <p>No active shifts. Create a new shift to get started.</p>
+            </div>
+            
+            <div v-else>
+              <div class="selection-controls" v-if="activeShifts.length > 0">
+                <label class="select-all-container">
+                  <input 
+                    type="checkbox" 
+                    :checked="isAllSelected" 
+                    @change="toggleSelectAll" 
+                  />
+                  Select All
+                </label>
+              </div>
               
-              <button 
-                @click="createNightShift()" 
-                class="btn btn-shift-type"
-                :disabled="creating || !selectedDate || !selectedSupervisor"
-                :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
-              >
-                <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Night Shift</span>
-                <span v-else class="loading-indicator">
-                  <span class="loading-spinner"></span>
-                  Creating...
-                </span>
-              </button>
+              <div class="shifts-grid">
+                <!-- Day Shifts -->
+                <div v-if="dayShifts.length > 0" class="shift-group">
+                  <h3>Day Shifts</h3>
+                  <div class="shift-cards">
+                    <div 
+                      v-for="shift in dayShifts" 
+                      :key="shift.id" 
+                      class="shift-card"
+                      :style="{ borderColor: getShiftColor(shift.shift_type) }"
+                      @click="viewShift(shift.id)"
+                    >
+                      <div class="shift-card__header">
+                        <div class="shift-card__selection">
+                          <input 
+                            type="checkbox" 
+                            :checked="isShiftSelected(shift)"
+                            @change="toggleShiftSelection(shift, $event)" 
+                            @click.stop
+                          />
+                          <span class="shift-type">Day Shift</span>
+                        </div>
+                        <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
+                      </div>
+                      <div class="shift-card__body">
+                        <p class="supervisor">
+                          <strong>Supervisor:</strong> 
+                          {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+                        </p>
+                        <p class="time">
+                          <strong>Started:</strong> {{ formatTime(shift.start_time) }}
+                        </p>
+                        <p class="duration">
+                          <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Night Shifts -->
+                <div v-if="nightShifts.length > 0" class="shift-group">
+                  <h3>Night Shifts</h3>
+                  <div class="shift-cards">
+                    <div 
+                      v-for="shift in nightShifts" 
+                      :key="shift.id" 
+                      class="shift-card"
+                      :style="{ borderColor: getShiftColor(shift.shift_type) }"
+                      @click="viewShift(shift.id)"
+                    >
+                      <div class="shift-card__header">
+                        <div class="shift-card__selection">
+                          <input 
+                            type="checkbox" 
+                            :checked="isShiftSelected(shift)"
+                            @change="toggleShiftSelection(shift, $event)" 
+                            @click.stop
+                          />
+                          <span class="shift-type">Night Shift</span>
+                        </div>
+                        <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
+                      </div>
+                      <div class="shift-card__body">
+                        <p class="supervisor">
+                          <strong>Supervisor:</strong> 
+                          {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+                        </p>
+                        <p class="time">
+                          <strong>Started:</strong> {{ formatTime(shift.start_time) }}
+                        </p>
+                        <p class="duration">
+                          <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </template>
           
-          <!-- Removed the second step since we now have a single-step approach -->
-          
-          <div v-if="error" class="error-message">
-            {{ error }}
-          </div>
-        </div>
+          <!-- Create New Shift Tab -->
+          <template #create-shift>
+            <h2 class="card__title">Create New Shift</h2>
+            
+            <div class="create-shift-form">
+              <!-- Create New Shift (Single Step) -->
+              <div class="shift-type-selection">
+                <div class="form-group date-picker-container">
+                  <label for="shiftDate">Shift Date</label>
+                  <input 
+                    type="date" 
+                    id="shiftDate" 
+                    v-model="selectedDate" 
+                    class="form-control"
+                    :disabled="creating"
+                    :min="today"
+                  >
+                </div>
+                
+                <div class="form-group supervisor-picker-container">
+                  <label for="supervisor">Supervisor</label>
+                  <select 
+                    id="supervisor" 
+                    v-model="selectedSupervisor" 
+                    class="form-control"
+                    :disabled="creating"
+                  >
+                    <option value="">Select a supervisor</option>
+                    <option 
+                      v-for="supervisor in supervisors" 
+                      :key="supervisor.id" 
+                      :value="supervisor.id"
+                    >
+                      {{ supervisor.first_name }} {{ supervisor.last_name }}
+                    </option>
+                  </select>
+                </div>
+                
+                <div class="shift-type-buttons">
+                  <button 
+                    @click="createDayShift()" 
+                    class="btn btn-shift-type"
+                    :disabled="creating || !selectedDate || !selectedSupervisor"
+                    :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
+                  >
+                    <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Day Shift</span>
+                    <span v-else class="loading-indicator">
+                      <span class="loading-spinner"></span>
+                      Creating...
+                    </span>
+                  </button>
+                  
+                  <button 
+                    @click="createNightShift()" 
+                    class="btn btn-shift-type"
+                    :disabled="creating || !selectedDate || !selectedSupervisor"
+                    :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
+                  >
+                    <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Night Shift</span>
+                    <span v-else class="loading-indicator">
+                      <span class="loading-spinner"></span>
+                      Creating...
+                    </span>
+                  </button>
+                </div>
+                
+                <div v-if="error" class="error-message">
+                  {{ error }}
+                </div>
+              </div>
+            </div>
+          </template>
+        </AnimatedTabs>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import AnimatedTabs from '../components/shared/AnimatedTabs.vue';
 import * as XLSX from 'xlsx';
 
 const router = useRouter();
@@ -216,6 +225,29 @@ const creating = ref(false);
 const error = ref('');
 const detectedShiftType = ref('week_day'); // Used for auto-detection, still needed for existing functionality
 const updateTimer = ref(null);
+
+// Tab state
+const activeTabId = ref('active-shifts');
+const tabChangeDirection = ref(0);
+
+// Tab definitions
+const tabDefinitions = computed(() => [
+  { id: 'active-shifts', label: 'Active Shifts' },
+  { id: 'create-shift', label: 'Create New Shift' }
+]);
+
+// Handle tab change
+function handleTabChange(tabId) {
+  // Calculate direction of tab change for animation
+  const oldIndex = tabDefinitions.value.findIndex(tab => tab.id === activeTabId.value);
+  const newIndex = tabDefinitions.value.findIndex(tab => tab.id === tabId);
+  
+  if (oldIndex !== -1 && newIndex !== -1) {
+    tabChangeDirection.value = newIndex > oldIndex ? 1 : -1;
+  } else {
+    tabChangeDirection.value = 0;
+  }
+}
 
 // Computed properties
 const loading = computed(() => shiftsStore.loading.activeShifts || staffStore.loading.supervisors);
@@ -441,6 +473,13 @@ function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Format time (e.g., "9:30 AM")
+function formatTime(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 // Format date for display with ordinal suffix (e.g., "23rd May 2025")
@@ -743,13 +782,6 @@ async function exportSelectedShifts() {
     console.error('Error exporting shifts:', error);
     alert('Failed to export shifts. See console for details.');
   }
-}
-
-// Format time (e.g., "9:30 AM")
-function formatTime(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 // Helper functions for creating day and night shifts
@@ -1104,5 +1136,44 @@ function calculateDuration(startTimeString) {
 .supervisor-picker-container {
   max-width: 400px;
   margin: 0 auto 1.5rem auto;
+}
+
+/* Tabs styling */
+.home-tabs {
+  margin-bottom: 1.5rem;
+  
+  :deep(.tabs-header) {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 1.5rem;
+  }
+  
+  :deep(.tab-button) {
+    padding: 0.75rem 1.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    color: #666;
+    position: relative;
+    transition: color 0.2s;
+    
+    &.active {
+      color: #4285F4;
+      font-weight: 600;
+    }
+    
+    &:hover:not(.active) {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+  }
+  
+  :deep(.active-indicator) {
+    position: absolute;
+    bottom: -1px;
+    height: 2px;
+    background-color: #4285F4;
+    transition: all 0.3s ease;
+  }
 }
 </style>

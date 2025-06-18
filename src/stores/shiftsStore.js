@@ -1961,6 +1961,44 @@ export const useShiftsStore = defineStore('shifts', {
   },
   
   // Add a scheduled absence for a porter in a shift
+  async addPorterAbsenceToShift(absenceData) {
+    this.loading.porterAbsences = true;
+    this.error = null;
+    
+    try {
+      // Add porter absence
+      const { data, error } = await supabase
+        .from('shift_porter_absences')
+        .insert({
+          shift_id: absenceData.shift_id,
+          porter_id: absenceData.porter_id,
+          start_time: absenceData.start_time,
+          end_time: absenceData.end_time,
+          absence_reason: absenceData.absence_reason || 'Scheduled Absence'
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftPorterAbsences.push(data[0]);
+      }
+      
+      return data?.[0] || null;
+    } catch (error) {
+      console.error('Error adding porter absence:', error);
+      this.error = 'Failed to add porter absence';
+      return null;
+    } finally {
+      this.loading.porterAbsences = false;
+    }
+  },
+  
+  // Add a scheduled absence for a porter in a shift (legacy method)
   async addPorterAbsence(shiftId, porterId, startTime, endTime, absenceReason) {
     this.loading.porterAbsences = true;
     this.error = null;
@@ -2059,7 +2097,50 @@ export const useShiftsStore = defineStore('shifts', {
     }
   },
   
-  // Allocate a porter to a department
+  // Assign a porter to a shift area cover assignment
+  async assignPorterToShiftAreaCover(assignmentData) {
+    this.loading.areaCover = true;
+    this.error = null;
+    
+    try {
+      // Add porter to department assignment
+      const { data, error } = await supabase
+        .from('shift_area_cover_porter_assignments')
+        .insert({
+          shift_area_cover_assignment_id: assignmentData.shift_area_cover_assignment_id,
+          porter_id: assignmentData.porter_id,
+          start_time: assignmentData.start_time,
+          end_time: assignmentData.end_time
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name),
+          shift_area_cover_assignment:shift_area_cover_assignment_id(
+            id,
+            color,
+            department:department_id(id, name)
+          )
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftAreaCoverPorterAssignments.push(data[0]);
+        return data[0];
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error assigning porter to department:', error);
+      this.error = 'Failed to assign porter to department';
+      return null;
+    } finally {
+      this.loading.areaCover = false;
+    }
+  },
+  
+  // Allocate a porter to a department (legacy method)
   async allocatePorterToDepartment({ porterId, shiftId, departmentAssignmentId, startTime, endTime }) {
     this.loading.areaCover = true;
     this.error = null;
@@ -2102,7 +2183,45 @@ export const useShiftsStore = defineStore('shifts', {
     }
   },
   
-  // Allocate a porter to a service
+  // Assign a porter to a shift support service assignment
+  async assignPorterToShiftSupportService(assignmentData) {
+    this.loading.supportServices = true;
+    this.error = null;
+    
+    try {
+      // Add porter to service assignment
+      const { data, error } = await supabase
+        .from('shift_support_service_porter_assignments')
+        .insert({
+          shift_support_service_assignment_id: assignmentData.shift_support_service_assignment_id,
+          porter_id: assignmentData.porter_id,
+          start_time: assignmentData.start_time,
+          end_time: assignmentData.end_time
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name)
+        `);
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Add to local state
+        this.shiftSupportServicePorterAssignments.push(data[0]);
+        return data[0];
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error assigning porter to service:', error);
+      this.error = 'Failed to assign porter to service';
+      return null;
+    } finally {
+      this.loading.supportServices = false;
+    }
+  },
+  
+  // Allocate a porter to a service (legacy method)
   async allocatePorterToService({ porterId, shiftId, serviceAssignmentId, startTime, endTime }) {
     this.loading.supportServices = true;
     this.error = null;
