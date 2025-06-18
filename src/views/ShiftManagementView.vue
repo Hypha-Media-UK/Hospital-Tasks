@@ -1269,10 +1269,9 @@ function editTask(task) {
     timeCompleted: task.time_completed ? formatDateTimeForInput(task.time_completed) : ''
   };
   
-  // If any time field has a value, show the time fields section
-  if (task.time_received || task.time_allocated || task.time_completed) {
-    showTimeFields.value = true;
-  }
+  // Note: We no longer automatically show the time fields section
+  // This keeps the UI consistent between adding and editing tasks
+  showTimeFields.value = false;
   
   // Load task items for this task type
   loadTaskItems();
