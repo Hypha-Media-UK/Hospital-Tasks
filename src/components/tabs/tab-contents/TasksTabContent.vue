@@ -171,7 +171,7 @@ const settingsStore = useSettingsStore();
 const router = useRouter();
 
 // Local state
-const activeTab = ref('pending');
+const activeTab = ref('completed');
 const updatingTask = ref(false);
 const transitionDirection = ref(1); // 1 for right-to-left, -1 for left-to-right
 
@@ -200,8 +200,8 @@ const currentShift = computed(() => shiftsStore.currentShift);
 
 // Tab definitions for the AnimatedTabs component
 const tabDefinitions = computed(() => [
-  { id: 'pending', label: `Pending (${pendingTasks.value.length})` },
-  { id: 'completed', label: `Completed (${completedTasks.value.length})` }
+  { id: 'completed', label: `Completed (${completedTasks.value.length})` },
+  { id: 'pending', label: `Pending (${pendingTasks.value.length})` }
 ]);
 
 // Handle tab change events from the AnimatedTabs component
