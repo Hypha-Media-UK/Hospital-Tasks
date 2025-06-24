@@ -146,10 +146,12 @@ const porterAssignments = computed(() => {
   if (isShiftAssignment.value) {
     // Use the shiftsStore getter for shift-specific assignments
     const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
+    console.log(`Service ${props.assignment.service.name} porter assignments:`, assignments);
     return Array.isArray(assignments) ? assignments : [];
   } else {
     // Use the supportServicesStore getter for default settings
     const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id);
+    console.log(`Service ${props.assignment.service.name} porter assignments:`, assignments);
     return Array.isArray(assignments) ? assignments : [];
   }
 });
@@ -668,6 +670,7 @@ const handleRemove = (assignmentId) => {
             color: #999999;  /* Light grey text */
             background-color: rgba(153, 153, 153, 0.1);  /* Very light grey background */
             opacity: 0.7;  /* Make it more subtle */
+            text-decoration: line-through;  /* Add strikethrough */
           }
           
           .porter-time {

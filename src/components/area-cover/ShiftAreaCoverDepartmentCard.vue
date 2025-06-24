@@ -127,7 +127,9 @@ const isPoolPorter = (porterId) => {
 
 // Get porter assignments for this area
 const porterAssignments = computed(() => {
-  return shiftsStore.getPorterAssignmentsByAreaId(props.assignment.id);
+  const assignments = shiftsStore.getPorterAssignmentsByAreaId(props.assignment.id);
+  console.log(`Area ${props.assignment.department.name} porter assignments:`, assignments);
+  return assignments;
 });
 
 // Get all available (non-absent and currently active) porters
@@ -583,6 +585,7 @@ const handleRemove = (assignmentId) => {
             color: #999999;  /* Light grey text */
             background-color: rgba(153, 153, 153, 0.1);  /* Very light grey background */
             opacity: 0.7;  /* Make it more subtle */
+            text-decoration: line-through;  /* Add strikethrough */
           }
           
           .porter-time {
