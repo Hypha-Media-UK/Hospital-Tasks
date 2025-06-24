@@ -198,6 +198,10 @@
               v-for="porter in filteredPorters" 
               :key="porter.id"
               class="staff-item"
+              :class="{
+                'staff-item--day-shift': getPorterShiftType(porter) === 'day',
+                'staff-item--night-shift': getPorterShiftType(porter) === 'night'
+              }"
             >
                 <div class="staff-item__content">
                   <div 
@@ -697,6 +701,14 @@ const getPorterAssignments = (porterId) => {
   return [...areaAssignments, ...serviceAssignments];
 };
 
+// Get porter shift type for styling
+const getPorterShiftType = (porter) => {
+  if (settingsStore.shiftDefaults) {
+    return staffStore.getPorterShiftType(porter, settingsStore.shiftDefaults);
+  }
+  return 'unknown';
+};
+
 // Staff form methods
 const editSupervisor = (supervisor) => {
   staffForm.value = {
@@ -1099,6 +1111,19 @@ const confirmDeleteAbsence = async () => {
   padding: 12px 16px;
   border-radius: mix.radius('md');
   background-color: rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  
+  // Day shift styling
+  &--day-shift {
+    background-color: rgba(66, 133, 244, 0.08);
+    border-left: 3px solid #4285F4;
+  }
+  
+  // Night shift styling
+  &--night-shift {
+    background-color: rgba(103, 58, 183, 0.08);
+    border-left: 3px solid #673AB7;
+  }
   
   &__content {
     display: flex;
