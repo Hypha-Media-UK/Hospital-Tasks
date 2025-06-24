@@ -68,7 +68,15 @@
                     >
                       <div class="shift-card__color-bar" :style="{ backgroundColor: getShiftColor(shift.shift_type) }"></div>
                       <div class="shift-card__header">
-                        <div class="shift-card__selection">
+                        <div class="shift-card__type">
+                          <span class="shift-type">
+                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
+                            <NightShiftIcon v-else size="18" class="shift-icon" />
+                            Day Shift
+                          </span>
+                        </div>
+                        <div class="shift-card__right">
+                          <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
                           <span class="checkbox-wrapper">
                             <input 
                               type="checkbox" 
@@ -78,13 +86,7 @@
                             />
                             <span class="custom-checkbox"></span>
                           </span>
-                          <span class="shift-type">
-                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
-                            <NightShiftIcon v-else size="18" class="shift-icon" />
-                            Day Shift
-                          </span>
                         </div>
-                        <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
                       </div>
                       <div class="shift-card__body">
                         <div class="detail-row">
@@ -95,23 +97,6 @@
                           <p class="supervisor">
                             <span class="detail-label">Supervisor:</span> 
                             <span class="detail-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <ClockIcon size="16" class="detail-icon" />
-                          <p class="time">
-                            <span class="detail-label">Started:</span> 
-                            <span class="detail-value">{{ formatTime(shift.start_time) }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                          </svg>
-                          <p class="duration">
-                            <span class="detail-label">Duration:</span> 
-                            <span class="detail-value">{{ calculateDuration(shift.start_time) }}</span>
                           </p>
                         </div>
                         <div class="shift-card__footer">
@@ -135,7 +120,15 @@
                     >
                       <div class="shift-card__color-bar" :style="{ backgroundColor: getShiftColor(shift.shift_type) }"></div>
                       <div class="shift-card__header">
-                        <div class="shift-card__selection">
+                        <div class="shift-card__type">
+                          <span class="shift-type">
+                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
+                            <NightShiftIcon v-else size="18" class="shift-icon" />
+                            Night Shift
+                          </span>
+                        </div>
+                        <div class="shift-card__right">
+                          <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
                           <span class="checkbox-wrapper">
                             <input 
                               type="checkbox" 
@@ -145,13 +138,7 @@
                             />
                             <span class="custom-checkbox"></span>
                           </span>
-                          <span class="shift-type">
-                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
-                            <NightShiftIcon v-else size="18" class="shift-icon" />
-                            Night Shift
-                          </span>
                         </div>
-                        <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
                       </div>
                       <div class="shift-card__body">
                         <div class="detail-row">
@@ -162,23 +149,6 @@
                           <p class="supervisor">
                             <span class="detail-label">Supervisor:</span> 
                             <span class="detail-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <ClockIcon size="16" class="detail-icon" />
-                          <p class="time">
-                            <span class="detail-label">Started:</span> 
-                            <span class="detail-value">{{ formatTime(shift.start_time) }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                          </svg>
-                          <p class="duration">
-                            <span class="detail-label">Duration:</span> 
-                            <span class="detail-value">{{ calculateDuration(shift.start_time) }}</span>
                           </p>
                         </div>
                         <div class="shift-card__footer">
@@ -1614,7 +1584,7 @@ function calculateDuration(startTimeString) {
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   }
   
-  &__selection {
+  &__type {
     display: flex;
     align-items: center;
     
@@ -1628,6 +1598,22 @@ function calculateDuration(startTimeString) {
         margin-right: 6px;
         color: #4285F4;
       }
+    }
+  }
+  
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    
+    .shift-date {
+      font-size: 0.85rem;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    .checkbox-wrapper {
+      margin-right: 0;
     }
   }
   
