@@ -270,6 +270,21 @@ onMounted(async () => {
       console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
       console.log(`Filtered for this shift: ${serviceAssignments.value.length}`);
       
+      // Check if this is a new shift without assignments yet
+      const existingAssignments = shiftsStore.shiftSupportServiceAssignments.filter(a => a.shift_id === props.shiftId);
+      if (existingAssignments.length === 0) {
+        console.log('This appears to be a new shift, initializing support services from defaults');
+        console.log(`ShiftID: ${props.shiftId}, ShiftType: ${props.shiftType}`);
+        
+        // If this is a new shift, we need to initialize the support services from defaults
+        await shiftsStore.setupShiftSupportServicesFromDefaults(props.shiftId, props.shiftType);
+        
+        // Verify it worked by refetching
+        await shiftsStore.fetchShiftSupportServices(props.shiftId);
+        console.log(`After initialization, found ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
+        console.log(`Filtered for this shift: ${shiftsStore.shiftSupportServiceAssignments.filter(a => a.shift_id === props.shiftId).length}`);
+      }
+
       // Check porter assignments for each service
       if (serviceAssignments.value.length > 0) {
         console.log('Checking porter assignments for each service');

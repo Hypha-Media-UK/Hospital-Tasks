@@ -31,7 +31,8 @@
                      'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
                      'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave',
                      'porter-scheduled-absence': isShiftAssignment && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id),
-                     'pool-porter': isPoolPorter(assignment.porter_id)
+                     'pool-porter': isPoolPorter(assignment.porter_id),
+                     'porter-outside-hours': isShiftAssignment && shiftsStore.isShiftInSetupMode(shiftsStore.currentShift) && isPorterOutsideContractedHours(assignment.porter_id)
                    }">
                 {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
                 <!-- Show time for available porters, absence badge for absent porters -->
@@ -155,34 +156,44 @@ const porterAssignments = computed(() => {
 
 // Get all available (non-absent and currently active) porters
 const availablePorters = computed(() => {
-  const today = new Date();
-  const currentHours = today.getHours();
-  const currentMinutes = today.getMinutes();
-  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  const shift = shiftsStore.currentShift;
+  const isSetupMode = shiftsStore.isShiftInSetupMode(shift);
   
-  return porterAssignments.value.filter(assignment => {
-    // First check if porter is absent
-    if (staffStore.isPorterAbsent(assignment.porter_id, today)) {
-      return false;
-    }
+  if (isShiftAssignment.value && isSetupMode) {
+    // In setup mode for shift assignments: show ALL assigned porters regardless of absence status or contracted hours
+    // This allows users to see all porters and make adjustments before the shift starts
+    return porterAssignments.value;
+  } else {
+    // In active mode or for default settings: apply existing time-based filtering
+    const today = new Date();
+    const currentHours = today.getHours();
+    const currentMinutes = today.getMinutes();
+    const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
     
-    // Check if porter has a scheduled absence (only for shift assignments)
-    if (isShiftAssignment.value && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id)) {
-      return false;
-    }
-    
-    // Then check if this is a future allocation
-    if (assignment.start_time) {
-      // Convert start time to minutes for comparison
-      const [startHours, startMinutes] = assignment.start_time.split(':').map(Number);
-      const startTimeInMinutes = (startHours * 60) + startMinutes;
+    return porterAssignments.value.filter(assignment => {
+      // First check if porter is absent
+      if (staffStore.isPorterAbsent(assignment.porter_id, today)) {
+        return false;
+      }
       
-      // Only include porters whose allocation time has started
-      return startTimeInMinutes <= currentTimeInMinutes;
-    }
-    
-    return true;
-  });
+      // Check if porter has a scheduled absence (only for shift assignments)
+      if (isShiftAssignment.value && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id)) {
+        return false;
+      }
+      
+      // Then check if this is a future allocation
+      if (assignment.start_time) {
+        // Convert start time to minutes for comparison
+        const [startHours, startMinutes] = assignment.start_time.split(':').map(Number);
+        const startTimeInMinutes = (startHours * 60) + startMinutes;
+        
+        // Only include porters whose allocation time has started
+        return startTimeInMinutes <= currentTimeInMinutes;
+      }
+      
+      return true;
+    });
+  }
 });
 
 // Get all absent porters
@@ -203,6 +214,45 @@ const getPorterAbsence = (porterId) => {
 const isShiftAssignment = computed(() => {
   return !!props.assignment.shift_id;
 });
+
+// Check if a porter is outside their contracted hours
+const isPorterOutsideContractedHours = (porterId) => {
+  const porter = staffStore.getStaffById(porterId);
+  if (!porter || !porter.contracted_hours_start || !porter.contracted_hours_end) {
+    return false; // No contracted hours defined, so not outside
+  }
+  
+  const shift = shiftsStore.currentShift;
+  if (!shift) return false;
+  
+  // Get the shift date
+  const shiftDate = new Date(shift.start_time);
+  const now = new Date();
+  
+  // Only check contracted hours if we're on the actual shift date
+  if (shiftDate.toDateString() !== now.toDateString()) {
+    return false; // Different date, don't apply contracted hours check
+  }
+  
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  
+  // Convert contracted hours to minutes
+  const [startHours, startMinutes] = porter.contracted_hours_start.split(':').map(Number);
+  const [endHours, endMinutes] = porter.contracted_hours_end.split(':').map(Number);
+  const contractedStartMinutes = (startHours * 60) + startMinutes;
+  const contractedEndMinutes = (endHours * 60) + endMinutes;
+  
+  // Handle overnight shifts (end time is next day)
+  if (contractedEndMinutes < contractedStartMinutes) {
+    // Overnight shift: porter is available from start time to midnight, then midnight to end time
+    return !(currentTimeInMinutes >= contractedStartMinutes || currentTimeInMinutes <= contractedEndMinutes);
+  } else {
+    // Regular shift: porter is available from start time to end time
+    return !(currentTimeInMinutes >= contractedStartMinutes && currentTimeInMinutes <= contractedEndMinutes);
+  }
+};
 
 // Check if there's a coverage gap
 const hasCoverageGap = computed(() => {
@@ -612,6 +662,12 @@ const handleRemove = (assignmentId) => {
           &.pool-porter {
             background-color: #FFF8ED;  /* Extremely pale orange background */
             font-style: italic;
+          }
+          
+          &.porter-outside-hours {
+            color: #999999;  /* Light grey text */
+            background-color: rgba(153, 153, 153, 0.1);  /* Very light grey background */
+            opacity: 0.7;  /* Make it more subtle */
           }
           
           .porter-time {

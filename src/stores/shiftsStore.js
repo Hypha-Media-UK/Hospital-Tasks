@@ -672,6 +672,35 @@ export const useShiftsStore = defineStore('shifts', {
     // Legacy method for backward compatibility
     hasServiceCoverageGap: (state) => (serviceId) => {
       return state.getServiceCoverageGaps(serviceId).hasGap;
+    },
+    
+    // Check if a shift is in setup mode (before shift start time) vs active mode (during/after shift start)
+    isShiftInSetupMode: (state) => (shift) => {
+      if (!shift) return false;
+      
+      const now = new Date();
+      const shiftDate = new Date(shift.shift_date || shift.start_time);
+      
+      // Extract time from start_time (could be full datetime or just time)
+      let startHours, startMinutes;
+      if (shift.start_time.includes('T')) {
+        // Full datetime string
+        const startDateTime = new Date(shift.start_time);
+        startHours = startDateTime.getHours();
+        startMinutes = startDateTime.getMinutes();
+      } else {
+        // Just time string (HH:MM:SS or HH:MM)
+        const timeParts = shift.start_time.split(':');
+        startHours = parseInt(timeParts[0]);
+        startMinutes = parseInt(timeParts[1]);
+      }
+      
+      // Create shift start datetime
+      const shiftStart = new Date(shiftDate);
+      shiftStart.setHours(startHours, startMinutes, 0, 0);
+      
+      // If current time is before shift start, we're in setup mode
+      return now < shiftStart;
     }
   },
   
@@ -863,8 +892,13 @@ export const useShiftsStore = defineStore('shifts', {
           
           // The database trigger will automatically copy default assignments
           // Let's just fetch the assignments to update our local state
+          console.log('Fetching shift data after creation...');
           await this.fetchShiftAreaCover(newShift.id);
           await this.fetchShiftSupportServices(newShift.id);
+          
+          // Debug: Check what porter assignments were copied
+          console.log('Area cover porter assignments:', this.shiftAreaCoverPorterAssignments);
+          console.log('Support service porter assignments:', this.shiftSupportServicePorterAssignments);
           
           return newShift;
         }
@@ -1248,6 +1282,144 @@ export const useShiftsStore = defineStore('shifts', {
     // Initialize store data
     async initialize() {
       await this.fetchActiveShifts();
+    },
+    
+    // Setup shift area cover from default settings
+    async setupShiftAreaCoverFromDefaults(shiftId, shiftType) {
+      this.loading.areaCover = true;
+      this.error = null;
+      
+      try {
+        console.log(`Setting up area cover from defaults for shift ${shiftId}, type: ${shiftType}`);
+        
+        // Import and use the area cover store to get defaults
+        const { useAreaCoverStore } = await import('./areaCoverStore');
+        const areaCoverStore = useAreaCoverStore();
+        
+        // Ensure defaults are loaded
+        await areaCoverStore.ensureAssignmentsLoaded(shiftType);
+        
+        // Get the appropriate default assignments based on shift type
+        let defaultAssignments = [];
+        switch(shiftType) {
+          case 'week_day':
+            defaultAssignments = areaCoverStore.weekDayAssignments || [];
+            break;
+          case 'week_night':
+            defaultAssignments = areaCoverStore.weekNightAssignments || [];
+            break;
+          case 'weekend_day':
+            defaultAssignments = areaCoverStore.weekendDayAssignments || [];
+            break;
+          case 'weekend_night':
+            defaultAssignments = areaCoverStore.weekendNightAssignments || [];
+            break;
+        }
+        
+        console.log(`Found ${defaultAssignments.length} default assignments for ${shiftType}`);
+        
+        if (defaultAssignments.length === 0) {
+          console.log('No default assignments found, skipping setup');
+          return;
+        }
+        
+        // Create shift area cover assignments from defaults
+        for (const defaultAssignment of defaultAssignments) {
+          console.log(`Creating area cover for department: ${defaultAssignment.department?.name}`);
+          
+          const newAssignment = await this.addShiftAreaCover(
+            shiftId,
+            defaultAssignment.department_id,
+            defaultAssignment.start_time,
+            defaultAssignment.end_time,
+            defaultAssignment.color || '#4285F4'
+          );
+          
+          if (newAssignment && defaultAssignment.porters && defaultAssignment.porters.length > 0) {
+            console.log(`Adding ${defaultAssignment.porters.length} porters to department ${defaultAssignment.department?.name}`);
+            
+            // Add porter assignments from defaults
+            for (const porterAssignment of defaultAssignment.porters) {
+              await this.addShiftAreaCoverPorter(
+                newAssignment.id,
+                porterAssignment.porter_id,
+                porterAssignment.start_time,
+                porterAssignment.end_time,
+                porterAssignment.agreed_absence
+              );
+            }
+          }
+        }
+        
+        console.log('Completed setting up area cover from defaults');
+      } catch (error) {
+        console.error('Error setting up area cover from defaults:', error);
+        this.error = 'Failed to setup area cover from defaults';
+      } finally {
+        this.loading.areaCover = false;
+      }
+    },
+    
+    // Setup shift support services from default settings
+    async setupShiftSupportServicesFromDefaults(shiftId, shiftType) {
+      this.loading.supportServices = true;
+      this.error = null;
+      
+      try {
+        console.log(`Setting up support services from defaults for shift ${shiftId}, type: ${shiftType}`);
+        
+        // Import and use the support services store to get defaults
+        const { useSupportServicesStore } = await import('./supportServicesStore');
+        const supportServicesStore = useSupportServicesStore();
+        
+        // Ensure defaults are loaded
+        await supportServicesStore.ensureAssignmentsLoaded(shiftType);
+        
+        // Get the appropriate default assignments based on shift type
+        const defaultAssignments = supportServicesStore.getSortedAssignmentsByType(shiftType) || [];
+        
+        console.log(`Found ${defaultAssignments.length} default service assignments for ${shiftType}`);
+        
+        if (defaultAssignments.length === 0) {
+          console.log('No default service assignments found, skipping setup');
+          return;
+        }
+        
+        // Create shift support service assignments from defaults
+        for (const defaultAssignment of defaultAssignments) {
+          console.log(`Creating service assignment for: ${defaultAssignment.service?.name}`);
+          
+          const newAssignment = await this.addShiftSupportService(
+            shiftId,
+            defaultAssignment.service_id,
+            defaultAssignment.start_time,
+            defaultAssignment.end_time,
+            defaultAssignment.color || '#4285F4'
+          );
+          
+          if (newAssignment && defaultAssignment.porters && defaultAssignment.porters.length > 0) {
+            console.log(`Adding ${defaultAssignment.porters.length} porters to service ${defaultAssignment.service?.name}`);
+            
+            // Add porter assignments from defaults
+            for (const porterAssignment of defaultAssignment.porters) {
+              await this.addShiftSupportServicePorter(
+                newAssignment.id,
+                porterAssignment.porter_id,
+                porterAssignment.start_time,
+                porterAssignment.end_time,
+                porterAssignment.agreed_absence
+              );
+            }
+          }
+        }
+        
+        console.log('Completed setting up support services from defaults');
+      } catch (error) {
+        console.error('Error setting up support services from defaults:', error);
+        this.error = 'Failed to setup support services from defaults';
+      } finally {
+        this.loading.supportServices = false;
+      }
     },
     
     // Area Cover Management

@@ -236,54 +236,13 @@ onMounted(async () => {
   
   console.log('Checking if shift is being initialized with default assignments...');
   // Check if this is a new shift without assignments yet
-  if (!shiftsStore.shiftAreaCoverAssignments || 
-      !shiftsStore.shiftAreaCoverAssignments.find(a => a.shift_id === props.shiftId)) {
+  const existingAssignments = shiftsStore.shiftAreaCoverAssignments.filter(a => a.shift_id === props.shiftId);
+  if (existingAssignments.length === 0) {
     
     console.log('This appears to be a new shift, initializing area cover from defaults');
     console.log(`ShiftID: ${props.shiftId}, ShiftType: ${props.shiftType}`);
     
-    // Let's verify defaults exist in the area cover store
-    const { useAreaCoverStore } = await import('../../stores/areaCoverStore');
-    const areaCoverStore = useAreaCoverStore();
-    await areaCoverStore.initialize();
-    
-    // Verify that we have defaults for this shift type - convert to the correct property name
-    // week_day -> weekDayAssignments, week_night -> weekNightAssignments, etc.
-    let storePropertyName;
-    switch(props.shiftType) {
-      case 'week_day':
-        storePropertyName = 'weekDayAssignments';
-        break;
-      case 'week_night':
-        storePropertyName = 'weekNightAssignments';
-        break;
-      case 'weekend_day':
-        storePropertyName = 'weekendDayAssignments';
-        break;
-      case 'weekend_night':
-        storePropertyName = 'weekendNightAssignments';
-        break;
-      default:
-        storePropertyName = null;
-    }
-    
-    console.log(`Looking for assignments in areaCoverStore.${storePropertyName}`);
-    // Create deep copies of default assignments to avoid reference issues
-    const defaultAssignments = storePropertyName ? 
-      JSON.parse(JSON.stringify(areaCoverStore[storePropertyName])) : 
-      [];
-    console.log(`Found ${defaultAssignments?.length || 0} default assignments for ${props.shiftType}`);
-    
-    if (defaultAssignments && defaultAssignments.length > 0) {
-      console.log('Default assignments found, details:');
-      defaultAssignments.forEach(assignment => {
-        console.log(`- Department: ${assignment.department?.name}, ID: ${assignment.department_id}`);
-      });
-    } else {
-      console.log('No default assignments found for this shift type!');
-    }
-    
-    // If this is a new shift, we need to initialize the area cover
+    // If this is a new shift, we need to initialize the area cover from defaults
     await shiftsStore.setupShiftAreaCoverFromDefaults(props.shiftId, props.shiftType);
     
     // Verify it worked by refetching
