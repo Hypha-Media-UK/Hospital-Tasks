@@ -27,30 +27,18 @@
             </div>
             
             <div v-else-if="activeShifts.length === 0" class="empty-state">
-              <div class="empty-state__icon">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                </svg>
-              </div>
               <p>No active shifts. Create a new shift to get started.</p>
-              <button @click="activeTabId = 'create-shift'" class="btn btn-primary empty-state__action">
-                Create Shift
-              </button>
             </div>
             
             <div v-else>
               <div class="selection-controls" v-if="activeShifts.length > 0">
                 <label class="select-all-container">
-                  <span class="checkbox-wrapper">
-                    <input 
-                      type="checkbox" 
-                      :checked="isAllSelected" 
-                      @change="toggleSelectAll" 
-                    />
-                    <span class="custom-checkbox"></span>
-                  </span>
-                  <span>Select All</span>
+                  <input 
+                    type="checkbox" 
+                    :checked="isAllSelected" 
+                    @change="toggleSelectAll" 
+                  />
+                  Select All
                 </label>
               </div>
               
@@ -66,57 +54,29 @@
                       :style="{ borderColor: getShiftColor(shift.shift_type) }"
                       @click="viewShift(shift.id)"
                     >
-                      <div class="shift-card__color-bar" :style="{ backgroundColor: getShiftColor(shift.shift_type) }"></div>
                       <div class="shift-card__header">
                         <div class="shift-card__selection">
-                          <span class="checkbox-wrapper">
-                            <input 
-                              type="checkbox" 
-                              :checked="isShiftSelected(shift)"
-                              @change="toggleShiftSelection(shift, $event)" 
-                              @click.stop
-                            />
-                            <span class="custom-checkbox"></span>
-                          </span>
-                          <span class="shift-type">
-                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
-                            <NightShiftIcon v-else size="18" class="shift-icon" />
-                            Day Shift
-                          </span>
+                          <input 
+                            type="checkbox" 
+                            :checked="isShiftSelected(shift)"
+                            @change="toggleShiftSelection(shift, $event)" 
+                            @click.stop
+                          />
+                          <span class="shift-type">Day Shift</span>
                         </div>
                         <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
                       </div>
                       <div class="shift-card__body">
-                        <div class="detail-row">
-                          <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                          <p class="supervisor">
-                            <span class="detail-label">Supervisor:</span> 
-                            <span class="detail-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <ClockIcon size="16" class="detail-icon" />
-                          <p class="time">
-                            <span class="detail-label">Started:</span> 
-                            <span class="detail-value">{{ formatTime(shift.start_time) }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                          </svg>
-                          <p class="duration">
-                            <span class="detail-label">Duration:</span> 
-                            <span class="detail-value">{{ calculateDuration(shift.start_time) }}</span>
-                          </p>
-                        </div>
-                        <div class="shift-card__footer">
-                          <button class="btn-view-shift">View Details</button>
-                        </div>
+                        <p class="supervisor">
+                          <strong>Supervisor:</strong> 
+                          {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+                        </p>
+                        <p class="time">
+                          <strong>Started:</strong> {{ formatTime(shift.start_time) }}
+                        </p>
+                        <p class="duration">
+                          <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -133,57 +93,29 @@
                       :style="{ borderColor: getShiftColor(shift.shift_type) }"
                       @click="viewShift(shift.id)"
                     >
-                      <div class="shift-card__color-bar" :style="{ backgroundColor: getShiftColor(shift.shift_type) }"></div>
                       <div class="shift-card__header">
                         <div class="shift-card__selection">
-                          <span class="checkbox-wrapper">
-                            <input 
-                              type="checkbox" 
-                              :checked="isShiftSelected(shift)"
-                              @change="toggleShiftSelection(shift, $event)" 
-                              @click.stop
-                            />
-                            <span class="custom-checkbox"></span>
-                          </span>
-                          <span class="shift-type">
-                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
-                            <NightShiftIcon v-else size="18" class="shift-icon" />
-                            Night Shift
-                          </span>
+                          <input 
+                            type="checkbox" 
+                            :checked="isShiftSelected(shift)"
+                            @change="toggleShiftSelection(shift, $event)" 
+                            @click.stop
+                          />
+                          <span class="shift-type">Night Shift</span>
                         </div>
                         <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
                       </div>
                       <div class="shift-card__body">
-                        <div class="detail-row">
-                          <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                          <p class="supervisor">
-                            <span class="detail-label">Supervisor:</span> 
-                            <span class="detail-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <ClockIcon size="16" class="detail-icon" />
-                          <p class="time">
-                            <span class="detail-label">Started:</span> 
-                            <span class="detail-value">{{ formatTime(shift.start_time) }}</span>
-                          </p>
-                        </div>
-                        <div class="detail-row">
-                          <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                          </svg>
-                          <p class="duration">
-                            <span class="detail-label">Duration:</span> 
-                            <span class="detail-value">{{ calculateDuration(shift.start_time) }}</span>
-                          </p>
-                        </div>
-                        <div class="shift-card__footer">
-                          <button class="btn-view-shift">View Details</button>
-                        </div>
+                        <p class="supervisor">
+                          <strong>Supervisor:</strong> 
+                          {{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}
+                        </p>
+                        <p class="time">
+                          <strong>Started:</strong> {{ formatTime(shift.start_time) }}
+                        </p>
+                        <p class="duration">
+                          <strong>Duration:</strong> {{ calculateDuration(shift.start_time) }}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -197,269 +129,70 @@
             <h2 class="card__title">Create New Shift</h2>
             
             <div class="create-shift-form">
-              <!-- Progress steps indicator -->
-              <div class="progress-steps">
-                <div class="step" :class="{ 'active': formStep === 1, 'completed': formStep > 1 }">
-                  <div class="step-number">1</div>
-                  <div class="step-label">Select Date</div>
-                </div>
-                <div class="step-connector"></div>
-                <div class="step" :class="{ 'active': formStep === 2, 'completed': formStep > 2 }">
-                  <div class="step-number">2</div>
-                  <div class="step-label">Choose Supervisor</div>
-                </div>
-                <div class="step-connector"></div>
-                <div class="step" :class="{ 'active': formStep === 3, 'completed': formStep > 3 }">
-                  <div class="step-number">3</div>
-                  <div class="step-label">Create Shift</div>
-                </div>
-              </div>
-              
-              <!-- Form contents with steps -->
-              <div class="form-step-container">
-                <!-- Step 1: Date Selection -->
-                <div v-if="formStep === 1" class="form-step date-step" key="step-1">
-                  <div class="step-header">
-                    <h3 class="step-title">Select Shift Date</h3>
-                    <p class="step-description">Choose the date for the new shift</p>
-                  </div>
-                  
-                  <div class="form-card">
-                    <div class="date-selection-area">
-                      <div class="calendar-wrapper">
-                        <label for="shiftDate" class="form-label">
-                          <ClockIcon size="18" class="form-icon" />
-                          Shift Date
-                        </label>
-                        <div class="input-wrapper date-input">
-                          <input 
-                            type="date" 
-                            id="shiftDate" 
-                            v-model="selectedDate" 
-                            class="form-control"
-                            :min="today"
-                            @change="checkDateSelection"
-                          >
-                        </div>
-                      </div>
-                      
-                      <div v-if="selectedDate" class="date-preview">
-                        <div class="date-preview-header">
-                          <span class="date-weekday">{{ getWeekdayName(selectedDate) }}</span>
-                          <span class="date-weekend-badge" v-if="isDayShiftWeekend">Weekend</span>
-                        </div>
-                        <div class="date-preview-calendar">
-                          <div class="calendar-month">{{ formatMonth(selectedDate) }}</div>
-                          <div class="calendar-day">{{ formatDayNumber(selectedDate) }}</div>
-                          <div class="calendar-year">{{ formatYear(selectedDate) }}</div>
-                        </div>
-                        <div class="shift-hours">
-                          <div class="shift-time-block">
-                            <div class="shift-label">Day Shift</div>
-                            <div class="shift-time">{{ settingsStore.shiftDefaults.week_day.startTime }} - {{ settingsStore.shiftDefaults.week_day.endTime }}</div>
-                          </div>
-                          <div class="shift-time-block">
-                            <div class="shift-label">Night Shift</div>
-                            <div class="shift-time">{{ settingsStore.shiftDefaults.week_night.startTime }} - {{ settingsStore.shiftDefaults.week_night.endTime }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                      <button 
-                        @click="formStep = 2" 
-                        class="btn btn-next"
-                        :disabled="!selectedDate"
-                      >
-                        Next: Choose Supervisor
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+              <!-- Create New Shift (Single Step) -->
+              <div class="shift-type-selection">
+                <div class="form-group date-picker-container">
+                  <label for="shiftDate">Shift Date</label>
+                  <input 
+                    type="date" 
+                    id="shiftDate" 
+                    v-model="selectedDate" 
+                    class="form-control"
+                    :disabled="creating"
+                    :min="today"
+                  >
                 </div>
                 
-                <!-- Step 2: Supervisor Selection -->
-                <div v-if="formStep === 2" class="form-step supervisor-step" key="step-2">
-                  <div class="step-header">
-                    <h3 class="step-title">Choose Supervisor</h3>
-                    <p class="step-description">Select who will supervise this shift</p>
-                  </div>
-                  
-                  <div class="form-card">
-                    <div class="supervisor-selection-area">
-                      <label for="supervisor" class="form-label">
-                        <svg class="form-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Supervisor
-                      </label>
-                      
-                      <div class="select-wrapper">
-                        <input 
-                          type="text" 
-                          class="form-control supervisor-filter" 
-                          placeholder="Type to filter supervisors..."
-                          v-model="supervisorFilter"
-                        >
-                        <div class="supervisor-list">
-                          <div 
-                            v-for="supervisor in filteredSupervisors" 
-                            :key="supervisor.id"
-                            class="supervisor-item"
-                            :class="{ 'selected': selectedSupervisor === supervisor.id }"
-                            @click="selectSupervisor(supervisor.id)"
-                          >
-                            <div class="supervisor-avatar">
-                              {{ getInitials(supervisor.first_name, supervisor.last_name) }}
-                            </div>
-                            <div class="supervisor-info">
-                              <div class="supervisor-name">{{ supervisor.first_name }} {{ supervisor.last_name }}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div v-if="selectedSupervisor" class="selected-supervisor-preview">
-                      <div class="preview-label">Selected Supervisor:</div>
-                      <div class="selected-supervisor-card">
-                        <div class="supervisor-avatar large">
-                          {{ getSelectedSupervisorInitials() }}
-                        </div>
-                        <div class="supervisor-details">
-                          <div class="supervisor-name">{{ getSelectedSupervisorName() }}</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                      <button @click="formStep = 1" class="btn btn-back">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Back
-                      </button>
-                      <button 
-                        @click="formStep = 3" 
-                        class="btn btn-next"
-                        :disabled="!selectedSupervisor"
-                      >
-                        Next: Create Shift
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                <div class="form-group supervisor-picker-container">
+                  <label for="supervisor">Supervisor</label>
+                  <select 
+                    id="supervisor" 
+                    v-model="selectedSupervisor" 
+                    class="form-control"
+                    :disabled="creating"
+                  >
+                    <option value="">Select a supervisor</option>
+                    <option 
+                      v-for="supervisor in supervisors" 
+                      :key="supervisor.id" 
+                      :value="supervisor.id"
+                    >
+                      {{ supervisor.first_name }} {{ supervisor.last_name }}
+                    </option>
+                  </select>
                 </div>
                 
-                <!-- Step 3: Shift Type Selection -->
-                <div v-if="formStep === 3" class="form-step shift-type-step" key="step-3">
-                  <div class="step-header">
-                    <h3 class="step-title">Create Shift</h3>
-                    <p class="step-description">Select the type of shift you want to create</p>
-                  </div>
+                <div class="shift-type-buttons">
+                  <button 
+                    @click="createDayShift()" 
+                    class="btn btn-shift-type"
+                    :disabled="creating || !selectedDate || !selectedSupervisor"
+                    :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
+                  >
+                    <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Day Shift</span>
+                    <span v-else class="loading-indicator">
+                      <span class="loading-spinner"></span>
+                      Creating...
+                    </span>
+                  </button>
                   
-                  <div class="form-card">
-                    <div class="form-summary">
-                      <div class="summary-title">Shift Summary</div>
-                      <div class="summary-details">
-                        <div class="summary-row">
-                          <div class="summary-label">Date:</div>
-                          <div class="summary-value">
-                            {{ formatFullDate(selectedDate) }} 
-                            <span class="badge" v-if="isDayShiftWeekend">Weekend</span>
-                          </div>
-                        </div>
-                        <div class="summary-row">
-                          <div class="summary-label">Supervisor:</div>
-                          <div class="summary-value">{{ getSelectedSupervisorName() }}</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="shift-types">
-                      <div class="shift-type-container">
-                        <div class="shift-timeline">
-                          <div class="timeline-hours">
-                            <div v-for="hour in 24" :key="hour" class="timeline-hour">
-                              {{ (hour - 1) % 12 + 1 }}{{ hour <= 12 ? 'am' : 'pm' }}
-                            </div>
-                          </div>
-                          <div class="timeline-periods">
-                            <div class="timeline-day" 
-                                :style="{ left: getTimePosition(settingsStore.shiftDefaults.week_day.startTime) + '%', 
-                                         width: getTimeWidth(settingsStore.shiftDefaults.week_day.startTime, settingsStore.shiftDefaults.week_day.endTime) + '%' }">
-                              Day Shift
-                            </div>
-                            <div class="timeline-night"
-                                :style="{ left: getTimePosition(settingsStore.shiftDefaults.week_night.startTime) + '%', 
-                                         width: getTimeWidth(settingsStore.shiftDefaults.week_night.startTime, settingsStore.shiftDefaults.week_night.endTime) + '%' }">
-                              Night Shift
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div class="shift-type-buttons">
-                        <button 
-                          @click="createDayShift()" 
-                          class="btn btn-shift-type day-shift"
-                          :disabled="creating"
-                          :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_day' : 'week_day') }"
-                        >
-                          <DayShiftIcon size="48" class="shift-type-icon" />
-                          <div class="btn-content">
-                            <span v-if="!creating" class="btn-label">
-                              Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Day Shift
-                            </span>
-                            <span v-else class="loading-indicator">
-                              <span class="loading-spinner"></span>
-                              Creating...
-                            </span>
-                            <span class="shift-hours">{{ settingsStore.shiftDefaults.week_day.startTime }} - {{ settingsStore.shiftDefaults.week_day.endTime }}</span>
-                          </div>
-                        </button>
-                        
-                        <button 
-                          @click="createNightShift()" 
-                          class="btn btn-shift-type night-shift"
-                          :disabled="creating"
-                          :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
-                        >
-                          <NightShiftIcon size="48" class="shift-type-icon" />
-                          <div class="btn-content">
-                            <span v-if="!creating" class="btn-label">
-                              Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Night Shift
-                            </span>
-                            <span v-else class="loading-indicator">
-                              <span class="loading-spinner"></span>
-                              Creating...
-                            </span>
-                            <span class="shift-hours">{{ settingsStore.shiftDefaults.week_night.startTime }} - {{ settingsStore.shiftDefaults.week_night.endTime }}</span>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                      <button @click="formStep = 2" class="btn btn-back">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Back
-                      </button>
-                    </div>
-                  </div>
+                  <button 
+                    @click="createNightShift()" 
+                    class="btn btn-shift-type"
+                    :disabled="creating || !selectedDate || !selectedSupervisor"
+                    :style="{ backgroundColor: getShiftColor(isDayShiftWeekend ? 'weekend_night' : 'week_night') }"
+                  >
+                    <span v-if="!creating">Create {{ isDayShiftWeekend ? 'Weekend' : 'Weekday' }} Night Shift</span>
+                    <span v-else class="loading-indicator">
+                      <span class="loading-spinner"></span>
+                      Creating...
+                    </span>
+                  </button>
                 </div>
-              </div>
-              
-              <div v-if="error" class="error-message">
-                {{ error }}
+                
+                <div v-if="error" class="error-message">
+                  {{ error }}
+                </div>
               </div>
             </div>
           </template>
@@ -476,9 +209,6 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import AnimatedTabs from '../components/shared/AnimatedTabs.vue';
-import DayShiftIcon from '../components/icons/DayShiftIcon.vue';
-import NightShiftIcon from '../components/icons/NightShiftIcon.vue';
-import ClockIcon from '../components/icons/ClockIcon.vue';
 import * as XLSX from 'xlsx';
 
 const router = useRouter();
@@ -495,8 +225,6 @@ const creating = ref(false);
 const error = ref('');
 const detectedShiftType = ref('week_day'); // Used for auto-detection, still needed for existing functionality
 const updateTimer = ref(null);
-const formStep = ref(1); // For multi-step form (1=date, 2=supervisor, 3=shift type)
-const supervisorFilter = ref(''); // For filtering supervisors list
 
 // Tab state
 const activeTabId = ref('active-shifts');
@@ -563,112 +291,6 @@ onMounted(async () => {
     determineShiftType();
   }, 60000); // 60 seconds
 });
-
-// Get weekday name from date
-function getWeekdayName(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { weekday: 'long' });
-}
-
-// Format month for calendar display
-function formatMonth(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { month: 'long' });
-}
-
-// Format day number for calendar display
-function formatDayNumber(dateString) {
-  const date = new Date(dateString);
-  return date.getDate();
-}
-
-// Format year for calendar display
-function formatYear(dateString) {
-  const date = new Date(dateString);
-  return date.getFullYear();
-}
-
-// Format full date with weekday
-function formatFullDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', { 
-    weekday: 'long',
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-}
-
-// Get initials from name
-function getInitials(firstName, lastName) {
-  return (firstName ? firstName.charAt(0) : '') + (lastName ? lastName.charAt(0) : '');
-}
-
-// Get the selected supervisor's initials
-function getSelectedSupervisorInitials() {
-  const supervisor = supervisors.value.find(s => s.id === selectedSupervisor.value);
-  if (!supervisor) return '';
-  return getInitials(supervisor.first_name, supervisor.last_name);
-}
-
-// Get the selected supervisor's full name
-function getSelectedSupervisorName() {
-  const supervisor = supervisors.value.find(s => s.id === selectedSupervisor.value);
-  if (!supervisor) return 'Not selected';
-  return `${supervisor.first_name} ${supervisor.last_name}`;
-}
-
-// Select a supervisor
-function selectSupervisor(supervisorId) {
-  selectedSupervisor.value = supervisorId;
-}
-
-// Check if date is selected and valid
-function checkDateSelection() {
-  if (!selectedDate.value) {
-    error.value = 'Please select a valid date';
-    return false;
-  }
-  error.value = '';
-  return true;
-}
-
-// Filtered supervisors based on search input
-const filteredSupervisors = computed(() => {
-  if (!supervisorFilter.value) return supervisors.value;
-  
-  const filter = supervisorFilter.value.toLowerCase();
-  return supervisors.value.filter(supervisor => {
-    const fullName = `${supervisor.first_name} ${supervisor.last_name}`.toLowerCase();
-    return fullName.includes(filter);
-  });
-});
-
-// Convert time to position percentage for timeline
-function getTimePosition(timeString) {
-  if (!timeString) return 0;
-  const [hours, minutes] = timeString.split(':').map(Number);
-  return ((hours * 60 + minutes) / (24 * 60)) * 100;
-}
-
-// Calculate width percentage between start and end times
-function getTimeWidth(startTime, endTime) {
-  if (!startTime || !endTime) return 0;
-  
-  const [startHours, startMinutes] = startTime.split(':').map(Number);
-  const [endHours, endMinutes] = endTime.split(':').map(Number);
-  
-  let startMinutesTotal = startHours * 60 + startMinutes;
-  let endMinutesTotal = endHours * 60 + endMinutes;
-  
-  // Handle overnight shifts
-  if (endMinutesTotal < startMinutesTotal) {
-    endMinutesTotal += 24 * 60; // Add 24 hours
-  }
-  
-  return ((endMinutesTotal - startMinutesTotal) / (24 * 60)) * 100;
-}
 
 // Clean up timer when component is unmounted
 onUnmounted(() => {
@@ -1481,761 +1103,10 @@ function calculateDuration(startTimeString) {
   color: #dc3545;
 }
 
-/* Empty State Styling */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
+.loading-indicator, .empty-state {
+  padding: 2rem 0;
   text-align: center;
   color: #666;
-  background-color: rgba(0, 0, 0, 0.02);
-  border-radius: 8px;
-  
-  &__icon {
-    color: #9e9e9e;
-    margin-bottom: 1rem;
-  }
-  
-  p {
-    margin-bottom: 1.5rem;
-    font-size: 1.1rem;
-  }
-  
-  &__action {
-    padding: 0.75rem 1.5rem;
-    background-color: #4285F4;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    
-    &:hover {
-      background-color: darken(#4285F4, 10%);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-  }
-}
-
-/* Custom Checkbox Styling */
-.checkbox-wrapper {
-  position: relative;
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin-right: 10px;
-  
-  input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    cursor: pointer;
-    height: 0;
-    width: 0;
-    
-    &:checked ~ .custom-checkbox {
-      background-color: #4285F4;
-      border-color: #4285F4;
-      
-      &:after {
-        display: block;
-      }
-    }
-  }
-  
-  .custom-checkbox {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 20px;
-    width: 20px;
-    background-color: white;
-    border: 2px solid #ccc;
-    border-radius: 4px;
-    transition: all 0.2s;
-    
-    &:after {
-      content: "";
-      position: absolute;
-      display: none;
-      left: 6px;
-      top: 2px;
-      width: 5px;
-      height: 10px;
-      border: solid white;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg);
-    }
-  }
-}
-
-.select-all-container {
-  display: flex;
-  align-items: center;
-  background-color: rgba(0, 0, 0, 0.03);
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  user-select: none;
-  max-width: fit-content;
-  
-  &:hover .custom-checkbox {
-    border-color: #4285F4;
-  }
-}
-
-/* Enhanced Shift Card Styling */
-.shift-card {
-  position: relative;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  background-color: white;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  
-  &__color-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 6px;
-    height: 100%;
-    background-color: currentColor;
-  }
-  
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1rem 0.5rem 1.5rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  }
-  
-  &__selection {
-    display: flex;
-    align-items: center;
-    
-    .shift-type {
-      display: flex;
-      align-items: center;
-      font-weight: 600;
-      font-size: 0.95rem;
-      
-      .shift-icon {
-        margin-right: 6px;
-        color: #4285F4;
-      }
-    }
-  }
-  
-  &__body {
-    padding: 1rem 1rem 1rem 1.5rem;
-  }
-  
-  .detail-row {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-    
-    .detail-icon {
-      flex-shrink: 0;
-      margin-right: 0.5rem;
-      margin-top: 3px;
-      color: #666;
-    }
-    
-    p {
-      margin: 0;
-      font-size: 0.9rem;
-      
-      .detail-label {
-        font-weight: 600;
-        color: #333;
-      }
-      
-      .detail-value {
-        color: #666;
-      }
-    }
-  }
-  
-  &__footer {
-    margin-top: 1rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    text-align: right;
-    
-    .btn-view-shift {
-      background-color: rgba(66, 133, 244, 0.1);
-      color: #4285F4;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      
-      &:hover {
-        background-color: rgba(66, 133, 244, 0.2);
-      }
-    }
-  }
-  
-  .shift-date {
-    font-size: 0.85rem;
-    color: #666;
-    font-weight: 500;
-  }
-  
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  }
-}
-
-/* Enhanced Create Shift Form Styling */
-.create-shift-form {
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-/* Progress Steps Styling */
-.progress-steps {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding: 0 2rem;
-  position: relative;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    top: 18px;
-    left: 10%;
-    right: 10%;
-    height: 2px;
-    background-color: #e0e0e0;
-    z-index: 1;
-  }
-  
-  .step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 2;
-    
-    .step-number {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background-color: #f5f5f5;
-      border: 2px solid #e0e0e0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #666;
-      font-weight: 600;
-      margin-bottom: 8px;
-      transition: all 0.3s ease;
-    }
-    
-    .step-label {
-      font-size: 0.85rem;
-      color: #666;
-      font-weight: 500;
-      text-align: center;
-    }
-    
-    &.active {
-      .step-number {
-        background-color: #4285F4;
-        border-color: #4285F4;
-        color: white;
-        box-shadow: 0 0 0 4px rgba(66, 133, 244, 0.2);
-      }
-      
-      .step-label {
-        color: #4285F4;
-        font-weight: 600;
-      }
-    }
-    
-    &.completed {
-      .step-number {
-        background-color: #34A853;
-        border-color: #34A853;
-        color: white;
-      }
-      
-      .step-label {
-        color: #34A853;
-      }
-    }
-  }
-  
-  .step-connector {
-    flex: 1;
-    height: 2px;
-    z-index: 0;
-  }
-}
-
-/* Form Step Container */
-.form-step-container {
-  position: relative;
-  min-height: 400px;
-}
-
-.form-step {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.step-header {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  
-  .step-title {
-    font-size: 1.4rem;
-    color: #333;
-    margin-bottom: 0.5rem;
-  }
-  
-  .step-description {
-    color: #666;
-    font-size: 1rem;
-  }
-}
-
-/* Form Card Styling */
-.form-card {
-  background-color: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  margin-bottom: 2rem;
-}
-
-/* Date Selection Step */
-.date-selection-area {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  
-  @media (min-width: 768px) {
-    flex-direction: row;
-  }
-  
-  .calendar-wrapper {
-    flex: 1;
-  }
-  
-  .date-preview {
-    flex: 1;
-    background-color: #f9f9f9;
-    border-radius: 12px;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    
-    &-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 1rem;
-      
-      .date-weekday {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: #4285F4;
-      }
-      
-      .date-weekend-badge {
-        background-color: #FFC107;
-        color: rgba(0, 0, 0, 0.7);
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 12px;
-      }
-    }
-    
-    &-calendar {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      
-      .calendar-month {
-        font-size: 1.1rem;
-        color: #666;
-        margin-bottom: 0.5rem;
-      }
-      
-      .calendar-day {
-        font-size: 3.5rem;
-        font-weight: 700;
-        color: #333;
-        line-height: 1;
-      }
-      
-      .calendar-year {
-        font-size: 1.1rem;
-        color: #666;
-        margin-top: 0.5rem;
-      }
-    }
-  }
-}
-
-.shift-hours {
-  width: 100%;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  padding-top: 1rem;
-  
-  .shift-time-block {
-    margin-bottom: 1rem;
-    
-    .shift-label {
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 0.25rem;
-      color: #333;
-    }
-    
-    .shift-time {
-      font-size: 0.95rem;
-      color: #666;
-    }
-  }
-}
-
-/* Form Actions */
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2rem;
-  
-  .btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: none;
-    
-    &-back {
-      background-color: #f5f5f5;
-      color: #666;
-      
-      &:hover {
-        background-color: #e0e0e0;
-      }
-    }
-    
-    &-next {
-      background-color: #4285F4;
-      color: white;
-      
-      &:hover:not(:disabled) {
-        background-color: darken(#4285F4, 5%);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
-      
-      &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-    }
-  }
-}
-
-/* Supervisor Selection Step */
-.supervisor-selection-area {
-  margin-bottom: 2rem;
-  
-  .form-label {
-    display: flex;
-    align-items: center;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    color: #333;
-    
-    .form-icon {
-      margin-right: 0.5rem;
-      color: #4285F4;
-    }
-  }
-}
-
-.supervisor-filter {
-  padding: 0.75rem 1rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 1rem;
-  margin-bottom: 1rem;
-  width: 100%;
-  
-  &:focus {
-    outline: none;
-    border-color: #4285F4;
-    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
-  }
-}
-
-.supervisor-list {
-  max-height: 300px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-}
-
-.supervisor-item {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  &:hover {
-    background-color: #f9f9f9;
-  }
-  
-  &.selected {
-    background-color: rgba(66, 133, 244, 0.1);
-  }
-  
-  .supervisor-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: #4285F4;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    margin-right: 1rem;
-    font-size: 0.9rem;
-    
-    &.large {
-      width: 48px;
-      height: 48px;
-      font-size: 1.1rem;
-    }
-  }
-  
-  .supervisor-info {
-    flex: 1;
-  }
-  
-  .supervisor-name {
-    font-weight: 500;
-    font-size: 0.95rem;
-  }
-}
-
-.selected-supervisor-preview {
-  background-color: #f9f9f9;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-  
-  .preview-label {
-    color: #666;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .selected-supervisor-card {
-    display: flex;
-    align-items: center;
-  }
-  
-  .supervisor-details {
-    margin-left: 1rem;
-    
-    .supervisor-name {
-      font-weight: 600;
-      font-size: 1.1rem;
-      color: #333;
-    }
-  }
-}
-
-/* Shift Type Selection Step */
-.form-summary {
-  background-color: #f9f9f9;
-  padding: 1.25rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-  
-  .summary-title {
-    font-weight: 600;
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-    color: #333;
-  }
-  
-  .summary-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .summary-row {
-    display: flex;
-    
-    .summary-label {
-      width: 100px;
-      font-weight: 500;
-      color: #666;
-    }
-    
-    .summary-value {
-      flex: 1;
-      color: #333;
-      
-      .badge {
-        display: inline-block;
-        background-color: #FFC107;
-        color: rgba(0, 0, 0, 0.7);
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 12px;
-        margin-left: 8px;
-      }
-    }
-  }
-}
-
-.shift-timeline {
-  position: relative;
-  height: 100px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 2rem;
-  overflow: hidden;
-  
-  .timeline-hours {
-    display: flex;
-    justify-content: space-between;
-    padding: 0 1rem;
-    position: relative;
-    height: 20px;
-    
-    .timeline-hour {
-      font-size: 0.75rem;
-      color: #666;
-      position: relative;
-    }
-  }
-  
-  .timeline-periods {
-    position: relative;
-    height: 50px;
-    margin-top: 10px;
-    
-    .timeline-day, .timeline-night {
-      position: absolute;
-      height: 30px;
-      top: 10px;
-      border-radius: 6px;
-      padding: 5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 0.85rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .timeline-day {
-      background-color: #4285F4;
-    }
-    
-    .timeline-night {
-      background-color: #673AB7;
-    }
-  }
-}
-
-.shift-type-buttons {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  .btn-shift-type {
-    display: flex;
-    align-items: center;
-    padding: 1.5rem;
-    border-radius: 12px;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    
-    .shift-type-icon {
-      margin-right: 1.5rem;
-    }
-    
-    .btn-content {
-      text-align: left;
-      
-      .btn-label {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        line-height: 1.4;
-      }
-      
-      .shift-hours {
-        font-size: 0.9rem;
-        opacity: 0.8;
-        border-top: none;
-        padding-top: 0;
-      }
-    }
-    
-    &:hover:not(:disabled) {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-    }
-    
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-  }
 }
 
 // Loading spinner in buttons
@@ -2256,13 +1127,15 @@ function calculateDuration(startTimeString) {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 2rem 0;
-  text-align: center;
-  color: #666;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.supervisor-picker-container {
+  max-width: 400px;
+  margin: 0 auto 1.5rem auto;
 }
 
 /* Tabs styling */
@@ -2301,21 +1174,6 @@ function calculateDuration(startTimeString) {
     height: 2px;
     background-color: #4285F4;
     transition: all 0.3s ease;
-  }
-}
-
-.btn-primary {
-  background-color: #4285F4;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background-color: darken(#4285F4, 10%);
   }
 }
 </style>
