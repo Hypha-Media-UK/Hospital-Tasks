@@ -14,6 +14,7 @@ export const useStaffStore = defineStore('staff', {
     },
     sortBy: 'firstName', // 'firstName' or 'lastName'
     porterTypeFilter: 'all', // 'all', 'shift', or 'relief'
+    shiftTimeFilter: 'all', // 'all', 'day', or 'night'
     sortDirection: 'asc', // 'asc' or 'desc'
     searchQuery: '', // For filtering porters by name
     availabilityPatterns: [
@@ -42,7 +43,7 @@ export const useStaffStore = defineStore('staff', {
       });
     },
     
-    // Get sorted porters
+    // Get sorted porters (basic filtering without shift time filter)
     sortedPorters: (state) => {
       // First apply type filter, then sort
       let filteredPorters = [...state.porters];
@@ -123,6 +124,84 @@ export const useStaffStore = defineStore('staff', {
         }
       }
       return 'No availability set';
+    },
+    
+    // Determine porter shift type based on contracted hours vs shift defaults
+    getPorterShiftType: () => (porter, shiftDefaults) => {
+      if (!porter.contracted_hours_start || !porter.contracted_hours_end || !shiftDefaults) {
+        return 'unknown';
+      }
+      
+      const porterStart = porter.contracted_hours_start.substring(0, 5);
+      const porterEnd = porter.contracted_hours_end.substring(0, 5);
+      
+      const dayStart = shiftDefaults.week_day.startTime;
+      const dayEnd = shiftDefaults.week_day.endTime;
+      const nightStart = shiftDefaults.week_night.startTime;
+      const nightEnd = shiftDefaults.week_night.endTime;
+      
+      // Helper function to convert time string to minutes for comparison
+      const timeToMinutes = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+      
+      const porterStartMin = timeToMinutes(porterStart);
+      const porterEndMin = timeToMinutes(porterEnd);
+      const dayStartMin = timeToMinutes(dayStart);
+      const dayEndMin = timeToMinutes(dayEnd);
+      const nightStartMin = timeToMinutes(nightStart);
+      const nightEndMin = timeToMinutes(nightEnd);
+      
+      // Handle night shifts that cross midnight
+      const isNightShiftCrossingMidnight = nightStartMin > nightEndMin;
+      const isPorterShiftCrossingMidnight = porterStartMin > porterEndMin;
+      
+      // Calculate overlap with day shift
+      let dayOverlap = 0;
+      if (porterStartMin <= dayEndMin && porterEndMin >= dayStartMin) {
+        const overlapStart = Math.max(porterStartMin, dayStartMin);
+        const overlapEnd = Math.min(porterEndMin, dayEndMin);
+        dayOverlap = Math.max(0, overlapEnd - overlapStart);
+      }
+      
+      // Calculate overlap with night shift
+      let nightOverlap = 0;
+      if (isNightShiftCrossingMidnight) {
+        // Night shift crosses midnight (e.g., 20:00-08:00)
+        if (isPorterShiftCrossingMidnight) {
+          // Porter shift also crosses midnight
+          const beforeMidnightOverlap = Math.max(0, Math.min(porterEndMin + 1440, nightEndMin + 1440) - Math.max(porterStartMin, nightStartMin));
+          const afterMidnightOverlap = Math.max(0, Math.min(porterEndMin, nightEndMin) - Math.max(porterStartMin - 1440, nightStartMin - 1440));
+          nightOverlap = beforeMidnightOverlap + afterMidnightOverlap;
+        } else {
+          // Porter shift doesn't cross midnight
+          // Check overlap with night shift before midnight
+          if (porterStartMin >= nightStartMin) {
+            nightOverlap = porterEndMin - porterStartMin;
+          }
+          // Check overlap with night shift after midnight
+          else if (porterEndMin <= nightEndMin) {
+            nightOverlap = porterEndMin - porterStartMin;
+          }
+        }
+      } else {
+        // Night shift doesn't cross midnight
+        if (porterStartMin <= nightEndMin && porterEndMin >= nightStartMin) {
+          const overlapStart = Math.max(porterStartMin, nightStartMin);
+          const overlapEnd = Math.min(porterEndMin, nightEndMin);
+          nightOverlap = Math.max(0, overlapEnd - overlapStart);
+        }
+      }
+      
+      // Determine shift type based on which has more overlap
+      if (dayOverlap > nightOverlap) {
+        return 'day';
+      } else if (nightOverlap > dayOverlap) {
+        return 'night';
+      } else {
+        return 'unknown';
+      }
     }
   },
   
@@ -137,6 +216,14 @@ export const useStaffStore = defineStore('staff', {
       // Validate filter type
       if (['all', 'shift', 'relief'].includes(filterType)) {
         this.porterTypeFilter = filterType;
+      }
+    },
+    
+    // Set shift time filter
+    setShiftTimeFilter(filterType) {
+      // Validate filter type
+      if (['all', 'day', 'night'].includes(filterType)) {
+        this.shiftTimeFilter = filterType;
       }
     },
     

@@ -136,6 +136,33 @@
               </button>
             </div>
             
+            <div class="shift-time-filters">
+              <span>Shift:</span>
+              <button 
+                class="filter-btn" 
+                :class="{ 'filter-btn--active': staffStore.shiftTimeFilter === 'all' }"
+                @click="staffStore.setShiftTimeFilter('all')"
+              >
+                All Shifts
+              </button>
+              <button 
+                class="filter-btn" 
+                :class="{ 'filter-btn--active': staffStore.shiftTimeFilter === 'day' }"
+                @click="staffStore.setShiftTimeFilter('day')"
+              >
+                <DayShiftIcon />
+                Day Shift
+              </button>
+              <button 
+                class="filter-btn" 
+                :class="{ 'filter-btn--active': staffStore.shiftTimeFilter === 'night' }"
+                @click="staffStore.setShiftTimeFilter('night')"
+              >
+                <NightShiftIcon />
+                Night Shift
+              </button>
+            </div>
+            
             <div class="search-container">
               <div class="search-field">
                 <span class="search-icon">🔍</span>
@@ -162,13 +189,13 @@
             Loading porters...
           </div>
           
-          <div v-else-if="staffStore.sortedPorters.length === 0" class="empty-state">
+          <div v-else-if="filteredPorters.length === 0" class="empty-state">
             No porters found. Add your first porter using the button above.
           </div>
           
           <div v-else class="staff-list">
             <div 
-              v-for="porter in staffStore.sortedPorters" 
+              v-for="porter in filteredPorters" 
               :key="porter.id"
               class="staff-item"
             >
@@ -498,14 +525,18 @@ import { ref, onMounted, computed } from 'vue';
 import { useStaffStore } from '../../../stores/staffStore';
 import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import IconButton from '../../IconButton.vue';
 import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
+import DayShiftIcon from '../../icons/DayShiftIcon.vue';
+import NightShiftIcon from '../../icons/NightShiftIcon.vue';
 // PorterAbsenceModal is no longer needed as we've integrated the functionality
 
 const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
 const supportServicesStore = useSupportServicesStore();
+const settingsStore = useSettingsStore();
 
 // Tab state
 const activeTab = ref('porters');
@@ -577,11 +608,27 @@ const hasExistingAbsence = computed(() => {
   });
 });
 
+// Computed property for filtered porters with shift time filtering
+const filteredPorters = computed(() => {
+  let porters = staffStore.sortedPorters;
+  
+  // Apply shift time filter if not set to 'all'
+  if (staffStore.shiftTimeFilter !== 'all' && settingsStore.shiftDefaults) {
+    porters = porters.filter(porter => {
+      const shiftType = staffStore.getPorterShiftType(porter, settingsStore.shiftDefaults);
+      return shiftType === staffStore.shiftTimeFilter;
+    });
+  }
+  
+  return porters;
+});
+
 // Initialize data
 onMounted(async () => {
   await staffStore.initialize();
   await areaCoverStore.initialize();
   await supportServicesStore.initialize();
+  await settingsStore.loadSettings();
 });
 
 // Get area assignments for a porter
@@ -941,7 +988,7 @@ const confirmDeleteAbsence = async () => {
 .filter-controls {
   margin-bottom: 16px;
   
-  .sort-controls, .porter-type-filters {
+  .sort-controls, .porter-type-filters, .shift-time-filters {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -951,6 +998,19 @@ const confirmDeleteAbsence = async () => {
     span {
       font-size: mix.font-size('sm');
       color: rgba(0, 0, 0, 0.6);
+    }
+  }
+  
+  .shift-time-filters {
+    .filter-btn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      
+      svg {
+        width: 14px;
+        height: 14px;
+      }
     }
   }
 }
