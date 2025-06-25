@@ -34,11 +34,17 @@
                 <tbody>
                   <tr v-for="porter in sortedPorters" :key="porter.id">
                     <td class="porter-name">{{ porter.porter.first_name }} {{ porter.porter.last_name }}</td>
-                    <td v-for="hour in timelineHours" :key="hour.label" 
-                        :class="getCellClass(porter.porter_id, hour)"
-                        class="timeline-cell">
-                      {{ getCellContent(porter.porter_id, hour) }}
-                    </td>
+                    <template v-for="(hour, hourIndex) in timelineHours" :key="`${porter.id}-${hourIndex}`">
+                      <td v-if="shouldRenderCell(porter.porter_id, hourIndex)" 
+                          :class="getCellClass(porter.porter_id, hour)"
+                          :colspan="getCellSpan(porter.porter_id, hourIndex)"
+                          class="timeline-cell">
+                        {{ getCellContent(porter.porter_id, hour) }}
+                        <span v-if="getCellSpan(porter.porter_id, hourIndex) > 1" class="time-range">
+                          {{ getSpanTimeRange(porter.porter_id, hourIndex) }}
+                        </span>
+                      </td>
+                    </template>
                   </tr>
                 </tbody>
               </table>
@@ -54,8 +60,12 @@
                 <span>Allocated</span>
               </div>
               <div class="legend-item">
-                <div class="legend-box unavailable"></div>
-                <span>Unavailable/Absent</span>
+                <div class="legend-box off-duty"></div>
+                <span>Off Duty</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box absent"></div>
+                <span>Absent</span>
               </div>
             </div>
           </div>
@@ -182,16 +192,16 @@ const calculatePorterAvailability = (porterId) => {
   return timelineHours.value.length > 0 ? (availableHours / timelineHours.value.length) : 0;
 };
 
-// Get porter status for a specific hour
+// Get porter status for a specific hour with detailed unavailability reasons
 const getPorterStatusForHour = (porterId, hour) => {
   // Check if porter is on duty during this hour
   if (!isPorterOnDutyDuringHour(porterId, hour)) {
-    return 'unavailable';
+    return 'off-duty';
   }
   
   // Check for scheduled absences
   if (isPorterAbsentDuringHour(porterId, hour)) {
-    return 'unavailable';
+    return 'absent';
   }
   
   // Check for department assignments
@@ -207,6 +217,28 @@ const getPorterStatusForHour = (porterId, hour) => {
   }
   
   return 'available';
+};
+
+// Get detailed unavailability reason for a porter at a specific hour
+const getUnavailabilityReason = (porterId, hour) => {
+  // Check if porter is off duty (outside contracted hours)
+  if (!isPorterOnDutyDuringHour(porterId, hour)) {
+    return 'Off Duty';
+  }
+  
+  // Check for scheduled absences and return the reason
+  const absences = shiftsStore.shiftPorterAbsences.filter(a => a.porter_id === porterId);
+  const activeAbsence = absences.find(absence => {
+    const absenceStart = timeToMinutes(absence.start_time);
+    const absenceEnd = timeToMinutes(absence.end_time);
+    return isTimeRangeOverlapping(hour.startMinutes, hour.endMinutes, absenceStart, absenceEnd);
+  });
+  
+  if (activeAbsence) {
+    return activeAbsence.absence_reason || 'Absent';
+  }
+  
+  return '';
 };
 
 // Check if porter is on duty during a specific hour based on contracted hours
@@ -284,9 +316,12 @@ const getCellContent = (porterId, hour) => {
       );
       return assignment?.service?.name || 'Service';
     }
+  } else if (status === 'off-duty' || status === 'absent') {
+    // For unavailable periods, return the reason
+    return getUnavailabilityReason(porterId, hour);
   }
   
-  return ''; // Empty for available/unavailable
+  return ''; // Empty for available
 };
 
 // Helper functions
@@ -383,6 +418,108 @@ const closeModal = () => {
 // Print the sheet
 const printSheet = () => {
   window.print();
+};
+
+// Enhanced Gantt chart functionality - compute allocation spans for each porter including unavailable periods
+const porterAllocationSpans = computed(() => {
+  const spans = new Map();
+  
+  sortedPorters.value.forEach(porter => {
+    const porterSpans = [];
+    let currentSpan = null;
+    
+    timelineHours.value.forEach((hour, index) => {
+      const status = getPorterStatusForHour(porter.porter_id, hour);
+      const content = getCellContent(porter.porter_id, hour);
+      const unavailabilityReason = getUnavailabilityReason(porter.porter_id, hour);
+      
+      // Determine if this hour can be merged with the previous span
+      let canMerge = false;
+      let spanContent = content;
+      
+      if (status === 'allocated' && content) {
+        // For allocated hours, merge if same department/service
+        canMerge = currentSpan && currentSpan.content === content && currentSpan.status === status;
+        spanContent = content;
+      } else if (status === 'off-duty' || status === 'absent') {
+        // For unavailable hours, merge if same reason
+        canMerge = currentSpan && currentSpan.unavailabilityReason === unavailabilityReason && currentSpan.status === status;
+        spanContent = unavailabilityReason;
+      } else {
+        // Available hours don't merge
+        canMerge = false;
+        spanContent = '';
+      }
+      
+      if (canMerge) {
+        // Extend current span
+        currentSpan.endIndex = index;
+        currentSpan.colspan++;
+      } else {
+        // End current span if exists
+        if (currentSpan) {
+          porterSpans.push(currentSpan);
+        }
+        
+        // Start new span
+        currentSpan = {
+          startIndex: index,
+          endIndex: index,
+          colspan: 1,
+          content: spanContent,
+          status: status,
+          unavailabilityReason: unavailabilityReason
+        };
+      }
+    });
+    
+    // Don't forget the last span
+    if (currentSpan) {
+      porterSpans.push(currentSpan);
+    }
+    
+    spans.set(porter.porter_id, porterSpans);
+  });
+  
+  return spans;
+});
+
+// Check if a cell should be rendered (not part of a previous span)
+const shouldRenderCell = (porterId, hourIndex) => {
+  const spans = porterAllocationSpans.value.get(porterId);
+  if (!spans) return true;
+  
+  // Find the span that contains this hour index
+  const span = spans.find(s => s.startIndex <= hourIndex && s.endIndex >= hourIndex);
+  if (!span) return true;
+  
+  // Only render if this is the start of the span
+  return span.startIndex === hourIndex;
+};
+
+// Get the colspan for a cell
+const getCellSpan = (porterId, hourIndex) => {
+  const spans = porterAllocationSpans.value.get(porterId);
+  if (!spans) return 1;
+  
+  // Find the span that starts at this hour index
+  const span = spans.find(s => s.startIndex === hourIndex);
+  return span ? span.colspan : 1;
+};
+
+// Get the time range for a span (for display in merged cells)
+const getSpanTimeRange = (porterId, hourIndex) => {
+  const spans = porterAllocationSpans.value.get(porterId);
+  if (!spans) return '';
+  
+  // Find the span that starts at this hour index
+  const span = spans.find(s => s.startIndex === hourIndex);
+  if (!span || span.colspan <= 1) return '';
+  
+  const startHour = timelineHours.value[span.startIndex];
+  const endHour = timelineHours.value[span.endIndex];
+  
+  return `${startHour.startTime} - ${endHour.endTime}`;
 };
 
 // Load required data on mount
@@ -528,6 +665,7 @@ onMounted(async () => {
       .timeline-cell {
         font-size: 0.8rem;
         font-weight: 500;
+        position: relative;
         
         &.cell-available {
           background-color: white;
@@ -535,10 +673,47 @@ onMounted(async () => {
         
         &.cell-allocated {
           background-color: #e0e0e0;
+          
+          // Enhanced styling for merged cells
+          &[colspan] {
+            background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
+            border-left: 3px solid #4285F4;
+            border-right: 3px solid #4285F4;
+          }
+        }
+        
+        &.cell-off-duty {
+          background-color: #9e9e9e;
+          
+          // Enhanced styling for merged off-duty cells
+          &[colspan] {
+            background: linear-gradient(135deg, #9e9e9e 0%, #8e8e8e 100%);
+            border-left: 3px solid #ff9800;
+            border-right: 3px solid #ff9800;
+          }
+        }
+        
+        &.cell-absent {
+          background-color: #9e9e9e;
+          
+          // Enhanced styling for merged absence cells
+          &[colspan] {
+            background: linear-gradient(135deg, #9e9e9e 0%, #8e8e8e 100%);
+            border-left: 3px solid #f44336;
+            border-right: 3px solid #f44336;
+          }
         }
         
         &.cell-unavailable {
           background-color: #9e9e9e;
+        }
+        
+        .time-range {
+          display: block;
+          font-size: 0.7rem;
+          color: #666;
+          margin-top: 0.25rem;
+          font-style: italic;
         }
       }
     }
@@ -565,6 +740,14 @@ onMounted(async () => {
           
           &.allocated {
             background-color: #e0e0e0;
+          }
+          
+          &.off-duty {
+            background-color: #9e9e9e;
+          }
+          
+          &.absent {
+            background-color: #9e9e9e;
           }
           
           &.unavailable {
