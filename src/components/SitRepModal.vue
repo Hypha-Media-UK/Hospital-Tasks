@@ -21,33 +21,43 @@
           </div>
           
           <div class="sheet-content">
-            <div class="timeline-container">
-              <table class="sitrep-table">
-                <thead>
-                  <tr>
-                    <th class="porter-column">Porter</th>
-                    <th v-for="hour in timelineHours" :key="hour.label" class="hour-column">
-                      {{ hour.label }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="porter in sortedPorters" :key="porter.id">
-                    <td class="porter-name">{{ porter.porter.first_name }} {{ porter.porter.last_name }}</td>
-                    <template v-for="(hour, hourIndex) in timelineHours" :key="`${porter.id}-${hourIndex}`">
-                      <td v-if="shouldRenderCell(porter.porter_id, hourIndex)" 
-                          :class="getCellClass(porter.porter_id, hour)"
-                          :colspan="getCellSpan(porter.porter_id, hourIndex)"
-                          class="timeline-cell">
-                        {{ getCellContent(porter.porter_id, hour) }}
-                        <span v-if="getCellSpan(porter.porter_id, hourIndex) > 1" class="time-range">
-                          {{ getSpanTimeRange(porter.porter_id, hourIndex) }}
-                        </span>
-                      </td>
-                    </template>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- Time ruler -->
+            <div class="time-ruler-container">
+              <div class="porter-name-spacer"></div>
+              <div class="time-ruler">
+                <div 
+                  v-for="hour in timelineHours" 
+                  :key="hour.label"
+                  class="time-marker"
+                  :style="{ left: getHourPosition(hour) + '%' }"
+                >
+                  {{ hour.label }}
+                </div>
+              </div>
+            </div>
+            
+            <!-- Porter timeline grid -->
+            <div class="sitrep-grid">
+              <div v-for="porter in sortedPorters" :key="porter.id" class="porter-row">
+                <div class="porter-name">
+                  {{ porter.porter.first_name }} {{ porter.porter.last_name }}
+                </div>
+                <div class="porter-timeline">
+                  <div 
+                    v-for="block in getPorterTimelineBlocks(porter.porter_id)" 
+                    :key="block.id"
+                    :class="['timeline-block', `block-${block.type}`]"
+                    :style="{
+                      left: block.leftPercent + '%',
+                      width: block.widthPercent + '%'
+                    }"
+                    :title="block.tooltip"
+                  >
+                    <span class="block-label">{{ block.label }}</span>
+                    <span v-if="block.timeRange" class="block-time">{{ block.timeRange }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <div class="legend">
@@ -94,57 +104,57 @@ const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const settingsStore = useSettingsStore();
 
-// Generate timeline hours based on standard shift times from settings
+// Generate timeline hours using static shift times
 const timelineHours = computed(() => {
-  if (!props.shift || !props.shift.start_time) return [];
+  if (!props.shift) return [];
   
   const hours = [];
   const shiftType = props.shift.shift_type;
   
-  // Get standard shift times from settings
-  const shiftDefaults = settingsStore.shiftDefaults[shiftType];
-  if (!shiftDefaults || !shiftDefaults.startTime || !shiftDefaults.endTime) {
-    console.warn(`No shift defaults found for shift type: ${shiftType}`);
-    return [];
-  }
-  
-  // Get the shift date (not time) from the shift record
-  const shiftDate = new Date(props.shift.start_time);
-  const year = shiftDate.getFullYear();
-  const month = shiftDate.getMonth();
-  const day = shiftDate.getDate();
-  
-  // Parse standard start and end times
-  const [startHours, startMinutes] = shiftDefaults.startTime.split(':').map(Number);
-  const [endHours, endMinutes] = shiftDefaults.endTime.split(':').map(Number);
-  
-  // Create standard shift start time using the shift date but standard time
-  const standardShiftStart = new Date(year, month, day, startHours, startMinutes, 0);
-  
-  // Calculate shift duration in hours
-  let shiftDurationHours;
-  if (endHours < startHours) {
-    // Overnight shift (e.g., 20:00 to 08:00)
-    shiftDurationHours = (24 - startHours) + endHours;
+  // Use static shift times - these are just visual dividers
+  let startHour, endHour;
+  if (shiftType.includes('day')) {
+    startHour = 8;  // 08:00
+    endHour = 20;   // 20:00
+  } else if (shiftType.includes('night')) {
+    startHour = 20; // 20:00
+    endHour = 8;    // 08:00 (next day)
   } else {
-    // Same day shift (e.g., 08:00 to 20:00)
-    shiftDurationHours = endHours - startHours;
+    // Default to day shift
+    startHour = 8;
+    endHour = 20;
   }
   
-  // Generate hourly segments based on standard times
-  for (let i = 0; i < shiftDurationHours; i++) {
-    const hourStart = new Date(standardShiftStart);
-    hourStart.setHours(standardShiftStart.getHours() + i);
+  // Generate 12 hourly segments
+  for (let i = 0; i < 12; i++) {
+    let currentHour = (startHour + i) % 24;
+    let nextHour = (startHour + i + 1) % 24;
     
-    const hourEnd = new Date(hourStart);
-    hourEnd.setHours(hourStart.getHours() + 1);
+    // Format hour labels
+    const hourLabel = `${String(currentHour).padStart(2, '0')}:00`;
+    const nextHourLabel = `${String(nextHour).padStart(2, '0')}:00`;
+    
+    // Calculate minutes from midnight for positioning
+    let startMinutes = currentHour * 60;
+    let endMinutes = nextHour * 60;
+    
+    // For night shifts, adjust for overnight calculation
+    if (shiftType.includes('night')) {
+      if (currentHour < 12) {
+        // Hours after midnight (00:00-11:59) add 24 hours worth of minutes
+        startMinutes += 24 * 60;
+      }
+      if (nextHour < 12) {
+        endMinutes += 24 * 60;
+      }
+    }
     
     hours.push({
-      label: formatHour(hourStart),
-      startTime: formatTimeForComparison(hourStart),
-      endTime: formatTimeForComparison(hourEnd),
-      startMinutes: hourStart.getHours() * 60 + hourStart.getMinutes(),
-      endMinutes: hourEnd.getHours() * 60 + hourEnd.getMinutes()
+      label: hourLabel,
+      startTime: hourLabel,
+      endTime: nextHourLabel,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes
     });
   }
   
@@ -328,22 +338,18 @@ const getCellContent = (porterId, hour) => {
 const timeToMinutes = (timeStr) => {
   if (!timeStr) return 0;
   const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
+  let totalMinutes = (hours * 60) + minutes;
+  
+  // For night shifts, adjust times after midnight
+  if (props.shift && props.shift.shift_type.includes('night') && hours < 12) {
+    totalMinutes += 24 * 60; // Add 24 hours worth of minutes
+  }
+  
+  return totalMinutes;
 };
 
 const isTimeRangeOverlapping = (start1, end1, start2, end2) => {
-  // Handle overnight ranges
-  if (end2 < start2) {
-    // Overnight range: check if it overlaps with either part
-    return (start1 < end2) || (end1 > start2) || (start1 >= start2);
-  }
-  
-  if (end1 < start1) {
-    // First range is overnight
-    return (start2 < end1) || (end2 > start1) || (start2 >= start1);
-  }
-  
-  // Normal case: ranges overlap if one starts before the other ends
+  // Simple overlap check - works for both day and night shifts with adjusted minutes
   return start1 < end2 && end1 > start2;
 };
 
@@ -550,6 +556,170 @@ const fetchHistoricalAbsences = async () => {
   }
 };
 
+// Calculate total shift duration in minutes
+const totalShiftMinutes = computed(() => {
+  if (!timelineHours.value.length) return 0;
+  
+  const firstHour = timelineHours.value[0];
+  const lastHour = timelineHours.value[timelineHours.value.length - 1];
+  
+  return lastHour.endMinutes - firstHour.startMinutes;
+});
+
+// Get hour position as percentage for time ruler
+const getHourPosition = (hour) => {
+  if (!timelineHours.value.length) return 0;
+  
+  const firstHour = timelineHours.value[0];
+  const minutesFromStart = hour.startMinutes - firstHour.startMinutes;
+  
+  return (minutesFromStart / totalShiftMinutes.value) * 100;
+};
+
+// Convert time string to minutes from shift start
+const getMinutesFromShiftStart = (timeStr) => {
+  if (!timelineHours.value.length) return 0;
+  
+  const timeMinutes = timeToMinutes(timeStr);
+  const shiftStartMinutes = timelineHours.value[0].startMinutes;
+  
+  return timeMinutes - shiftStartMinutes;
+};
+
+// Get timeline blocks for a porter
+const getPorterTimelineBlocks = (porterId) => {
+  const blocks = [];
+  const porter = staffStore.porters.find(p => p.id === porterId);
+  
+  if (!porter || !timelineHours.value.length) return blocks;
+  
+  const shiftStartMinutes = timelineHours.value[0].startMinutes;
+  const shiftEndMinutes = timelineHours.value[timelineHours.value.length - 1].endMinutes;
+  
+  // Get contracted hours
+  const contractedStart = porter.contracted_hours_start ? timeToMinutes(porter.contracted_hours_start) : shiftStartMinutes;
+  const contractedEnd = porter.contracted_hours_end ? timeToMinutes(porter.contracted_hours_end) : shiftEndMinutes;
+  
+  // Add off-duty block at start if needed
+  if (contractedStart > shiftStartMinutes) {
+    const startPercent = 0;
+    const widthPercent = ((contractedStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
+    
+    blocks.push({
+      id: `${porterId}-off-duty-start`,
+      type: 'off-duty',
+      leftPercent: startPercent,
+      widthPercent: widthPercent,
+      label: 'Off Duty',
+      timeRange: `${formatMinutesToTime(shiftStartMinutes)} - ${formatMinutesToTime(contractedStart)}`,
+      tooltip: `Off Duty: ${formatMinutesToTime(shiftStartMinutes)} - ${formatMinutesToTime(contractedStart)}`
+    });
+  }
+  
+  // Add off-duty block at end if needed
+  if (contractedEnd < shiftEndMinutes) {
+    const startPercent = ((contractedEnd - shiftStartMinutes) / totalShiftMinutes.value) * 100;
+    const widthPercent = ((shiftEndMinutes - contractedEnd) / totalShiftMinutes.value) * 100;
+    
+    blocks.push({
+      id: `${porterId}-off-duty-end`,
+      type: 'off-duty',
+      leftPercent: startPercent,
+      widthPercent: widthPercent,
+      label: 'Off Duty',
+      timeRange: `${formatMinutesToTime(contractedEnd)} - ${formatMinutesToTime(shiftEndMinutes)}`,
+      tooltip: `Off Duty: ${formatMinutesToTime(contractedEnd)} - ${formatMinutesToTime(shiftEndMinutes)}`
+    });
+  }
+  
+  // Add absence blocks
+  const absences = historicalAbsences.value.filter(a => a.porter_id === porterId);
+  absences.forEach((absence, index) => {
+    const absenceStart = Math.max(timeToMinutes(absence.start_time), Math.max(shiftStartMinutes, contractedStart));
+    const absenceEnd = Math.min(timeToMinutes(absence.end_time), Math.min(shiftEndMinutes, contractedEnd));
+    
+    if (absenceEnd > absenceStart) {
+      const startPercent = ((absenceStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
+      const widthPercent = ((absenceEnd - absenceStart) / totalShiftMinutes.value) * 100;
+      
+      blocks.push({
+        id: `${porterId}-absence-${index}`,
+        type: 'absent',
+        leftPercent: startPercent,
+        widthPercent: widthPercent,
+        label: absence.absence_reason || 'Absent',
+        timeRange: `${formatMinutesToTime(absenceStart)} - ${formatMinutesToTime(absenceEnd)}`,
+        tooltip: `${absence.absence_reason || 'Absent'}: ${formatMinutesToTime(absenceStart)} - ${formatMinutesToTime(absenceEnd)}`
+      });
+    }
+  });
+  
+  // Add department assignment blocks
+  const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(a => a.porter_id === porterId);
+  departmentAssignments.forEach((assignment, index) => {
+    const assignmentStart = Math.max(timeToMinutes(assignment.start_time), Math.max(shiftStartMinutes, contractedStart));
+    const assignmentEnd = Math.min(timeToMinutes(assignment.end_time), Math.min(shiftEndMinutes, contractedEnd));
+    
+    if (assignmentEnd > assignmentStart) {
+      const startPercent = ((assignmentStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
+      const widthPercent = ((assignmentEnd - assignmentStart) / totalShiftMinutes.value) * 100;
+      
+      const areaCover = shiftsStore.shiftAreaCoverAssignments.find(a => a.id === assignment.shift_area_cover_assignment_id);
+      const departmentName = areaCover?.department?.name || 'Department';
+      
+      blocks.push({
+        id: `${porterId}-department-${index}`,
+        type: 'allocated',
+        leftPercent: startPercent,
+        widthPercent: widthPercent,
+        label: departmentName,
+        timeRange: `${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`,
+        tooltip: `${departmentName}: ${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`
+      });
+    }
+  });
+  
+  // Add service assignment blocks
+  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments.filter(a => a.porter_id === porterId);
+  serviceAssignments.forEach((assignment, index) => {
+    const assignmentStart = Math.max(timeToMinutes(assignment.start_time), Math.max(shiftStartMinutes, contractedStart));
+    const assignmentEnd = Math.min(timeToMinutes(assignment.end_time), Math.min(shiftEndMinutes, contractedEnd));
+    
+    if (assignmentEnd > assignmentStart) {
+      const startPercent = ((assignmentStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
+      const widthPercent = ((assignmentEnd - assignmentStart) / totalShiftMinutes.value) * 100;
+      
+      const service = shiftsStore.shiftSupportServiceAssignments.find(a => a.id === assignment.shift_support_service_assignment_id);
+      const serviceName = service?.service?.name || 'Service';
+      
+      blocks.push({
+        id: `${porterId}-service-${index}`,
+        type: 'allocated',
+        leftPercent: startPercent,
+        widthPercent: widthPercent,
+        label: serviceName,
+        timeRange: `${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`,
+        tooltip: `${serviceName}: ${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`
+      });
+    }
+  });
+  
+  return blocks.sort((a, b) => a.leftPercent - b.leftPercent);
+};
+
+// Format minutes to time string
+const formatMinutesToTime = (minutes) => {
+  // Handle overnight times (minutes > 24 * 60)
+  let adjustedMinutes = minutes;
+  if (adjustedMinutes >= 24 * 60) {
+    adjustedMinutes = adjustedMinutes - (24 * 60);
+  }
+  
+  const hours = Math.floor(adjustedMinutes / 60);
+  const mins = adjustedMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
 // Load required data on mount
 onMounted(async () => {
   // Load settings first to ensure shift defaults are available
@@ -646,149 +816,205 @@ onMounted(async () => {
     }
   }
   
-  .sheet-content {
-    .timeline-container {
-      overflow-x: auto;
-      margin-bottom: 1rem;
+    // Time ruler styles
+    .time-ruler-container {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid #dee2e6;
+      
+      .porter-name-spacer {
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+      }
+      
+      .time-ruler {
+        position: relative;
+        height: 40px;
+        background-color: #f8f9fa;
+        
+        // Add vertical hour lines
+        background-image: repeating-linear-gradient(
+          to right,
+          transparent 0%,
+          transparent calc(8.33% - 0.5px),
+          #e9ecef calc(8.33% - 0.5px),
+          #e9ecef calc(8.33% + 0.5px)
+        );
+        
+        .time-marker {
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #495057;
+          background-color: rgba(248, 249, 250, 0.9);
+          padding: 0.25rem 0.5rem;
+          white-space: nowrap;
+        }
+      }
     }
     
-    .sitrep-table {
-      width: 100%;
-      border-collapse: collapse;
+    // Grid layout styles
+    .sitrep-grid {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 0;
+      background-color: #dee2e6;
+      border: 1px solid #dee2e6;
+      overflow: hidden;
       min-width: 800px;
       
-      th, td {
-        border: 1px solid #000;
-        padding: 0.5rem;
-        text-align: center;
-        vertical-align: middle;
-      }
-      
-      th {
-        background-color: #f8f9fa;
-        font-weight: bold;
-        font-size: 0.9rem;
-      }
-      
-      .porter-column {
-        width: 150px;
-        text-align: left;
-        position: sticky;
-        left: 0;
-        background-color: #f8f9fa;
-        z-index: 1;
-      }
-      
-      .hour-column {
-        width: 80px;
-        min-width: 80px;
+      .porter-row {
+        display: contents;
       }
       
       .porter-name {
-        font-weight: 500;
-        text-align: left;
-        position: sticky;
-        left: 0;
-        background-color: white;
-        z-index: 1;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        min-height: 70px;
       }
       
-      .timeline-cell {
-        font-size: 0.8rem;
-        font-weight: 500;
+      .porter-timeline {
         position: relative;
+        background-color: white;
+        border-bottom: 1px solid #dee2e6;
+        min-height: 70px;
         
-        &.cell-available {
-          background-color: white;
-        }
+        // Add vertical hour lines to timeline
+        background-image: repeating-linear-gradient(
+          to right,
+          transparent 0%,
+          transparent calc(8.33% - 0.5px),
+          #f1f3f4 calc(8.33% - 0.5px),
+          #f1f3f4 calc(8.33% + 0.5px)
+        );
         
-        &.cell-allocated {
-          background-color: #e0e0e0;
+        .timeline-block {
+          position: absolute;
+          top: 8px;
+          bottom: 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.8rem;
+          font-weight: 500;
+          overflow: hidden;
+          min-width: 20px;
           
-          // Enhanced styling for merged cells
-          &[colspan] {
-            background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
-            border-left: 3px solid #4285F4;
-            border-right: 3px solid #4285F4;
+          &.block-allocated {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #1565c0;
           }
-        }
-        
-        &.cell-off-duty {
-          background-color: #9e9e9e;
           
-          // Enhanced styling for merged off-duty cells
-          &[colspan] {
-            background: linear-gradient(135deg, #9e9e9e 0%, #8e8e8e 100%);
-            border-left: 3px solid #ff9800;
-            border-right: 3px solid #ff9800;
+          &.block-off-duty {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            color: #7b1fa2;
           }
-        }
-        
-        &.cell-absent {
-          background-color: #9e9e9e;
           
-          // Enhanced styling for merged absence cells
-          &[colspan] {
-            background: linear-gradient(135deg, #9e9e9e 0%, #8e8e8e 100%);
-            border-left: 3px solid #f44336;
-            border-right: 3px solid #f44336;
+          &.block-absent {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            color: #c62828;
           }
-        }
-        
-        &.cell-unavailable {
-          background-color: #9e9e9e;
-        }
-        
-        .time-range {
-          display: block;
-          font-size: 0.7rem;
-          color: #666;
-          margin-top: 0.25rem;
-          font-style: italic;
+          
+          .block-label {
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+            padding: 0 0.25rem;
+          }
+          
+          .block-time {
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-top: 0.25rem;
+            opacity: 0.8;
+            text-align: center;
+            line-height: 1;
+            padding: 0 0.25rem;
+          }
+          
+          // Hide time range for very small blocks
+          &[style*="width: 0."] .block-time,
+          &[style*="width: 1."] .block-time,
+          &[style*="width: 2."] .block-time,
+          &[style*="width: 3."] .block-time,
+          &[style*="width: 4."] .block-time {
+            display: none;
+          }
+          
+          // Truncate labels for small blocks
+          &[style*="width: 0."] .block-label,
+          &[style*="width: 1."] .block-label,
+          &[style*="width: 2."] .block-label,
+          &[style*="width: 3."] .block-label,
+          &[style*="width: 4."] .block-label,
+          &[style*="width: 5."] .block-label {
+            font-size: 0.7rem;
+            max-width: 40px;
+          }
         }
       }
     }
     
     .legend {
       display: flex;
-      gap: 1rem;
+      gap: 1.5rem;
       justify-content: center;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
       
       .legend-item {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #495057;
         
         .legend-box {
-          width: 20px;
-          height: 20px;
-          border: 1px solid #000;
+          width: 18px;
+          height: 18px;
+          border: 1px solid #dee2e6;
           
           &.available {
             background-color: white;
           }
           
           &.allocated {
-            background-color: #e0e0e0;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-color: #90caf9;
           }
           
           &.off-duty {
-            background-color: #9e9e9e;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border-color: #ce93d8;
           }
           
           &.absent {
-            background-color: #9e9e9e;
-          }
-          
-          &.unavailable {
-            background-color: #9e9e9e;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border-color: #ef9a9a;
           }
         }
       }
     }
   }
-}
 
 .btn {
   padding: 0.5rem 1rem;
