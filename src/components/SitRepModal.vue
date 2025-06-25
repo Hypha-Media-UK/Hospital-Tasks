@@ -340,7 +340,7 @@ const timeToMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(':').map(Number);
   let totalMinutes = (hours * 60) + minutes;
   
-  // For night shifts, adjust times after midnight
+  // For night shifts, adjust times after midnight to ensure consistent calculation
   if (props.shift && props.shift.shift_type.includes('night') && hours < 12) {
     totalMinutes += 24 * 60; // Add 24 hours worth of minutes
   }
@@ -572,6 +572,12 @@ const getHourPosition = (hour) => {
   
   const firstHour = timelineHours.value[0];
   const minutesFromStart = hour.startMinutes - firstHour.startMinutes;
+  
+  // Ensure exact alignment with CSS grid lines (8.333...% per hour)
+  const hourIndex = timelineHours.value.findIndex(h => h.startMinutes === hour.startMinutes);
+  if (hourIndex >= 0) {
+    return (hourIndex / 12) * 100; // Exact percentage for 12-hour grid
+  }
   
   return (minutesFromStart / totalShiftMinutes.value) * 100;
 };
