@@ -69,6 +69,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
+import { useSettingsStore } from '../stores/settingsStore';
 
 const props = defineProps({
   shift: {
@@ -81,26 +82,49 @@ const emit = defineEmits(['close']);
 
 const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
+const settingsStore = useSettingsStore();
 
-// Generate timeline hours based on shift duration
+// Generate timeline hours based on standard shift times from settings
 const timelineHours = computed(() => {
   if (!props.shift || !props.shift.start_time) return [];
   
   const hours = [];
-  const shiftStart = new Date(props.shift.start_time);
+  const shiftType = props.shift.shift_type;
   
-  // Determine shift duration based on shift type
-  let shiftDurationHours = 12; // Default
-  if (props.shift.shift_type.includes('day')) {
-    shiftDurationHours = 12; // Day shifts: 08:00-20:00
-  } else if (props.shift.shift_type.includes('night')) {
-    shiftDurationHours = 12; // Night shifts: 20:00-08:00
+  // Get standard shift times from settings
+  const shiftDefaults = settingsStore.shiftDefaults[shiftType];
+  if (!shiftDefaults || !shiftDefaults.startTime || !shiftDefaults.endTime) {
+    console.warn(`No shift defaults found for shift type: ${shiftType}`);
+    return [];
   }
   
-  // Generate hourly segments
+  // Get the shift date (not time) from the shift record
+  const shiftDate = new Date(props.shift.start_time);
+  const year = shiftDate.getFullYear();
+  const month = shiftDate.getMonth();
+  const day = shiftDate.getDate();
+  
+  // Parse standard start and end times
+  const [startHours, startMinutes] = shiftDefaults.startTime.split(':').map(Number);
+  const [endHours, endMinutes] = shiftDefaults.endTime.split(':').map(Number);
+  
+  // Create standard shift start time using the shift date but standard time
+  const standardShiftStart = new Date(year, month, day, startHours, startMinutes, 0);
+  
+  // Calculate shift duration in hours
+  let shiftDurationHours;
+  if (endHours < startHours) {
+    // Overnight shift (e.g., 20:00 to 08:00)
+    shiftDurationHours = (24 - startHours) + endHours;
+  } else {
+    // Same day shift (e.g., 08:00 to 20:00)
+    shiftDurationHours = endHours - startHours;
+  }
+  
+  // Generate hourly segments based on standard times
   for (let i = 0; i < shiftDurationHours; i++) {
-    const hourStart = new Date(shiftStart);
-    hourStart.setHours(shiftStart.getHours() + i);
+    const hourStart = new Date(standardShiftStart);
+    hourStart.setHours(standardShiftStart.getHours() + i);
     
     const hourEnd = new Date(hourStart);
     hourEnd.setHours(hourStart.getHours() + 1);
@@ -363,6 +387,9 @@ const printSheet = () => {
 
 // Load required data on mount
 onMounted(async () => {
+  // Load settings first to ensure shift defaults are available
+  await settingsStore.loadSettings();
+  
   if (!shiftsStore.shiftPorterPool.length) {
     await shiftsStore.fetchShiftPorterPool(props.shift.id);
   }
