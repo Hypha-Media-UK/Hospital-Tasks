@@ -68,15 +68,25 @@
         
         <!-- Tabs Section -->
         <div class="card">
-          <!-- Activity Sheet Button -->
-          <button 
-            v-if="shift && allTasks.length > 0"
-            @click="showActivitySheet" 
-            class="btn btn-primary activity-sheet-btn"
-            title="View and print activity sheet"
-          >
-            Activity Sheet
-          </button>
+          <!-- Activity Sheet and SitRep Buttons -->
+          <div class="sheet-buttons">
+            <button 
+              v-if="shift && allTasks.length > 0"
+              @click="showActivitySheet" 
+              class="btn btn-primary sheet-btn"
+              title="View and print activity sheet"
+            >
+              Activity Sheet
+            </button>
+            <button 
+              v-if="shift"
+              @click="showSitRep" 
+              class="btn btn-secondary sheet-btn"
+              title="View and print situation report"
+            >
+              SitRep
+            </button>
+          </div>
           
           <div class="tabs">
             <AnimatedTabs
@@ -469,6 +479,13 @@
         @close="showAllocatePorterModal = false"
         @allocated="handlePorterAllocation"
       />
+
+      <!-- SitRep Modal -->
+      <SitRepModal 
+        v-if="showSitRepModal" 
+        :shift="shift"
+        @close="showSitRepModal = false"
+      />
       
       <!-- Floating Action Button for Adding Tasks -->
       <div class="floating-action-container">
@@ -508,6 +525,7 @@ import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue
 import EditIcon from '../components/icons/EditIcon.vue';
 import ClockIcon from '../components/icons/ClockIcon.vue';
 import AllocatePorterModal from '../components/AllocatePorterModal.vue';
+import SitRepModal from '../components/SitRepModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -580,6 +598,9 @@ const timeFieldsAutoUpdated = ref(false); // Track when time fields are auto-upd
 // Porter allocation modal state
 const showAllocatePorterModal = ref(false);
 const selectedPorter = ref(null);
+
+// SitRep modal state
+const showSitRepModal = ref(false);
 
 // Import nextTick for DOM manipulation after state changes
 import { nextTick } from 'vue';
@@ -2005,6 +2026,11 @@ function getShiftColor() {
   }
 }
 
+// Show SitRep modal
+function showSitRep() {
+  showSitRepModal.value = true;
+}
+
 // Show the change supervisor modal
 function showChangeSupervisorModal() {
   // Initialize the supervisor dropdown with current supervisor
@@ -2914,7 +2940,7 @@ function isWeekend(date) {
   }
 }
 
-/* Activity Sheet Button Styling */
+/* Sheet Buttons Styling */
 .card {
   position: relative; /* Create positioning context for absolute elements */
   padding: 1rem 1.5rem;
@@ -2924,19 +2950,24 @@ function isWeekend(date) {
   }
 }
 
-.activity-sheet-btn {
+.sheet-buttons {
   position: absolute;
   top: 1rem;
   right: 1.5rem;
   z-index: 10;
-  white-space: nowrap;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 0.5rem;
   
   @media screen and (min-width: 700px) {
     right: 2.5rem;
   }
+}
+
+.sheet-btn {
+  white-space: nowrap;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Style for the Frequent Departments optgroup */
