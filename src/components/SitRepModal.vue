@@ -226,8 +226,8 @@ const getUnavailabilityReason = (porterId, hour) => {
     return 'Off Duty';
   }
   
-  // Check for scheduled absences and return the reason
-  const absences = shiftsStore.shiftPorterAbsences.filter(a => a.porter_id === porterId);
+  // Check for scheduled absences and return the reason using historical data
+  const absences = historicalAbsences.value.filter(a => a.porter_id === porterId);
   const activeAbsence = absences.find(absence => {
     const absenceStart = timeToMinutes(absence.start_time);
     const absenceEnd = timeToMinutes(absence.end_time);
@@ -255,9 +255,9 @@ const isPorterOnDutyDuringHour = (porterId, hour) => {
   return isTimeRangeOverlapping(hour.startMinutes, hour.endMinutes, startMinutes, endMinutes);
 };
 
-// Check if porter is absent during a specific hour
+// Check if porter is absent during a specific hour using historical data
 const isPorterAbsentDuringHour = (porterId, hour) => {
-  const absences = shiftsStore.shiftPorterAbsences.filter(a => a.porter_id === porterId);
+  const absences = historicalAbsences.value.filter(a => a.porter_id === porterId);
   
   return absences.some(absence => {
     const absenceStart = timeToMinutes(absence.start_time);
@@ -522,6 +522,34 @@ const getSpanTimeRange = (porterId, hourIndex) => {
   return `${startHour.startTime} - ${endHour.endTime}`;
 };
 
+// Historical absence data for SitRep (not cleaned up)
+const historicalAbsences = ref([]);
+
+// Fetch all historical absences for this shift (including expired ones)
+const fetchHistoricalAbsences = async () => {
+  try {
+    const { supabase } = await import('../services/supabase');
+    
+    const { data, error } = await supabase
+      .from('shift_porter_absences')
+      .select(`
+        *,
+        porter:porter_id(id, first_name, last_name)
+      `)
+      .eq('shift_id', props.shift.id);
+    
+    if (error) {
+      console.error('Error fetching historical absences:', error);
+      return;
+    }
+    
+    historicalAbsences.value = data || [];
+    console.log(`Loaded ${historicalAbsences.value.length} historical absences for SitRep`);
+  } catch (error) {
+    console.error('Error in fetchHistoricalAbsences:', error);
+  }
+};
+
 // Load required data on mount
 onMounted(async () => {
   // Load settings first to ensure shift defaults are available
@@ -542,6 +570,9 @@ onMounted(async () => {
   if (!staffStore.porters.length) {
     await staffStore.fetchPorters();
   }
+  
+  // Fetch historical absences specifically for SitRep
+  await fetchHistoricalAbsences();
 });
 </script>
 
