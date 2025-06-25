@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
 import { useStaffStore } from './staffStore';
+import { getCurrentDateTime, convertToUserTimezone } from '../utils/timezone';
 
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {
@@ -678,14 +679,14 @@ export const useShiftsStore = defineStore('shifts', {
     isShiftInSetupMode: (state) => (shift) => {
       if (!shift) return false;
       
-      const now = new Date();
-      const shiftDate = new Date(shift.shift_date || shift.start_time);
+      const now = getCurrentDateTime();
+      const shiftDate = convertToUserTimezone(shift.shift_date || shift.start_time);
       
       // Extract time from start_time (could be full datetime or just time)
       let startHours, startMinutes;
       if (shift.start_time.includes('T')) {
         // Full datetime string
-        const startDateTime = new Date(shift.start_time);
+        const startDateTime = convertToUserTimezone(shift.start_time);
         startHours = startDateTime.getHours();
         startMinutes = startDateTime.getMinutes();
       } else {
@@ -695,7 +696,7 @@ export const useShiftsStore = defineStore('shifts', {
         startMinutes = parseInt(timeParts[1]);
       }
       
-      // Create shift start datetime
+      // Create shift start datetime in user's timezone
       const shiftStart = new Date(shiftDate);
       shiftStart.setHours(startHours, startMinutes, 0, 0);
       

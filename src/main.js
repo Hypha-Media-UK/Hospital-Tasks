@@ -6,6 +6,7 @@ import './assets/scss/main.scss';
 
 // Import stores that need initialization
 import { useShiftsStore } from './stores/shiftsStore';
+import { useSettingsStore } from './stores/settingsStore';
 
 const app = createApp(App);
 
@@ -19,5 +20,11 @@ app.use(router);
 app.mount('#app');
 
 // Initialize store data
+const settingsStore = useSettingsStore();
 const shiftsStore = useShiftsStore();
-shiftsStore.initialize();
+
+// Load settings first, then initialize other stores
+settingsStore.loadSettings().then(() => {
+  console.log('Settings loaded, timezone:', settingsStore.appSettings.timezone);
+  shiftsStore.initialize();
+});

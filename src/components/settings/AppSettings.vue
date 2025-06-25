@@ -83,28 +83,35 @@ import { useSettingsStore } from '../../stores/settingsStore';
 
 const settingsStore = useSettingsStore();
 
-// Local state
-const timezone = ref('UTC');
-const timeFormat = ref('24h');
+// Reactive computed properties that stay in sync with store
+const timezone = computed({
+  get: () => settingsStore.appSettings.timezone,
+  set: (value) => {
+    settingsStore.updateAppSettings({ timezone: value });
+  }
+});
+
+const timeFormat = computed({
+  get: () => settingsStore.appSettings.timeFormat,
+  set: (value) => {
+    settingsStore.updateAppSettings({ timeFormat: value });
+  }
+});
+
 const isSaving = ref(false);
 const saveError = ref('');
 const saveSuccess = ref(false);
 
 // Load settings when component mounts
 onMounted(async () => {
-  // Load from store
-  timezone.value = settingsStore.appSettings.timezone;
-  timeFormat.value = settingsStore.appSettings.timeFormat;
+  // Ensure settings are loaded from database
+  await settingsStore.loadAppSettings();
 });
 
 // Update store when settings change
 function updateSettings() {
-  settingsStore.updateAppSettings({
-    timezone: timezone.value,
-    timeFormat: timeFormat.value
-  });
-  
-  // Clear any previous messages
+  // The computed setters already handle store updates
+  // Just clear any previous messages
   saveError.value = '';
   saveSuccess.value = false;
 }
@@ -118,12 +125,8 @@ async function saveSettings() {
   saveSuccess.value = false;
   
   try {
-    // Update and save
-    settingsStore.updateAppSettings({
-      timezone: timezone.value,
-      timeFormat: timeFormat.value
-    });
-    
+    // The computed setters already handle store updates
+    // Just save to backend
     const result = await settingsStore.saveAppSettings();
     
     if (result) {

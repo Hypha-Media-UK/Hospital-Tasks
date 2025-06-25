@@ -102,6 +102,7 @@
 import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
+import { getCurrentDateTime, getCurrentTimeInMinutes, convertToUserTimezone, isSameDay } from '../../utils/timezone';
 import ShiftEditDepartmentModal from './ShiftEditDepartmentModal.vue';
 
 const props = defineProps({
@@ -184,18 +185,16 @@ const isPorterOutsideContractedHours = (porterId) => {
   const shift = shiftsStore.currentShift;
   if (!shift) return false;
   
-  // Get the shift date
-  const shiftDate = new Date(shift.start_time);
-  const now = new Date();
+  // Get the shift date in user's timezone
+  const shiftDate = convertToUserTimezone(shift.start_time);
+  const now = getCurrentDateTime();
   
   // Only check contracted hours if we're on the actual shift date
-  if (shiftDate.toDateString() !== now.toDateString()) {
+  if (!isSameDay(shiftDate, now)) {
     return false; // Different date, don't apply contracted hours check
   }
   
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  const currentTimeInMinutes = getCurrentTimeInMinutes();
   
   // Convert contracted hours to minutes
   const [startHours, startMinutes] = porter.contracted_hours_start.split(':').map(Number);

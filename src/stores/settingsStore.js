@@ -7,7 +7,7 @@ export const useSettingsStore = defineStore('settings', {
       // Only using proper shift types
       week_day: {
         startTime: '08:00',
-        endTime: '16:00',
+        endTime: '20:00',
         color: '#4285F4' // Default blue
       },
       week_night: {
@@ -17,7 +17,7 @@ export const useSettingsStore = defineStore('settings', {
       },
       weekend_day: {
         startTime: '08:00',
-        endTime: '16:00',
+        endTime: '20:00',
         color: '#34A853' // Default green
       },
       weekend_night: {
@@ -319,32 +319,38 @@ export const useSettingsStore = defineStore('settings', {
     // Load app settings from Supabase
     async loadAppSettings() {
       try {
+        console.log('Loading app settings from database...');
+        
         // Try to load from Supabase
         const { data, error } = await supabase
           .from('app_settings')
           .select('*')
+          .order('updated_at', { ascending: false })
           .limit(1)
           .single();
         
         // Handle table not existing yet in development
         if (error) {
           if (error.message.includes('relation "app_settings" does not exist')) {
-            // Table doesn't exist yet, use defaults
+            console.log('App settings table does not exist, using defaults');
             return null;
           } else if (error.code === 'PGRST116') {
-            // No rows found, use defaults
+            console.log('No app settings found in database, using defaults');
             return null;
           } else {
+            console.error('Error loading app settings:', error);
             throw error;
           }
         }
         
         // Process data if it exists
         if (data) {
+          console.log('Loaded app settings from database:', data);
           this.appSettings = {
             timezone: data.timezone || 'UTC',
             timeFormat: data.time_format || '24h'
           };
+          console.log('Updated app settings state:', this.appSettings);
         } else if (import.meta.env.DEV) {
           // In development, try to load from localStorage as fallback
           const savedSettings = localStorage.getItem('app_settings');
@@ -355,6 +361,7 @@ export const useSettingsStore = defineStore('settings', {
                 ...this.appSettings,
                 ...parsedSettings
               };
+              console.log('Loaded app settings from localStorage:', this.appSettings);
             } catch (e) {
               console.warn('Error parsing localStorage app settings', e);
             }
