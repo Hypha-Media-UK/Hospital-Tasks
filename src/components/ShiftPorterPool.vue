@@ -34,7 +34,6 @@
                    'porter-scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
                  }">
               {{ entry.porter.first_name }} {{ entry.porter.last_name }}
-              <span class="supervisor-badge">SUPERVISOR</span>
               <span v-if="getPorterAbsenceType(entry.porter_id) === 'illness'" class="absence-badge illness">ILL</span>
               <span v-if="getPorterAbsenceType(entry.porter_id) === 'annual_leave'" class="absence-badge annual-leave">AL</span>
               <span v-if="shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
@@ -50,7 +49,7 @@
               </div>
               <div v-else class="assignments-list">
                 <div class="assignment-item" style="background-color: rgba(128, 128, 128, 0.15);">
-                  Runner
+                  Supervisor
                 </div>
               </div>
               
@@ -947,16 +946,6 @@ onMounted(async () => {
       }
     }
     
-    .supervisor-badge {
-      display: inline-block;
-      font-size: 8px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 3px;
-      background-color: #34A853;
-      color: white;
-      margin-left: 8px;
-    }
   }
   
   &__assignments {
