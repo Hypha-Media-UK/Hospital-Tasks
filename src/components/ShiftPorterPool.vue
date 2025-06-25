@@ -10,12 +10,92 @@
       Loading shift porters...
     </div>
     
-    <div v-else-if="sortedPorterPool.length === 0" class="empty-state">
+    <div v-else-if="sortedPorterPool.length === 0 && supervisors.length === 0" class="empty-state">
       No porters assigned to this shift yet. Add porters using the button above.
     </div>
     
-    <!-- Filter controls -->
-    <div v-else class="filter-controls">
+    <!-- Supervisors Section -->
+    <div v-if="supervisors.length > 0" class="supervisors-section">
+      <h4 class="section-title">Supervisors</h4>
+      <div class="porter-grid">
+        <div v-for="entry in supervisors" :key="entry.id" class="porter-card supervisor-card" 
+             :class="{ 
+               'assigned': hasActiveAssignments(entry.porter_id),
+               'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id),
+               'not-on-duty': !isPorterOnDuty(entry.porter_id)
+             }"
+             @click.stop="openAllocationModal(entry.porter)">
+          <div class="porter-card__content">
+            <div class="porter-card__name" 
+                 :class="{ 
+                   'porter-absent': isPorterAbsent(entry.porter_id),
+                   'porter-illness': getPorterAbsenceType(entry.porter_id) === 'illness',
+                   'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave',
+                   'porter-scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
+                 }">
+              {{ entry.porter.first_name }} {{ entry.porter.last_name }}
+              <span class="supervisor-badge">SUPERVISOR</span>
+              <span v-if="getPorterAbsenceType(entry.porter_id) === 'illness'" class="absence-badge illness">ILL</span>
+              <span v-if="getPorterAbsenceType(entry.porter_id) === 'annual_leave'" class="absence-badge annual-leave">AL</span>
+              <span v-if="shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
+            </div>
+            
+            <div class="porter-card__assignments">
+              <div v-if="getPorterAssignments(entry.porter_id).length > 0" class="assignments-list">
+                <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" 
+                     class="assignment-item" 
+                     :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }">
+                  {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                </div>
+              </div>
+              <div v-else class="assignments-list">
+                <div class="assignment-item" style="background-color: rgba(128, 128, 128, 0.15);">
+                  Runner
+                </div>
+              </div>
+              
+              <!-- Scheduled Absences Section -->
+              <div v-if="getPorterAbsences(entry.porter_id).length > 0" class="absences-section">
+                <div class="absences-title">Scheduled Absences</div>
+                <div v-for="absence in getPorterAbsences(entry.porter_id)" :key="absence.id" 
+                     class="absence-item">
+                  <div class="absence-details">
+                    {{ absence.absence_reason || 'Absence' }}: {{ formatTime(absence.start_time) }} - {{ formatTime(absence.end_time) }}
+                    <button 
+                      @click.stop="removeAbsence(absence.id)" 
+                      class="btn btn--icon btn--danger btn--small"
+                      title="Remove absence"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- No remove button for supervisors -->
+          <div class="porter-card__actions">
+            <div class="supervisor-indicator" title="Supervisors cannot be manually removed">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 12l2 2 4-4"></path>
+                <circle cx="12" cy="12" r="9"></circle>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Regular Porters Section -->
+    <div v-if="sortedPorterPool.length > 0" class="porters-section">
+      <h4 v-if="supervisors.length > 0" class="section-title">Porters</h4>
+      
+      <!-- Filter controls -->
+      <div class="filter-controls">
       <div class="filter-label">Sort by:</div>
       <div class="filter-options">
         <button 
@@ -107,6 +187,7 @@
           </button>
         </div>
       </div>
+    </div>
     </div>
     
     <!-- Allocation Modal -->
@@ -245,11 +326,30 @@ const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
 });
 
-// Sorted porter pool based on selected filter
-const sortedPorterPool = computed(() => {
+// Separate supervisors and regular porters
+const supervisors = computed(() => {
   if (!porterPool.value.length) return [];
   
-  const porters = [...porterPool.value];
+  return porterPool.value
+    .filter(p => p.is_supervisor)
+    .sort((a, b) => {
+      return `${a.porter.first_name} ${a.porter.last_name}`.localeCompare(
+        `${b.porter.first_name} ${b.porter.last_name}`
+      );
+    });
+});
+
+const regularPorters = computed(() => {
+  if (!porterPool.value.length) return [];
+  
+  return porterPool.value.filter(p => !p.is_supervisor);
+});
+
+// Sorted porter pool based on selected filter (excluding supervisors)
+const sortedPorterPool = computed(() => {
+  if (!regularPorters.value.length) return [];
+  
+  const porters = [...regularPorters.value];
   
   if (sortFilter.value === 'alphabetical') {
     // Sort alphabetically by name
@@ -846,6 +946,17 @@ onMounted(async () => {
         color: white;
       }
     }
+    
+    .supervisor-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: #34A853;
+      color: white;
+      margin-left: 8px;
+    }
   }
   
   &__assignments {
@@ -1114,6 +1225,44 @@ onMounted(async () => {
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+}
+
+// Supervisor-specific styling
+.supervisors-section {
+  margin-bottom: 32px;
+  
+  .section-title {
+    color: #34A853;
+    margin-bottom: 16px;
+  }
+}
+
+.porters-section {
+  .section-title {
+    margin-bottom: 16px;
+  }
+}
+
+.supervisor-card {
+  border: 2px solid rgba(52, 168, 83, 0.2);
+  background-color: rgba(52, 168, 83, 0.05);
+  
+  &:hover {
+    background-color: rgba(52, 168, 83, 0.08);
+    box-shadow: 0 2px 8px rgba(52, 168, 83, 0.15);
+  }
+}
+
+.supervisor-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #34A853;
+  opacity: 0.7;
+  
+  &:hover {
+    opacity: 1;
   }
 }
 </style>

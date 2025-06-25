@@ -888,6 +888,10 @@ export const useShiftsStore = defineStore('shifts', {
           const newShift = data[0];
           console.log(`Created new shift with ID: ${newShift.id}, type: ${newShift.shift_type}`);
           
+          // Automatically add supervisor to porter pool
+          console.log(`Adding supervisor ${supervisorId} to porter pool for shift ${newShift.id}`);
+          await this.addSupervisorToPorterPool(newShift.id, supervisorId);
+          
           // Add the new shift to activeShifts array
           this.activeShifts.unshift(newShift);
           
@@ -2548,12 +2552,85 @@ export const useShiftsStore = defineStore('shifts', {
     };
   },
     
+    // Add supervisor to porter pool
+    async addSupervisorToPorterPool(shiftId, supervisorId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        // Add supervisor to shift pool with is_supervisor flag
+        const { data, error } = await supabase
+          .from('shift_porter_pool')
+          .insert({
+            shift_id: shiftId,
+            porter_id: supervisorId,
+            is_supervisor: true
+          })
+          .select(`
+            *,
+            porter:porter_id(id, first_name, last_name)
+          `);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Add to local state
+          this.shiftPorterPool.push(data[0]);
+        }
+        
+        return data?.[0] || null;
+      } catch (error) {
+        console.error('Error adding supervisor to porter pool:', error);
+        this.error = 'Failed to add supervisor to porter pool';
+        return null;
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+
+    // Remove supervisor from porter pool
+    async removeSupervisorFromPorterPool(shiftId, supervisorId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        const { error } = await supabase
+          .from('shift_porter_pool')
+          .delete()
+          .eq('shift_id', shiftId)
+          .eq('porter_id', supervisorId)
+          .eq('is_supervisor', true);
+        
+        if (error) throw error;
+        
+        // Remove from local state
+        this.shiftPorterPool = this.shiftPorterPool.filter(
+          p => !(p.shift_id === shiftId && p.porter_id === supervisorId && p.is_supervisor)
+        );
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing supervisor from porter pool:', error);
+        this.error = 'Failed to remove supervisor from porter pool';
+        return false;
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+
     // Remove a porter from a shift's porter pool
     async removePorterFromShift(porterPoolId) {
       this.loading.porterPool = true;
       this.error = null;
       
       try {
+        // Check if this is a supervisor - supervisors cannot be manually removed
+        const porterEntry = this.shiftPorterPool.find(p => p.id === porterPoolId);
+        if (porterEntry && porterEntry.is_supervisor) {
+          this.error = 'Supervisors cannot be manually removed from the porter pool';
+          return false;
+        }
+
         const { error } = await supabase
           .from('shift_porter_pool')
           .delete()
