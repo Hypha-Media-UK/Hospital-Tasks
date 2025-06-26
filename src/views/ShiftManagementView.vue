@@ -734,15 +734,15 @@ const porters = computed(() => {
     return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
   };
   
-  // Helper function to check if porter is on duty based on contracted hours
-  const isPorterOnDuty = (porterId) => {
+  // Helper function to get porter duty status based on contracted hours
+  const getPorterDutyStatus = (porterId) => {
     // Get the porter details
     const porter = staffStore.porters.find(p => p.id === porterId);
-    if (!porter) return true; // Default to on duty if porter not found
+    if (!porter) return 'on-duty'; // Default to on duty if porter not found
     
     // If no contracted hours set, assume porter is on duty
     if (!porter.contracted_hours_start || !porter.contracted_hours_end) {
-      return true;
+      return 'on-duty';
     }
     
     // Convert contracted hours to minutes
@@ -750,7 +750,68 @@ const porters = computed(() => {
     const endTimeMinutes = timeToMinutes(porter.contracted_hours_end);
     
     // Check if current time is within contracted hours
-    return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
+    if (isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes)) {
+      return 'on-duty';
+    }
+    
+    // Determine if we're before start time or after end time
+    if (endTimeMinutes < startTimeMinutes) {
+      // Overnight shift (e.g., 22:00 to 06:00)
+      if (currentTimeInMinutes > endTimeMinutes && currentTimeInMinutes < startTimeMinutes) {
+        // We're in the gap between end and start (e.g., 07:00 when shift is 22:00-06:00)
+        // Need to determine if we're closer to the end (off-duty) or start (not-yet-on-duty)
+        const timeFromEnd = currentTimeInMinutes - endTimeMinutes;
+        const timeToStart = startTimeMinutes - currentTimeInMinutes;
+        
+        // If we're closer to the end time, consider it "off-duty"
+        // If we're closer to the start time, consider it "not-yet-on-duty"
+        return timeFromEnd <= timeToStart ? 'off-duty' : 'not-yet-on-duty';
+      }
+    } else {
+      // Normal shift (e.g., 10:00 to 22:00)
+      if (currentTimeInMinutes < startTimeMinutes) {
+        // We're before the start time, but need to determine if this is:
+        // 1. Before today's shift starts (not-yet-on-duty)
+        // 2. After yesterday's shift ended (off-duty)
+        
+        // Calculate time until today's shift starts
+        const timeUntilStart = startTimeMinutes - currentTimeInMinutes;
+        
+        // Calculate time since yesterday's shift ended
+        // Yesterday's end time would be endTimeMinutes, but we need to account for the day boundary
+        const timeSinceYesterdayEnd = currentTimeInMinutes + (24 * 60 - endTimeMinutes);
+        
+        // Use a threshold-based approach:
+        // PRIORITIZE upcoming shifts over past shifts
+        // If their next shift starts in less than 4 hours, they're "not-yet-on-duty"
+        // If they've been off duty for more than 4 hours, they're "off-duty"
+        const THRESHOLD_HOURS = 4;
+        const THRESHOLD_MINUTES = THRESHOLD_HOURS * 60;
+        
+        // FIRST: Check if their next shift starts within the threshold - prioritize upcoming work
+        if (timeUntilStart <= THRESHOLD_MINUTES) {
+          return 'not-yet-on-duty';
+        }
+        
+        // SECOND: If they've been off duty for more than the threshold, they're "off-duty"
+        if (timeSinceYesterdayEnd > THRESHOLD_MINUTES) {
+          return 'off-duty';
+        }
+        
+        // Fallback: if both conditions don't match, default to off-duty
+        return 'off-duty';
+      } else if (currentTimeInMinutes > endTimeMinutes) {
+        return 'off-duty';
+      }
+    }
+    
+    // Fallback
+    return 'on-duty';
+  };
+  
+  // Helper function to check if porter is on duty (for backward compatibility)
+  const isPorterOnDuty = (porterId) => {
+    return getPorterDutyStatus(porterId) === 'on-duty';
   };
   
   // Only show porters from the shift pool who are currently available
