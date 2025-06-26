@@ -629,19 +629,34 @@ const getPorterTimelineBlocks = (porterId) => {
   const blocks = [];
   const porter = staffStore.porters.find(p => p.id === porterId);
   
-  if (!porter || !timelineHours.value.length) return blocks;
+  if (!porter || !timelineHours.value.length) {
+    console.log(`No porter found or no timeline hours for porter ${porterId}`);
+    return blocks;
+  }
   
   const shiftStartMinutes = timelineHours.value[0].startMinutes;
   const shiftEndMinutes = timelineHours.value[timelineHours.value.length - 1].endMinutes;
+  
+  console.log(`Porter ${porter.first_name} ${porter.last_name}:`, {
+    shiftStartMinutes,
+    shiftEndMinutes,
+    totalShiftMinutes: totalShiftMinutes.value,
+    contractedStart: porter.contracted_hours_start,
+    contractedEnd: porter.contracted_hours_end
+  });
   
   // Get contracted hours
   const contractedStart = porter.contracted_hours_start ? timeToMinutes(porter.contracted_hours_start) : shiftStartMinutes;
   const contractedEnd = porter.contracted_hours_end ? timeToMinutes(porter.contracted_hours_end) : shiftEndMinutes;
   
+  console.log(`Contracted hours in minutes:`, { contractedStart, contractedEnd });
+  
   // Add off-duty block at start if needed
   if (contractedStart > shiftStartMinutes) {
     const startPercent = 0;
     const widthPercent = ((contractedStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
+    
+    console.log(`Adding off-duty start block: ${startPercent}% to ${widthPercent}%`);
     
     blocks.push({
       id: `${porterId}-off-duty-start`,
@@ -659,6 +674,8 @@ const getPorterTimelineBlocks = (porterId) => {
     const startPercent = ((contractedEnd - shiftStartMinutes) / totalShiftMinutes.value) * 100;
     const widthPercent = ((shiftEndMinutes - contractedEnd) / totalShiftMinutes.value) * 100;
     
+    console.log(`Adding off-duty end block: ${startPercent}% to ${startPercent + widthPercent}%`);
+    
     blocks.push({
       id: `${porterId}-off-duty-end`,
       type: 'off-duty',
@@ -672,6 +689,8 @@ const getPorterTimelineBlocks = (porterId) => {
   
   // Add absence blocks
   const absences = historicalAbsences.value.filter(a => a.porter_id === porterId);
+  console.log(`Found ${absences.length} absences for porter ${porterId}`);
+  
   absences.forEach((absence, index) => {
     const absenceStart = Math.max(timeToMinutes(absence.start_time), Math.max(shiftStartMinutes, contractedStart));
     const absenceEnd = Math.min(timeToMinutes(absence.end_time), Math.min(shiftEndMinutes, contractedEnd));
@@ -679,6 +698,8 @@ const getPorterTimelineBlocks = (porterId) => {
     if (absenceEnd > absenceStart) {
       const startPercent = ((absenceStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
       const widthPercent = ((absenceEnd - absenceStart) / totalShiftMinutes.value) * 100;
+      
+      console.log(`Adding absence block: ${startPercent}% to ${startPercent + widthPercent}%`);
       
       blocks.push({
         id: `${porterId}-absence-${index}`,
@@ -693,7 +714,10 @@ const getPorterTimelineBlocks = (porterId) => {
   });
   
   // Add department assignment blocks
-  const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(a => a.porter_id === porterId);
+  const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
+  console.log(`Found ${departmentAssignments.length} department assignments for porter ${porterId}`);
+  console.log('All department assignments:', shiftsStore.shiftAreaCoverPorterAssignments);
+  
   departmentAssignments.forEach((assignment, index) => {
     const assignmentStart = Math.max(timeToMinutes(assignment.start_time), Math.max(shiftStartMinutes, contractedStart));
     const assignmentEnd = Math.min(timeToMinutes(assignment.end_time), Math.min(shiftEndMinutes, contractedEnd));
@@ -702,8 +726,10 @@ const getPorterTimelineBlocks = (porterId) => {
       const startPercent = ((assignmentStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
       const widthPercent = ((assignmentEnd - assignmentStart) / totalShiftMinutes.value) * 100;
       
-      const areaCover = shiftsStore.shiftAreaCoverAssignments.find(a => a.id === assignment.shift_area_cover_assignment_id);
+      const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
       const departmentName = areaCover?.department?.name || 'Department';
+      
+      console.log(`Adding department assignment block: ${departmentName} at ${startPercent}% to ${startPercent + widthPercent}%`);
       
       blocks.push({
         id: `${porterId}-department-${index}`,
@@ -718,7 +744,10 @@ const getPorterTimelineBlocks = (porterId) => {
   });
   
   // Add service assignment blocks
-  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments.filter(a => a.porter_id === porterId);
+  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
+  console.log(`Found ${serviceAssignments.length} service assignments for porter ${porterId}`);
+  console.log('All service assignments:', shiftsStore.shiftSupportServicePorterAssignments);
+  
   serviceAssignments.forEach((assignment, index) => {
     const assignmentStart = Math.max(timeToMinutes(assignment.start_time), Math.max(shiftStartMinutes, contractedStart));
     const assignmentEnd = Math.min(timeToMinutes(assignment.end_time), Math.min(shiftEndMinutes, contractedEnd));
@@ -727,8 +756,10 @@ const getPorterTimelineBlocks = (porterId) => {
       const startPercent = ((assignmentStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
       const widthPercent = ((assignmentEnd - assignmentStart) / totalShiftMinutes.value) * 100;
       
-      const service = shiftsStore.shiftSupportServiceAssignments.find(a => a.id === assignment.shift_support_service_assignment_id);
+      const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
       const serviceName = service?.service?.name || 'Service';
+      
+      console.log(`Adding service assignment block: ${serviceName} at ${startPercent}% to ${startPercent + widthPercent}%`);
       
       blocks.push({
         id: `${porterId}-service-${index}`,
@@ -742,6 +773,7 @@ const getPorterTimelineBlocks = (porterId) => {
     }
   });
   
+  console.log(`Total blocks for porter ${porterId}:`, blocks);
   return blocks.sort((a, b) => a.leftPercent - b.leftPercent);
 };
 
@@ -785,27 +817,41 @@ const formatPorterHours = (porterId) => {
 
 // Load required data on mount
 onMounted(async () => {
+  console.log('SitRep modal mounting - loading data...');
+  
   // Load settings first to ensure shift defaults are available
   await settingsStore.loadSettings();
   
+  // CRITICAL: Load porters FIRST before anything else that depends on porter data
+  if (!staffStore.porters.length) {
+    console.log('Loading porters...');
+    await staffStore.fetchPorters();
+    console.log(`Loaded ${staffStore.porters.length} porters`);
+  }
+  
   if (!shiftsStore.shiftPorterPool.length) {
+    console.log('Loading shift porter pool...');
     await shiftsStore.fetchShiftPorterPool(props.shift.id);
+    console.log(`Loaded ${shiftsStore.shiftPorterPool.length} porters in pool`);
   }
   
   if (!shiftsStore.shiftAreaCoverAssignments.length) {
+    console.log('Loading area cover assignments...');
     await shiftsStore.fetchShiftAreaCover(props.shift.id);
+    console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
   }
   
   if (!shiftsStore.shiftSupportServiceAssignments.length) {
+    console.log('Loading support service assignments...');
     await shiftsStore.fetchShiftSupportServices(props.shift.id);
-  }
-  
-  if (!staffStore.porters.length) {
-    await staffStore.fetchPorters();
+    console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
   }
   
   // Fetch historical absences specifically for SitRep
+  console.log('Loading historical absences...');
   await fetchHistoricalAbsences();
+  
+  console.log('SitRep modal data loading complete');
 });
 </script>
 

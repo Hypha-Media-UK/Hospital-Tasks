@@ -925,13 +925,7 @@ onMounted(async () => {
   loading.value = true;
   console.log('ShiftManagementView mounted - loading shift data');
   
-  // Initialize the tab indicator position
-  nextTick(() => {
-    updateIndicatorPosition();
-  });
-  
-  // Update indicator position on window resize
-  window.addEventListener('resize', updateIndicatorPosition);
+  // Tab indicator positioning is now handled by AnimatedTabs component
   
   // Set up periodic cleanup of all expired allocations (every 30 seconds)
   checkAndCleanupExpiredAllocations(); // Initial check
@@ -1046,8 +1040,7 @@ onUnmounted(() => {
     cleanupTimer = null;
   }
   
-  // Remove event listener
-  window.removeEventListener('resize', updateIndicatorPosition);
+  // Tab indicator positioning is now handled by AnimatedTabs component
 });
 
 // Watch route param changes to reload data
@@ -1268,32 +1261,7 @@ function setActiveTab(tabId) {
   });
 }
 
-// Calculate the indicator position based on the active tab
-function updateIndicatorPosition() {
-  if (!tabRefs.value || tabRefs.value.length === 0 || !tabsHeaderRef.value) return;
-  
-  const activeIndex = tabs.findIndex(tab => tab.id === activeTabId.value);
-  if (activeIndex === -1 || !tabRefs.value[activeIndex]) return;
-  
-  // The ref might be an object with a tabRef property, or it might be a direct DOM ref
-  // Handle both cases safely
-  const activeTabRef = tabRefs.value[activeIndex];
-  if (!activeTabRef) return;
-  
-  // Get the actual DOM element, whether from tabRef property or direct ref
-  const activeTabElement = activeTabRef.tabRef || activeTabRef.$el || activeTabRef;
-  if (!activeTabElement || typeof activeTabElement.getBoundingClientRect !== 'function') return;
-  
-  // Make sure tabsHeaderRef exists and is a DOM element
-  if (!tabsHeaderRef.value || typeof tabsHeaderRef.value.getBoundingClientRect !== 'function') return;
-  
-  const tabHeaderRect = tabsHeaderRef.value.getBoundingClientRect();
-  const activeTabRect = activeTabElement.getBoundingClientRect();
-  
-  // Calculate position relative to the tab header
-  indicatorPosition.value = activeTabRect.left - tabHeaderRect.left;
-  indicatorWidth.value = activeTabRect.width;
-}
+// Note: Tab indicator positioning is now handled by the AnimatedTabs component
 
 function navigateToHome() {
   router.push('/');
