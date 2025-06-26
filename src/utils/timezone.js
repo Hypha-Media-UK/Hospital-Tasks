@@ -7,7 +7,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 
 /**
  * Get the current date/time in the user's selected timezone
- * @returns {Date} Date object adjusted for the user's timezone
+ * @returns {Date} Date object representing current time in user's timezone
  */
 export function getCurrentDateTime() {
   const settingsStore = useSettingsStore();
@@ -21,10 +21,10 @@ export function getCurrentDateTime() {
     return now;
   }
   
-  // For other timezones, create a date in that timezone
+  // For other timezones, get the actual time in that timezone
   try {
-    // Use Intl.DateTimeFormat to get the time in the target timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    // Get the time in the target timezone as a string
+    const timeInTimezone = now.toLocaleString('en-CA', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
@@ -35,21 +35,16 @@ export function getCurrentDateTime() {
       hour12: false
     });
     
-    const parts = formatter.formatToParts(now);
-    const partsObj = {};
-    parts.forEach(part => {
-      partsObj[part.type] = part.value;
-    });
+    // Parse the timezone-adjusted time back into a Date object
+    // Format will be: "2025-06-26, 03:08:12"
+    const cleanedTime = timeInTimezone.replace(', ', 'T');
+    const adjustedDate = new Date(cleanedTime);
     
-    // Create a new date with the timezone-adjusted values
-    const adjustedDate = new Date(
-      parseInt(partsObj.year),
-      parseInt(partsObj.month) - 1, // Month is 0-indexed
-      parseInt(partsObj.day),
-      parseInt(partsObj.hour),
-      parseInt(partsObj.minute),
-      parseInt(partsObj.second)
-    );
+    // Verify the date is valid
+    if (isNaN(adjustedDate.getTime())) {
+      console.warn(`Failed to parse timezone-adjusted date: ${timeInTimezone}, falling back to UTC`);
+      return now;
+    }
     
     return adjustedDate;
   } catch (error) {
@@ -94,8 +89,8 @@ export function convertToUserTimezone(date) {
   }
   
   try {
-    // Use Intl.DateTimeFormat to get the time in the target timezone
-    const formatter = new Intl.DateTimeFormat('en-US', {
+    // Get the time in the target timezone as a string
+    const timeInTimezone = inputDate.toLocaleString('en-CA', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
@@ -106,21 +101,16 @@ export function convertToUserTimezone(date) {
       hour12: false
     });
     
-    const parts = formatter.formatToParts(inputDate);
-    const partsObj = {};
-    parts.forEach(part => {
-      partsObj[part.type] = part.value;
-    });
+    // Parse the timezone-adjusted time back into a Date object
+    // Format will be: "2025-06-26, 03:08:12"
+    const cleanedTime = timeInTimezone.replace(', ', 'T');
+    const adjustedDate = new Date(cleanedTime);
     
-    // Create a new date with the timezone-adjusted values
-    const adjustedDate = new Date(
-      parseInt(partsObj.year),
-      parseInt(partsObj.month) - 1, // Month is 0-indexed
-      parseInt(partsObj.day),
-      parseInt(partsObj.hour),
-      parseInt(partsObj.minute),
-      parseInt(partsObj.second)
-    );
+    // Verify the date is valid
+    if (isNaN(adjustedDate.getTime())) {
+      console.warn(`Failed to parse timezone-adjusted date: ${timeInTimezone}, falling back to original date`);
+      return inputDate;
+    }
     
     return adjustedDate;
   } catch (error) {
@@ -210,4 +200,113 @@ export function minutesToTime(minutes) {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+}
+
+/**
+ * Create a shift start datetime based on shift date and configured shift times
+ * @param {Date|string} shiftDate - The date of the shift
+ * @param {string} shiftType - The shift type (week_day, week_night, etc.)
+ * @returns {Date} The actual start datetime for the shift in user's timezone
+ */
+export function createShiftStartDateTime(shiftDate, shiftType) {
+  const settingsStore = useSettingsStore();
+  const shiftDefaults = settingsStore.shiftDefaults[shiftType];
+  
+  if (!shiftDefaults || !shiftDefaults.startTime) {
+    console.warn(`No shift defaults found for type: ${shiftType}`);
+    return null;
+  }
+  
+  // Convert shift date to user's timezone
+  const dateInUserTz = convertToUserTimezone(shiftDate);
+  if (!dateInUserTz) return null;
+  
+  // Parse the start time (HH:MM format)
+  const [hours, minutes] = shiftDefaults.startTime.split(':').map(Number);
+  
+  // Create the shift start datetime in user's timezone
+  const shiftStart = new Date(dateInUserTz);
+  shiftStart.setHours(hours, minutes, 0, 0);
+  
+  return shiftStart;
+}
+
+/**
+ * Create a shift end datetime based on shift date and configured shift times
+ * @param {Date|string} shiftDate - The date of the shift
+ * @param {string} shiftType - The shift type (week_day, week_night, etc.)
+ * @returns {Date} The actual end datetime for the shift in user's timezone
+ */
+export function createShiftEndDateTime(shiftDate, shiftType) {
+  const settingsStore = useSettingsStore();
+  const shiftDefaults = settingsStore.shiftDefaults[shiftType];
+  
+  if (!shiftDefaults || !shiftDefaults.endTime) {
+    console.warn(`No shift defaults found for type: ${shiftType}`);
+    return null;
+  }
+  
+  // Convert shift date to user's timezone
+  const dateInUserTz = convertToUserTimezone(shiftDate);
+  if (!dateInUserTz) return null;
+  
+  // Parse the end time (HH:MM format)
+  const [hours, minutes] = shiftDefaults.endTime.split(':').map(Number);
+  
+  // Create the shift end datetime in user's timezone
+  const shiftEnd = new Date(dateInUserTz);
+  shiftEnd.setHours(hours, minutes, 0, 0);
+  
+  // Handle night shifts that end the next day
+  const startTime = shiftDefaults.startTime;
+  const [startHours] = startTime.split(':').map(Number);
+  
+  if (hours < startHours) {
+    // End time is next day (e.g., night shift ending at 08:00)
+    shiftEnd.setDate(shiftEnd.getDate() + 1);
+  }
+  
+  return shiftEnd;
+}
+
+/**
+ * Check if current time is within the shift access window (1 hour before start to end)
+ * @param {Date|string} shiftDate - The date of the shift
+ * @param {string} shiftType - The shift type (week_day, week_night, etc.)
+ * @returns {boolean} True if tasks can be added to this shift
+ */
+export function isShiftAccessible(shiftDate, shiftType) {
+  const now = getCurrentDateTime();
+  
+  const shiftStart = createShiftStartDateTime(shiftDate, shiftType);
+  const shiftEnd = createShiftEndDateTime(shiftDate, shiftType);
+  
+  if (!shiftStart || !shiftEnd) {
+    console.warn('Could not determine shift times for accessibility check');
+    return false;
+  }
+  
+  // Calculate 1 hour before shift start
+  const accessStart = new Date(shiftStart.getTime() - (60 * 60 * 1000)); // 1 hour before
+  
+  // Check if current time is within the access window
+  return now >= accessStart && now <= shiftEnd;
+}
+
+/**
+ * Check if a shift is currently in setup mode (before actual shift start time)
+ * @param {Date|string} shiftDate - The date of the shift
+ * @param {string} shiftType - The shift type (week_day, week_night, etc.)
+ * @returns {boolean} True if shift is in setup mode
+ */
+export function isShiftInSetupMode(shiftDate, shiftType) {
+  const now = getCurrentDateTime();
+  const shiftStart = createShiftStartDateTime(shiftDate, shiftType);
+  
+  if (!shiftStart) {
+    console.warn('Could not determine shift start time for setup mode check');
+    return false;
+  }
+  
+  return now < shiftStart;
 }

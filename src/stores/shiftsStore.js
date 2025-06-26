@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
 import { useStaffStore } from './staffStore';
-import { getCurrentDateTime, convertToUserTimezone } from '../utils/timezone';
+import { getCurrentDateTime, convertToUserTimezone, isShiftInSetupMode, getCurrentTimeString } from '../utils/timezone';
 
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {
@@ -679,29 +679,11 @@ export const useShiftsStore = defineStore('shifts', {
     isShiftInSetupMode: (state) => (shift) => {
       if (!shift) return false;
       
-      const now = getCurrentDateTime();
-      const shiftDate = convertToUserTimezone(shift.shift_date || shift.start_time);
+      // Use the shift date if available, otherwise fall back to start_time
+      const shiftDate = shift.shift_date || shift.start_time;
+      const shiftType = shift.shift_type;
       
-      // Extract time from start_time (could be full datetime or just time)
-      let startHours, startMinutes;
-      if (shift.start_time.includes('T')) {
-        // Full datetime string
-        const startDateTime = convertToUserTimezone(shift.start_time);
-        startHours = startDateTime.getHours();
-        startMinutes = startDateTime.getMinutes();
-      } else {
-        // Just time string (HH:MM:SS or HH:MM)
-        const timeParts = shift.start_time.split(':');
-        startHours = parseInt(timeParts[0]);
-        startMinutes = parseInt(timeParts[1]);
-      }
-      
-      // Create shift start datetime in user's timezone
-      const shiftStart = new Date(shiftDate);
-      shiftStart.setHours(startHours, startMinutes, 0, 0);
-      
-      // If current time is before shift start, we're in setup mode
-      return now < shiftStart;
+      return isShiftInSetupMode(shiftDate, shiftType);
     }
   },
   
@@ -862,22 +844,33 @@ export const useShiftsStore = defineStore('shifts', {
     },
     
     // Create a new shift
-    async createShift(supervisorId, shiftType, startTime = null) {
+    async createShift(supervisorId, shiftType, shiftDate = null) {
       this.loading.createShift = true;
       this.error = null;
       
       try {
-        // Use provided start time or default to current time
-        const shiftStartTime = startTime || new Date().toISOString();
+        // Use provided shift date or default to current date in user's timezone
+        const currentDateTime = getCurrentDateTime();
+        const targetShiftDate = shiftDate ? new Date(shiftDate) : currentDateTime;
         
-        console.log(`Creating new shift with supervisor: ${supervisorId}, type: ${shiftType}, start time: ${shiftStartTime}`);
+        // Store the creation time (when the shift was created)
+        const creationTime = new Date().toISOString(); // Always UTC for creation time
+        
+        // Store the shift date (the date this shift is for)
+        // This should be stored as a date string in the user's timezone
+        const shiftDateString = targetShiftDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        console.log(`Creating new shift with supervisor: ${supervisorId}, type: ${shiftType}`);
+        console.log(`Shift date: ${shiftDateString}, Created at: ${creationTime}`);
         
         const { data, error } = await supabase
           .from('shifts')
           .insert({
             supervisor_id: supervisorId,
             shift_type: shiftType,
-            start_time: shiftStartTime,
+            shift_date: shiftDateString, // The date this shift is for
+            start_time: creationTime,    // When the shift was created (for backward compatibility)
+            created_at: creationTime,    // Explicit creation timestamp
             is_active: true
           })
           .select();
@@ -2439,12 +2432,8 @@ export const useShiftsStore = defineStore('shifts', {
   // Clean up expired porter absences
   async cleanupExpiredAbsences() {
     try {
-      // Get current time in HH:MM:SS format
-      const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      const currentTime = `${hours}:${minutes}:${seconds}`;
+      // Get current time in user's timezone using timezone utilities
+      const currentTime = getCurrentTimeString(); // HH:MM format
       
       // Find absences with end times in the past
       const expiredAbsences = this.shiftPorterAbsences.filter(

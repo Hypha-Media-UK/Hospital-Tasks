@@ -493,16 +493,16 @@
           v-if="shift && shift.is_active" 
           @click="showAddTaskModal" 
           class="floating-action-button"
-          :class="{ 'disabled': !isShiftAccessible }"
-          :disabled="!isShiftAccessible"
-          :title="isShiftAccessible ? 'Add Task' : 'Cannot add tasks now - only available during shift or 1 hour before'"
+          :class="{ 'disabled': !isShiftAccessibleComputed }"
+          :disabled="!isShiftAccessibleComputed"
+          :title="isShiftAccessibleComputed ? 'Add Task' : 'Cannot add tasks now - only available during shift or 1 hour before'"
         >
           <span class="plus-icon">+</span>
           <span class="button-text">New Task</span>
         </button>
         
         <!-- Non-accessible shift message -->
-        <div v-if="shift && shift.is_active && !isShiftAccessible" class="date-warning">
+        <div v-if="shift && shift.is_active && !isShiftAccessibleComputed" class="date-warning">
           Tasks can only be added during the shift or 1 hour before it starts
         </div>
       </div>
@@ -519,6 +519,7 @@ import { useStaffStore } from '../stores/staffStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { isShiftAccessible } from '../utils/timezone';
 import AnimatedTabs from '../components/shared/AnimatedTabs.vue';
 import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabContent.vue';
 import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
@@ -691,53 +692,14 @@ const completedTasks = computed(() => shiftsStore.completedTasks);
 const allTasks = computed(() => [...pendingTasks.value, ...completedTasks.value]);
 const totalTasksCount = computed(() => pendingTasks.value.length + completedTasks.value.length);
 // Check if tasks can be added to this shift (current date and within time window)
-const isShiftAccessible = computed(() => {
-  if (!shift.value || !shift.value.start_time) return false;
+const isShiftAccessibleComputed = computed(() => {
+  if (!shift.value) return false;
   
-  const shiftDate = new Date(shift.value.start_time);
-  const today = new Date();
+  // Use the shift date if available, otherwise fall back to start_time
+  const shiftDate = shift.value.shift_date || shift.value.start_time;
   const shiftType = shift.value.shift_type;
   
-  // First check if dates match
-  const isSameDate = shiftDate.getDate() === today.getDate() && 
-                     shiftDate.getMonth() === today.getMonth() && 
-                     shiftDate.getFullYear() === today.getFullYear();
-  
-  if (!isSameDate) return false; // Different date, not accessible
-  
-  // Get shift times from settings
-  const startTimeStr = settingsStore.shiftDefaults[shiftType]?.startTime;
-  const endTimeStr = settingsStore.shiftDefaults[shiftType]?.endTime;
-  
-  if (!startTimeStr || !endTimeStr) return false; // No time settings found
-  
-  // Convert times to minutes for easier comparison
-  const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
-  const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
-  
-  const startTimeInMinutes = startHours * 60 + startMinutes;
-  const endTimeInMinutes = endHours * 60 + endMinutes;
-  
-  // Calculate time 1 hour before shift starts
-  const oneHourBeforeStartInMinutes = startTimeInMinutes - 60;
-  
-  // Get current time in minutes
-  const currentHours = today.getHours();
-  const currentMinutes = today.getMinutes();
-  const currentTimeInMinutes = currentHours * 60 + currentMinutes;
-  
-  // Check if night shift (spans midnight)
-  const isNightShift = endTimeInMinutes < startTimeInMinutes;
-  
-  if (isNightShift) {
-    // For night shifts that span midnight
-    return currentTimeInMinutes >= oneHourBeforeStartInMinutes || 
-           currentTimeInMinutes < endTimeInMinutes;
-  } else {
-    // For day shifts
-    return currentTimeInMinutes >= oneHourBeforeStartInMinutes && 
-           currentTimeInMinutes < endTimeInMinutes;
-  }
+  return isShiftAccessible(shiftDate, shiftType);
 });
 const porters = computed(() => {
   // Get current time for absence checking
