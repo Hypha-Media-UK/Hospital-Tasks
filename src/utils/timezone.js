@@ -290,7 +290,32 @@ export function isShiftAccessible(shiftDate, shiftType) {
   const accessStart = new Date(shiftStart.getTime() - (60 * 60 * 1000)); // 1 hour before
   
   // Check if current time is within the access window
-  return now >= accessStart && now <= shiftEnd;
+  const isAccessible = now >= accessStart && now <= shiftEnd;
+  
+  console.log(`Shift accessibility check:`, {
+    now: now.toISOString(),
+    shiftStart: shiftStart.toISOString(),
+    shiftEnd: shiftEnd.toISOString(),
+    accessStart: accessStart.toISOString(),
+    isAccessible
+  });
+  
+  return isAccessible;
+}
+
+/**
+ * Check if current time is within the shift access window for an existing shift object
+ * @param {Object} shift - The shift object with shift_date and shift_type
+ * @returns {boolean} True if tasks can be added to this shift
+ */
+export function isShiftObjectAccessible(shift) {
+  if (!shift) return false;
+  
+  // Use shift_date if available, otherwise fall back to start_time
+  const shiftDate = shift.shift_date || shift.start_time;
+  const shiftType = shift.shift_type;
+  
+  return isShiftAccessible(shiftDate, shiftType);
 }
 
 /**

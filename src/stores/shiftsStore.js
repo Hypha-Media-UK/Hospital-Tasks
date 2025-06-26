@@ -860,17 +860,24 @@ export const useShiftsStore = defineStore('shifts', {
         // This should be stored as a date string in the user's timezone
         const shiftDateString = targetShiftDate.toISOString().split('T')[0]; // YYYY-MM-DD format
         
+        // Calculate the actual shift start and end times based on shift type and date
+        const { createShiftStartDateTime, createShiftEndDateTime } = await import('../utils/timezone');
+        const actualShiftStart = createShiftStartDateTime(targetShiftDate, shiftType);
+        const actualShiftEnd = createShiftEndDateTime(targetShiftDate, shiftType);
+        
         console.log(`Creating new shift with supervisor: ${supervisorId}, type: ${shiftType}`);
         console.log(`Shift date: ${shiftDateString}, Created at: ${creationTime}`);
+        console.log(`Actual shift times: ${actualShiftStart?.toISOString()} to ${actualShiftEnd?.toISOString()}`);
         
         const { data, error } = await supabase
           .from('shifts')
           .insert({
             supervisor_id: supervisorId,
             shift_type: shiftType,
-            shift_date: shiftDateString, // The date this shift is for
-            start_time: creationTime,    // When the shift was created (for backward compatibility)
-            created_at: creationTime,    // Explicit creation timestamp
+            shift_date: shiftDateString,     // The date this shift is for
+            start_time: actualShiftStart?.toISOString() || creationTime, // Actual shift start time
+            end_time: null,                  // Will be set when shift is ended
+            created_at: creationTime,        // When the shift was created
             is_active: true
           })
           .select();
