@@ -22,7 +22,8 @@
              :class="{ 
                'assigned': hasActiveAssignments(entry.porter_id),
                'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id),
-               'not-on-duty': !isPorterOnDuty(entry.porter_id)
+               'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
+               'off-duty': getPorterDutyStatus(entry.porter_id) === 'off-duty'
              }"
              @click.stop="openAllocationModal(entry.porter)">
           <div class="porter-card__content">
@@ -119,7 +120,8 @@
            :class="{ 
              'assigned': hasActiveAssignments(entry.porter_id),
              'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id),
-             'not-on-duty': !isPorterOnDuty(entry.porter_id)
+             'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
+             'off-duty': getPorterDutyStatus(entry.porter_id) === 'off-duty'
            }"
            @click.stop="openAllocationModal(entry.porter)">
         <div class="porter-card__content">
@@ -555,15 +557,29 @@ const isTimeInRange = (currentTimeMinutes, startTimeMinutes, endTimeMinutes) => 
   }
 };
 
-// Check if a porter is currently on duty based on contracted hours
-const isPorterOnDuty = (porterId) => {
+// Get the duty status of a porter based on contracted hours
+const getPorterDutyStatus = (porterId) => {
   // Get the porter from the store
   const porter = staffStore.porters.find(p => p.id === porterId);
-  if (!porter) return true; // Default to on duty if porter not found
+  if (!porter) {
+    console.log(`Porter ${porterId} not found`);
+    return 'on-duty'; // Default to on duty if porter not found
+  }
+  
+  // Debug logging for AT Porter
+  if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+    console.log('=== AT Porter Debug ===');
+    console.log('Porter data:', porter);
+    console.log('Contracted hours start:', porter.contracted_hours_start);
+    console.log('Contracted hours end:', porter.contracted_hours_end);
+  }
   
   // If no contracted hours set, assume porter is on duty
   if (!porter.contracted_hours_start || !porter.contracted_hours_end) {
-    return true;
+    if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+      console.log('AT Porter: No contracted hours set, defaulting to on-duty');
+    }
+    return 'on-duty';
   }
   
   // Get current time in minutes
@@ -576,8 +592,117 @@ const isPorterOnDuty = (porterId) => {
   const startTimeMinutes = timeToMinutes(porter.contracted_hours_start);
   const endTimeMinutes = timeToMinutes(porter.contracted_hours_end);
   
+  // Debug logging for AT Porter
+  if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+    console.log('Current time:', `${currentHours}:${currentMinutes.toString().padStart(2, '0')} (${currentTimeInMinutes} minutes)`);
+    console.log('Start time:', porter.contracted_hours_start, `(${startTimeMinutes} minutes)`);
+    console.log('End time:', porter.contracted_hours_end, `(${endTimeMinutes} minutes)`);
+    console.log('Is overnight shift?', endTimeMinutes < startTimeMinutes);
+  }
+  
   // Check if current time is within contracted hours
-  return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
+  if (isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes)) {
+    if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+      console.log('AT Porter: Currently on duty');
+    }
+    return 'on-duty';
+  }
+  
+  // Determine if we're before start time or after end time
+  if (endTimeMinutes < startTimeMinutes) {
+    // Overnight shift (e.g., 22:00 to 06:00)
+    if (currentTimeInMinutes > endTimeMinutes && currentTimeInMinutes < startTimeMinutes) {
+      // We're in the gap between end and start (e.g., 07:00 when shift is 22:00-06:00)
+      // Need to determine if we're closer to the end (off-duty) or start (not-yet-on-duty)
+      const timeFromEnd = currentTimeInMinutes - endTimeMinutes;
+      const timeToStart = startTimeMinutes - currentTimeInMinutes;
+      
+      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+        console.log('AT Porter: Overnight shift gap analysis');
+        console.log('Time from end:', timeFromEnd, 'minutes');
+        console.log('Time to start:', timeToStart, 'minutes');
+      }
+      
+      // If we're closer to the end time, consider it "off-duty"
+      // If we're closer to the start time, consider it "not-yet-on-duty"
+      const result = timeFromEnd <= timeToStart ? 'off-duty' : 'not-yet-on-duty';
+      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+        console.log('AT Porter: Overnight shift result:', result);
+      }
+      return result;
+    }
+  } else {
+    // Normal shift (e.g., 10:00 to 22:00)
+    if (currentTimeInMinutes < startTimeMinutes) {
+      // We're before the start time, but need to determine if this is:
+      // 1. Before today's shift starts (not-yet-on-duty)
+      // 2. After yesterday's shift ended (off-duty)
+      
+      // Calculate time until today's shift starts
+      const timeUntilStart = startTimeMinutes - currentTimeInMinutes;
+      
+      // Calculate time since yesterday's shift ended
+      // Yesterday's end time would be endTimeMinutes, but we need to account for the day boundary
+      const timeSinceYesterdayEnd = currentTimeInMinutes + (24 * 60 - endTimeMinutes);
+      
+      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+        console.log('AT Porter: Before start time analysis');
+        console.log('Time until today\'s start:', timeUntilStart, 'minutes');
+        console.log('Time since yesterday\'s end:', timeSinceYesterdayEnd, 'minutes');
+      }
+      
+      // Use a threshold-based approach:
+      // PRIORITIZE upcoming shifts over past shifts
+      // If their next shift starts in less than 4 hours, they're "not-yet-on-duty"
+      // If they've been off duty for more than 4 hours, they're "off-duty"
+      const THRESHOLD_HOURS = 4;
+      const THRESHOLD_MINUTES = THRESHOLD_HOURS * 60;
+      
+      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+        console.log('AT Porter: Threshold analysis (4 hour threshold)');
+        console.log('Time since yesterday end:', timeSinceYesterdayEnd, 'minutes vs threshold:', THRESHOLD_MINUTES);
+        console.log('Time until today start:', timeUntilStart, 'minutes vs threshold:', THRESHOLD_MINUTES);
+      }
+      
+      // FIRST: Check if their next shift starts within the threshold - prioritize upcoming work
+      if (timeUntilStart <= THRESHOLD_MINUTES) {
+        if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+          console.log('AT Porter: Next shift starts within 4 hours - not yet on duty');
+        }
+        return 'not-yet-on-duty';
+      }
+      
+      // SECOND: If they've been off duty for more than the threshold, they're "off-duty"
+      if (timeSinceYesterdayEnd > THRESHOLD_MINUTES) {
+        if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+          console.log('AT Porter: Been off duty for more than 4 hours - off duty');
+        }
+        return 'off-duty';
+      }
+      
+      // Fallback: if both conditions don't match, default to off-duty
+      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+        console.log('AT Porter: Fallback case - off duty');
+      }
+      return 'off-duty';
+    } else if (currentTimeInMinutes > endTimeMinutes) {
+      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+        console.log('AT Porter: After end time - off duty');
+      }
+      return 'off-duty';
+    }
+  }
+  
+  // Fallback
+  if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
+    console.log('AT Porter: Fallback to on-duty');
+  }
+  return 'on-duty';
+};
+
+// Check if a porter is currently on duty (for backward compatibility)
+const isPorterOnDuty = (porterId) => {
+  return getPorterDutyStatus(porterId) === 'on-duty';
 };
 
 // Check if a porter has any active assignments at the current time
@@ -855,7 +980,7 @@ onMounted(async () => {
     }
   }
   
-  &.not-on-duty {
+  &.not-yet-on-duty {
     background-color: #F5F5F5;  /* Light gray background */
     border: 1px solid rgba(0, 0, 0, 0.1);
     opacity: 0.85;
@@ -871,6 +996,31 @@ onMounted(async () => {
       top: 8px;
       right: 8px;
       background-color: #9E9E9E;
+      color: white;
+      font-size: 8px;
+      font-weight: bold;
+      padding: 2px 4px;
+      border-radius: 3px;
+      line-height: 1;
+    }
+  }
+  
+  &.off-duty {
+    background-color: #F0F0F0;  /* Slightly darker gray background */
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    opacity: 0.8;
+    
+    &:hover {
+      background-color: #F0F0F0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    &::before {
+      content: "OFF DUTY";
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: #757575;
       color: white;
       font-size: 8px;
       font-weight: bold;
