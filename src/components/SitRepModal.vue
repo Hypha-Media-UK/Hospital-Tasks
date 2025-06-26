@@ -21,6 +21,24 @@
           </div>
           
           <div class="sheet-content">
+            <!-- Shift Summary -->
+            <div class="shift-summary">
+              <div class="summary-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Total Porters:</span>
+                  <span class="stat-value">{{ sortedPorters.length }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Shift Duration:</span>
+                  <span class="stat-value">{{ formatShiftDuration() }}</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Supervisor:</span>
+                  <span class="stat-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
+                </div>
+              </div>
+            </div>
+            
             <!-- Time ruler -->
             <div class="time-ruler-container">
               <div class="porter-name-spacer"></div>
@@ -28,7 +46,7 @@
                 <div 
                   v-for="hour in timelineHours" 
                   :key="hour.label"
-                  class="time-marker"
+                  :class="['time-marker', { 'main-hour': hour.isMainHour, 'shift-time': hour.isShiftTime }]"
                   :style="{ left: getHourPosition(hour) + '%' }"
                 >
                   {{ hour.label }}
@@ -40,7 +58,12 @@
             <div class="sitrep-grid">
               <div v-for="porter in sortedPorters" :key="porter.id" class="porter-row">
                 <div class="porter-name">
-                  {{ porter.porter.first_name }} {{ porter.porter.last_name }}
+                  <div class="porter-name-text">
+                    {{ porter.porter.first_name }} {{ porter.porter.last_name }}
+                  </div>
+                  <div class="porter-hours">
+                    {{ formatPorterHours(porter.porter_id) }}
+                  </div>
                 </div>
                 <div class="porter-timeline">
                   <div 
@@ -54,7 +77,7 @@
                     :title="block.tooltip"
                   >
                     <span class="block-label">{{ block.label }}</span>
-                    <span v-if="block.timeRange" class="block-time">{{ block.timeRange }}</span>
+                    <span v-if="block.timeRange && block.widthPercent > 8" class="block-time">{{ block.timeRange }}</span>
                   </div>
                 </div>
               </div>
@@ -67,15 +90,15 @@
               </div>
               <div class="legend-item">
                 <div class="legend-box allocated"></div>
-                <span>Allocated</span>
+                <span>Allocated to Department/Service</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box off-duty"></div>
-                <span>Off Duty</span>
+                <span>Off Duty (Outside Contracted Hours)</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box absent"></div>
-                <span>Absent</span>
+                <span>Scheduled Absence</span>
               </div>
             </div>
           </div>
@@ -104,61 +127,64 @@ const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const settingsStore = useSettingsStore();
 
-// Generate timeline hours using static shift times
+// Generate timeline segments based on actual shift times with 30-minute intervals
 const timelineHours = computed(() => {
   if (!props.shift) return [];
   
-  const hours = [];
-  const shiftType = props.shift.shift_type;
+  const segments = [];
   
-  // Use static shift times - these are just visual dividers
-  let startHour, endHour;
-  if (shiftType.includes('day')) {
-    startHour = 8;  // 08:00
-    endHour = 20;   // 20:00
-  } else if (shiftType.includes('night')) {
-    startHour = 20; // 20:00
-    endHour = 8;    // 08:00 (next day)
-  } else {
-    // Default to day shift
-    startHour = 8;
-    endHour = 20;
-  }
+  // Get actual shift start and end times
+  const shiftStart = new Date(props.shift.start_time);
+  const shiftEnd = new Date(props.shift.end_time);
   
-  // Generate 12 hourly segments
-  for (let i = 0; i < 12; i++) {
-    let currentHour = (startHour + i) % 24;
-    let nextHour = (startHour + i + 1) % 24;
+  // Add 1 hour buffer before and after shift for context
+  const timelineStart = new Date(shiftStart.getTime() - (60 * 60 * 1000));
+  const timelineEnd = new Date(shiftEnd.getTime() + (60 * 60 * 1000));
+  
+  // Generate 30-minute segments
+  let currentTime = new Date(timelineStart);
+  
+  while (currentTime < timelineEnd) {
+    const nextTime = new Date(currentTime.getTime() + (30 * 60 * 1000)); // 30 minutes
     
-    // Format hour labels
-    const hourLabel = `${String(currentHour).padStart(2, '0')}:00`;
-    const nextHourLabel = `${String(nextHour).padStart(2, '0')}:00`;
+    const startHour = currentTime.getHours();
+    const startMinute = currentTime.getMinutes();
+    const endHour = nextTime.getHours();
+    const endMinute = nextTime.getMinutes();
     
-    // Calculate minutes from midnight for positioning
-    let startMinutes = currentHour * 60;
-    let endMinutes = nextHour * 60;
-    
-    // For night shifts, adjust for overnight calculation
-    if (shiftType.includes('night')) {
-      if (currentHour < 12) {
-        // Hours after midnight (00:00-11:59) add 24 hours worth of minutes
-        startMinutes += 24 * 60;
-      }
-      if (nextHour < 12) {
-        endMinutes += 24 * 60;
-      }
+    // Format labels - show full hour labels, half-hour as :30
+    let label = '';
+    if (startMinute === 0) {
+      label = `${String(startHour).padStart(2, '0')}:00`;
+    } else {
+      label = `${String(startHour).padStart(2, '0')}:30`;
     }
     
-    hours.push({
-      label: hourLabel,
-      startTime: hourLabel,
-      endTime: nextHourLabel,
+    // Calculate minutes from timeline start for positioning
+    let startMinutes = (startHour * 60) + startMinute;
+    let endMinutes = (endHour * 60) + endMinute;
+    
+    // Handle overnight shifts
+    const isOvernight = shiftEnd.getDate() !== shiftStart.getDate();
+    if (isOvernight && currentTime.getDate() !== shiftStart.getDate()) {
+      startMinutes += 24 * 60;
+      endMinutes += 24 * 60;
+    }
+    
+    segments.push({
+      label: label,
+      startTime: `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`,
+      endTime: `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`,
       startMinutes: startMinutes,
-      endMinutes: endMinutes
+      endMinutes: endMinutes,
+      isShiftTime: currentTime >= shiftStart && currentTime < shiftEnd,
+      isMainHour: startMinute === 0 // For styling main hour markers differently
     });
+    
+    currentTime = nextTime;
   }
   
-  return hours;
+  return segments;
 });
 
 // Get porter pool data
@@ -261,8 +287,15 @@ const isPorterOnDutyDuringHour = (porterId, hour) => {
   const startMinutes = timeToMinutes(porter.contracted_hours_start);
   const endMinutes = timeToMinutes(porter.contracted_hours_end);
   
-  // Check if hour overlaps with contracted hours
-  return isTimeRangeOverlapping(hour.startMinutes, hour.endMinutes, startMinutes, endMinutes);
+  // Use the same logic as the porter pool for consistency
+  // Check if hour overlaps with contracted hours, handling overnight shifts properly
+  if (endMinutes < startMinutes) {
+    // Overnight shift (e.g., 22:00 to 06:00)
+    return hour.startMinutes >= startMinutes || hour.endMinutes <= endMinutes;
+  } else {
+    // Normal shift (e.g., 10:00 to 22:00)
+    return hour.startMinutes < endMinutes && hour.endMinutes > startMinutes;
+  }
 };
 
 // Check if porter is absent during a specific hour using historical data
@@ -341,6 +374,7 @@ const timeToMinutes = (timeStr) => {
   let totalMinutes = (hours * 60) + minutes;
   
   // For night shifts, adjust times after midnight to ensure consistent calculation
+  // This ensures that times like 02:00 (2 AM) are treated as being after 20:00 (8 PM) from the previous day
   if (props.shift && props.shift.shift_type.includes('night') && hours < 12) {
     totalMinutes += 24 * 60; // Add 24 hours worth of minutes
   }
@@ -570,15 +604,13 @@ const totalShiftMinutes = computed(() => {
 const getHourPosition = (hour) => {
   if (!timelineHours.value.length) return 0;
   
-  const firstHour = timelineHours.value[0];
-  const minutesFromStart = hour.startMinutes - firstHour.startMinutes;
-  
-  // Ensure exact alignment with CSS grid lines (8.333...% per hour)
   const hourIndex = timelineHours.value.findIndex(h => h.startMinutes === hour.startMinutes);
   if (hourIndex >= 0) {
-    return (hourIndex / 12) * 100; // Exact percentage for 12-hour grid
+    return (hourIndex / timelineHours.value.length) * 100; // Dynamic percentage based on actual segments
   }
   
+  const firstHour = timelineHours.value[0];
+  const minutesFromStart = hour.startMinutes - firstHour.startMinutes;
   return (minutesFromStart / totalShiftMinutes.value) * 100;
 };
 
@@ -726,6 +758,31 @@ const formatMinutesToTime = (minutes) => {
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 };
 
+// Format shift duration
+const formatShiftDuration = () => {
+  if (!props.shift) return '';
+  
+  const start = new Date(props.shift.start_time);
+  const end = new Date(props.shift.end_time);
+  const durationMs = end.getTime() - start.getTime();
+  const durationHours = Math.round(durationMs / (1000 * 60 * 60));
+  
+  return `${durationHours} hours`;
+};
+
+// Format porter contracted hours
+const formatPorterHours = (porterId) => {
+  const porter = staffStore.porters.find(p => p.id === porterId);
+  if (!porter || !porter.contracted_hours_start || !porter.contracted_hours_end) {
+    return 'No hours set';
+  }
+  
+  const start = porter.contracted_hours_start.substring(0, 5); // Remove seconds
+  const end = porter.contracted_hours_end.substring(0, 5);
+  
+  return `${start} - ${end}`;
+};
+
 // Load required data on mount
 onMounted(async () => {
   // Load settings first to ensure shift defaults are available
@@ -822,6 +879,38 @@ onMounted(async () => {
     }
   }
   
+  .shift-summary {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    
+    .summary-stats {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      
+      .stat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        
+        .stat-label {
+          font-size: 0.9rem;
+          color: #6c757d;
+          font-weight: 500;
+        }
+        
+        .stat-value {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #495057;
+        }
+      }
+    }
+  }
+  
     // Time ruler styles
     .time-ruler-container {
       display: grid;
@@ -839,15 +928,6 @@ onMounted(async () => {
         height: 40px;
         background-color: #f8f9fa;
         
-        // Add vertical hour lines
-        background-image: repeating-linear-gradient(
-          to right,
-          transparent 0%,
-          transparent calc(8.33% - 0.5px),
-          #e9ecef calc(8.33% - 0.5px),
-          #e9ecef calc(8.33% + 0.5px)
-        );
-        
         .time-marker {
           position: absolute;
           top: 50%;
@@ -858,6 +938,14 @@ onMounted(async () => {
           background-color: rgba(248, 249, 250, 0.9);
           padding: 0.25rem 0.5rem;
           white-space: nowrap;
+          border-radius: 3px;
+          
+          // Style main hour markers differently
+          &.main-hour {
+            font-weight: 700;
+            background-color: rgba(66, 133, 244, 0.1);
+            color: #1565c0;
+          }
         }
       }
     }
@@ -885,8 +973,20 @@ onMounted(async () => {
         font-size: 0.9rem;
         color: #495057;
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        justify-content: center;
         min-height: 70px;
+        
+        .porter-name-text {
+          font-weight: 600;
+          margin-bottom: 0.25rem;
+        }
+        
+        .porter-hours {
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #6c757d;
+        }
       }
       
       .porter-timeline {
