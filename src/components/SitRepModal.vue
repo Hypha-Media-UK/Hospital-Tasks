@@ -67,7 +67,7 @@
                 </div>
                 <div class="porter-timeline">
                   <div 
-                    v-for="block in getPorterTimelineBlocks(porter.porter_id)" 
+                    v-for="block in getPorterGanttBlocks(porter.porter_id)" 
                     :key="block.id"
                     :class="['timeline-block', `block-${block.type}`]"
                     :style="{
@@ -77,7 +77,6 @@
                     :title="block.tooltip"
                   >
                     <span class="block-label">{{ block.label }}</span>
-                    <span v-if="block.timeRange && block.widthPercent > 8" class="block-time">{{ block.timeRange }}</span>
                   </div>
                 </div>
               </div>
@@ -86,19 +85,11 @@
             <div class="legend">
               <div class="legend-item">
                 <div class="legend-box available"></div>
-                <span>Available</span>
+                <span>Available (Pale Grey)</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box allocated"></div>
-                <span>Allocated to Department/Service</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-box off-duty"></div>
-                <span>Off Duty (Outside Contracted Hours)</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-box absent"></div>
-                <span>Scheduled Absence</span>
+                <span>Allocated to Department/Service (Darker Grey)</span>
               </div>
             </div>
           </div>
@@ -127,64 +118,37 @@ const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const settingsStore = useSettingsStore();
 
-// Generate timeline segments based on actual shift times with 30-minute intervals
+// Generate Gantt chart timeline - only shift hours with simple hour format
 const timelineHours = computed(() => {
   if (!props.shift) return [];
   
-  const segments = [];
+  const hours = [];
   
   // Get actual shift start and end times
   const shiftStart = new Date(props.shift.start_time);
   const shiftEnd = new Date(props.shift.end_time);
   
-  // Add 1 hour buffer before and after shift for context
-  const timelineStart = new Date(shiftStart.getTime() - (60 * 60 * 1000));
-  const timelineEnd = new Date(shiftEnd.getTime() + (60 * 60 * 1000));
+  // Generate only the shift hours (no buffer)
+  let currentTime = new Date(shiftStart);
+  currentTime.setMinutes(0, 0, 0); // Round down to hour
   
-  // Generate 30-minute segments
-  let currentTime = new Date(timelineStart);
-  
-  while (currentTime < timelineEnd) {
-    const nextTime = new Date(currentTime.getTime() + (30 * 60 * 1000)); // 30 minutes
+  while (currentTime < shiftEnd) {
+    const hour = currentTime.getHours();
     
-    const startHour = currentTime.getHours();
-    const startMinute = currentTime.getMinutes();
-    const endHour = nextTime.getHours();
-    const endMinute = nextTime.getMinutes();
+    // Format label as simple hour number
+    const label = hour.toString();
     
-    // Format labels - show full hour labels, half-hour as :30
-    let label = '';
-    if (startMinute === 0) {
-      label = `${String(startHour).padStart(2, '0')}:00`;
-    } else {
-      label = `${String(startHour).padStart(2, '0')}:30`;
-    }
-    
-    // Calculate minutes from timeline start for positioning
-    let startMinutes = (startHour * 60) + startMinute;
-    let endMinutes = (endHour * 60) + endMinute;
-    
-    // Handle overnight shifts
-    const isOvernight = shiftEnd.getDate() !== shiftStart.getDate();
-    if (isOvernight && currentTime.getDate() !== shiftStart.getDate()) {
-      startMinutes += 24 * 60;
-      endMinutes += 24 * 60;
-    }
-    
-    segments.push({
+    hours.push({
+      hour: hour,
       label: label,
-      startTime: `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}`,
-      endTime: `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`,
-      startMinutes: startMinutes,
-      endMinutes: endMinutes,
-      isShiftTime: currentTime >= shiftStart && currentTime < shiftEnd,
-      isMainHour: startMinute === 0 // For styling main hour markers differently
+      time: currentTime.toISOString()
     });
     
-    currentTime = nextTime;
+    // Move to next hour
+    currentTime.setHours(currentTime.getHours() + 1);
   }
   
-  return segments;
+  return hours;
 });
 
 // Get porter pool data
@@ -600,18 +564,17 @@ const totalShiftMinutes = computed(() => {
   return lastHour.endMinutes - firstHour.startMinutes;
 });
 
-// Get hour position as percentage for time ruler
+// Get hour position as percentage for time ruler - simplified for Gantt chart
 const getHourPosition = (hour) => {
   if (!timelineHours.value.length) return 0;
   
-  const hourIndex = timelineHours.value.findIndex(h => h.startMinutes === hour.startMinutes);
+  const hourIndex = timelineHours.value.findIndex(h => h.hour === hour.hour);
   if (hourIndex >= 0) {
-    return (hourIndex / timelineHours.value.length) * 100; // Dynamic percentage based on actual segments
+    // Position at the start of each hour column
+    return (hourIndex / timelineHours.value.length) * 100;
   }
   
-  const firstHour = timelineHours.value[0];
-  const minutesFromStart = hour.startMinutes - firstHour.startMinutes;
-  return (minutesFromStart / totalShiftMinutes.value) * 100;
+  return 0;
 };
 
 // Convert time string to minutes from shift start
@@ -624,157 +587,148 @@ const getMinutesFromShiftStart = (timeStr) => {
   return timeMinutes - shiftStartMinutes;
 };
 
-// Get timeline blocks for a porter
-const getPorterTimelineBlocks = (porterId) => {
+// Generate Gantt chart blocks for a porter - simplified logic
+const getPorterGanttBlocks = (porterId) => {
   const blocks = [];
   const porter = staffStore.porters.find(p => p.id === porterId);
   
   if (!porter || !timelineHours.value.length) {
-    console.log(`No porter found or no timeline hours for porter ${porterId}`);
     return blocks;
   }
   
-  const shiftStartMinutes = timelineHours.value[0].startMinutes;
-  const shiftEndMinutes = timelineHours.value[timelineHours.value.length - 1].endMinutes;
+  // Get shift start and end hours
+  const shiftStartHour = timelineHours.value[0].hour;
+  const shiftEndHour = timelineHours.value[timelineHours.value.length - 1].hour;
+  const totalHours = timelineHours.value.length;
   
-  console.log(`Porter ${porter.first_name} ${porter.last_name}:`, {
-    shiftStartMinutes,
-    shiftEndMinutes,
-    totalShiftMinutes: totalShiftMinutes.value,
-    contractedStart: porter.contracted_hours_start,
-    contractedEnd: porter.contracted_hours_end
-  });
+  // Get porter's contracted hours (default to full shift if not set)
+  const contractedStartHour = porter.contracted_hours_start ? 
+    parseInt(porter.contracted_hours_start.split(':')[0]) : shiftStartHour;
+  const contractedEndHour = porter.contracted_hours_end ? 
+    parseInt(porter.contracted_hours_end.split(':')[0]) : shiftEndHour;
   
-  // Get contracted hours
-  const contractedStart = porter.contracted_hours_start ? timeToMinutes(porter.contracted_hours_start) : shiftStartMinutes;
-  const contractedEnd = porter.contracted_hours_end ? timeToMinutes(porter.contracted_hours_end) : shiftEndMinutes;
-  
-  console.log(`Contracted hours in minutes:`, { contractedStart, contractedEnd });
-  
-  // Add off-duty block at start if needed
-  if (contractedStart > shiftStartMinutes) {
-    const startPercent = 0;
-    const widthPercent = ((contractedStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
-    
-    console.log(`Adding off-duty start block: ${startPercent}% to ${widthPercent}%`);
-    
-    blocks.push({
-      id: `${porterId}-off-duty-start`,
-      type: 'off-duty',
-      leftPercent: startPercent,
-      widthPercent: widthPercent,
-      label: 'Off Duty',
-      timeRange: `${formatMinutesToTime(shiftStartMinutes)} - ${formatMinutesToTime(contractedStart)}`,
-      tooltip: `Off Duty: ${formatMinutesToTime(shiftStartMinutes)} - ${formatMinutesToTime(contractedStart)}`
-    });
-  }
-  
-  // Add off-duty block at end if needed
-  if (contractedEnd < shiftEndMinutes) {
-    const startPercent = ((contractedEnd - shiftStartMinutes) / totalShiftMinutes.value) * 100;
-    const widthPercent = ((shiftEndMinutes - contractedEnd) / totalShiftMinutes.value) * 100;
-    
-    console.log(`Adding off-duty end block: ${startPercent}% to ${startPercent + widthPercent}%`);
-    
-    blocks.push({
-      id: `${porterId}-off-duty-end`,
-      type: 'off-duty',
-      leftPercent: startPercent,
-      widthPercent: widthPercent,
-      label: 'Off Duty',
-      timeRange: `${formatMinutesToTime(contractedEnd)} - ${formatMinutesToTime(shiftEndMinutes)}`,
-      tooltip: `Off Duty: ${formatMinutesToTime(contractedEnd)} - ${formatMinutesToTime(shiftEndMinutes)}`
-    });
-  }
-  
-  // Add absence blocks
-  const absences = historicalAbsences.value.filter(a => a.porter_id === porterId);
-  console.log(`Found ${absences.length} absences for porter ${porterId}`);
-  
-  absences.forEach((absence, index) => {
-    const absenceStart = Math.max(timeToMinutes(absence.start_time), Math.max(shiftStartMinutes, contractedStart));
-    const absenceEnd = Math.min(timeToMinutes(absence.end_time), Math.min(shiftEndMinutes, contractedEnd));
-    
-    if (absenceEnd > absenceStart) {
-      const startPercent = ((absenceStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
-      const widthPercent = ((absenceEnd - absenceStart) / totalShiftMinutes.value) * 100;
-      
-      console.log(`Adding absence block: ${startPercent}% to ${startPercent + widthPercent}%`);
-      
-      blocks.push({
-        id: `${porterId}-absence-${index}`,
-        type: 'absent',
-        leftPercent: startPercent,
-        widthPercent: widthPercent,
-        label: absence.absence_reason || 'Absent',
-        timeRange: `${formatMinutesToTime(absenceStart)} - ${formatMinutesToTime(absenceEnd)}`,
-        tooltip: `${absence.absence_reason || 'Absent'}: ${formatMinutesToTime(absenceStart)} - ${formatMinutesToTime(absenceEnd)}`
-      });
-    }
-  });
-  
-  // Add department assignment blocks
+  // Get all assignments for this porter
   const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
-  console.log(`Found ${departmentAssignments.length} department assignments for porter ${porterId}`);
-  console.log('All department assignments:', shiftsStore.shiftAreaCoverPorterAssignments);
-  
-  departmentAssignments.forEach((assignment, index) => {
-    const assignmentStart = Math.max(timeToMinutes(assignment.start_time), Math.max(shiftStartMinutes, contractedStart));
-    const assignmentEnd = Math.min(timeToMinutes(assignment.end_time), Math.min(shiftEndMinutes, contractedEnd));
-    
-    if (assignmentEnd > assignmentStart) {
-      const startPercent = ((assignmentStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
-      const widthPercent = ((assignmentEnd - assignmentStart) / totalShiftMinutes.value) * 100;
-      
-      const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
-      const departmentName = areaCover?.department?.name || 'Department';
-      
-      console.log(`Adding department assignment block: ${departmentName} at ${startPercent}% to ${startPercent + widthPercent}%`);
-      
-      blocks.push({
-        id: `${porterId}-department-${index}`,
-        type: 'allocated',
-        leftPercent: startPercent,
-        widthPercent: widthPercent,
-        label: departmentName,
-        timeRange: `${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`,
-        tooltip: `${departmentName}: ${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`
-      });
-    }
-  });
-  
-  // Add service assignment blocks
   const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
-  console.log(`Found ${serviceAssignments.length} service assignments for porter ${porterId}`);
-  console.log('All service assignments:', shiftsStore.shiftSupportServicePorterAssignments);
   
-  serviceAssignments.forEach((assignment, index) => {
-    const assignmentStart = Math.max(timeToMinutes(assignment.start_time), Math.max(shiftStartMinutes, contractedStart));
-    const assignmentEnd = Math.min(timeToMinutes(assignment.end_time), Math.min(shiftEndMinutes, contractedEnd));
-    
-    if (assignmentEnd > assignmentStart) {
-      const startPercent = ((assignmentStart - shiftStartMinutes) / totalShiftMinutes.value) * 100;
-      const widthPercent = ((assignmentEnd - assignmentStart) / totalShiftMinutes.value) * 100;
-      
-      const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
-      const serviceName = service?.service?.name || 'Service';
-      
-      console.log(`Adding service assignment block: ${serviceName} at ${startPercent}% to ${startPercent + widthPercent}%`);
-      
-      blocks.push({
-        id: `${porterId}-service-${index}`,
-        type: 'allocated',
-        leftPercent: startPercent,
-        widthPercent: widthPercent,
-        label: serviceName,
-        timeRange: `${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`,
-        tooltip: `${serviceName}: ${formatMinutesToTime(assignmentStart)} - ${formatMinutesToTime(assignmentEnd)}`
+  // Combine all assignments
+  const allAssignments = [];
+  
+  // Add department assignments
+  departmentAssignments.forEach(assignment => {
+    const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
+    if (areaCover) {
+      allAssignments.push({
+        startHour: parseInt(assignment.start_time.split(':')[0]),
+        endHour: parseInt(assignment.end_time.split(':')[0]),
+        label: areaCover.department?.name || 'Department',
+        type: 'allocated'
       });
     }
   });
   
-  console.log(`Total blocks for porter ${porterId}:`, blocks);
-  return blocks.sort((a, b) => a.leftPercent - b.leftPercent);
+  // Add service assignments
+  serviceAssignments.forEach(assignment => {
+    const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
+    if (service) {
+      allAssignments.push({
+        startHour: parseInt(assignment.start_time.split(':')[0]),
+        endHour: parseInt(assignment.end_time.split(':')[0]),
+        label: service.service?.name || 'Service',
+        type: 'allocated'
+      });
+    }
+  });
+  
+  // Sort assignments by start time
+  allAssignments.sort((a, b) => a.startHour - b.startHour);
+  
+  // Create blocks for the porter's working hours
+  let currentHour = contractedStartHour;
+  
+  allAssignments.forEach((assignment, index) => {
+    // Add availability block before assignment if needed
+    if (currentHour < assignment.startHour) {
+      const startIndex = timelineHours.value.findIndex(h => h.hour === currentHour);
+      const endIndex = timelineHours.value.findIndex(h => h.hour === assignment.startHour);
+      
+      if (startIndex >= 0 && endIndex >= 0) {
+        const leftPercent = (startIndex / totalHours) * 100;
+        const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
+        
+        blocks.push({
+          id: `${porterId}-available-${index}`,
+          type: 'available',
+          leftPercent: leftPercent,
+          widthPercent: widthPercent,
+          label: 'Available',
+          tooltip: `Available: ${currentHour}:00 - ${assignment.startHour}:00`
+        });
+      }
+    }
+    
+    // Add assignment block
+    const startIndex = timelineHours.value.findIndex(h => h.hour === assignment.startHour);
+    const endIndex = timelineHours.value.findIndex(h => h.hour === assignment.endHour);
+    
+    if (startIndex >= 0 && endIndex >= 0) {
+      const leftPercent = (startIndex / totalHours) * 100;
+      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
+      
+      blocks.push({
+        id: `${porterId}-assignment-${index}`,
+        type: 'allocated',
+        leftPercent: leftPercent,
+        widthPercent: widthPercent,
+        label: assignment.label,
+        tooltip: `${assignment.label}: ${assignment.startHour}:00 - ${assignment.endHour}:00`
+      });
+    }
+    
+    currentHour = assignment.endHour;
+  });
+  
+  // Add final availability block if needed
+  if (currentHour < contractedEndHour) {
+    const startIndex = timelineHours.value.findIndex(h => h.hour === currentHour);
+    const endIndex = timelineHours.value.findIndex(h => h.hour === contractedEndHour);
+    
+    if (startIndex >= 0 && endIndex >= 0) {
+      const leftPercent = (startIndex / totalHours) * 100;
+      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
+      
+      blocks.push({
+        id: `${porterId}-available-final`,
+        type: 'available',
+        leftPercent: leftPercent,
+        widthPercent: widthPercent,
+        label: 'Available',
+        tooltip: `Available: ${currentHour}:00 - ${contractedEndHour}:00`
+      });
+    }
+  }
+  
+  // If no assignments, create one big availability block
+  if (allAssignments.length === 0) {
+    const startIndex = timelineHours.value.findIndex(h => h.hour === contractedStartHour);
+    const endIndex = timelineHours.value.findIndex(h => h.hour === contractedEndHour);
+    
+    if (startIndex >= 0 && endIndex >= 0) {
+      const leftPercent = (startIndex / totalHours) * 100;
+      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
+      
+      blocks.push({
+        id: `${porterId}-available-all`,
+        type: 'available',
+        leftPercent: leftPercent,
+        widthPercent: widthPercent,
+        label: 'Available',
+        tooltip: `Available: ${contractedStartHour}:00 - ${contractedEndHour}:00`
+      });
+    }
+  }
+  
+  return blocks;
 };
 
 // Format minutes to time string
@@ -1063,19 +1017,16 @@ onMounted(async () => {
           overflow: hidden;
           min-width: 20px;
           
+          &.block-available {
+            background-color: #f5f5f5; /* Pale grey */
+            color: #666;
+            border: 1px solid #ddd;
+          }
+          
           &.block-allocated {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            color: #1565c0;
-          }
-          
-          &.block-off-duty {
-            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-            color: #7b1fa2;
-          }
-          
-          &.block-absent {
-            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-            color: #c62828;
+            background-color: #999; /* Darker grey */
+            color: white;
+            border: 1px solid #777;
           }
           
           .block-label {
