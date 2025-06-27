@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { supabase } from '../services/supabase';
 import { useStaffStore } from './staffStore';
-import { getCurrentDateTime, convertToUserTimezone, isShiftInSetupMode, getCurrentTimeString } from '../utils/timezone';
+import { getCurrentDateTime, isShiftInSetupMode, getCurrentTimeString } from '../utils/timezone';
 
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {

@@ -6,51 +6,12 @@
 import { useSettingsStore } from '../stores/settingsStore';
 
 /**
- * Get the current date/time in the user's selected timezone
- * @returns {Date} Date object representing current time in user's timezone
+ * Get the current date/time - always returns UTC Date object
+ * @returns {Date} Date object representing current time in UTC
  */
 export function getCurrentDateTime() {
-  const settingsStore = useSettingsStore();
-  const timezone = settingsStore.appSettings.timezone;
-  
-  // Get current UTC time
-  const now = new Date();
-  
-  // If timezone is UTC, return as-is
-  if (timezone === 'UTC') {
-    return now;
-  }
-  
-  // For other timezones, get the actual time in that timezone
-  try {
-    // Get the time in the target timezone as a string
-    const timeInTimezone = now.toLocaleString('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-    
-    // Parse the timezone-adjusted time back into a Date object
-    // Format will be: "2025-06-26, 03:08:12"
-    const cleanedTime = timeInTimezone.replace(', ', 'T');
-    const adjustedDate = new Date(cleanedTime);
-    
-    // Verify the date is valid
-    if (isNaN(adjustedDate.getTime())) {
-      console.warn(`Failed to parse timezone-adjusted date: ${timeInTimezone}, falling back to UTC`);
-      return now;
-    }
-    
-    return adjustedDate;
-  } catch (error) {
-    console.warn(`Invalid timezone: ${timezone}, falling back to UTC`, error);
-    return now;
-  }
+  // Always return current UTC time - Date objects are inherently UTC
+  return new Date();
 }
 
 /**
@@ -58,8 +19,20 @@ export function getCurrentDateTime() {
  * @returns {number} Minutes since midnight (0-1439)
  */
 export function getCurrentTimeInMinutes() {
-  const now = getCurrentDateTime();
-  return (now.getHours() * 60) + now.getMinutes();
+  const settingsStore = useSettingsStore();
+  const timezone = settingsStore.appSettings.timezone;
+  const now = new Date();
+  
+  // Get current time in the user's timezone
+  const timeInTimezone = now.toLocaleString('en-CA', {
+    timeZone: timezone === 'GMT' ? 'UTC' : timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  
+  const [hours, minutes] = timeInTimezone.split(':').map(Number);
+  return (hours * 60) + minutes;
 }
 
 /**
@@ -162,10 +135,19 @@ export function formatTimeForDisplay(timeString) {
  * @returns {string} Current time in HH:MM format
  */
 export function getCurrentTimeString() {
-  const now = getCurrentDateTime();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  const settingsStore = useSettingsStore();
+  const timezone = settingsStore.appSettings.timezone;
+  const now = new Date();
+  
+  // Get current time in the user's timezone
+  const timeInTimezone = now.toLocaleString('en-CA', {
+    timeZone: timezone === 'GMT' ? 'UTC' : timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  
+  return timeInTimezone;
 }
 
 /**
@@ -173,11 +155,20 @@ export function getCurrentTimeString() {
  * @returns {string} Current time in HH:MM:SS format
  */
 export function getCurrentTimeStringWithSeconds() {
-  const now = getCurrentDateTime();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
+  const settingsStore = useSettingsStore();
+  const timezone = settingsStore.appSettings.timezone;
+  const now = new Date();
+  
+  // Get current time in the user's timezone
+  const timeInTimezone = now.toLocaleString('en-CA', {
+    timeZone: timezone === 'GMT' ? 'UTC' : timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  return timeInTimezone;
 }
 
 /**
@@ -206,7 +197,7 @@ export function minutesToTime(minutes) {
  * Create a shift start datetime based on shift date and configured shift times
  * @param {Date|string} shiftDate - The date of the shift
  * @param {string} shiftType - The shift type (week_day, week_night, etc.)
- * @returns {Date} The actual start datetime for the shift in user's timezone
+ * @returns {Date} The actual start datetime for the shift in UTC
  */
 export function createShiftStartDateTime(shiftDate, shiftType) {
   const settingsStore = useSettingsStore();
@@ -217,16 +208,19 @@ export function createShiftStartDateTime(shiftDate, shiftType) {
     return null;
   }
   
-  // Convert shift date to user's timezone
-  const dateInUserTz = convertToUserTimezone(shiftDate);
-  if (!dateInUserTz) return null;
+  // Get the base date (either from shift_date or start_time)
+  const baseDate = new Date(shiftDate);
+  if (isNaN(baseDate.getTime())) {
+    console.warn('Invalid shift date:', shiftDate);
+    return null;
+  }
   
   // Parse the start time (HH:MM format)
   const [hours, minutes] = shiftDefaults.startTime.split(':').map(Number);
   
-  // Create the shift start datetime in user's timezone
-  const shiftStart = new Date(dateInUserTz);
-  shiftStart.setHours(hours, minutes, 0, 0);
+  // Create the shift start datetime - use the date from the shift but set the time from settings
+  const shiftStart = new Date(baseDate);
+  shiftStart.setUTCHours(hours, minutes, 0, 0);
   
   return shiftStart;
 }
@@ -235,7 +229,7 @@ export function createShiftStartDateTime(shiftDate, shiftType) {
  * Create a shift end datetime based on shift date and configured shift times
  * @param {Date|string} shiftDate - The date of the shift
  * @param {string} shiftType - The shift type (week_day, week_night, etc.)
- * @returns {Date} The actual end datetime for the shift in user's timezone
+ * @returns {Date} The actual end datetime for the shift in UTC
  */
 export function createShiftEndDateTime(shiftDate, shiftType) {
   const settingsStore = useSettingsStore();
@@ -246,16 +240,19 @@ export function createShiftEndDateTime(shiftDate, shiftType) {
     return null;
   }
   
-  // Convert shift date to user's timezone
-  const dateInUserTz = convertToUserTimezone(shiftDate);
-  if (!dateInUserTz) return null;
+  // Get the base date (either from shift_date or start_time)
+  const baseDate = new Date(shiftDate);
+  if (isNaN(baseDate.getTime())) {
+    console.warn('Invalid shift date:', shiftDate);
+    return null;
+  }
   
   // Parse the end time (HH:MM format)
   const [hours, minutes] = shiftDefaults.endTime.split(':').map(Number);
   
-  // Create the shift end datetime in user's timezone
-  const shiftEnd = new Date(dateInUserTz);
-  shiftEnd.setHours(hours, minutes, 0, 0);
+  // Create the shift end datetime - use the date from the shift but set the time from settings
+  const shiftEnd = new Date(baseDate);
+  shiftEnd.setUTCHours(hours, minutes, 0, 0);
   
   // Handle night shifts that end the next day
   const startTime = shiftDefaults.startTime;
@@ -263,7 +260,7 @@ export function createShiftEndDateTime(shiftDate, shiftType) {
   
   if (hours < startHours) {
     // End time is next day (e.g., night shift ending at 08:00)
-    shiftEnd.setDate(shiftEnd.getDate() + 1);
+    shiftEnd.setUTCDate(shiftEnd.getUTCDate() + 1);
   }
   
   return shiftEnd;
