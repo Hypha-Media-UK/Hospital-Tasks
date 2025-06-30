@@ -773,9 +773,10 @@ const getPorterGanttBlocks = (porterId) => {
     }
   });
   
-  // 3. Add availability blocks for gaps between assignments
-  let currentHourIndex = Math.max(0, contractedStartIndex);
+  // 3. Add availability blocks for gaps between assignments and remaining time
+  let currentHourIndex = Math.max(0, contractedStartIndex >= 0 ? contractedStartIndex : 0);
   const contractedEndIndex = findHourIndex(contractedEndHour);
+  const effectiveEndIndex = contractedEndIndex >= 0 ? contractedEndIndex : totalHours;
   
   // Sort assignments by hour index for gap detection
   const sortedByHour = allAssignments
@@ -787,64 +788,53 @@ const getPorterGanttBlocks = (porterId) => {
     .filter(a => a.startIndex >= 0 && a.endIndex >= 0)
     .sort((a, b) => a.startIndex - b.startIndex);
   
-  sortedByHour.forEach((assignment, index) => {
-    // Add availability block before this assignment if there's a gap
-    if (currentHourIndex < assignment.startIndex) {
+  if (sortedByHour.length > 0) {
+    // Process gaps between assignments
+    sortedByHour.forEach((assignment, index) => {
+      // Add availability block before this assignment if there's a gap
+      if (currentHourIndex < assignment.startIndex) {
+        const leftPercent = (currentHourIndex / totalHours) * 100;
+        const widthPercent = ((assignment.startIndex - currentHourIndex) / totalHours) * 100;
+        
+        if (widthPercent > 0) {
+          blocks.push({
+            id: `${porterId}-available-${index}`,
+            type: 'available',
+            leftPercent: leftPercent,
+            widthPercent: widthPercent,
+            label: 'Available',
+            tooltip: `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`
+          });
+        }
+      }
+      
+      currentHourIndex = assignment.endIndex;
+    });
+    
+    // Add final availability block if there's time remaining after last assignment
+    if (currentHourIndex < effectiveEndIndex) {
       const leftPercent = (currentHourIndex / totalHours) * 100;
-      const widthPercent = ((assignment.startIndex - currentHourIndex) / totalHours) * 100;
+      const widthPercent = ((effectiveEndIndex - currentHourIndex) / totalHours) * 100;
       
       if (widthPercent > 0) {
         blocks.push({
-          id: `${porterId}-available-${index}`,
+          id: `${porterId}-available-final`,
           type: 'available',
           leftPercent: leftPercent,
           widthPercent: widthPercent,
           label: 'Available',
-          tooltip: `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`
+          tooltip: `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`
         });
       }
     }
+  } else {
+    // No assignments - create full availability block (this handles the case where assignments were removed)
+    const startIndex = contractedStartIndex >= 0 ? contractedStartIndex : 0;
+    const endIndex = contractedEndIndex >= 0 ? contractedEndIndex : totalHours;
     
-    currentHourIndex = assignment.endIndex;
-  });
-  
-  // Add final availability block if there's time remaining in contracted hours
-  if (currentHourIndex < contractedEndIndex && contractedEndIndex >= 0) {
-    const leftPercent = (currentHourIndex / totalHours) * 100;
-    const widthPercent = ((contractedEndIndex - currentHourIndex) / totalHours) * 100;
-    
-    if (widthPercent > 0) {
-      blocks.push({
-        id: `${porterId}-available-final`,
-        type: 'available',
-        leftPercent: leftPercent,
-        widthPercent: widthPercent,
-        label: 'Available',
-        tooltip: `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndHour}:00`
-      });
-    }
-  }
-  
-  // If no assignments, create one availability block for the entire contracted period
-  if (allAssignments.length === 0) {
-    // Handle case where porter has no contracted hours set (assume full shift availability)
-    if (contractedStartIndex < 0 || contractedEndIndex < 0) {
-      // No contracted hours set - show available for entire shift
-      const leftPercent = 0;
-      const widthPercent = 100;
-      
-      blocks.push({
-        id: `${porterId}-available-all`,
-        type: 'available',
-        leftPercent: leftPercent,
-        widthPercent: widthPercent,
-        label: 'Available',
-        tooltip: `Available: ${shiftStartHour}:00 - ${shiftEndHour}:00`
-      });
-    } else {
-      // Has contracted hours - show available for contracted period
-      const leftPercent = (contractedStartIndex / totalHours) * 100;
-      const widthPercent = ((contractedEndIndex - contractedStartIndex) / totalHours) * 100;
+    if (startIndex < endIndex) {
+      const leftPercent = (startIndex / totalHours) * 100;
+      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
       
       if (widthPercent > 0) {
         blocks.push({
@@ -853,7 +843,7 @@ const getPorterGanttBlocks = (porterId) => {
           leftPercent: leftPercent,
           widthPercent: widthPercent,
           label: 'Available',
-          tooltip: `Available: ${contractedStartHour}:00 - ${contractedEndHour}:00`
+          tooltip: `Available: ${contractedStartIndex >= 0 ? contractedStartHour : shiftStartHour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`
         });
       }
     }
