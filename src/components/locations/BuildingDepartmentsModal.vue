@@ -38,6 +38,33 @@
               <EditIcon size="16" />
             </button>
           </div>
+          
+          <!-- Porter Serviced Checkbox -->
+          <div class="porter-serviced-section">
+            <label class="porter-serviced-checkbox">
+              <input 
+                type="checkbox" 
+                :checked="building.porter_serviced || false"
+                @change="togglePorterServiced"
+              />
+              <span class="checkmark"></span>
+              <span class="checkbox-label">Porter Serviced</span>
+            </label>
+            
+            <!-- Building Abbreviation Input -->
+            <div class="abbreviation-input-container">
+              <input 
+                type="text" 
+                v-model="buildingAbbreviation"
+                :disabled="!building.porter_serviced"
+                maxlength="2"
+                placeholder="AB"
+                class="abbreviation-input"
+                @input="onAbbreviationInput"
+                @blur="saveAbbreviation"
+              />
+            </div>
+          </div>
         </div>
         <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
@@ -293,6 +320,9 @@ const isEditingBuildingName = ref(false);
 const editBuildingName = ref('');
 const buildingNameInput = ref(null);
 
+// Building abbreviation state
+const buildingAbbreviation = ref('');
+
 // Departments state
 const newDepartmentName = ref('');
 const editingDepartment = ref(null);
@@ -478,6 +508,46 @@ const onTaskAssignmentSaved = () => {
   // This is just a hook in case we want to do something after saving
   // We could potentially reload data here if needed
 };
+
+// Toggle porter serviced status
+const togglePorterServiced = async (event) => {
+  const isChecked = event.target.checked;
+  
+  // If unchecking porter serviced, clear the abbreviation
+  if (!isChecked) {
+    buildingAbbreviation.value = '';
+    await locationsStore.updateBuilding(props.building.id, {
+      porter_serviced: isChecked,
+      abbreviation: null
+    });
+  } else {
+    await locationsStore.updateBuilding(props.building.id, {
+      porter_serviced: isChecked
+    });
+  }
+};
+
+// Handle abbreviation input - auto uppercase and limit to 2 characters
+const onAbbreviationInput = (event) => {
+  const value = event.target.value.toUpperCase();
+  buildingAbbreviation.value = value;
+};
+
+// Save abbreviation when input loses focus
+const saveAbbreviation = async () => {
+  if (props.building.porter_serviced) {
+    await locationsStore.updateBuilding(props.building.id, {
+      abbreviation: buildingAbbreviation.value || null
+    });
+  }
+};
+
+// Initialize abbreviation value when component mounts
+watch(() => props.building, (newBuilding) => {
+  if (newBuilding) {
+    buildingAbbreviation.value = newBuilding.abbreviation || '';
+  }
+}, { immediate: true });
 </script>
 
 <style lang="scss" scoped>
@@ -519,8 +589,10 @@ const onTaskAssignmentSaved = () => {
 
 .modal-title-container {
   display: flex;
+  flex-direction: column;
   flex: 1;
   margin-right: 16px;
+  gap: 12px;
 }
 
 .modal-title {
@@ -984,6 +1056,110 @@ const onTaskAssignmentSaved = () => {
   
   &.btn-active {
     color: #F59E0B;
+  }
+}
+
+// Porter Serviced Checkbox styles
+.porter-serviced-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  
+  .porter-serviced-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+    
+    input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+      height: 0;
+      width: 0;
+    }
+    
+    .checkmark {
+      position: relative;
+      height: 18px;
+      width: 18px;
+      background-color: #fff;
+      border: 2px solid #ccc;
+      border-radius: 3px;
+      transition: all 0.2s;
+      
+      &:after {
+        content: "";
+        position: absolute;
+        display: none;
+        left: 5px;
+        top: 1px;
+        width: 4px;
+        height: 8px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+    }
+    
+    input:checked ~ .checkmark {
+      background-color: mix.color('primary');
+      border-color: mix.color('primary');
+    }
+    
+    input:checked ~ .checkmark:after {
+      display: block;
+    }
+    
+    .checkbox-label {
+      font-size: mix.font-size('sm');
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.7);
+    }
+    
+    &:hover {
+      .checkmark {
+        border-color: mix.color('primary');
+      }
+    }
+  }
+  
+  .abbreviation-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    .abbreviation-input {
+      width: 50px;
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: mix.font-size('sm');
+      font-weight: 600;
+      text-align: center;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      
+      &:focus {
+        outline: none;
+        border-color: mix.color('primary');
+        box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.1);
+      }
+      
+      &:disabled {
+        background-color: #f5f5f5;
+        color: #999;
+        cursor: not-allowed;
+        border-color: #e0e0e0;
+      }
+      
+      &::placeholder {
+        color: #999;
+        font-weight: 400;
+      }
+    }
+    
   }
 }
 </style>

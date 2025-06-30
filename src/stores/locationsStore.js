@@ -114,6 +114,13 @@ export const useLocationsStore = defineStore('locations', {
       return [...frequentDepts, ...regularDepts];
     },
     
+    // Get buildings that require porter service
+    porterServicedBuildings: (state) => {
+      return state.buildings
+        .filter(building => building.porter_serviced)
+        .sort((a, b) => a.sort_order - b.sort_order);
+    },
+    
     // Get task type and item assignment for a department
     getDepartmentTaskAssignment: (state) => (departmentId) => {
       return state.departmentTaskAssignments.find(

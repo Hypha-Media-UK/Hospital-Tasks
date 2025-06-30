@@ -54,26 +54,26 @@
                 </div>
               </div>
               
-              <!-- Scheduled Absences Section -->
-              <div v-if="getPorterAbsences(entry.porter_id).length > 0" class="absences-section">
-                <div class="absences-title">Scheduled Absences</div>
-                <div v-for="absence in getPorterAbsences(entry.porter_id)" :key="absence.id" 
-                     class="absence-item">
-                  <div class="absence-details">
-                    {{ absence.absence_reason || 'Absence' }}: {{ formatTime(absence.start_time) }} - {{ formatTime(absence.end_time) }}
-                    <button 
-                      @click.stop="removeAbsence(absence.id)" 
-                      class="btn btn--icon btn--danger btn--small"
-                      title="Remove absence"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18"></path>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
-                    </button>
-                  </div>
+            <!-- Scheduled Absences Section -->
+            <div v-if="getPorterAbsences(entry.porter_id).length > 0" class="absences-section">
+              <div class="absences-title">Scheduled Absences</div>
+              <div v-for="absence in getPorterAbsences(entry.porter_id)" :key="absence.id" 
+                   class="absence-item">
+                <div class="absence-details">
+                  {{ absence.absence_reason || 'Absence' }}: {{ formatTime(absence.start_time) }} - {{ formatTime(absence.end_time) }}
+                  <button 
+                    @click.stop="removeAbsence(absence.id)" 
+                    class="btn btn--icon btn--danger btn--small"
+                    title="Remove absence"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 6h18"></path>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
                 </div>
               </div>
+            </div>
             </div>
           </div>
           
@@ -170,6 +170,22 @@
                     </svg>
                   </button>
                 </div>
+              </div>
+            </div>
+            
+            <!-- Serviced Buildings Section -->
+            <div v-if="locationsStore.porterServicedBuildings.length > 0" class="serviced-buildings-section">
+              <div class="serviced-buildings-list">
+                <button 
+                  v-for="building in locationsStore.porterServicedBuildings" 
+                  :key="building.id"
+                  @click.stop="togglePorterBuildingAssignment(entry.porter_id, building.id)"
+                  class="building-badge"
+                  :class="{ 'assigned': isPorterAssignedToBuilding(entry.porter_id, building.id) }"
+                  :title="`Click to ${isPorterAssignedToBuilding(entry.porter_id, building.id) ? 'unassign from' : 'assign to'} ${building.name}`"
+                >
+                  {{ building.abbreviation || building.name }}
+                </button>
               </div>
             </div>
           </div>
@@ -269,6 +285,7 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useAreaCoverStore } from '../stores/areaCoverStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useLocationsStore } from '../stores/locationsStore';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 
 // Event for opening allocation modal
@@ -285,6 +302,7 @@ const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
 const settingsStore = useSettingsStore();
+const locationsStore = useLocationsStore();
 
 const showPorterSelector = ref(false);
 const showAllocationModal = ref(false);
@@ -321,6 +339,9 @@ const handlePorterAllocated = (allocation) => {
 const selectedPorters = ref([]);
 const addingPorters = ref(false);
 const isLoading = ref(true);
+
+// Porter-building assignments (session-based, not persisted to database)
+const porterBuildingAssignments = ref(new Map());
 
 // Computed properties
 const porterPool = computed(() => {
@@ -787,6 +808,29 @@ const formatTime = (timeStr) => {
   return `${String(hoursNum).padStart(2, '0')}:${minutes}`;
 };
 
+// Porter-building assignment functions
+const togglePorterBuildingAssignment = (porterId, buildingId) => {
+  const currentAssignments = porterBuildingAssignments.value.get(porterId) || [];
+  
+  if (currentAssignments.includes(buildingId)) {
+    // Remove assignment
+    const updatedAssignments = currentAssignments.filter(id => id !== buildingId);
+    if (updatedAssignments.length === 0) {
+      porterBuildingAssignments.value.delete(porterId);
+    } else {
+      porterBuildingAssignments.value.set(porterId, updatedAssignments);
+    }
+  } else {
+    // Add assignment
+    porterBuildingAssignments.value.set(porterId, [...currentAssignments, buildingId]);
+  }
+};
+
+const isPorterAssignedToBuilding = (porterId, buildingId) => {
+  const assignments = porterBuildingAssignments.value.get(porterId) || [];
+  return assignments.includes(buildingId);
+};
+
 // Reset selected porters when modal is closed
 watch(showPorterSelector, (isOpen) => {
   if (!isOpen) {
@@ -1144,6 +1188,47 @@ onMounted(async () => {
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 0.75rem;
+      }
+    }
+    
+    // Serviced Buildings section styling
+    .serviced-buildings-section {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(66, 133, 244, 0.3);
+    }
+    
+    
+    .serviced-buildings-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    
+    .building-badge {
+      background: none;
+      border: 1px solid rgba(66, 133, 244, 0.3);
+      color: #4285F4;
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background-color: rgba(66, 133, 244, 0.1);
+        border-color: #4285F4;
+      }
+      
+      &.assigned {
+        background-color: #4285F4;
+        color: white;
+        border-color: #4285F4;
+        
+        &:hover {
+          background-color: color.scale(#4285F4, $lightness: -10%);
+        }
       }
     }
   }
