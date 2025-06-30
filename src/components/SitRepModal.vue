@@ -85,11 +85,11 @@
             <div class="legend">
               <div class="legend-item">
                 <div class="legend-box available"></div>
-                <span>Available (Pale Grey)</span>
+                <span>Available</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box allocated"></div>
-                <span>Allocated to Department/Service (Darker Grey)</span>
+                <span>Allocated to Department/Service</span>
               </div>
             </div>
           </div>
@@ -124,28 +124,44 @@ const timelineHours = computed(() => {
   
   const hours = [];
   
-  // Get actual shift start and end times
-  const shiftStart = new Date(props.shift.start_time);
-  const shiftEnd = new Date(props.shift.end_time);
+  // Get shift defaults from settings to determine proper shift duration
+  const shiftDefaults = settingsStore.shiftDefaults[props.shift.shift_type];
+  if (!shiftDefaults) return [];
   
-  // Generate only the shift hours (no buffer)
-  let currentTime = new Date(shiftStart);
-  currentTime.setMinutes(0, 0, 0); // Round down to hour
+  // Parse start and end times from shift defaults
+  const [startHour] = shiftDefaults.startTime.split(':').map(Number);
+  const [endHour] = shiftDefaults.endTime.split(':').map(Number);
   
-  while (currentTime < shiftEnd) {
-    const hour = currentTime.getHours();
-    
-    // Format label as simple hour number
-    const label = hour.toString();
+  // Handle overnight shifts (e.g., 20:00 to 08:00)
+  const isOvernightShift = endHour < startHour;
+  
+  let currentHour = startHour;
+  let hourCount = 0;
+  const maxHours = 24; // Safety limit
+  
+  while (hourCount < maxHours) {
+    // Format label as simple hour number without :00 suffix
+    const label = currentHour.toString();
     
     hours.push({
-      hour: hour,
+      hour: currentHour,
       label: label,
-      time: currentTime.toISOString()
+      isShiftTime: true
     });
     
+    // Check if we've reached the end
+    if (currentHour === endHour && hourCount > 0) {
+      break;
+    }
+    
     // Move to next hour
-    currentTime.setHours(currentTime.getHours() + 1);
+    currentHour = (currentHour + 1) % 24;
+    hourCount++;
+    
+    // For non-overnight shifts, stop when we reach end hour
+    if (!isOvernightShift && currentHour === endHour) {
+      break;
+    }
   }
   
   return hours;
@@ -156,27 +172,63 @@ const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
 });
 
-// Sort porters by availability (available first, then cascading by unavailability)
+// Sort porters by availability (available first, then by earliest allocation time)
+// Exclude the shift supervisor from the porter list
 const sortedPorters = computed(() => {
   if (!porterPool.value.length) return [];
   
-  const porters = [...porterPool.value];
-  
-  return porters.sort((a, b) => {
-    const aAvailability = calculatePorterAvailability(a.porter_id);
-    const bAvailability = calculatePorterAvailability(b.porter_id);
-    
-    // Sort by availability percentage (descending), then by name
-    if (aAvailability !== bAvailability) {
-      return bAvailability - aAvailability;
+  // Filter out the shift supervisor - they shouldn't appear in the porter timeline
+  const porters = [...porterPool.value].filter(porter => {
+    // Exclude if this porter is the shift supervisor
+    if (props.shift.supervisor_id && porter.porter_id === props.shift.supervisor_id) {
+      return false;
     }
     
-    // If same availability, sort alphabetically
+    // Also exclude if marked as supervisor in the porter pool
+    if (porter.is_supervisor) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  return porters.sort((a, b) => {
+    // Get allocation info for both porters
+    const aAllocations = getPorterAllocations(a.porter_id);
+    const bAllocations = getPorterAllocations(b.porter_id);
+    
+    const aHasAllocations = aAllocations.length > 0;
+    const bHasAllocations = bAllocations.length > 0;
+    
+    // Primary sort: Available porters (no allocations) first
+    if (aHasAllocations !== bHasAllocations) {
+      return aHasAllocations ? 1 : -1; // Available (no allocations) come first
+    }
+    
+    // Secondary sort: If both have allocations, sort by earliest allocation time
+    if (aHasAllocations && bHasAllocations) {
+      const aEarliestTime = Math.min(...aAllocations.map(a => timeToMinutes(a.start_time)));
+      const bEarliestTime = Math.min(...bAllocations.map(a => timeToMinutes(a.start_time)));
+      
+      if (aEarliestTime !== bEarliestTime) {
+        return aEarliestTime - bEarliestTime;
+      }
+    }
+    
+    // Tertiary sort: Alphabetical by name
     const aName = `${a.porter.first_name} ${a.porter.last_name}`;
     const bName = `${b.porter.first_name} ${b.porter.last_name}`;
     return aName.localeCompare(bName);
   });
 });
+
+// Get all allocations for a porter (departments and services)
+const getPorterAllocations = (porterId) => {
+  const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
+  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
+  
+  return [...departmentAssignments, ...serviceAssignments];
+};
 
 // Calculate porter availability percentage across the shift
 const calculatePorterAvailability = (porterId) => {
@@ -587,7 +639,7 @@ const getMinutesFromShiftStart = (timeStr) => {
   return timeMinutes - shiftStartMinutes;
 };
 
-// Generate Gantt chart blocks for a porter - simplified logic
+// Generate accurate Gantt chart blocks for a porter
 const getPorterGanttBlocks = (porterId) => {
   const blocks = [];
   const porter = staffStore.porters.find(p => p.id === porterId);
@@ -596,134 +648,135 @@ const getPorterGanttBlocks = (porterId) => {
     return blocks;
   }
   
-  // Get shift start and end hours
-  const shiftStartHour = timelineHours.value[0].hour;
-  const shiftEndHour = timelineHours.value[timelineHours.value.length - 1].hour;
   const totalHours = timelineHours.value.length;
   
-  // Get porter's contracted hours (default to full shift if not set)
-  const contractedStartHour = porter.contracted_hours_start ? 
-    parseInt(porter.contracted_hours_start.split(':')[0]) : shiftStartHour;
-  const contractedEndHour = porter.contracted_hours_end ? 
-    parseInt(porter.contracted_hours_end.split(':')[0]) : shiftEndHour;
+  // Get porter's contracted hours (convert to minutes for accurate calculation)
+  const contractedStart = porter.contracted_hours_start ? timeToMinutes(porter.contracted_hours_start) : null;
+  const contractedEnd = porter.contracted_hours_end ? timeToMinutes(porter.contracted_hours_end) : null;
   
-  // Get all assignments for this porter
+  // Get all assignments for this porter with precise times
   const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
   const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
   
-  // Combine all assignments
+  // Combine all assignments with detailed info
   const allAssignments = [];
   
   // Add department assignments
-  departmentAssignments.forEach(assignment => {
+  departmentAssignments.forEach((assignment, index) => {
     const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
     if (areaCover) {
       allAssignments.push({
-        startHour: parseInt(assignment.start_time.split(':')[0]),
-        endHour: parseInt(assignment.end_time.split(':')[0]),
+        id: `dept-${index}`,
+        startMinutes: timeToMinutes(assignment.start_time),
+        endMinutes: timeToMinutes(assignment.end_time),
+        startTime: assignment.start_time,
+        endTime: assignment.end_time,
         label: areaCover.department?.name || 'Department',
-        type: 'allocated'
+        type: 'allocated',
+        color: areaCover.color || '#999'
       });
     }
   });
   
   // Add service assignments
-  serviceAssignments.forEach(assignment => {
+  serviceAssignments.forEach((assignment, index) => {
     const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
     if (service) {
       allAssignments.push({
-        startHour: parseInt(assignment.start_time.split(':')[0]),
-        endHour: parseInt(assignment.end_time.split(':')[0]),
+        id: `service-${index}`,
+        startMinutes: timeToMinutes(assignment.start_time),
+        endMinutes: timeToMinutes(assignment.end_time),
+        startTime: assignment.start_time,
+        endTime: assignment.end_time,
         label: service.service?.name || 'Service',
-        type: 'allocated'
+        type: 'allocated',
+        color: service.color || '#999'
       });
     }
   });
   
   // Sort assignments by start time
-  allAssignments.sort((a, b) => a.startHour - b.startHour);
+  allAssignments.sort((a, b) => a.startMinutes - b.startMinutes);
   
-  // Create blocks for the porter's working hours
-  let currentHour = contractedStartHour;
+  // Get shift timeline bounds in minutes
+  const shiftStartMinutes = timeToMinutes(`${timelineHours.value[0].hour}:00`);
+  const shiftEndMinutes = timeToMinutes(`${timelineHours.value[timelineHours.value.length - 1].hour}:00`);
+  const shiftDurationMinutes = shiftEndMinutes - shiftStartMinutes;
+  
+  // Handle overnight shifts
+  const adjustedShiftDuration = shiftDurationMinutes <= 0 ? shiftDurationMinutes + (24 * 60) : shiftDurationMinutes;
+  
+  // Create blocks based on assignments and availability
+  let currentMinutes = contractedStart || shiftStartMinutes;
+  const endMinutes = contractedEnd || shiftEndMinutes;
   
   allAssignments.forEach((assignment, index) => {
-    // Add availability block before assignment if needed
-    if (currentHour < assignment.startHour) {
-      const startIndex = timelineHours.value.findIndex(h => h.hour === currentHour);
-      const endIndex = timelineHours.value.findIndex(h => h.hour === assignment.startHour);
+    // Add availability block before assignment if there's a gap
+    if (currentMinutes < assignment.startMinutes) {
+      const leftPercent = ((currentMinutes - shiftStartMinutes) / adjustedShiftDuration) * 100;
+      const widthPercent = ((assignment.startMinutes - currentMinutes) / adjustedShiftDuration) * 100;
       
-      if (startIndex >= 0 && endIndex >= 0) {
-        const leftPercent = (startIndex / totalHours) * 100;
-        const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
-        
+      if (widthPercent > 0) {
         blocks.push({
           id: `${porterId}-available-${index}`,
           type: 'available',
-          leftPercent: leftPercent,
+          leftPercent: Math.max(0, leftPercent),
           widthPercent: widthPercent,
           label: 'Available',
-          tooltip: `Available: ${currentHour}:00 - ${assignment.startHour}:00`
+          tooltip: `Available: ${formatMinutesToTime(currentMinutes)} - ${formatMinutesToTime(assignment.startMinutes)}`
         });
       }
     }
     
     // Add assignment block
-    const startIndex = timelineHours.value.findIndex(h => h.hour === assignment.startHour);
-    const endIndex = timelineHours.value.findIndex(h => h.hour === assignment.endHour);
+    const leftPercent = ((assignment.startMinutes - shiftStartMinutes) / adjustedShiftDuration) * 100;
+    const widthPercent = ((assignment.endMinutes - assignment.startMinutes) / adjustedShiftDuration) * 100;
     
-    if (startIndex >= 0 && endIndex >= 0) {
-      const leftPercent = (startIndex / totalHours) * 100;
-      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
-      
+    if (widthPercent > 0) {
       blocks.push({
-        id: `${porterId}-assignment-${index}`,
+        id: `${porterId}-assignment-${assignment.id}`,
         type: 'allocated',
-        leftPercent: leftPercent,
+        leftPercent: Math.max(0, leftPercent),
         widthPercent: widthPercent,
         label: assignment.label,
-        tooltip: `${assignment.label}: ${assignment.startHour}:00 - ${assignment.endHour}:00`
+        tooltip: `${assignment.label}: ${assignment.startTime.substring(0, 5)} - ${assignment.endTime.substring(0, 5)}`,
+        color: assignment.color
       });
     }
     
-    currentHour = assignment.endHour;
+    currentMinutes = assignment.endMinutes;
   });
   
-  // Add final availability block if needed
-  if (currentHour < contractedEndHour) {
-    const startIndex = timelineHours.value.findIndex(h => h.hour === currentHour);
-    const endIndex = timelineHours.value.findIndex(h => h.hour === contractedEndHour);
+  // Add final availability block if there's time remaining
+  if (currentMinutes < endMinutes) {
+    const leftPercent = ((currentMinutes - shiftStartMinutes) / adjustedShiftDuration) * 100;
+    const widthPercent = ((endMinutes - currentMinutes) / adjustedShiftDuration) * 100;
     
-    if (startIndex >= 0 && endIndex >= 0) {
-      const leftPercent = (startIndex / totalHours) * 100;
-      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
-      
+    if (widthPercent > 0) {
       blocks.push({
         id: `${porterId}-available-final`,
         type: 'available',
-        leftPercent: leftPercent,
+        leftPercent: Math.max(0, leftPercent),
         widthPercent: widthPercent,
         label: 'Available',
-        tooltip: `Available: ${currentHour}:00 - ${contractedEndHour}:00`
+        tooltip: `Available: ${formatMinutesToTime(currentMinutes)} - ${formatMinutesToTime(endMinutes)}`
       });
     }
   }
   
-  // If no assignments, create one big availability block
+  // If no assignments, create one availability block for the entire contracted period
   if (allAssignments.length === 0) {
-    const startIndex = timelineHours.value.findIndex(h => h.hour === contractedStartHour);
-    const endIndex = timelineHours.value.findIndex(h => h.hour === contractedEndHour);
+    const leftPercent = ((currentMinutes - shiftStartMinutes) / adjustedShiftDuration) * 100;
+    const widthPercent = ((endMinutes - currentMinutes) / adjustedShiftDuration) * 100;
     
-    if (startIndex >= 0 && endIndex >= 0) {
-      const leftPercent = (startIndex / totalHours) * 100;
-      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
-      
+    if (widthPercent > 0) {
       blocks.push({
         id: `${porterId}-available-all`,
         type: 'available',
-        leftPercent: leftPercent,
+        leftPercent: Math.max(0, leftPercent),
         widthPercent: widthPercent,
         label: 'Available',
-        tooltip: `Available: ${contractedStartHour}:00 - ${contractedEndHour}:00`
+        tooltip: `Available: ${formatMinutesToTime(currentMinutes)} - ${formatMinutesToTime(endMinutes)}`
       });
     }
   }
@@ -1018,15 +1071,17 @@ onMounted(async () => {
           min-width: 20px;
           
           &.block-available {
-            background-color: #f5f5f5; /* Pale grey */
-            color: #666;
-            border: 1px solid #ddd;
+            background-color: #f8f9fa; /* Very light grey */
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+            font-weight: 500;
           }
           
           &.block-allocated {
-            background-color: #999; /* Darker grey */
+            background-color: #6c757d; /* Medium grey */
             color: white;
-            border: 1px solid #777;
+            border: 1px solid #495057;
+            font-weight: 600;
           }
           
           .block-label {
@@ -1095,14 +1150,16 @@ onMounted(async () => {
           width: 18px;
           height: 18px;
           border: 1px solid #dee2e6;
+          border-radius: 3px;
           
           &.available {
-            background-color: white;
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
           }
           
           &.allocated {
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border-color: #90caf9;
+            background-color: #6c757d;
+            border-color: #495057;
           }
           
           &.off-duty {
