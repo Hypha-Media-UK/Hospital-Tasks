@@ -2439,6 +2439,17 @@ export const useShiftsStore = defineStore('shifts', {
   // Clean up expired porter absences
   async cleanupExpiredAbsences() {
     try {
+      // Only cleanup if we have a current shift and it's not in setup mode
+      if (!this.currentShift) {
+        return 0; // No current shift to clean up
+      }
+      
+      // Check if shift is in setup mode - if so, don't clean up anything
+      if (this.isShiftInSetupMode(this.currentShift)) {
+        console.log('Shift is in setup mode - skipping absence cleanup');
+        return 0;
+      }
+      
       // Get current time in user's timezone using timezone utilities
       const currentTime = getCurrentTimeString(); // HH:MM format
       
@@ -2469,6 +2480,17 @@ export const useShiftsStore = defineStore('shifts', {
   // Clean up expired department assignments
   async cleanupExpiredDepartmentAssignments() {
     try {
+      // Only cleanup if we have a current shift and it's not in setup mode
+      if (!this.currentShift) {
+        return 0; // No current shift to clean up
+      }
+      
+      // Check if shift is in setup mode - if so, don't clean up anything
+      if (this.isShiftInSetupMode(this.currentShift)) {
+        console.log('Shift is in setup mode - skipping department assignment cleanup');
+        return 0;
+      }
+      
       // Get current time in HH:MM:SS format
       const now = new Date();
       const hours = String(now.getHours()).padStart(2, '0');
@@ -2503,6 +2525,17 @@ export const useShiftsStore = defineStore('shifts', {
   // Clean up expired service assignments
   async cleanupExpiredServiceAssignments() {
     try {
+      // Only cleanup if we have a current shift and it's not in setup mode
+      if (!this.currentShift) {
+        return 0; // No current shift to clean up
+      }
+      
+      // Check if shift is in setup mode - if so, don't clean up anything
+      if (this.isShiftInSetupMode(this.currentShift)) {
+        console.log('Shift is in setup mode - skipping service assignment cleanup');
+        return 0;
+      }
+      
       // Get current time in HH:MM:SS format
       const now = new Date();
       const hours = String(now.getHours()).padStart(2, '0');
