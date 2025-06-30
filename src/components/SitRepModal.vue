@@ -108,6 +108,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useLocationsStore } from '../stores/locationsStore';
 
 const props = defineProps({
   shift: {
@@ -121,6 +122,7 @@ const emit = defineEmits(['close']);
 const shiftsStore = useShiftsStore();
 const staffStore = useStaffStore();
 const settingsStore = useSettingsStore();
+const locationsStore = useLocationsStore();
 
 // Generate Gantt chart timeline - only shift hours with simple hour format
 const timelineHours = computed(() => {
@@ -797,13 +799,28 @@ const getPorterGanttBlocks = (porterId) => {
         const widthPercent = ((assignment.startIndex - currentHourIndex) / totalHours) * 100;
         
         if (widthPercent > 0) {
+          // Check if porter is assigned to any buildings for this time period
+          const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
+          const assignedBuildings = buildingAssignments.map(buildingId => 
+            locationsStore.buildings.find(b => b.id === buildingId)
+          ).filter(Boolean);
+          
+          let label = 'Available';
+          let tooltip = `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`;
+          
+          if (assignedBuildings.length > 0) {
+            // Use the first building's full name
+            label = assignedBuildings[0].name;
+            tooltip = `${assignedBuildings[0].name}: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`;
+          }
+          
           blocks.push({
             id: `${porterId}-available-${index}`,
             type: 'available',
             leftPercent: leftPercent,
             widthPercent: widthPercent,
-            label: 'Available',
-            tooltip: `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`
+            label: label,
+            tooltip: tooltip
           });
         }
       }
@@ -817,13 +834,28 @@ const getPorterGanttBlocks = (porterId) => {
       const widthPercent = ((effectiveEndIndex - currentHourIndex) / totalHours) * 100;
       
       if (widthPercent > 0) {
+        // Check if porter is assigned to any buildings for this time period
+        const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
+        const assignedBuildings = buildingAssignments.map(buildingId => 
+          locationsStore.buildings.find(b => b.id === buildingId)
+        ).filter(Boolean);
+        
+        let label = 'Available';
+        let tooltip = `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
+        
+        if (assignedBuildings.length > 0) {
+          // Use the first building's full name
+          label = assignedBuildings[0].name;
+          tooltip = `${assignedBuildings[0].name}: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
+        }
+        
         blocks.push({
           id: `${porterId}-available-final`,
           type: 'available',
           leftPercent: leftPercent,
           widthPercent: widthPercent,
-          label: 'Available',
-          tooltip: `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`
+          label: label,
+          tooltip: tooltip
         });
       }
     }
@@ -837,13 +869,28 @@ const getPorterGanttBlocks = (porterId) => {
       const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
       
       if (widthPercent > 0) {
+        // Check if porter is assigned to any buildings for this time period
+        const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
+        const assignedBuildings = buildingAssignments.map(buildingId => 
+          locationsStore.buildings.find(b => b.id === buildingId)
+        ).filter(Boolean);
+        
+        let label = 'Available';
+        let tooltip = `Available: ${contractedStartIndex >= 0 ? contractedStartHour : shiftStartHour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
+        
+        if (assignedBuildings.length > 0) {
+          // Use the first building's full name
+          label = assignedBuildings[0].name;
+          tooltip = `${assignedBuildings[0].name}: ${contractedStartIndex >= 0 ? contractedStartHour : shiftStartHour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
+        }
+        
         blocks.push({
           id: `${porterId}-available-all`,
           type: 'available',
           leftPercent: leftPercent,
           widthPercent: widthPercent,
-          label: 'Available',
-          tooltip: `Available: ${contractedStartIndex >= 0 ? contractedStartHour : shiftStartHour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`
+          label: label,
+          tooltip: tooltip
         });
       }
     }

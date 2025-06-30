@@ -340,8 +340,6 @@ const selectedPorters = ref([]);
 const addingPorters = ref(false);
 const isLoading = ref(true);
 
-// Porter-building assignments (session-based, not persisted to database)
-const porterBuildingAssignments = ref(new Map());
 
 // Computed properties
 const porterPool = computed(() => {
@@ -810,25 +808,11 @@ const formatTime = (timeStr) => {
 
 // Porter-building assignment functions
 const togglePorterBuildingAssignment = (porterId, buildingId) => {
-  const currentAssignments = porterBuildingAssignments.value.get(porterId) || [];
-  
-  if (currentAssignments.includes(buildingId)) {
-    // Remove assignment
-    const updatedAssignments = currentAssignments.filter(id => id !== buildingId);
-    if (updatedAssignments.length === 0) {
-      porterBuildingAssignments.value.delete(porterId);
-    } else {
-      porterBuildingAssignments.value.set(porterId, updatedAssignments);
-    }
-  } else {
-    // Add assignment
-    porterBuildingAssignments.value.set(porterId, [...currentAssignments, buildingId]);
-  }
+  shiftsStore.togglePorterBuildingAssignment(porterId, buildingId);
 };
 
 const isPorterAssignedToBuilding = (porterId, buildingId) => {
-  const assignments = porterBuildingAssignments.value.get(porterId) || [];
-  return assignments.includes(buildingId);
+  return shiftsStore.isPorterAssignedToBuilding(porterId, buildingId);
 };
 
 // Reset selected porters when modal is closed

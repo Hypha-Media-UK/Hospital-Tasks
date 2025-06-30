@@ -37,6 +37,7 @@ export const useShiftsStore = defineStore('shifts', {
     shiftSupportServicePorterAssignments: [], // Porter assignments for shift support services
     shiftPorterPool: [], // Porters assigned to the current shift
     shiftPorterAbsences: [], // Scheduled absences for porters in the current shift
+    porterBuildingAssignments: new Map(), // Porter-building assignments (session-based)
     loading: {
       activeShifts: false,
       archivedShifts: false,
@@ -2806,6 +2807,42 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
     
+    // Porter-Building Assignment Management
+    
+    // Toggle porter-building assignment
+    togglePorterBuildingAssignment(porterId, buildingId) {
+      const currentAssignments = this.porterBuildingAssignments.get(porterId) || [];
+      
+      if (currentAssignments.includes(buildingId)) {
+        // Remove assignment
+        const updatedAssignments = currentAssignments.filter(id => id !== buildingId);
+        if (updatedAssignments.length === 0) {
+          this.porterBuildingAssignments.delete(porterId);
+        } else {
+          this.porterBuildingAssignments.set(porterId, updatedAssignments);
+        }
+      } else {
+        // Add assignment
+        this.porterBuildingAssignments.set(porterId, [...currentAssignments, buildingId]);
+      }
+    },
+    
+    // Check if porter is assigned to building
+    isPorterAssignedToBuilding(porterId, buildingId) {
+      const assignments = this.porterBuildingAssignments.get(porterId) || [];
+      return assignments.includes(buildingId);
+    },
+    
+    // Get building assignments for a porter
+    getPorterBuildingAssignments(porterId) {
+      return this.porterBuildingAssignments.get(porterId) || [];
+    },
+    
+    // Clear all porter-building assignments
+    clearPorterBuildingAssignments() {
+      this.porterBuildingAssignments.clear();
+    },
+
     // Duplicate a shift (copy all setup but not tasks)
     async duplicateShift(shiftId, newDate) {
       this.loading.createShift = true;
