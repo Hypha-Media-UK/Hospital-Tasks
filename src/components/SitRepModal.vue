@@ -1388,74 +1388,269 @@ watch(timelineHours, () => {
   }
 }
 
-/* Print styles */
+/* Print styles - Optimized for A4 Portrait */
 @media print {
+  /* Hide everything except the SitRep modal */
+  body * {
+    visibility: hidden;
+  }
+  
+  .modal-overlay,
+  .modal-overlay * {
+    visibility: visible;
+  }
+  
+  /* Page setup for A4 Portrait */
+  @page {
+    size: A4 portrait;
+    margin: 0.5in;
+  }
+  
+  /* Modal overlay and container */
   .modal-overlay {
-    background-color: transparent;
-    position: absolute;
+    background-color: transparent !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    align-items: unset !important;
+    justify-content: unset !important;
+    z-index: auto !important;
   }
   
   .sitrep-modal {
-    width: 100%;
-    max-width: none;
-    max-height: none;
-    box-shadow: none;
-    border-radius: 0;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background-color: white !important;
+    overflow: visible !important;
   }
   
+  /* Hide modal header (Print button, close button, etc.) */
   .modal-header {
     display: none !important;
   }
   
+  /* Modal body adjustments */
   .modal-body {
     padding: 0 !important;
   }
   
-  .sheet-header h2 {
-    text-align: left;
-    font-size: 14pt;
-  }
-  
-  .sheet-info {
-    text-align: left;
-    font-size: 12pt;
-  }
-  
-  .sitrep-table {
-    font-size: 9pt;
+  /* Sheet header styling */
+  .sheet-header {
+    margin-bottom: 1rem !important;
     
-    th, td {
-      padding: 0.25rem !important;
+    h2 {
+      font-size: 16pt !important;
+      margin-top: 0 !important;
+      margin-bottom: 0.5rem !important;
+      text-align: left !important;
     }
     
-    .porter-column {
-      width: 120px;
-    }
-    
-    .hour-column {
-      width: 60px;
-      min-width: 60px;
+    .sheet-info {
+      font-size: 12pt !important;
+      font-weight: bold !important;
+      margin: 0 !important;
+      text-align: left !important;
     }
   }
   
+  /* Shift summary adjustments */
+  .shift-summary {
+    margin-bottom: 1rem !important;
+    padding: 0.75rem !important;
+    background-color: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 4px !important;
+    
+    .summary-stats {
+      display: flex !important;
+      gap: 1.5rem !important;
+      flex-wrap: wrap !important;
+      
+      .stat-item {
+        .stat-label {
+          font-size: 9pt !important;
+        }
+        
+        .stat-value {
+          font-size: 11pt !important;
+        }
+      }
+    }
+  }
+  
+  /* Time ruler adjustments for portrait */
+  .time-ruler-container {
+    display: grid !important;
+    grid-template-columns: 150px 1fr !important;
+    margin-bottom: 0.5rem !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    
+    .porter-name-spacer {
+      background-color: #f8f9fa !important;
+      border-right: 1px solid #dee2e6 !important;
+    }
+    
+    .time-ruler {
+      height: 30px !important;
+      background-color: #f8f9fa !important;
+      
+      .time-marker {
+        font-size: 8pt !important;
+        font-weight: 600 !important;
+        padding: 0.2rem 0.3rem !important;
+      }
+    }
+  }
+  
+  /* Grid layout adjustments for portrait */
+  .sitrep-grid {
+    display: grid !important;
+    grid-template-columns: 150px 1fr !important;
+    gap: 0 !important;
+    background-color: #dee2e6 !important;
+    border: 1px solid #dee2e6 !important;
+    overflow: visible !important;
+    min-width: auto !important;
+    
+    .porter-row {
+      display: contents !important;
+      page-break-inside: avoid !important;
+    }
+    
+    .porter-name {
+      padding: 0.5rem !important;
+      background-color: #f8f9fa !important;
+      border-right: 1px solid #dee2e6 !important;
+      border-bottom: 1px solid #dee2e6 !important;
+      font-weight: 600 !important;
+      font-size: 9pt !important;
+      color: #495057 !important;
+      min-height: 50px !important;
+      
+      .porter-name-text {
+        font-weight: 600 !important;
+        margin-bottom: 0.2rem !important;
+        line-height: 1.2 !important;
+      }
+      
+      .porter-hours {
+        font-size: 8pt !important;
+        font-weight: 500 !important;
+        color: #6c757d !important;
+      }
+    }
+    
+    .porter-timeline {
+      background-color: white !important;
+      border-bottom: 1px solid #dee2e6 !important;
+      min-height: 50px !important;
+      
+      .timeline-block {
+        top: 6px !important;
+        bottom: 6px !important;
+        font-size: 7pt !important;
+        font-weight: 500 !important;
+        padding-left: 0.3rem !important;
+        
+        .block-label {
+          font-weight: 600 !important;
+          line-height: 1.1 !important;
+        }
+        
+        // Adjust label sizes for smaller print format
+        &[style*="width: 0."] .block-label,
+        &[style*="width: 1."] .block-label,
+        &[style*="width: 2."] .block-label,
+        &[style*="width: 3."] .block-label,
+        &[style*="width: 4."] .block-label,
+        &[style*="width: 5."] .block-label,
+        &[style*="width: 6."] .block-label,
+        &[style*="width: 7."] .block-label {
+          font-size: 6pt !important;
+          max-width: 30px !important;
+        }
+      }
+    }
+  }
+  
+  /* Legend adjustments */
   .legend {
-    font-size: 10pt;
+    display: flex !important;
+    gap: 1rem !important;
+    justify-content: center !important;
+    margin-top: 1rem !important;
+    padding: 0.75rem !important;
+    background-color: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 4px !important;
+    page-break-inside: avoid !important;
     
-    .legend-box {
-      width: 15px;
-      height: 15px;
+    .legend-item {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.4rem !important;
+      font-size: 9pt !important;
+      font-weight: 500 !important;
+      color: #495057 !important;
+      
+      .legend-box {
+        width: 12px !important;
+        height: 12px !important;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 2px !important;
+      }
     }
   }
   
-  /* Ensure page breaks don't happen inside table rows */
-  tr {
+  /* Ensure proper page breaks */
+  .sitrep-sheet {
     page-break-inside: avoid;
   }
   
-  /* Force landscape orientation */
-  @page {
-    size: A4 landscape;
-    margin: 0.5in;
+  .sheet-content {
+    page-break-inside: auto;
+  }
+  
+  /* Force black and white printing for better contrast */
+  .timeline-block {
+    &.block-available {
+      background-color: #f8f9fa !important;
+      color: #495057 !important;
+      border: 1px solid #dee2e6 !important;
+    }
+    
+    &.block-allocated {
+      background-color: #495057 !important;
+      color: white !important;
+      border: 1px solid #343a40 !important;
+    }
+    
+    &.block-off-duty {
+      background-color: #6c757d !important;
+      color: white !important;
+      border: 1px solid #495057 !important;
+    }
+  }
+  
+  .legend-box {
+    &.available {
+      background-color: #f8f9fa !important;
+      border-color: #dee2e6 !important;
+    }
+    
+    &.allocated {
+      background-color: #495057 !important;
+      border-color: #343a40 !important;
+    }
+    
+    &.off-duty {
+      background-color: #6c757d !important;
+      border-color: #495057 !important;
+    }
   }
 }
 </style>

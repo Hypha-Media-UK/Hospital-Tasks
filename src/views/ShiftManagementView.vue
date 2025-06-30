@@ -480,12 +480,6 @@
         @allocated="handlePorterAllocation"
       />
 
-      <!-- SitRep Modal -->
-      <SitRepModal 
-        v-if="showSitRepModal" 
-        :shift="shift"
-        @close="showSitRepModal = false"
-      />
       
       <!-- Floating Action Button for Adding Tasks -->
       <div class="floating-action-container">
@@ -526,7 +520,6 @@ import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue
 import EditIcon from '../components/icons/EditIcon.vue';
 import ClockIcon from '../components/icons/ClockIcon.vue';
 import AllocatePorterModal from '../components/AllocatePorterModal.vue';
-import SitRepModal from '../components/SitRepModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -599,9 +592,6 @@ const timeFieldsAutoUpdated = ref(false); // Track when time fields are auto-upd
 // Porter allocation modal state
 const showAllocatePorterModal = ref(false);
 const selectedPorter = ref(null);
-
-// SitRep modal state
-const showSitRepModal = ref(false);
 
 // Import nextTick for DOM manipulation after state changes
 import { nextTick } from 'vue';
@@ -2013,9 +2003,10 @@ function getShiftColor() {
   }
 }
 
-// Show SitRep modal
+// Show SitRep view
 function showSitRep() {
-  showSitRepModal.value = true;
+  // Navigate to the SitRep view
+  router.push(`/shift/${shift.value.id}/sitrep`);
 }
 
 // Show the change supervisor modal
