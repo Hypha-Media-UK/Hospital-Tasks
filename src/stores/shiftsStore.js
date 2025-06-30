@@ -37,7 +37,7 @@ export const useShiftsStore = defineStore('shifts', {
     shiftSupportServicePorterAssignments: [], // Porter assignments for shift support services
     shiftPorterPool: [], // Porters assigned to the current shift
     shiftPorterAbsences: [], // Scheduled absences for porters in the current shift
-    porterBuildingAssignments: new Map(), // Porter-building assignments (session-based)
+    porterBuildingAssignments: new Map(), // Porter-building assignments (persisted to database)
     loading: {
       activeShifts: false,
       archivedShifts: false,
@@ -2809,21 +2809,89 @@ export const useShiftsStore = defineStore('shifts', {
     
     // Porter-Building Assignment Management
     
-    // Toggle porter-building assignment
-    togglePorterBuildingAssignment(porterId, buildingId) {
+    // Fetch porter-building assignments for a specific shift
+    async fetchShiftPorterBuildingAssignments(shiftId) {
+      this.loading.porterPool = true;
+      this.error = null;
+      
+      try {
+        const { data, error } = await supabase
+          .from('shift_porter_building_assignments')
+          .select('*')
+          .eq('shift_id', shiftId);
+        
+        if (error) throw error;
+        
+        // Convert to Map format for local state
+        this.porterBuildingAssignments.clear();
+        
+        if (data && data.length > 0) {
+          data.forEach(assignment => {
+            const currentAssignments = this.porterBuildingAssignments.get(assignment.porter_id) || [];
+            this.porterBuildingAssignments.set(assignment.porter_id, [...currentAssignments, assignment.building_id]);
+          });
+        }
+        
+        console.log(`Loaded ${data?.length || 0} porter-building assignments for shift ${shiftId}`);
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching porter-building assignments:', error);
+        this.error = 'Failed to load porter-building assignments';
+        return [];
+      } finally {
+        this.loading.porterPool = false;
+      }
+    },
+    
+    // Toggle porter-building assignment with database persistence
+    async togglePorterBuildingAssignment(porterId, buildingId, shiftId) {
+      if (!shiftId) {
+        console.error('Shift ID is required for porter-building assignment');
+        return false;
+      }
+      
       const currentAssignments = this.porterBuildingAssignments.get(porterId) || [];
       
-      if (currentAssignments.includes(buildingId)) {
-        // Remove assignment
-        const updatedAssignments = currentAssignments.filter(id => id !== buildingId);
-        if (updatedAssignments.length === 0) {
-          this.porterBuildingAssignments.delete(porterId);
+      try {
+        if (currentAssignments.includes(buildingId)) {
+          // Remove assignment from database
+          const { error } = await supabase
+            .from('shift_porter_building_assignments')
+            .delete()
+            .eq('shift_id', shiftId)
+            .eq('porter_id', porterId)
+            .eq('building_id', buildingId);
+          
+          if (error) throw error;
+          
+          // Update local state
+          const updatedAssignments = currentAssignments.filter(id => id !== buildingId);
+          if (updatedAssignments.length === 0) {
+            this.porterBuildingAssignments.delete(porterId);
+          } else {
+            this.porterBuildingAssignments.set(porterId, updatedAssignments);
+          }
         } else {
-          this.porterBuildingAssignments.set(porterId, updatedAssignments);
+          // Add assignment to database
+          const { error } = await supabase
+            .from('shift_porter_building_assignments')
+            .insert({
+              shift_id: shiftId,
+              porter_id: porterId,
+              building_id: buildingId
+            });
+          
+          if (error) throw error;
+          
+          // Update local state
+          this.porterBuildingAssignments.set(porterId, [...currentAssignments, buildingId]);
         }
-      } else {
-        // Add assignment
-        this.porterBuildingAssignments.set(porterId, [...currentAssignments, buildingId]);
+        
+        return true;
+      } catch (error) {
+        console.error('Error toggling porter-building assignment:', error);
+        this.error = 'Failed to update porter-building assignment';
+        return false;
       }
     },
     
@@ -2838,7 +2906,7 @@ export const useShiftsStore = defineStore('shifts', {
       return this.porterBuildingAssignments.get(porterId) || [];
     },
     
-    // Clear all porter-building assignments
+    // Clear all porter-building assignments (local state only)
     clearPorterBuildingAssignments() {
       this.porterBuildingAssignments.clear();
     },

@@ -990,6 +990,11 @@ onMounted(async () => {
   console.log('Loading historical absences...');
   await fetchHistoricalAbsences();
   
+  // Load porter-building assignments for this shift
+  console.log('Loading porter-building assignments...');
+  await shiftsStore.fetchShiftPorterBuildingAssignments(props.shift.id);
+  console.log(`Loaded porter-building assignments for shift ${props.shift.id}`);
+  
   // Set CSS custom property for hour width based on timeline length
   updateHourWidth();
   

@@ -807,8 +807,8 @@ const formatTime = (timeStr) => {
 };
 
 // Porter-building assignment functions
-const togglePorterBuildingAssignment = (porterId, buildingId) => {
-  shiftsStore.togglePorterBuildingAssignment(porterId, buildingId);
+const togglePorterBuildingAssignment = async (porterId, buildingId) => {
+  await shiftsStore.togglePorterBuildingAssignment(porterId, buildingId, props.shiftId);
 };
 
 const isPorterAssignedToBuilding = (porterId, buildingId) => {
@@ -830,6 +830,9 @@ onMounted(async () => {
     // Load data in sequence
     await shiftsStore.fetchShiftPorterPool(props.shiftId);
     // This will also fetch porter absences automatically
+    
+    // Load porter-building assignments for this shift
+    await shiftsStore.fetchShiftPorterBuildingAssignments(props.shiftId);
     
     if (!staffStore.porters.length) {
       await staffStore.fetchPorters();
