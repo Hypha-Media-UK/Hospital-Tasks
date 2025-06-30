@@ -91,6 +91,10 @@
                 <div class="legend-box allocated"></div>
                 <span>Allocated to Department/Service</span>
               </div>
+              <div class="legend-item">
+                <div class="legend-box off-duty"></div>
+                <span>Off Duty</span>
+              </div>
             </div>
           </div>
         </div>
@@ -639,7 +643,7 @@ const getMinutesFromShiftStart = (timeStr) => {
   return timeMinutes - shiftStartMinutes;
 };
 
-// Generate accurate Gantt chart blocks for a porter
+// Generate accurate Gantt chart blocks for a porter including off-duty periods
 const getPorterGanttBlocks = (porterId) => {
   const blocks = [];
   const porter = staffStore.porters.find(p => p.id === porterId);
@@ -648,11 +652,17 @@ const getPorterGanttBlocks = (porterId) => {
     return blocks;
   }
   
-  const totalHours = timelineHours.value.length;
+  // Get shift timeline bounds in minutes
+  const shiftStartMinutes = timeToMinutes(`${timelineHours.value[0].hour}:00`);
+  const shiftEndMinutes = timeToMinutes(`${timelineHours.value[timelineHours.value.length - 1].hour}:00`);
+  const shiftDurationMinutes = shiftEndMinutes - shiftStartMinutes;
+  
+  // Handle overnight shifts
+  const adjustedShiftDuration = shiftDurationMinutes <= 0 ? shiftDurationMinutes + (24 * 60) : shiftDurationMinutes;
   
   // Get porter's contracted hours (convert to minutes for accurate calculation)
-  const contractedStart = porter.contracted_hours_start ? timeToMinutes(porter.contracted_hours_start) : null;
-  const contractedEnd = porter.contracted_hours_end ? timeToMinutes(porter.contracted_hours_end) : null;
+  const contractedStart = porter.contracted_hours_start ? timeToMinutes(porter.contracted_hours_start) : shiftStartMinutes;
+  const contractedEnd = porter.contracted_hours_end ? timeToMinutes(porter.contracted_hours_end) : shiftEndMinutes;
   
   // Get all assignments for this porter with precise times
   const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
@@ -698,17 +708,25 @@ const getPorterGanttBlocks = (porterId) => {
   // Sort assignments by start time
   allAssignments.sort((a, b) => a.startMinutes - b.startMinutes);
   
-  // Get shift timeline bounds in minutes
-  const shiftStartMinutes = timeToMinutes(`${timelineHours.value[0].hour}:00`);
-  const shiftEndMinutes = timeToMinutes(`${timelineHours.value[timelineHours.value.length - 1].hour}:00`);
-  const shiftDurationMinutes = shiftEndMinutes - shiftStartMinutes;
+  // 1. Add off-duty block before contracted hours (if any)
+  if (contractedStart > shiftStartMinutes) {
+    const leftPercent = 0;
+    const widthPercent = ((contractedStart - shiftStartMinutes) / adjustedShiftDuration) * 100;
+    
+    if (widthPercent > 0) {
+      blocks.push({
+        id: `${porterId}-off-duty-before`,
+        type: 'off-duty',
+        leftPercent: leftPercent,
+        widthPercent: widthPercent,
+        label: 'Off Duty',
+        tooltip: `Off Duty: ${formatMinutesToTime(shiftStartMinutes)} - ${formatMinutesToTime(contractedStart)}`
+      });
+    }
+  }
   
-  // Handle overnight shifts
-  const adjustedShiftDuration = shiftDurationMinutes <= 0 ? shiftDurationMinutes + (24 * 60) : shiftDurationMinutes;
-  
-  // Create blocks based on assignments and availability
-  let currentMinutes = contractedStart || shiftStartMinutes;
-  const endMinutes = contractedEnd || shiftEndMinutes;
+  // 2. Process the contracted hours period (availability and assignments)
+  let currentMinutes = contractedStart;
   
   allAssignments.forEach((assignment, index) => {
     // Add availability block before assignment if there's a gap
@@ -747,10 +765,10 @@ const getPorterGanttBlocks = (porterId) => {
     currentMinutes = assignment.endMinutes;
   });
   
-  // Add final availability block if there's time remaining
-  if (currentMinutes < endMinutes) {
+  // Add final availability block if there's time remaining in contracted hours
+  if (currentMinutes < contractedEnd) {
     const leftPercent = ((currentMinutes - shiftStartMinutes) / adjustedShiftDuration) * 100;
-    const widthPercent = ((endMinutes - currentMinutes) / adjustedShiftDuration) * 100;
+    const widthPercent = ((contractedEnd - currentMinutes) / adjustedShiftDuration) * 100;
     
     if (widthPercent > 0) {
       blocks.push({
@@ -759,15 +777,15 @@ const getPorterGanttBlocks = (porterId) => {
         leftPercent: Math.max(0, leftPercent),
         widthPercent: widthPercent,
         label: 'Available',
-        tooltip: `Available: ${formatMinutesToTime(currentMinutes)} - ${formatMinutesToTime(endMinutes)}`
+        tooltip: `Available: ${formatMinutesToTime(currentMinutes)} - ${formatMinutesToTime(contractedEnd)}`
       });
     }
   }
   
-  // If no assignments, create one availability block for the entire contracted period
-  if (allAssignments.length === 0) {
-    const leftPercent = ((currentMinutes - shiftStartMinutes) / adjustedShiftDuration) * 100;
-    const widthPercent = ((endMinutes - currentMinutes) / adjustedShiftDuration) * 100;
+  // If no assignments during contracted hours, create one availability block for the entire contracted period
+  if (allAssignments.length === 0 && contractedStart < contractedEnd) {
+    const leftPercent = ((contractedStart - shiftStartMinutes) / adjustedShiftDuration) * 100;
+    const widthPercent = ((contractedEnd - contractedStart) / adjustedShiftDuration) * 100;
     
     if (widthPercent > 0) {
       blocks.push({
@@ -776,7 +794,24 @@ const getPorterGanttBlocks = (porterId) => {
         leftPercent: Math.max(0, leftPercent),
         widthPercent: widthPercent,
         label: 'Available',
-        tooltip: `Available: ${formatMinutesToTime(currentMinutes)} - ${formatMinutesToTime(endMinutes)}`
+        tooltip: `Available: ${formatMinutesToTime(contractedStart)} - ${formatMinutesToTime(contractedEnd)}`
+      });
+    }
+  }
+  
+  // 3. Add off-duty block after contracted hours (if any)
+  if (contractedEnd < shiftEndMinutes) {
+    const leftPercent = ((contractedEnd - shiftStartMinutes) / adjustedShiftDuration) * 100;
+    const widthPercent = ((shiftEndMinutes - contractedEnd) / adjustedShiftDuration) * 100;
+    
+    if (widthPercent > 0) {
+      blocks.push({
+        id: `${porterId}-off-duty-after`,
+        type: 'off-duty',
+        leftPercent: leftPercent,
+        widthPercent: widthPercent,
+        label: 'Off Duty',
+        tooltip: `Off Duty: ${formatMinutesToTime(contractedEnd)} - ${formatMinutesToTime(shiftEndMinutes)}`
       });
     }
   }
@@ -1063,12 +1098,13 @@ onMounted(async () => {
           bottom: 8px;
           display: flex;
           flex-direction: column;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
           font-size: 0.8rem;
           font-weight: 500;
           overflow: hidden;
           min-width: 20px;
+          padding-left: 0.5rem;
           
           &.block-available {
             background-color: #f8f9fa; /* Very light grey */
@@ -1084,15 +1120,22 @@ onMounted(async () => {
             font-weight: 600;
           }
           
+          &.block-off-duty {
+            background-color: #6c757d; /* Same styling as allocated */
+            color: white;
+            border: 1px solid #495057;
+            font-weight: 600;
+          }
+          
           .block-label {
             font-weight: 600;
-            text-align: center;
+            text-align: left;
             line-height: 1.2;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             max-width: 100%;
-            padding: 0 0.25rem;
+            padding: 0;
           }
           
           .block-time {
@@ -1100,9 +1143,9 @@ onMounted(async () => {
             font-weight: 500;
             margin-top: 0.25rem;
             opacity: 0.8;
-            text-align: center;
+            text-align: left;
             line-height: 1;
-            padding: 0 0.25rem;
+            padding: 0;
           }
           
           // Hide time range for very small blocks
@@ -1163,8 +1206,8 @@ onMounted(async () => {
           }
           
           &.off-duty {
-            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-            border-color: #ce93d8;
+            background-color: #6c757d; /* Same styling as allocated */
+            border-color: #495057;
           }
           
           &.absent {
