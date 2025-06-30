@@ -178,7 +178,7 @@ const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
 });
 
-// Sort porters by when they become unavailable (latest unavailability first)
+// Sort porters by building allocation, then by availability
 // Exclude the shift supervisor from the porter list
 const sortedPorters = computed(() => {
   if (!porterPool.value.length) return [];
@@ -199,16 +199,48 @@ const sortedPorters = computed(() => {
   });
   
   return porters.sort((a, b) => {
-    // Calculate when each porter becomes unavailable
+    // Get building assignments for both porters
+    const aBuildingAssignments = shiftsStore.getPorterBuildingAssignments(a.porter_id);
+    const bBuildingAssignments = shiftsStore.getPorterBuildingAssignments(b.porter_id);
+    
+    // Get building names for sorting
+    const aBuildings = aBuildingAssignments.map(buildingId => 
+      locationsStore.buildings.find(b => b.id === buildingId)?.name || ''
+    ).filter(Boolean).sort();
+    
+    const bBuildings = bBuildingAssignments.map(buildingId => 
+      locationsStore.buildings.find(b => b.id === buildingId)?.name || ''
+    ).filter(Boolean).sort();
+    
+    // Primary sort: By building assignment status
+    // 1. Porters with building assignments first
+    // 2. Unassigned porters last
+    const aHasBuildings = aBuildings.length > 0;
+    const bHasBuildings = bBuildings.length > 0;
+    
+    if (aHasBuildings !== bHasBuildings) {
+      return bHasBuildings ? 1 : -1; // Building-assigned porters first
+    }
+    
+    // Secondary sort: By building name (alphabetical)
+    if (aHasBuildings && bHasBuildings) {
+      const aPrimaryBuilding = aBuildings[0];
+      const bPrimaryBuilding = bBuildings[0];
+      
+      if (aPrimaryBuilding !== bPrimaryBuilding) {
+        return aPrimaryBuilding.localeCompare(bPrimaryBuilding);
+      }
+    }
+    
+    // Tertiary sort: By unavailability time (latest first - those available longest)
     const aUnavailableTime = getPorterUnavailableTime(a.porter_id);
     const bUnavailableTime = getPorterUnavailableTime(b.porter_id);
     
-    // Primary sort: By unavailability time (latest first - those available longest)
     if (aUnavailableTime !== bUnavailableTime) {
       return bUnavailableTime - aUnavailableTime; // Descending order (latest first)
     }
     
-    // Secondary sort: Alphabetical by name for ties
+    // Final sort: Alphabetical by name for ties
     const aName = `${a.porter.first_name} ${a.porter.last_name}`;
     const bName = `${b.porter.first_name} ${b.porter.last_name}`;
     return aName.localeCompare(bName);
