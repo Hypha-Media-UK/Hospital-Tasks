@@ -176,7 +176,7 @@ const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
 });
 
-// Sort porters by availability (available first, then by earliest allocation time)
+// Sort porters by when they become unavailable (latest unavailability first)
 // Exclude the shift supervisor from the porter list
 const sortedPorters = computed(() => {
   if (!porterPool.value.length) return [];
@@ -197,34 +197,49 @@ const sortedPorters = computed(() => {
   });
   
   return porters.sort((a, b) => {
-    // Get allocation info for both porters
-    const aAllocations = getPorterAllocations(a.porter_id);
-    const bAllocations = getPorterAllocations(b.porter_id);
+    // Calculate when each porter becomes unavailable
+    const aUnavailableTime = getPorterUnavailableTime(a.porter_id);
+    const bUnavailableTime = getPorterUnavailableTime(b.porter_id);
     
-    const aHasAllocations = aAllocations.length > 0;
-    const bHasAllocations = bAllocations.length > 0;
-    
-    // Primary sort: Available porters (no allocations) first
-    if (aHasAllocations !== bHasAllocations) {
-      return aHasAllocations ? 1 : -1; // Available (no allocations) come first
+    // Primary sort: By unavailability time (latest first - those available longest)
+    if (aUnavailableTime !== bUnavailableTime) {
+      return bUnavailableTime - aUnavailableTime; // Descending order (latest first)
     }
     
-    // Secondary sort: If both have allocations, sort by earliest allocation time
-    if (aHasAllocations && bHasAllocations) {
-      const aEarliestTime = Math.min(...aAllocations.map(a => timeToMinutes(a.start_time)));
-      const bEarliestTime = Math.min(...bAllocations.map(a => timeToMinutes(a.start_time)));
-      
-      if (aEarliestTime !== bEarliestTime) {
-        return aEarliestTime - bEarliestTime;
-      }
-    }
-    
-    // Tertiary sort: Alphabetical by name
+    // Secondary sort: Alphabetical by name for ties
     const aName = `${a.porter.first_name} ${a.porter.last_name}`;
     const bName = `${b.porter.first_name} ${b.porter.last_name}`;
     return aName.localeCompare(bName);
   });
 });
+
+// Calculate when a porter becomes unavailable (earliest of allocation start or contracted end)
+const getPorterUnavailableTime = (porterId) => {
+  const porter = staffStore.porters.find(p => p.id === porterId);
+  if (!porter) return 0;
+  
+  // Get shift timeline bounds
+  const shiftStartMinutes = timeToMinutes(`${timelineHours.value[0]?.hour || 0}:00`);
+  const shiftEndMinutes = timeToMinutes(`${timelineHours.value[timelineHours.value.length - 1]?.hour || 23}:00`);
+  
+  // Get porter's contracted end time
+  const contractedEndMinutes = porter.contracted_hours_end ? 
+    timeToMinutes(porter.contracted_hours_end) : shiftEndMinutes;
+  
+  // Get porter's first allocation start time
+  const allocations = getPorterAllocations(porterId);
+  const firstAllocationMinutes = allocations.length > 0 ? 
+    Math.min(...allocations.map(a => timeToMinutes(a.start_time))) : Infinity;
+  
+  // Return the earliest time they become unavailable
+  // If no allocations, they become unavailable at contracted end time
+  // If they have allocations, they become unavailable at the earlier of first allocation or contracted end
+  if (firstAllocationMinutes === Infinity) {
+    return contractedEndMinutes; // No allocations, unavailable at contracted end
+  } else {
+    return Math.min(firstAllocationMinutes, contractedEndMinutes); // Earliest of allocation or contracted end
+  }
+};
 
 // Get all allocations for a porter (departments and services)
 const getPorterAllocations = (porterId) => {
