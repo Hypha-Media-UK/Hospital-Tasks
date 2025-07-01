@@ -1528,9 +1528,9 @@ watch(timelineHours, () => {
     }
     
     &.block-allocated {
-      background-color: #495057 !important;
+      background-color: #808080 !important;
       color: white !important;
-      border: 1px solid #343a40 !important;
+      border: 1px solid #666666 !important;
     }
     
     &.block-off-duty {
@@ -1547,8 +1547,8 @@ watch(timelineHours, () => {
     }
     
     &.allocated {
-      background-color: #495057 !important;
-      border-color: #343a40 !important;
+      background-color: #808080 !important;
+      border-color: #666666 !important;
     }
     
     &.off-duty {
