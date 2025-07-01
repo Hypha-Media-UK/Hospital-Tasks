@@ -161,17 +161,33 @@ const timelineHours = computed(() => {
       isShiftTime: true
     });
     
-    // Check if we've reached the end
-    if (currentHour === endHour && hourCount > 0) {
-      break;
-    }
-    
     // Move to next hour
     currentHour = (currentHour + 1) % 24;
     hourCount++;
     
-    // For non-overnight shifts, stop when we reach end hour
-    if (!isOvernightShift && currentHour === endHour) {
+    // Check if we've reached the end AFTER adding the current hour
+    // This ensures we include the end hour in the timeline
+    if (currentHour === endHour || (currentHour === (endHour + 1) % 24)) {
+      // For assignments that end at a specific hour, we need to include that hour
+      // Add the end hour if it's not already added
+      if (hours[hours.length - 1].hour !== endHour) {
+        hours.push({
+          hour: endHour,
+          label: endHour.toString(),
+          isShiftTime: true
+        });
+      }
+      break;
+    }
+    
+    // For overnight shifts, handle the wrap-around
+    if (isOvernightShift && hourCount > 1 && currentHour === endHour) {
+      // Add the end hour for overnight shifts
+      hours.push({
+        hour: endHour,
+        label: endHour.toString(),
+        isShiftTime: true
+      });
       break;
     }
   }
@@ -505,6 +521,9 @@ const getPorterGanttBlocks = (porterId) => {
     return blocks;
   }
   
+  // DEBUG: Log porter assignment processing
+  console.log(`=== Processing Gantt blocks for porter ${porterId} (${porter.first_name} ${porter.last_name}) ===`);
+  
   // Use hour-based calculations to match the time ruler positioning
   const totalHours = timelineHours.value.length;
   const shiftStartHour = timelineHours.value[0].hour;
@@ -520,14 +539,23 @@ const getPorterGanttBlocks = (porterId) => {
   const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
   const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
   
+  // DEBUG: Log assignment data
+  console.log(`Found ${departmentAssignments.length} department assignments for porter ${porterId}:`, departmentAssignments);
+  console.log(`Found ${serviceAssignments.length} service assignments for porter ${porterId}:`, serviceAssignments);
+  console.log('Available area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
+  console.log('Available service assignments:', shiftsStore.shiftSupportServiceAssignments);
+  
   // Combine all assignments with detailed info
   const allAssignments = [];
   
   // Add department assignments
   departmentAssignments.forEach((assignment, index) => {
+    console.log(`Processing department assignment ${index}:`, assignment);
     const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
+    console.log(`Found matching area cover:`, areaCover);
+    
     if (areaCover) {
-      allAssignments.push({
+      const assignmentData = {
         id: `dept-${index}`,
         startMinutes: timeToMinutes(assignment.start_time),
         endMinutes: timeToMinutes(assignment.end_time),
@@ -536,15 +564,22 @@ const getPorterGanttBlocks = (porterId) => {
         label: areaCover.department?.name || 'Department',
         type: 'allocated',
         color: areaCover.color || '#999'
-      });
+      };
+      console.log(`Adding department assignment to allAssignments:`, assignmentData);
+      allAssignments.push(assignmentData);
+    } else {
+      console.warn(`No matching area cover found for assignment ID ${assignment.shift_area_cover_assignment_id}`);
     }
   });
   
   // Add service assignments
   serviceAssignments.forEach((assignment, index) => {
+    console.log(`Processing service assignment ${index}:`, assignment);
     const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
+    console.log(`Found matching service:`, service);
+    
     if (service) {
-      allAssignments.push({
+      const assignmentData = {
         id: `service-${index}`,
         startMinutes: timeToMinutes(assignment.start_time),
         endMinutes: timeToMinutes(assignment.end_time),
@@ -553,9 +588,15 @@ const getPorterGanttBlocks = (porterId) => {
         label: service.service?.name || 'Service',
         type: 'allocated',
         color: service.color || '#999'
-      });
+      };
+      console.log(`Adding service assignment to allAssignments:`, assignmentData);
+      allAssignments.push(assignmentData);
+    } else {
+      console.warn(`No matching service found for assignment ID ${assignment.shift_support_service_assignment_id}`);
     }
   });
+  
+  console.log(`Total assignments for porter ${porterId}:`, allAssignments);
   
   // Sort assignments by start time
   allAssignments.sort((a, b) => a.startMinutes - b.startMinutes);
@@ -593,12 +634,27 @@ const getPorterGanttBlocks = (porterId) => {
     const startIndex = findHourIndex(startHour);
     const endIndex = findHourIndex(endHour);
     
+    console.log(`Processing assignment for porter ${porterId}:`, {
+      assignment,
+      startHour,
+      endHour,
+      startIndex,
+      endIndex,
+      totalHours
+    });
+    
     if (startIndex >= 0 && endIndex >= 0) {
       const leftPercent = (startIndex / totalHours) * 100;
       const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
       
+      console.log(`Assignment positioning:`, {
+        leftPercent,
+        widthPercent,
+        label: assignment.label
+      });
+      
       if (widthPercent > 0) {
-        blocks.push({
+        const block = {
           id: `${porterId}-assignment-${assignment.id}`,
           type: 'allocated',
           leftPercent: leftPercent,
@@ -606,8 +662,22 @@ const getPorterGanttBlocks = (porterId) => {
           label: assignment.label,
           tooltip: `${assignment.label}: ${assignment.startTime.substring(0, 5)} - ${assignment.endTime.substring(0, 5)}`,
           color: assignment.color
-        });
+        };
+        console.log(`Adding assignment block:`, block);
+        blocks.push(block);
+      } else {
+        console.warn(`Assignment has zero width - not adding block:`, assignment);
       }
+    } else {
+      console.warn(`Invalid hour indices for assignment:`, {
+        startHour,
+        endHour,
+        startIndex,
+        endIndex,
+        timelineHours: timelineHours.value.map(h => h.hour),
+        assignmentTimes: `${assignment.startTime} - ${assignment.endTime}`,
+        assignmentLabel: assignment.label
+      });
     }
   });
   
@@ -873,12 +943,20 @@ onMounted(async () => {
     console.log('Loading area cover assignments...');
     await shiftsStore.fetchShiftAreaCover(shiftId.value);
     console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
+    
+    // DEBUG: Log the area cover assignments data
+    console.log('Area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
+    console.log('Area cover porter assignments:', shiftsStore.shiftAreaCoverPorterAssignments);
   }
   
   if (!shiftsStore.shiftSupportServiceAssignments.length) {
     console.log('Loading support service assignments...');
     await shiftsStore.fetchShiftSupportServices(shiftId.value);
     console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
+    
+    // DEBUG: Log the support service assignments data
+    console.log('Support service assignments:', shiftsStore.shiftSupportServiceAssignments);
+    console.log('Support service porter assignments:', shiftsStore.shiftSupportServicePorterAssignments);
   }
   
   // Fetch historical absences specifically for SitRep
@@ -894,6 +972,14 @@ onMounted(async () => {
   updateHourWidth();
   
   console.log('SitRep view data loading complete');
+  
+  // DEBUG: Final data state check
+  console.log('=== FINAL DATA STATE ===');
+  console.log('Shift porter pool:', shiftsStore.shiftPorterPool);
+  console.log('Area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
+  console.log('Area cover porter assignments:', shiftsStore.shiftAreaCoverPorterAssignments);
+  console.log('Support service assignments:', shiftsStore.shiftSupportServiceAssignments);
+  console.log('Support service porter assignments:', shiftsStore.shiftSupportServicePorterAssignments);
 });
 
 // Watch for timeline changes and update hour width
