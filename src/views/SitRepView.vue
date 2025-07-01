@@ -35,6 +35,16 @@
             </div>
           </div>
           
+          <!-- Low Porter Availability Alert -->
+          <div v-if="showLowPorterAlert" class="porter-alert">
+            <div class="alert-content">
+              <span class="alert-icon">⚠️</span>
+              <span class="alert-text">
+                <strong>Low Porter Availability:</strong> Only {{ availablePortersCount }} porter{{ availablePortersCount === 1 ? '' : 's' }} currently available
+              </span>
+            </div>
+          </div>
+          
           <!-- Time ruler -->
           <div class="time-ruler-container">
             <div class="porter-name-spacer"></div>
@@ -172,6 +182,126 @@ const timelineHours = computed(() => {
 // Get porter pool data
 const porterPool = computed(() => {
   return shiftsStore.shiftPorterPool || [];
+});
+
+// Calculate currently available porters (not allocated, on duty, not absent)
+const availablePortersCount = computed(() => {
+  if (!porterPool.value.length) return 0;
+  
+  const now = new Date();
+  const currentTimeStr = now.toTimeString().substring(0, 8); // HH:MM:SS format
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  
+  // Helper function to convert time string (HH:MM:SS) to minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60) + minutes;
+  };
+  
+  // Helper function to check if current time is within a time range, handling overnight ranges
+  const isTimeInRange = (currentTimeMinutes, startTimeMinutes, endTimeMinutes) => {
+    // Handle overnight ranges (where end time is less than start time)
+    if (endTimeMinutes < startTimeMinutes) {
+      // Current time is either after start time or before end time
+      return currentTimeMinutes >= startTimeMinutes || currentTimeInMinutes <= endTimeMinutes;
+    } else {
+      // Normal case: current time is between start and end times
+      return currentTimeInMinutes >= startTimeMinutes && currentTimeInMinutes <= endTimeMinutes;
+    }
+  };
+  
+  // Helper function to check if a time period is active now
+  const isTimePeriodActive = (startTimeStr, endTimeStr) => {
+    if (!startTimeStr || !endTimeStr) return false;
+    
+    const startTimeMinutes = timeToMinutes(startTimeStr);
+    const endTimeMinutes = timeToMinutes(endTimeStr);
+    
+    return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
+  };
+  
+  // Helper function to check if porter is on duty based on contracted hours
+  const isPorterOnDuty = (porterId) => {
+    const porter = staffStore.porters.find(p => p.id === porterId);
+    if (!porter || !porter.contracted_hours_start || !porter.contracted_hours_end) {
+      return true; // Assume on duty if no contracted hours set
+    }
+    
+    const startMinutes = timeToMinutes(porter.contracted_hours_start);
+    const endMinutes = timeToMinutes(porter.contracted_hours_end);
+    
+    // Check if current time is within contracted hours, handling overnight shifts properly
+    if (endMinutes < startMinutes) {
+      // Overnight shift (e.g., 22:00 to 06:00)
+      return currentTimeInMinutes >= startMinutes || currentTimeInMinutes <= endMinutes;
+    } else {
+      // Normal shift (e.g., 10:00 to 22:00)
+      return currentTimeInMinutes >= startMinutes && currentTimeInMinutes <= endMinutes;
+    }
+  };
+  
+  // Filter porters to find those currently available
+  const availablePorters = porterPool.value.filter(porter => {
+    // Exclude supervisors
+    if (shift.value?.supervisor_id && porter.porter_id === shift.value.supervisor_id) {
+      return false;
+    }
+    if (porter.is_supervisor) {
+      return false;
+    }
+    
+    // Check if porter has a global absence (illness, annual leave)
+    const isAbsent = staffStore.isPorterAbsent(porter.porter_id, now);
+    if (isAbsent) return false;
+    
+    // Check if porter is not on duty yet based on contracted hours
+    if (!isPorterOnDuty(porter.porter_id)) return false;
+    
+    // Check if porter has an active scheduled absence in the shift
+    const hasActiveAbsence = shiftsStore.shiftPorterAbsences && 
+      shiftsStore.shiftPorterAbsences.some(absence => {
+        if (absence.porter_id !== porter.porter_id) return false;
+        
+        // Check if current time is within absence period
+        return isTimePeriodActive(absence.start_time, absence.end_time);
+      });
+    if (hasActiveAbsence) return false;
+    
+    // Check if porter has active area cover assignments
+    const hasActiveAreaCoverAssignment = shiftsStore.shiftAreaCoverPorterAssignments.some(
+      assignment => {
+        if (assignment.porter_id !== porter.porter_id) return false;
+        
+        // Check if current time is within assignment period
+        return isTimePeriodActive(assignment.start_time, assignment.end_time);
+      }
+    );
+    if (hasActiveAreaCoverAssignment) return false;
+    
+    // Check if porter has active service assignments
+    const hasActiveServiceAssignment = shiftsStore.shiftSupportServicePorterAssignments.some(
+      assignment => {
+        if (assignment.porter_id !== porter.porter_id) return false;
+        
+        // Check if current time is within assignment period
+        return isTimePeriodActive(assignment.start_time, assignment.end_time);
+      }
+    );
+    if (hasActiveServiceAssignment) return false;
+    
+    // If we've reached here, porter is available
+    return true;
+  });
+  
+  return availablePorters.length;
+});
+
+// Show low porter alert when available count is below threshold
+const showLowPorterAlert = computed(() => {
+  return availablePortersCount.value < 3;
 });
 
 // Sort porters by building allocation, then by availability
@@ -861,6 +991,36 @@ watch(timelineHours, () => {
     }
   }
   
+  .porter-alert {
+    margin-bottom: 2rem;
+    padding: 1rem 1.5rem;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 8px;
+    border-left: 4px solid #f39c12;
+    
+    .alert-content {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      
+      .alert-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+      }
+      
+      .alert-text {
+        font-size: 1rem;
+        color: #856404;
+        line-height: 1.4;
+        
+        strong {
+          font-weight: 700;
+        }
+      }
+    }
+  }
+  
   // Time ruler styles
   .time-ruler-container {
     display: grid;
@@ -1151,6 +1311,36 @@ watch(timelineHours, () => {
           
           .stat-value {
             font-size: 12pt !important;
+          }
+        }
+      }
+    }
+    
+    .porter-alert {
+      margin-bottom: 1rem !important;
+      padding: 0.75rem 1rem !important;
+      background-color: #fff3cd !important;
+      border: 1px solid #ffeaa7 !important;
+      border-radius: 4px !important;
+      border-left: 3px solid #f39c12 !important;
+      
+      .alert-content {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        
+        .alert-icon {
+          font-size: 11pt !important;
+          flex-shrink: 0 !important;
+        }
+        
+        .alert-text {
+          font-size: 10pt !important;
+          color: #856404 !important;
+          line-height: 1.3 !important;
+          
+          strong {
+            font-weight: 700 !important;
           }
         }
       }
