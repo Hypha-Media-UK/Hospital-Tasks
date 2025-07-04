@@ -98,6 +98,10 @@
               <span>Allocated to Department/Service</span>
             </div>
             <div class="legend-item">
+              <div class="legend-box absent"></div>
+              <span>Absent</span>
+            </div>
+            <div class="legend-item">
               <div class="legend-box off-duty"></div>
               <span>Off Duty</span>
             </div>
@@ -512,7 +516,7 @@ const getHourPosition = (hour) => {
   return 0;
 };
 
-// Generate accurate Gantt chart blocks for a porter including off-duty periods
+// Generate accurate Gantt chart blocks for a porter using chronological timeline approach
 const getPorterGanttBlocks = (porterId) => {
   const blocks = [];
   const porter = staffStore.porters.find(p => p.id === porterId);
@@ -524,7 +528,6 @@ const getPorterGanttBlocks = (porterId) => {
   // DEBUG: Log porter assignment processing
   console.log(`=== Processing Gantt blocks for porter ${porterId} (${porter.first_name} ${porter.last_name}) ===`);
   
-  // Use hour-based calculations to match the time ruler positioning
   const totalHours = timelineHours.value.length;
   const shiftStartHour = timelineHours.value[0].hour;
   const shiftEndHour = timelineHours.value[timelineHours.value.length - 1].hour;
@@ -535,289 +538,194 @@ const getPorterGanttBlocks = (porterId) => {
   const contractedEndHour = porter.contracted_hours_end ? 
     parseInt(porter.contracted_hours_end.split(':')[0]) : shiftEndHour;
   
-  // Get all assignments for this porter with precise times
-  const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
-  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
-  
-  // DEBUG: Log assignment data
-  console.log(`Found ${departmentAssignments.length} department assignments for porter ${porterId}:`, departmentAssignments);
-  console.log(`Found ${serviceAssignments.length} service assignments for porter ${porterId}:`, serviceAssignments);
-  console.log('Available area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
-  console.log('Available service assignments:', shiftsStore.shiftSupportServiceAssignments);
-  
-  // Combine all assignments with detailed info
-  const allAssignments = [];
-  
-  // Add department assignments
-  departmentAssignments.forEach((assignment, index) => {
-    console.log(`Processing department assignment ${index}:`, assignment);
-    const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
-    console.log(`Found matching area cover:`, areaCover);
-    
-    if (areaCover) {
-      const assignmentData = {
-        id: `dept-${index}`,
-        startMinutes: timeToMinutes(assignment.start_time),
-        endMinutes: timeToMinutes(assignment.end_time),
-        startTime: assignment.start_time,
-        endTime: assignment.end_time,
-        label: areaCover.department?.name || 'Department',
-        type: 'allocated',
-        color: areaCover.color || '#999'
-      };
-      console.log(`Adding department assignment to allAssignments:`, assignmentData);
-      allAssignments.push(assignmentData);
-    } else {
-      console.warn(`No matching area cover found for assignment ID ${assignment.shift_area_cover_assignment_id}`);
-    }
-  });
-  
-  // Add service assignments
-  serviceAssignments.forEach((assignment, index) => {
-    console.log(`Processing service assignment ${index}:`, assignment);
-    const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
-    console.log(`Found matching service:`, service);
-    
-    if (service) {
-      const assignmentData = {
-        id: `service-${index}`,
-        startMinutes: timeToMinutes(assignment.start_time),
-        endMinutes: timeToMinutes(assignment.end_time),
-        startTime: assignment.start_time,
-        endTime: assignment.end_time,
-        label: service.service?.name || 'Service',
-        type: 'allocated',
-        color: service.color || '#999'
-      };
-      console.log(`Adding service assignment to allAssignments:`, assignmentData);
-      allAssignments.push(assignmentData);
-    } else {
-      console.warn(`No matching service found for assignment ID ${assignment.shift_support_service_assignment_id}`);
-    }
-  });
-  
-  console.log(`Total assignments for porter ${porterId}:`, allAssignments);
-  
-  // Sort assignments by start time
-  allAssignments.sort((a, b) => a.startMinutes - b.startMinutes);
+  // Helper function to convert time string to minutes for precise calculations
+  const timeStringToMinutes = (timeStr) => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
   
   // Helper function to find hour index in timeline
   const findHourIndex = (hour) => {
     return timelineHours.value.findIndex(h => h.hour === hour);
   };
   
-  // 1. Add off-duty block before contracted hours (if any)
-  const contractedStartIndex = findHourIndex(contractedStartHour);
-  const shiftStartIndex = 0;
-  
-  if (contractedStartIndex > shiftStartIndex) {
-    const leftPercent = (shiftStartIndex / totalHours) * 100;
-    const widthPercent = ((contractedStartIndex - shiftStartIndex) / totalHours) * 100;
-    
-    if (widthPercent > 0) {
-      blocks.push({
-        id: `${porterId}-off-duty-before`,
-        type: 'off-duty',
-        leftPercent: leftPercent,
-        widthPercent: widthPercent,
-        label: 'Off Duty',
-        tooltip: `Off Duty: ${shiftStartHour}:00 - ${contractedStartHour}:00`
-      });
-    }
+  // Create a timeline array representing each hour slot and what should be displayed
+  const timelineSlots = [];
+  for (let i = 0; i < totalHours; i++) {
+    const hour = timelineHours.value[i].hour;
+    timelineSlots.push({
+      hour: hour,
+      index: i,
+      status: 'available', // default status
+      label: 'Available',
+      tooltip: '',
+      priority: 10 // higher number = lower priority (available is lowest priority)
+    });
   }
   
-  // 2. Process assignments using hour-based positioning
-  allAssignments.forEach((assignment, index) => {
-    const startHour = parseInt(assignment.startTime.split(':')[0]);
-    const endHour = parseInt(assignment.endTime.split(':')[0]);
-    
-    const startIndex = findHourIndex(startHour);
-    const endIndex = findHourIndex(endHour);
-    
-    console.log(`Processing assignment for porter ${porterId}:`, {
-      assignment,
-      startHour,
-      endHour,
-      startIndex,
-      endIndex,
-      totalHours
-    });
-    
-    if (startIndex >= 0 && endIndex >= 0) {
-      const leftPercent = (startIndex / totalHours) * 100;
-      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
-      
-      console.log(`Assignment positioning:`, {
-        leftPercent,
-        widthPercent,
-        label: assignment.label
-      });
-      
-      if (widthPercent > 0) {
-        const block = {
-          id: `${porterId}-assignment-${assignment.id}`,
-          type: 'allocated',
-          leftPercent: leftPercent,
-          widthPercent: widthPercent,
-          label: assignment.label,
-          tooltip: `${assignment.label}: ${assignment.startTime.substring(0, 5)} - ${assignment.endTime.substring(0, 5)}`,
-          color: assignment.color
-        };
-        console.log(`Adding assignment block:`, block);
-        blocks.push(block);
-      } else {
-        console.warn(`Assignment has zero width - not adding block:`, assignment);
-      }
-    } else {
-      console.warn(`Invalid hour indices for assignment:`, {
-        startHour,
-        endHour,
-        startIndex,
-        endIndex,
-        timelineHours: timelineHours.value.map(h => h.hour),
-        assignmentTimes: `${assignment.startTime} - ${assignment.endTime}`,
-        assignmentLabel: assignment.label
-      });
+  // 1. First, mark off-duty periods (lower priority than assignments but higher than available)
+  timelineSlots.forEach(slot => {
+    if (slot.hour < contractedStartHour || slot.hour >= contractedEndHour) {
+      slot.status = 'off-duty';
+      slot.label = 'Off Duty';
+      slot.tooltip = `Off Duty: ${slot.hour}:00`;
+      slot.priority = 8;
     }
   });
   
-  // 3. Add availability blocks for gaps between assignments and remaining time
-  let currentHourIndex = Math.max(0, contractedStartIndex >= 0 ? contractedStartIndex : 0);
-  const contractedEndIndex = findHourIndex(contractedEndHour);
-  const effectiveEndIndex = contractedEndIndex >= 0 ? contractedEndIndex : totalHours;
+  // 2. Get and process all assignments
+  const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
+  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
   
-  // Sort assignments by hour index for gap detection
-  const sortedByHour = allAssignments
-    .map(a => ({
-      ...a,
-      startIndex: findHourIndex(parseInt(a.startTime.split(':')[0])),
-      endIndex: findHourIndex(parseInt(a.endTime.split(':')[0]))
-    }))
-    .filter(a => a.startIndex >= 0 && a.endIndex >= 0)
-    .sort((a, b) => a.startIndex - b.startIndex);
+  console.log(`Found ${departmentAssignments.length} department assignments for porter ${porterId}:`, departmentAssignments);
+  console.log(`Found ${serviceAssignments.length} service assignments for porter ${porterId}:`, serviceAssignments);
   
-  if (sortedByHour.length > 0) {
-    // Process gaps between assignments
-    sortedByHour.forEach((assignment, index) => {
-      // Add availability block before this assignment if there's a gap
-      if (currentHourIndex < assignment.startIndex) {
-        const leftPercent = (currentHourIndex / totalHours) * 100;
-        const widthPercent = ((assignment.startIndex - currentHourIndex) / totalHours) * 100;
+  // Process department assignments
+  departmentAssignments.forEach((assignment, index) => {
+    const areaCover = shiftsStore.shiftAreaCoverAssignments?.find(a => a.id === assignment.shift_area_cover_assignment_id);
+    if (areaCover) {
+      const startHour = parseInt(assignment.start_time.split(':')[0]);
+      const endHour = parseInt(assignment.end_time.split(':')[0]);
+      
+      console.log(`Processing department assignment: ${assignment.start_time} - ${assignment.end_time} (hours ${startHour} - ${endHour})`);
+      
+      // Mark all hours in this assignment range
+      timelineSlots.forEach(slot => {
+        if (slot.hour >= startHour && slot.hour < endHour && slot.priority > 5) {
+          slot.status = 'allocated';
+          slot.label = areaCover.department?.name || 'Department';
+          slot.tooltip = `${slot.label}: ${assignment.start_time.substring(0, 5)} - ${assignment.end_time.substring(0, 5)}`;
+          slot.priority = 5;
+          slot.assignmentType = 'department';
+          console.log(`Marked hour ${slot.hour} as allocated to ${slot.label}`);
+        }
+      });
+    } else {
+      console.warn(`No matching area cover found for assignment ID ${assignment.shift_area_cover_assignment_id}`);
+    }
+  });
+  
+  // Process service assignments
+  serviceAssignments.forEach((assignment, index) => {
+    const service = shiftsStore.shiftSupportServiceAssignments?.find(a => a.id === assignment.shift_support_service_assignment_id);
+    if (service) {
+      const startHour = parseInt(assignment.start_time.split(':')[0]);
+      const endHour = parseInt(assignment.end_time.split(':')[0]);
+      
+      console.log(`Processing service assignment: ${assignment.start_time} - ${assignment.end_time} (hours ${startHour} - ${endHour})`);
+      
+      // Mark all hours in this assignment range
+      timelineSlots.forEach(slot => {
+        if (slot.hour >= startHour && slot.hour < endHour && slot.priority > 5) {
+          slot.status = 'allocated';
+          slot.label = service.service?.name || 'Service';
+          slot.tooltip = `${slot.label}: ${assignment.start_time.substring(0, 5)} - ${assignment.end_time.substring(0, 5)}`;
+          slot.priority = 5;
+          slot.assignmentType = 'service';
+          console.log(`Marked hour ${slot.hour} as allocated to ${slot.label}`);
+        }
+      });
+    } else {
+      console.warn(`No matching service found for assignment ID ${assignment.shift_support_service_assignment_id}`);
+    }
+  });
+  
+  // 3. Process absences (highest priority - they override everything)
+  const porterAbsences = [
+    ...(shiftsStore.shiftPorterAbsences?.filter(a => a.porter_id === porterId) || []),
+    ...(historicalAbsences.value?.filter(a => a.porter_id === porterId) || [])
+  ];
+  
+  console.log(`Found ${porterAbsences.length} absences for porter ${porterId}:`, porterAbsences);
+  
+  porterAbsences.forEach((absence, index) => {
+    const startHour = parseInt(absence.start_time.split(':')[0]);
+    const endHour = parseInt(absence.end_time.split(':')[0]);
+    
+    console.log(`Processing absence: ${absence.start_time} - ${absence.end_time} (hours ${startHour} - ${endHour})`);
+    
+    // Mark all hours in this absence range (highest priority)
+    timelineSlots.forEach(slot => {
+      if (slot.hour >= startHour && slot.hour < endHour) {
+        slot.status = 'absent';
+        slot.label = 'Absent';
+        slot.tooltip = `Absent: ${absence.start_time.substring(0, 5)} - ${absence.end_time.substring(0, 5)}${absence.absence_reason ? ` (${absence.absence_reason})` : ''}`;
+        slot.priority = 1; // Highest priority
+        console.log(`Marked hour ${slot.hour} as absent`);
+      }
+    });
+  });
+  
+  // 4. Set building assignments for available slots
+  const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
+  const assignedBuildings = buildingAssignments.map(buildingId => 
+    locationsStore.buildings.find(b => b.id === buildingId)
+  ).filter(Boolean);
+  
+  if (assignedBuildings.length > 0) {
+    timelineSlots.forEach(slot => {
+      if (slot.status === 'available') {
+        slot.label = assignedBuildings[0].name;
+        slot.tooltip = `${assignedBuildings[0].name}: ${slot.hour}:00`;
+      }
+    });
+  }
+  
+  // 5. Convert timeline slots to blocks
+  let currentBlock = null;
+  
+  timelineSlots.forEach((slot, index) => {
+    if (!currentBlock || currentBlock.status !== slot.status || currentBlock.label !== slot.label) {
+      // Start a new block
+      if (currentBlock) {
+        // Finish the previous block
+        const leftPercent = (currentBlock.startIndex / totalHours) * 100;
+        const widthPercent = ((currentBlock.endIndex - currentBlock.startIndex + 1) / totalHours) * 100;
         
         if (widthPercent > 0) {
-          // Check if porter is assigned to any buildings for this time period
-          const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
-          const assignedBuildings = buildingAssignments.map(buildingId => 
-            locationsStore.buildings.find(b => b.id === buildingId)
-          ).filter(Boolean);
-          
-          let label = 'Available';
-          let tooltip = `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`;
-          
-          if (assignedBuildings.length > 0) {
-            // Use the first building's full name
-            label = assignedBuildings[0].name;
-            tooltip = `${assignedBuildings[0].name}: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${timelineHours.value[assignment.startIndex]?.hour}:00`;
-          }
-          
           blocks.push({
-            id: `${porterId}-available-${index}`,
-            type: 'available',
+            id: `${porterId}-${currentBlock.status}-${currentBlock.startIndex}`,
+            type: currentBlock.status,
             leftPercent: leftPercent,
             widthPercent: widthPercent,
-            label: label,
-            tooltip: tooltip
+            label: currentBlock.label,
+            tooltip: currentBlock.tooltip
           });
         }
       }
       
-      currentHourIndex = assignment.endIndex;
-    });
-    
-    // Add final availability block if there's time remaining after last assignment
-    if (currentHourIndex < effectiveEndIndex) {
-      const leftPercent = (currentHourIndex / totalHours) * 100;
-      const widthPercent = ((effectiveEndIndex - currentHourIndex) / totalHours) * 100;
-      
-      if (widthPercent > 0) {
-        // Check if porter is assigned to any buildings for this time period
-        const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
-        const assignedBuildings = buildingAssignments.map(buildingId => 
-          locationsStore.buildings.find(b => b.id === buildingId)
-        ).filter(Boolean);
-        
-        let label = 'Available';
-        let tooltip = `Available: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
-        
-        if (assignedBuildings.length > 0) {
-          // Use the first building's full name
-          label = assignedBuildings[0].name;
-          tooltip = `${assignedBuildings[0].name}: ${timelineHours.value[currentHourIndex]?.hour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
-        }
-        
-        blocks.push({
-          id: `${porterId}-available-final`,
-          type: 'available',
-          leftPercent: leftPercent,
-          widthPercent: widthPercent,
-          label: label,
-          tooltip: tooltip
-        });
-      }
+      // Start new block
+      currentBlock = {
+        status: slot.status,
+        label: slot.label,
+        tooltip: slot.tooltip,
+        startIndex: index,
+        endIndex: index
+      };
+    } else {
+      // Continue current block
+      currentBlock.endIndex = index;
     }
-  } else {
-    // No assignments - create full availability block (this handles the case where assignments were removed)
-    const startIndex = contractedStartIndex >= 0 ? contractedStartIndex : 0;
-    const endIndex = contractedEndIndex >= 0 ? contractedEndIndex : totalHours;
-    
-    if (startIndex < endIndex) {
-      const leftPercent = (startIndex / totalHours) * 100;
-      const widthPercent = ((endIndex - startIndex) / totalHours) * 100;
-      
-      if (widthPercent > 0) {
-        // Check if porter is assigned to any buildings for this time period
-        const buildingAssignments = shiftsStore.getPorterBuildingAssignments(porterId);
-        const assignedBuildings = buildingAssignments.map(buildingId => 
-          locationsStore.buildings.find(b => b.id === buildingId)
-        ).filter(Boolean);
-        
-        let label = 'Available';
-        let tooltip = `Available: ${contractedStartIndex >= 0 ? contractedStartHour : shiftStartHour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
-        
-        if (assignedBuildings.length > 0) {
-          // Use the first building's full name
-          label = assignedBuildings[0].name;
-          tooltip = `${assignedBuildings[0].name}: ${contractedStartIndex >= 0 ? contractedStartHour : shiftStartHour}:00 - ${contractedEndIndex >= 0 ? contractedEndHour : shiftEndHour}:00`;
-        }
-        
-        blocks.push({
-          id: `${porterId}-available-all`,
-          type: 'available',
-          leftPercent: leftPercent,
-          widthPercent: widthPercent,
-          label: label,
-          tooltip: tooltip
-        });
-      }
-    }
-  }
+  });
   
-  // 4. Add off-duty block after contracted hours (if any)
-  if (contractedEndIndex >= 0 && contractedEndIndex < totalHours - 1) {
-    const leftPercent = (contractedEndIndex / totalHours) * 100;
-    const widthPercent = (((totalHours - 1) - contractedEndIndex) / totalHours) * 100;
+  // Don't forget the last block
+  if (currentBlock) {
+    const leftPercent = (currentBlock.startIndex / totalHours) * 100;
+    const widthPercent = ((currentBlock.endIndex - currentBlock.startIndex + 1) / totalHours) * 100;
     
     if (widthPercent > 0) {
       blocks.push({
-        id: `${porterId}-off-duty-after`,
-        type: 'off-duty',
+        id: `${porterId}-${currentBlock.status}-${currentBlock.startIndex}`,
+        type: currentBlock.status,
         leftPercent: leftPercent,
         widthPercent: widthPercent,
-        label: 'Off Duty',
-        tooltip: `Off Duty: ${contractedEndHour}:00 - ${shiftEndHour}:00`
+        label: currentBlock.label,
+        tooltip: currentBlock.tooltip
       });
     }
   }
+  
+  console.log(`Generated ${blocks.length} blocks for porter ${porterId}:`, blocks);
   
   return blocks;
 };
@@ -1234,6 +1142,13 @@ watch(timelineHours, () => {
           background-color: #6c757d; /* Same styling as allocated */
           color: white;
           border: 1px solid #495057;
+          font-weight: 600;
+        }
+        
+        &.block-absent {
+          background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+          color: #c62828;
+          border: 1px solid #ef9a9a;
           font-weight: 600;
         }
         
