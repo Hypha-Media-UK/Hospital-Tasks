@@ -1258,6 +1258,13 @@ watch(timelineHours, () => {
     margin: 0.5in;
   }
   
+  /* Force browsers to print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
   /* Hide screen-only elements */
   .sitrep-header {
     display: none !important;
@@ -1429,41 +1436,56 @@ watch(timelineHours, () => {
     page-break-inside: avoid !important;
   }
   
-  /* Force black and white printing for better contrast */
+  /* Print styles that match screen version exactly with border fallbacks */
   .timeline-block {
     &.block-available {
-      background-color: #f8f9fa !important;
-      color: #495057 !important;
-      border: 1px solid #dee2e6 !important;
+      background-color: #adb5bd !important; /* Match screen: light grey */
+      color: white !important;
+      font-weight: 600 !important;
+      border: 2px solid #6c757d !important; /* Fallback border for visibility */
     }
     
     &.block-allocated {
-      background-color: #808080 !important;
-      color: white !important;
-      border: 1px solid #666666 !important;
+      background-color: #dee2e6 !important; /* Match screen: medium light grey */
+      color: #495057 !important;
+      font-weight: 500 !important;
+      border: 2px solid #adb5bd !important; /* Fallback border for visibility */
     }
     
     &.block-off-duty {
-      background-color: #6c757d !important;
-      color: white !important;
-      border: 1px solid #495057 !important;
+      background-color: #ffffff !important; /* Match screen: white */
+      color: #adb5bd !important; /* Match screen: light grey text */
+      font-weight: 500 !important;
+      border: 2px dotted #adb5bd !important; /* Dotted border to distinguish from others */
+    }
+    
+    &.block-absent {
+      background-color: #ffffff !important; /* Match screen: white */
+      color: #adb5bd !important; /* Match screen: light grey text */
+      font-weight: 500 !important;
+      border: 2px dashed #6c757d !important; /* Dashed border to distinguish absences */
     }
   }
   
   .legend-box {
     &.available {
-      background-color: #f8f9fa !important;
-      border-color: #dee2e6 !important;
+      background-color: #adb5bd !important; /* Match screen */
+      border-color: #adb5bd !important;
     }
     
     &.allocated {
-      background-color: #808080 !important;
-      border-color: #666666 !important;
+      background-color: #dee2e6 !important; /* Match screen */
+      border-color: #dee2e6 !important;
     }
     
     &.off-duty {
-      background-color: #6c757d !important;
-      border-color: #495057 !important;
+      background-color: #ffffff !important; /* Match screen */
+      border-color: #dee2e6 !important;
+    }
+    
+    &.absent {
+      background-color: #ffffff !important; /* Match screen */
+      border-color: #dee2e6 !important;
     }
   }
 }
