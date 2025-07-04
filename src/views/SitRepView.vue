@@ -1122,33 +1122,28 @@ watch(timelineHours, () => {
         overflow: hidden;
         min-width: 20px;
         padding-left: 0.5rem;
-        border-radius: 3px;
         
         &.block-available {
-          background-color: #6c757d; /* Medium grey */
+          background-color: #adb5bd; /* Lighter grey */
           color: white;
-          border: 1px solid #495057;
           font-weight: 600;
         }
         
         &.block-allocated {
           background-color: #f8f9fa; /* Very light grey */
           color: #6c757d;
-          border: 1px solid #dee2e6;
           font-weight: 500;
         }
         
         &.block-off-duty {
           background-color: #ffffff; /* White background */
           color: #adb5bd; /* Light grey text */
-          border: 1px solid #dee2e6; /* Light border */
           font-weight: 500;
         }
         
         &.block-absent {
           background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
           color: #c62828;
-          border: 1px solid #ef9a9a;
           font-weight: 600;
         }
         
@@ -1202,8 +1197,8 @@ watch(timelineHours, () => {
         border-radius: 4px;
         
         &.available {
-          background-color: #6c757d;
-          border-color: #495057;
+          background-color: #adb5bd;
+          border-color: #adb5bd;
         }
         
         &.allocated {
