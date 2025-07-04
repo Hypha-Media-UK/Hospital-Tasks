@@ -1125,24 +1125,24 @@ watch(timelineHours, () => {
         border-radius: 3px;
         
         &.block-available {
-          background-color: #f8f9fa; /* Very light grey */
-          color: #6c757d;
-          border: 1px solid #dee2e6;
-          font-weight: 500;
-        }
-        
-        &.block-allocated {
           background-color: #6c757d; /* Medium grey */
           color: white;
           border: 1px solid #495057;
           font-weight: 600;
         }
         
+        &.block-allocated {
+          background-color: #f8f9fa; /* Very light grey */
+          color: #6c757d;
+          border: 1px solid #dee2e6;
+          font-weight: 500;
+        }
+        
         &.block-off-duty {
-          background-color: #6c757d; /* Same styling as allocated */
-          color: white;
-          border: 1px solid #495057;
-          font-weight: 600;
+          background-color: #ffffff; /* White background */
+          color: #adb5bd; /* Light grey text */
+          border: 1px solid #dee2e6; /* Light border */
+          font-weight: 500;
         }
         
         &.block-absent {
@@ -1202,18 +1202,18 @@ watch(timelineHours, () => {
         border-radius: 4px;
         
         &.available {
-          background-color: #f8f9fa;
-          border-color: #dee2e6;
-        }
-        
-        &.allocated {
           background-color: #6c757d;
           border-color: #495057;
         }
         
+        &.allocated {
+          background-color: #f8f9fa;
+          border-color: #dee2e6;
+        }
+        
         &.off-duty {
-          background-color: #6c757d; /* Same styling as allocated */
-          border-color: #495057;
+          background-color: #ffffff; /* White background */
+          border-color: #dee2e6; /* Light border */
         }
         
         &.absent {
