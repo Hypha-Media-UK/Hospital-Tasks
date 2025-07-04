@@ -1130,8 +1130,8 @@ watch(timelineHours, () => {
         }
         
         &.block-allocated {
-          background-color: #f8f9fa; /* Very light grey */
-          color: #6c757d;
+          background-color: #dee2e6; /* Medium light grey */
+          color: #495057;
           font-weight: 500;
         }
         
@@ -1202,7 +1202,7 @@ watch(timelineHours, () => {
         }
         
         &.allocated {
-          background-color: #f8f9fa;
+          background-color: #dee2e6;
           border-color: #dee2e6;
         }
         
