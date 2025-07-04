@@ -1142,9 +1142,9 @@ watch(timelineHours, () => {
         }
         
         &.block-absent {
-          background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-          color: #c62828;
-          font-weight: 600;
+          background-color: #ffffff; /* White background like off-duty */
+          color: #adb5bd; /* Light grey text like off-duty */
+          font-weight: 500;
         }
         
         .block-label {
@@ -1212,8 +1212,8 @@ watch(timelineHours, () => {
         }
         
         &.absent {
-          background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-          border-color: #ef9a9a;
+          background-color: #ffffff; /* White background like off-duty */
+          border-color: #dee2e6; /* Light border like off-duty */
         }
       }
     }
