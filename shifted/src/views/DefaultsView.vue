@@ -58,28 +58,13 @@ import SettingsTabs from '../components/settings/SettingsTabs.vue'
 import AreaSupportManagement from '../components/support-services/AreaSupportManagement.vue'
 import StaffManagement from '../components/staff/StaffManagement.vue'
 import LocationsManagement from '../components/locations/LocationsManagement.vue'
+import TaskTypesManagement from '../components/task-types/TaskTypesManagement.vue'
 
 // Import icons
 import StarIcon from '../components/icons/StarIcon.vue'
 import MapPinIcon from '../components/icons/MapPinIcon.vue'
 import TaskIcon from '../components/icons/TaskIcon.vue'
 import SettingsIcon from '../components/icons/SettingsIcon.vue'
-
-// Placeholder components - will be created next
-
-const TaskTypesManagement = {
-  render() {
-    return h('div', { class: 'placeholder-section' }, [
-      h('h3', '📋 Task Types Management'),
-      h('p', 'Define task categories and specific task items.'),
-      h('div', { class: 'placeholder-cards' }, [
-        h('div', { class: 'placeholder-card' }, 'Task Categories'),
-        h('div', { class: 'placeholder-card' }, 'Task Items'),
-        h('div', { class: 'placeholder-card' }, 'Department Assignments')
-      ])
-    ])
-  }
-}
 
 
 const managementTabs = computed(() => [
