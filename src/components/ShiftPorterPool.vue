@@ -948,6 +948,7 @@ onMounted(async () => {
 .porter-card {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   padding: 12px 16px;
   position: relative; /* For absolute positioning of the badge */
   background-color: white;
