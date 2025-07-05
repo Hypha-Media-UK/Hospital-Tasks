@@ -151,21 +151,21 @@
                   {{ building.abbreviation || building.name }}
                 </button>
               </div>
+              
+              <div class="porter-card__actions">
+                <button 
+                  @click="removePorter(entry.id)" 
+                  class="btn btn--icon btn--danger"
+                  title="Remove porter from shift"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div class="porter-card__actions">
-          <button 
-            @click="removePorter(entry.id)" 
-            class="btn btn--icon btn--danger"
-            title="Remove porter from shift"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
         </div>
       </div>
     </div>
@@ -947,7 +947,7 @@ onMounted(async () => {
 
 .porter-card {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 12px 16px;
   position: relative; /* For absolute positioning of the badge */
   background-color: white;
@@ -1153,6 +1153,9 @@ onMounted(async () => {
       margin-top: 12px;
       padding-top: 8px;
       border-top: 1px dashed rgba(66, 133, 244, 0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
     }
     
     
@@ -1160,6 +1163,7 @@ onMounted(async () => {
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
+      flex: 1;
     }
     
     .building-badge {
@@ -1192,7 +1196,8 @@ onMounted(async () => {
   
   &__actions {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    margin-left: 8px;
   }
 }
 
@@ -1395,7 +1400,7 @@ onMounted(async () => {
   }
   
   &--icon {
-    padding: 6px;
+    padding: 2px;
     background: transparent;
     
     .icon {

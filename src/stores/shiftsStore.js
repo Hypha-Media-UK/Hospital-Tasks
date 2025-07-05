@@ -2773,6 +2773,17 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        // Get the current shift to find the old supervisor
+        const { data: currentShift, error: fetchError } = await supabase
+          .from('shifts')
+          .select('supervisor_id')
+          .eq('id', shiftId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        
+        const oldSupervisorId = currentShift?.supervisor_id;
+        
         // Update the shift with new supervisor
         const { data, error } = await supabase
           .from('shifts')
@@ -2785,6 +2796,59 @@ export const useShiftsStore = defineStore('shifts', {
           .single();
         
         if (error) throw error;
+        
+        // Update porter pool supervisor flags
+        if (oldSupervisorId && oldSupervisorId !== supervisorId) {
+          // Remove old supervisor from porter pool entirely (they were auto-added when shift was created)
+          await supabase
+            .from('shift_porter_pool')
+            .delete()
+            .eq('shift_id', shiftId)
+            .eq('porter_id', oldSupervisorId)
+            .eq('is_supervisor', true);
+          
+          // Remove from local state
+          this.shiftPorterPool = this.shiftPorterPool.filter(
+            p => !(p.shift_id === shiftId && p.porter_id === oldSupervisorId && p.is_supervisor)
+          );
+        }
+        
+        // Check if new supervisor is already in porter pool as a regular porter
+        const existingPorterEntry = this.shiftPorterPool.find(
+          p => p.shift_id === shiftId && p.porter_id === supervisorId && !p.is_supervisor
+        );
+        
+        if (existingPorterEntry) {
+          // Update existing regular porter entry to be supervisor
+          await supabase
+            .from('shift_porter_pool')
+            .update({ is_supervisor: true })
+            .eq('id', existingPorterEntry.id);
+          
+          // Update local state
+          existingPorterEntry.is_supervisor = true;
+        } else {
+          // Add new supervisor to porter pool
+          const { data: newPorterEntry, error: porterError } = await supabase
+            .from('shift_porter_pool')
+            .insert({
+              shift_id: shiftId,
+              porter_id: supervisorId,
+              is_supervisor: true
+            })
+            .select(`
+              *,
+              porter:porter_id(id, first_name, last_name)
+            `)
+            .single();
+          
+          if (porterError) throw porterError;
+          
+          // Add to local state
+          if (newPorterEntry) {
+            this.shiftPorterPool.push(newPorterEntry);
+          }
+        }
         
         // Update local state
         if (this.currentShift && this.currentShift.id === shiftId) {
