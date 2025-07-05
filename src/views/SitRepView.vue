@@ -67,9 +67,6 @@
                 <div class="porter-name-text">
                   {{ porter.porter.first_name }} {{ porter.porter.last_name }}
                 </div>
-                <div class="porter-hours">
-                  {{ formatPorterHours(porter.porter_id) }}
-                </div>
               </div>
               <div class="porter-timeline">
                 <div 
@@ -1370,8 +1367,8 @@ watch(timelineHours, () => {
       
       .porter-name {
         padding: 0.5rem !important;
-        font-size: 10pt !important;
-        min-height: 50px !important;
+        font-size: 9pt !important;
+        min-height: 40px !important;
         
         .porter-name-text {
           margin-bottom: 0.2rem !important;
@@ -1384,14 +1381,14 @@ watch(timelineHours, () => {
       }
       
       .porter-timeline {
-        min-height: 50px !important;
+        min-height: 40px !important;
         
         .timeline-block {
-          top: 6px !important;
-          bottom: 6px !important;
+          top: 5px !important;
+          bottom: 5px !important;
           font-size: 8pt !important;
           padding-left: 0.3rem !important;
-          border-radius: 2px !important;
+          border-radius: 0 !important;
           
           .block-label {
             line-height: 1.1 !important;
@@ -1438,54 +1435,57 @@ watch(timelineHours, () => {
   
   /* Print styles that match screen version exactly with border fallbacks */
   .timeline-block {
+    border-right: 1px solid #fff !important;
     &.block-available {
       background-color: #adb5bd !important; /* Match screen: light grey */
       color: white !important;
       font-weight: 600 !important;
-      border: 2px solid #6c757d !important; /* Fallback border for visibility */
+      margin-left: 2px !important;
+      // border: 2px solid #6c757d !important; /* Fallback border for visibility */
     }
     
     &.block-allocated {
       background-color: #dee2e6 !important; /* Match screen: medium light grey */
       color: #495057 !important;
       font-weight: 500 !important;
-      border: 2px solid #adb5bd !important; /* Fallback border for visibility */
+      // border: 2px solid #adb5bd !important; /* Fallback border for visibility */
     }
     
     &.block-off-duty {
       background-color: #ffffff !important; /* Match screen: white */
       color: #adb5bd !important; /* Match screen: light grey text */
       font-weight: 500 !important;
-      border: 2px dotted #adb5bd !important; /* Dotted border to distinguish from others */
+      margin-right: 2px !important;
+      // border: 2px dotted #adb5bd !important; /* Dotted border to distinguish from others */
     }
     
     &.block-absent {
       background-color: #ffffff !important; /* Match screen: white */
       color: #adb5bd !important; /* Match screen: light grey text */
       font-weight: 500 !important;
-      border: 2px dashed #6c757d !important; /* Dashed border to distinguish absences */
+      // border: 2px dashed #6c757d !important; /* Dashed border to distinguish absences */
     }
   }
   
   .legend-box {
     &.available {
       background-color: #adb5bd !important; /* Match screen */
-      border-color: #adb5bd !important;
+      // border-color: #adb5bd !important;
     }
     
     &.allocated {
       background-color: #dee2e6 !important; /* Match screen */
-      border-color: #dee2e6 !important;
+      // border-color: #dee2e6 !important;
     }
     
     &.off-duty {
       background-color: #ffffff !important; /* Match screen */
-      border-color: #dee2e6 !important;
+      // border-color: #dee2e6 !important;
     }
     
     &.absent {
       background-color: #ffffff !important; /* Match screen */
-      border-color: #dee2e6 !important;
+      // border-color: #dee2e6 !important;
     }
   }
 }
