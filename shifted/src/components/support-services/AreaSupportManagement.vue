@@ -5,48 +5,46 @@
       <p>Manage support services and area coverage assignments</p>
     </div>
 
-    <div class="management-tabs">
-      <BaseTabs
-        :tabs="shiftTypeTabs"
-        default-tab="week_day"
-        query-param="support-tab"
-        @tab-change="handleTabChange"
-      >
-        <template #default="{ activeTab }">
-          <div class="tab-content">
-            <SupportServicesList :shift-type="activeTab as ShiftType" />
-          </div>
-        </template>
-      </BaseTabs>
+    <!-- Area Coverage Section -->
+    <div class="settings-section area-cover-section">
+      <h4>Area Coverage</h4>
+      <p class="section-description">
+        Configure departments that require porter coverage during shifts.
+        These settings will be used as defaults when creating new shifts.
+      </p>
+
+      <AreaCoverTabs />
+    </div>
+
+    <!-- Support Services Section -->
+    <div class="settings-section support-services-section">
+      <h4>Service Coverage</h4>
+      <p class="section-description">
+        Configure support services that require porter coverage during shifts.
+        These settings will be used as defaults when creating new shifts.
+      </p>
+
+      <SupportServicesTabs />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useSupportServicesStore } from '../../stores/supportServicesStore'
-import BaseTabs from '../ui/BaseTabs.vue'
-import SupportServicesList from './SupportServicesList.vue'
-import DayShiftIcon from '../icons/DayShiftIcon.vue'
-import NightShiftIcon from '../icons/NightShiftIcon.vue'
-import type { ShiftType } from '../../types/supportServices'
+import { useAreaCoverStore } from '../../stores/areaCoverStore'
+import AreaCoverTabs from '../area-cover/AreaCoverTabs.vue'
+import SupportServicesTabs from './SupportServicesTabs.vue'
 
 const supportServicesStore = useSupportServicesStore()
-
-const shiftTypeTabs = computed(() => [
-  { id: 'week_day', label: 'Week Days', icon: DayShiftIcon },
-  { id: 'week_night', label: 'Week Nights', icon: NightShiftIcon },
-  { id: 'weekend_day', label: 'Weekend Days', icon: DayShiftIcon },
-  { id: 'weekend_night', label: 'Weekend Nights', icon: NightShiftIcon }
-])
-
-const handleTabChange = (tabId: string) => {
-  // Handle any tab-specific logic here if needed
-}
+const areaCoverStore = useAreaCoverStore()
 
 onMounted(async () => {
-  // Initialize the store data
-  await supportServicesStore.initialize()
+  // Initialize both stores
+  await Promise.all([
+    supportServicesStore.initialize(),
+    areaCoverStore.initialize()
+  ])
 })
 </script>
 
@@ -61,23 +59,36 @@ onMounted(async () => {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: var(--spacing-sm);
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 .section-header p {
-  color: var(--color-text-light);
+  color: var(--color-text-secondary);
   margin-bottom: 0;
 }
 
-.management-tabs {
-  background: var(--color-background);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  overflow: hidden;
+.settings-section {
+  margin-bottom: var(--spacing-xl);
 }
 
-.tab-content {
-  padding: var(--spacing-lg);
-  min-height: 400px;
+.settings-section h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+}
+
+.section-description {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.5;
+}
+
+.area-cover-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.support-services-section {
+  margin-bottom: var(--spacing-xl);
 }
 </style>
