@@ -36,83 +36,77 @@
     </div>
 
     <!-- Add Building Modal -->
-    <div v-if="showAddBuildingModal" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Add Building</h3>
-          <button class="modal-close" @click="closeAddBuildingModal">&times;</button>
+    <BaseModal
+      v-if="showAddBuildingModal"
+      title="Add Building"
+      size="md"
+      show-footer
+      @close="closeAddBuildingModal"
+    >
+      <form @submit.prevent="addBuilding">
+        <div class="form-group">
+          <label for="buildingName">Building Name</label>
+          <input
+            id="buildingName"
+            v-model="buildingForm.name"
+            type="text"
+            required
+            class="form-control"
+            placeholder="Enter building name"
+            ref="buildingNameInput"
+          />
         </div>
+      </form>
 
-        <div class="modal-body">
-          <form @submit.prevent="addBuilding">
-            <div class="form-group">
-              <label for="buildingName">Building Name</label>
-              <input
-                id="buildingName"
-                v-model="buildingForm.name"
-                type="text"
-                required
-                class="form-control"
-                placeholder="Enter building name"
-                ref="buildingNameInput"
-              />
-            </div>
-
-            <div class="form-actions">
-              <BaseButton variant="secondary" @click="closeAddBuildingModal">
-                Cancel
-              </BaseButton>
-              <BaseButton
-                variant="primary"
-                type="submit"
-                :disabled="!buildingForm.name.trim() || locationsStore.loading.buildings"
-              >
-                {{ locationsStore.loading.buildings ? 'Adding...' : 'Add Building' }}
-              </BaseButton>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <BaseButton variant="secondary" @click="closeAddBuildingModal">
+          Cancel
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          @click="addBuilding"
+          :disabled="!buildingForm.name.trim() || locationsStore.loading.buildings"
+        >
+          {{ locationsStore.loading.buildings ? 'Adding...' : 'Add Building' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- Edit Building Modal -->
-    <div v-if="showEditBuildingModal" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Edit Building</h3>
-          <button class="modal-close" @click="closeEditBuildingModal">&times;</button>
+    <BaseModal
+      v-if="showEditBuildingModal"
+      title="Edit Building"
+      size="md"
+      show-footer
+      @close="closeEditBuildingModal"
+    >
+      <form @submit.prevent="updateBuilding">
+        <div class="form-group">
+          <label for="editBuildingName">Building Name</label>
+          <input
+            id="editBuildingName"
+            v-model="editBuildingForm.name"
+            type="text"
+            required
+            class="form-control"
+            placeholder="Enter building name"
+          />
         </div>
+      </form>
 
-        <div class="modal-body">
-          <form @submit.prevent="updateBuilding">
-            <div class="form-group">
-              <label for="editBuildingName">Building Name</label>
-              <input
-                id="editBuildingName"
-                v-model="editBuildingForm.name"
-                type="text"
-                required
-                class="form-control"
-                placeholder="Enter building name"
-              />
-            </div>
-
-            <div class="form-actions">
-              <BaseButton variant="secondary" @click="closeEditBuildingModal">
-                Cancel
-              </BaseButton>
-              <BaseButton
-                variant="primary"
-                type="submit"
-                :disabled="!editBuildingForm.name.trim() || locationsStore.loading.buildings"
-              >
-                {{ locationsStore.loading.buildings ? 'Updating...' : 'Update Building' }}
-              </BaseButton>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+      <template #footer>
+        <BaseButton variant="secondary" @click="closeEditBuildingModal">
+          Cancel
+        </BaseButton>
+        <BaseButton
+          variant="primary"
+          @click="updateBuilding"
+          :disabled="!editBuildingForm.name.trim() || locationsStore.loading.buildings"
+        >
+          {{ locationsStore.loading.buildings ? 'Updating...' : 'Update Building' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -120,6 +114,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useLocationsStore } from '../../stores/locationsStore'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseModal from '../ui/BaseModal.vue'
 import BuildingCard from './BuildingCard.vue'
 import PlusIcon from '../icons/PlusIcon.vue'
 import MapPinIcon from '../icons/MapPinIcon.vue'
@@ -285,65 +280,7 @@ onMounted(async () => {
   gap: var(--spacing);
 }
 
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-container {
-  background-color: var(--color-background);
-  border-radius: var(--radius-lg);
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  color: var(--color-text-light);
-}
-
-.modal-close:hover {
-  color: var(--color-text);
-}
-
-.modal-body {
-  padding: var(--spacing-lg);
-  overflow-y: auto;
-  flex: 1;
-}
-
+/* Form styles */
 .form-group {
   margin-bottom: var(--spacing);
 }
@@ -367,12 +304,5 @@ onMounted(async () => {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px var(--color-primary-light);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing);
-  margin-top: var(--spacing-lg);
 }
 </style>
