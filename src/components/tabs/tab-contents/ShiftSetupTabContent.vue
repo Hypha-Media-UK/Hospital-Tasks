@@ -4,9 +4,6 @@
     <div class="shift-porter-section">
       <div class="section-header">
         <h3 class="section-title">Shift Porters</h3>
-        <button class="btn btn-primary" @click="porterPoolRef?.openPorterSelector()">
-          Add Porter
-        </button>
       </div>
       <ShiftPorterPool 
         :shift-id="shiftId" 

@@ -11,7 +11,7 @@
     </div>
     
     <div v-else-if="sortedPorterPool.length === 0 && supervisors.length === 0" class="empty-state">
-      No porters assigned to this shift yet. Add porters using the button above.
+      No porters assigned to this shift yet. Click "Add Porter" to get started.
     </div>
     
     <!-- Supervisors Section -->
@@ -52,27 +52,6 @@
                 <div class="assignment-item" style="background-color: rgba(128, 128, 128, 0.15);">
                   Supervisor
                 </div>
-              </div>
-              
-            <!-- Scheduled Absences Section -->
-            <div v-if="getPorterAbsences(entry.porter_id).length > 0" class="absences-section">
-              <div class="absences-title">Scheduled Absences</div>
-              <div v-for="absence in getPorterAbsences(entry.porter_id)" :key="absence.id" 
-                   class="absence-item">
-                <div class="absence-details">
-                  {{ absence.absence_reason || 'Absence' }}: {{ formatTime(absence.start_time) }} - {{ formatTime(absence.end_time) }}
-                  <button 
-                    @click.stop="removeAbsence(absence.id)" 
-                    class="btn btn--icon btn--danger btn--small"
-                    title="Remove absence"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                </div>
-              </div>
             </div>
             </div>
           </div>
@@ -94,26 +73,32 @@
     <div v-if="sortedPorterPool.length > 0" class="porters-section">
       <h4 v-if="supervisors.length > 0" class="section-title">Porters</h4>
       
-      <!-- Filter controls -->
+      <!-- Filter controls with Add Porter button -->
       <div class="filter-controls">
-      <div class="filter-label">Sort by:</div>
-      <div class="filter-options">
-        <button 
-          class="filter-btn" 
-          :class="{ active: sortFilter === 'alphabetical' }"
-          @click="sortFilter = 'alphabetical'"
-        >
-          A-Z
-        </button>
-        <button 
-          class="filter-btn" 
-          :class="{ active: sortFilter === 'available' }"
-          @click="sortFilter = 'available'"
-        >
-          Available
+        <div class="filter-left">
+          <div class="filter-label">Sort by:</div>
+          <div class="filter-options">
+            <button 
+              class="filter-btn" 
+              :class="{ active: sortFilter === 'alphabetical' }"
+              @click="sortFilter = 'alphabetical'"
+            >
+              A-Z
+            </button>
+            <button 
+              class="filter-btn" 
+              :class="{ active: sortFilter === 'available' }"
+              @click="sortFilter = 'available'"
+            >
+              Available
+            </button>
+          </div>
+        </div>
+        
+        <button class="btn btn--primary" @click="openPorterSelector">
+          Add Porter
         </button>
       </div>
-    </div>
     
     <div v-if="sortedPorterPool.length > 0" class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
@@ -149,27 +134,6 @@
             <div v-else class="assignments-list">
               <div class="assignment-item" style="background-color: rgba(128, 128, 128, 0.15);">
                 Runner
-              </div>
-            </div>
-            
-            <!-- Scheduled Absences Section -->
-            <div v-if="getPorterAbsences(entry.porter_id).length > 0" class="absences-section">
-              <div class="absences-title">Scheduled Absences</div>
-              <div v-for="absence in getPorterAbsences(entry.porter_id)" :key="absence.id" 
-                   class="absence-item">
-                <div class="absence-details">
-                  {{ absence.absence_reason || 'Absence' }}: {{ formatTime(absence.start_time) }} - {{ formatTime(absence.end_time) }}
-                  <button 
-                    @click.stop="removeAbsence(absence.id)" 
-                    class="btn btn--icon btn--danger btn--small"
-                    title="Remove absence"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M3 6h18"></path>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                  </button>
-                </div>
               </div>
             </div>
             
@@ -922,10 +886,16 @@ onMounted(async () => {
 /* Filter controls styling */
 .filter-controls {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
   padding: 0 0 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.filter-left {
+  display: flex;
+  align-items: center;
 }
 
 .filter-label {
@@ -1450,8 +1420,15 @@ onMounted(async () => {
 }
 
 .porters-section {
-  .section-title {
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 16px;
+  }
+  
+  .section-title {
+    margin: 0;
   }
 }
 
