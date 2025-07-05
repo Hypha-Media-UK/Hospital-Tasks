@@ -1400,7 +1400,7 @@ onMounted(async () => {
   }
   
   &--icon {
-    padding: 2px;
+    padding: 0;
     background: transparent;
     
     .icon {
