@@ -34,40 +34,39 @@
     </div>
 
     <!-- Add Task Type Modal -->
-    <div v-if="showAddModal" class="modal-overlay" @click="closeAddModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>Add Task Type</h3>
-          <button class="close-button" @click="closeAddModal">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="taskTypeName">Task Type Name</label>
-            <input
-              id="taskTypeName"
-              v-model="newTaskTypeName"
-              type="text"
-              placeholder="Enter task type name"
-              @keyup.enter="addTaskType"
-              @keyup.esc="closeAddModal"
-              ref="taskTypeNameInput"
-            />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <BaseButton @click="closeAddModal" variant="secondary">
-            Cancel
-          </BaseButton>
-          <BaseButton
-            @click="addTaskType"
-            variant="primary"
-            :disabled="!newTaskTypeName.trim() || taskTypesStore.loading.taskTypes"
-          >
-            Add Task Type
-          </BaseButton>
-        </div>
+    <BaseModal
+      v-if="showAddModal"
+      title="Add Task Type"
+      size="md"
+      show-footer
+      @close="closeAddModal"
+    >
+      <div class="form-group">
+        <label for="taskTypeName">Task Type Name</label>
+        <input
+          id="taskTypeName"
+          v-model="newTaskTypeName"
+          type="text"
+          placeholder="Enter task type name"
+          @keyup.enter="addTaskType"
+          @keyup.esc="closeAddModal"
+          ref="taskTypeNameInput"
+        />
       </div>
-    </div>
+
+      <template #footer>
+        <BaseButton @click="closeAddModal" variant="secondary">
+          Cancel
+        </BaseButton>
+        <BaseButton
+          @click="addTaskType"
+          variant="primary"
+          :disabled="!newTaskTypeName.trim() || taskTypesStore.loading.taskTypes"
+        >
+          Add Task Type
+        </BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- Assignment Modal -->
     <AssignmentModal
@@ -85,6 +84,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useTaskTypesStore } from '../../stores/taskTypesStore'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseModal from '../ui/BaseModal.vue'
 import TaskTypeCard from './TaskTypeCard.vue'
 import AssignmentModal from './AssignmentModal.vue'
 import PlusIcon from '../icons/PlusIcon.vue'
@@ -238,70 +238,6 @@ onMounted(async () => {
   gap: var(--spacing-lg);
 }
 
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-lg);
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow: hidden;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--border-radius-sm);
-  transition: all 0.2s ease;
-}
-
-.close-button:hover {
-  background: var(--color-gray-100);
-  color: var(--color-text-primary);
-}
-
-.modal-body {
-  padding: var(--spacing-lg);
-}
-
 .form-group {
   margin-bottom: var(--spacing-md);
 }
@@ -328,25 +264,11 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px var(--color-primary-alpha);
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-gray-50);
-}
-
 @container (max-width: 768px) {
   .header {
     flex-direction: column;
     align-items: stretch;
     gap: var(--spacing-md);
-  }
-
-  .modal {
-    width: 95%;
-    margin: var(--spacing-md);
   }
 }
 </style>

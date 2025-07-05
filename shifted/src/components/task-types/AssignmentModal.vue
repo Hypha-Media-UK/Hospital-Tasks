@@ -1,84 +1,80 @@
 <template>
-  <div class="modal-overlay" @click="closeModal">
-    <div class="modal" @click.stop>
-      <div class="modal-header">
-        <h3>{{ title }}</h3>
-        <button class="close-button" @click="closeModal">×</button>
-      </div>
+  <BaseModal
+    :title="title"
+    size="lg"
+    show-footer
+    @close="closeModal"
+  >
+    <div v-if="loading" class="loading">
+      Loading departments...
+    </div>
 
-      <div class="modal-body">
-        <div v-if="loading" class="loading">
-          Loading departments...
-        </div>
+    <div v-else-if="departments.length === 0" class="empty-state">
+      <p>No departments available. Please add departments first.</p>
+    </div>
 
-        <div v-else-if="departments.length === 0" class="empty-state">
-          <p>No departments available. Please add departments first.</p>
-        </div>
-
-        <div v-else class="assignments-form">
-          <div class="form-description">
-            <p>Select which departments this {{ isTaskType ? 'task type' : 'task item' }} applies to:</p>
-            <div class="legend">
-              <div class="legend-item">
-                <span class="legend-color origin"></span>
-                <span>Origin - Where tasks start</span>
-              </div>
-              <div class="legend-item">
-                <span class="legend-color destination"></span>
-                <span>Destination - Where tasks end</span>
-              </div>
-            </div>
+    <div v-else class="assignments-form">
+      <div class="form-description">
+        <p>Select which departments this {{ isTaskType ? 'task type' : 'task item' }} applies to:</p>
+        <div class="legend">
+          <div class="legend-item">
+            <span class="legend-color origin"></span>
+            <span>Origin - Where tasks start</span>
           </div>
-
-          <div class="departments-list">
-            <div
-              v-for="department in departments"
-              :key="department.id"
-              class="department-row"
-            >
-              <div class="department-info">
-                <span class="department-name">{{ department.name }}</span>
-                <span class="building-name">{{ getBuildingName(department.building_id) }}</span>
-              </div>
-
-              <div class="assignment-controls">
-                <label class="checkbox-label">
-                  <input
-                    type="checkbox"
-                    :checked="getAssignment(department.id).is_origin"
-                    @change="updateAssignment(department.id, 'is_origin', ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span class="checkbox-text">Origin</span>
-                </label>
-
-                <label class="checkbox-label">
-                  <input
-                    type="checkbox"
-                    :checked="getAssignment(department.id).is_destination"
-                    @change="updateAssignment(department.id, 'is_destination', ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span class="checkbox-text">Destination</span>
-                </label>
-              </div>
-            </div>
+          <div class="legend-item">
+            <span class="legend-color destination"></span>
+            <span>Destination - Where tasks end</span>
           </div>
         </div>
       </div>
 
-      <div class="modal-footer">
-        <BaseButton @click="closeModal" variant="secondary">
-          Cancel
-        </BaseButton>
-        <BaseButton
-          @click="saveAssignments"
-          variant="primary"
-          :disabled="saving"
+      <div class="departments-list">
+        <div
+          v-for="department in departments"
+          :key="department.id"
+          class="department-row"
         >
-          {{ saving ? 'Saving...' : 'Save Assignments' }}
-        </BaseButton>
+          <div class="department-info">
+            <span class="department-name">{{ department.name }}</span>
+            <span class="building-name">{{ getBuildingName(department.building_id) }}</span>
+          </div>
+
+          <div class="assignment-controls">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                :checked="getAssignment(department.id).is_origin"
+                @change="updateAssignment(department.id, 'is_origin', ($event.target as HTMLInputElement).checked)"
+              />
+              <span class="checkbox-text">Origin</span>
+            </label>
+
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                :checked="getAssignment(department.id).is_destination"
+                @change="updateAssignment(department.id, 'is_destination', ($event.target as HTMLInputElement).checked)"
+              />
+              <span class="checkbox-text">Destination</span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+
+    <template #footer>
+      <BaseButton @click="closeModal" variant="secondary">
+        Cancel
+      </BaseButton>
+      <BaseButton
+        @click="saveAssignments"
+        variant="primary"
+        :disabled="saving"
+      >
+        {{ saving ? 'Saving...' : 'Save Assignments' }}
+      </BaseButton>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
@@ -87,6 +83,7 @@ import { useTaskTypesStore } from '../../stores/taskTypesStore'
 import { useLocationsStore } from '../../stores/locationsStore'
 import type { DepartmentAssignmentData } from '../../types/taskTypes'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseModal from '../ui/BaseModal.vue'
 
 interface Props {
   taskTypeId?: string
@@ -213,74 +210,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: white;
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-lg);
-  width: 90%;
-  max-width: 700px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-gray-50);
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--border-radius-sm);
-  transition: all 0.2s ease;
-}
-
-.close-button:hover {
-  background: var(--color-gray-100);
-  color: var(--color-text-primary);
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-lg);
-}
-
 .loading {
   text-align: center;
   padding: var(--spacing-xl);
@@ -397,21 +326,7 @@ onMounted(async () => {
   user-select: none;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-gray-50);
-}
-
 @media (max-width: 768px) {
-  .modal {
-    width: 95%;
-    margin: var(--spacing-md);
-  }
-
   .legend {
     flex-direction: column;
     gap: var(--spacing-sm);
