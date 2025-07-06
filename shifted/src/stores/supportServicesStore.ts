@@ -347,6 +347,205 @@ export const useSupportServicesStore = defineStore('supportServices', () => {
     }
   }
 
+  const addServiceAssignment = async (serviceId: string, shiftType: ShiftType, startTime: string, endTime: string, color = '#4285F4'): Promise<ServiceAssignment | null> => {
+    loading.value.save = true
+    error.value = null
+
+    try {
+      const { data, error: insertError } = await supabase
+        .from('default_service_cover_assignments')
+        .insert({
+          service_id: serviceId,
+          shift_type: shiftType,
+          start_time: startTime,
+          end_time: endTime,
+          color: color
+        })
+        .select(`
+          *,
+          service:service_id(id, name, description)
+        `)
+
+      if (insertError) throw insertError
+
+      if (data && data.length > 0) {
+        serviceAssignments.value.push(data[0] as ServiceAssignment)
+        return data[0] as ServiceAssignment
+      }
+
+      return null
+    } catch (err) {
+      console.error('Error adding service assignment:', err)
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+      return null
+    } finally {
+      loading.value.save = false
+    }
+  }
+
+  const updateServiceAssignment = async (assignmentId: string, updates: Partial<ServiceAssignment>): Promise<ServiceAssignment | null> => {
+    loading.value.save = true
+    error.value = null
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('default_service_cover_assignments')
+        .update(updates)
+        .eq('id', assignmentId)
+        .select(`
+          *,
+          service:service_id(id, name, description)
+        `)
+
+      if (updateError) throw updateError
+
+      if (data && data.length > 0) {
+        const index = serviceAssignments.value.findIndex(a => a.id === assignmentId)
+        if (index !== -1) {
+          serviceAssignments.value[index] = data[0] as ServiceAssignment
+        }
+        return data[0] as ServiceAssignment
+      }
+
+      return null
+    } catch (err) {
+      console.error('Error updating service assignment:', err)
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+      return null
+    } finally {
+      loading.value.save = false
+    }
+  }
+
+  const deleteServiceAssignment = async (assignmentId: string): Promise<boolean> => {
+    loading.value.save = true
+    error.value = null
+
+    try {
+      // First, delete any porter assignments related to this service assignment
+      const { error: porterError } = await supabase
+        .from('default_service_cover_porter_assignments')
+        .delete()
+        .eq('default_service_cover_assignment_id', assignmentId)
+
+      if (porterError) throw porterError
+
+      // Now delete the service assignment itself
+      const { error: deleteError } = await supabase
+        .from('default_service_cover_assignments')
+        .delete()
+        .eq('id', assignmentId)
+
+      if (deleteError) throw deleteError
+
+      // Remove from state
+      serviceAssignments.value = serviceAssignments.value.filter(a => a.id !== assignmentId)
+      porterAssignments.value = porterAssignments.value.filter(
+        pa => pa.default_service_cover_assignment_id !== assignmentId
+      )
+
+      return true
+    } catch (err) {
+      console.error('Error deleting service assignment:', err)
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+      return false
+    } finally {
+      loading.value.save = false
+    }
+  }
+
+  const addPorterToServiceAssignment = async (assignmentId: string, porterId: string, startTime: string, endTime: string): Promise<PorterAssignment | null> => {
+    loading.value.save = true
+    error.value = null
+
+    try {
+      const { data, error: insertError } = await supabase
+        .from('default_service_cover_porter_assignments')
+        .insert({
+          default_service_cover_assignment_id: assignmentId,
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime
+        })
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name, role)
+        `)
+
+      if (insertError) throw insertError
+
+      if (data && data.length > 0) {
+        porterAssignments.value.push(data[0] as PorterAssignment)
+        return data[0] as PorterAssignment
+      }
+
+      return null
+    } catch (err) {
+      console.error('Error adding porter to service assignment:', err)
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+      return null
+    } finally {
+      loading.value.save = false
+    }
+  }
+
+  const updatePorterAssignment = async (porterAssignmentId: string, updates: Partial<PorterAssignment>): Promise<PorterAssignment | null> => {
+    loading.value.save = true
+    error.value = null
+
+    try {
+      const { data, error: updateError } = await supabase
+        .from('default_service_cover_porter_assignments')
+        .update(updates)
+        .eq('id', porterAssignmentId)
+        .select(`
+          *,
+          porter:porter_id(id, first_name, last_name, role)
+        `)
+
+      if (updateError) throw updateError
+
+      if (data && data.length > 0) {
+        const index = porterAssignments.value.findIndex(pa => pa.id === porterAssignmentId)
+        if (index !== -1) {
+          porterAssignments.value[index] = data[0] as PorterAssignment
+        }
+        return data[0] as PorterAssignment
+      }
+
+      return null
+    } catch (err) {
+      console.error('Error updating porter assignment:', err)
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+      return null
+    } finally {
+      loading.value.save = false
+    }
+  }
+
+  const removePorterAssignment = async (porterAssignmentId: string): Promise<boolean> => {
+    loading.value.save = true
+    error.value = null
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('default_service_cover_porter_assignments')
+        .delete()
+        .eq('id', porterAssignmentId)
+
+      if (deleteError) throw deleteError
+
+      porterAssignments.value = porterAssignments.value.filter(pa => pa.id !== porterAssignmentId)
+      return true
+    } catch (err) {
+      console.error('Error removing porter assignment:', err)
+      error.value = err instanceof Error ? err.message : 'Unknown error'
+      return false
+    } finally {
+      loading.value.save = false
+    }
+  }
+
   const initialize = async (): Promise<void> => {
     await Promise.all([
       fetchServices(),
@@ -377,6 +576,12 @@ export const useSupportServicesStore = defineStore('supportServices', () => {
     addService,
     updateService,
     deleteService,
+    addServiceAssignment,
+    updateServiceAssignment,
+    deleteServiceAssignment,
+    addPorterToServiceAssignment,
+    updatePorterAssignment,
+    removePorterAssignment,
     initialize
   }
 })

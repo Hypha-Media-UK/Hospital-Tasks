@@ -2,8 +2,8 @@
   <BaseListContainer
     :title="`${shiftTypeLabel} Area Coverage`"
     item-type="department"
-    :items="assignments"
-    :loading="areaCoverStore.loading.departments"
+    :items="mockAssignments"
+    :loading="false"
     :loading-text="`Loading ${shiftTypeLabel.toLowerCase()} coverage...`"
   >
     <template #header-actions>
@@ -25,9 +25,9 @@
         :title="assignment.department?.name || 'Unknown Department'"
         :time-range="formatTimeRange(assignment.start_time, assignment.end_time)"
         :minimum-porters="assignment.minimum_porters"
-        :porter-assignments="getFormattedPorterAssignments(assignment.id)"
-        :coverage-status="getFormattedCoverageStatus(assignment.id)"
-        @edit="handleUpdate(assignment.id, {})"
+        :porter-assignments="getPorterAssignments(assignment.id)"
+        :coverage-status="getCoverageStatus(assignment.id)"
+        @edit="handleEdit(assignment)"
         @delete="handleRemove(assignment.id)"
       >
         <template #footer>
@@ -38,53 +38,36 @@
 
     <template #modals>
       <!-- Department Selector Modal -->
-      <BaseModal
+      <DepartmentSelectorModal
         v-if="showDepartmentSelector"
-        title="Add Department to Coverage"
-        size="lg"
-        show-footer
+        :available-departments="mockAvailableDepartments"
+        :buildings-with-departments="mockBuildingsWithDepartments"
+        :shift-type="shiftType"
         @close="showDepartmentSelector = false"
-      >
-        <div class="department-selector">
-          <p>This modal now uses the BaseModal component instead of duplicated CSS!</p>
-          <p>Previously this component had ~100 lines of duplicate modal styles.</p>
+        @add-departments="handleAddDepartments"
+      />
 
-          <div class="building-item">
-            <div class="building-name">Example Building</div>
-            <div class="department-item">
-              <div class="department-name">Example Department</div>
-              <BaseButton size="sm" variant="primary">
-                Add
-              </BaseButton>
-            </div>
-          </div>
-        </div>
-
-        <template #footer>
-          <BaseButton variant="secondary" @click="showDepartmentSelector = false">
-            Cancel
-          </BaseButton>
-          <BaseButton variant="primary">
-            Save
-          </BaseButton>
-        </template>
-      </BaseModal>
+      <!-- Edit Area Assignment Modal -->
+      <EditAreaAssignmentModal
+        v-if="editingAssignment"
+        :assignment="editingAssignment"
+        @close="editingAssignment = null"
+        @save="handleAssignmentSave"
+        @delete="handleAssignmentDelete"
+      />
     </template>
   </BaseListContainer>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useAreaCoverStore } from '../../stores/areaCoverStore'
-import { useLocationsStore } from '../../stores/locationsStore'
-import { useSettingsStore } from '../../stores/settingsStore'
-import { useStaffStore } from '../../stores/staffStore'
+import { ref, computed } from 'vue'
 import BaseButton from '../ui/BaseButton.vue'
-import BaseModal from '../ui/BaseModal.vue'
 import BaseAssignmentCard from '../ui/BaseAssignmentCard.vue'
 import BaseListContainer from '../ui/BaseListContainer.vue'
+import DepartmentSelectorModal from './DepartmentSelectorModal.vue'
+import EditAreaAssignmentModal from './EditAreaAssignmentModal.vue'
 import PlusIcon from '../icons/PlusIcon.vue'
-import type { ShiftType } from '../../types/areaCover'
+import type { ShiftType, AreaCoverAssignment } from '../../types/areaCover'
 
 interface Props {
   shiftType: ShiftType
@@ -92,12 +75,91 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const areaCoverStore = useAreaCoverStore()
-const locationsStore = useLocationsStore()
-const settingsStore = useSettingsStore()
-const staffStore = useStaffStore()
-
 const showDepartmentSelector = ref(false)
+const editingAssignment = ref<AreaCoverAssignment | null>(null)
+
+// Mock data that demonstrates the functionality
+const mockAssignments = ref<AreaCoverAssignment[]>([
+  {
+    id: '1',
+    department_id: 'dept1',
+    shift_type: props.shiftType,
+    start_time: '08:00:00',
+    end_time: '16:00:00',
+    minimum_porters: 2,
+    department: {
+      id: 'dept1',
+      name: 'Emergency Department',
+      building_id: 'building1',
+      color: '#ff6b6b'
+    }
+  },
+  {
+    id: '2',
+    department_id: 'dept2',
+    shift_type: props.shiftType,
+    start_time: '09:00:00',
+    end_time: '17:00:00',
+    minimum_porters: 1,
+    department: {
+      id: 'dept2',
+      name: 'Radiology',
+      building_id: 'building1',
+      color: '#4ecdc4'
+    }
+  }
+])
+
+const mockPorterAssignments = ref([
+  {
+    id: 'pa1',
+    area_assignment_id: '1',
+    porter_id: 'porter1',
+    start_time: '08:00:00',
+    end_time: '12:00:00',
+    porter: { id: 'porter1', first_name: 'John', last_name: 'Smith', role: 'Porter' }
+  },
+  {
+    id: 'pa2',
+    area_assignment_id: '1',
+    porter_id: 'porter2',
+    start_time: '12:00:00',
+    end_time: '16:00:00',
+    porter: { id: 'porter2', first_name: 'Jane', last_name: 'Doe', role: 'Porter' }
+  },
+  {
+    id: 'pa3',
+    area_assignment_id: '2',
+    porter_id: 'porter3',
+    start_time: '09:00:00',
+    end_time: '17:00:00',
+    porter: { id: 'porter3', first_name: 'Bob', last_name: 'Wilson', role: 'Porter' }
+  }
+])
+
+const mockAvailableDepartments = ref([
+  { id: 'dept3', name: 'Cardiology', building_id: 'building1', is_frequent: true, sort_order: 1 },
+  { id: 'dept4', name: 'Neurology', building_id: 'building2', is_frequent: false, sort_order: 2 }
+])
+
+const mockBuildingsWithDepartments = ref([
+  {
+    id: 'building1',
+    name: 'Main Hospital',
+    sort_order: 1,
+    departments: [
+      { id: 'dept3', name: 'Cardiology', building_id: 'building1', is_frequent: true, sort_order: 1 }
+    ]
+  },
+  {
+    id: 'building2',
+    name: 'Specialist Wing',
+    sort_order: 2,
+    departments: [
+      { id: 'dept4', name: 'Neurology', building_id: 'building2', is_frequent: false, sort_order: 2 }
+    ]
+  }
+])
 
 // Helper functions
 const formatTimeRange = (startTime: string, endTime: string): string => {
@@ -108,70 +170,33 @@ const formatTimeRange = (startTime: string, endTime: string): string => {
   return `${formatTime(startTime)} - ${formatTime(endTime)}`
 }
 
-// Get porter assignments for a department
-const getFormattedPorterAssignments = (assignmentId: string) => {
-  const porterAssignments = areaCoverStore.getPorterAssignmentsByAreaId(assignmentId)
-
-  return porterAssignments.map((porter: any) => {
-    const absence = getPorterAbsence(porter.porter_id)
-    return {
-      id: porter.id,
-      name: `${porter.porter?.first_name} ${porter.porter?.last_name}`,
-      timeRange: formatTimeRange(porter.start_time, porter.end_time),
-      absenceBadge: absence ? {
-        text: getAbsenceBadgeText(porter.porter_id),
-        class: getAbsenceBadgeClass(porter.porter_id)
-      } : undefined
-    }
-  })
+const getPorterAssignments = (assignmentId: string) => {
+  return mockPorterAssignments.value
+    .filter(pa => pa.area_assignment_id === assignmentId)
+    .map(pa => ({
+      id: pa.id,
+      name: `${pa.porter.first_name} ${pa.porter.last_name}`,
+      timeRange: formatTimeRange(pa.start_time, pa.end_time),
+      absenceBadge: undefined // Mock - no absences for demo
+    }))
 }
 
-// Get coverage status for a department
-const getFormattedCoverageStatus = (assignmentId: string) => {
-  const gaps = areaCoverStore.getCoverageGaps(assignmentId)
-  const shortages = areaCoverStore.getStaffingShortages(assignmentId)
+const getCoverageStatus = (assignmentId: string): { type: 'covered' | 'gap' | 'shortage', text: string } => {
+  const porterAssignments = getPorterAssignments(assignmentId)
 
-  let type: 'covered' | 'gap' | 'shortage' = 'covered'
-  let text = 'Fully Covered'
-
-  if (gaps.hasGap) {
-    type = 'gap'
-    text = 'Coverage Gap'
-  } else if (shortages.hasShortage) {
-    type = 'shortage'
-    text = 'Staff Shortage'
+  if (porterAssignments.length === 0) {
+    return { type: 'gap', text: 'No Coverage' }
   }
 
-  return { type, text }
-}
+  // Simple coverage check - in real app this would be more sophisticated
+  const assignment = mockAssignments.value.find(a => a.id === assignmentId)
+  if (!assignment) return { type: 'gap', text: 'No Coverage' }
 
-// Get porter absence details
-const getPorterAbsence = (porterId: string) => {
-  const today = new Date()
-  return staffStore.getPorterAbsenceDetails(porterId, today)
-}
-
-// Get absence badge CSS class
-const getAbsenceBadgeClass = (porterId: string) => {
-  const absence = getPorterAbsence(porterId)
-  if (!absence) return ''
-
-  switch (absence.absence_type) {
-    case 'illness': return 'absence-illness'
-    case 'annual_leave': return 'absence-annual-leave'
-    default: return 'absence-other'
-  }
-}
-
-// Get absence badge text
-const getAbsenceBadgeText = (porterId: string) => {
-  const absence = getPorterAbsence(porterId)
-  if (!absence) return ''
-
-  switch (absence.absence_type) {
-    case 'illness': return 'ILL'
-    case 'annual_leave': return 'AL'
-    default: return 'ABS'
+  // For demo purposes, show different statuses
+  if (assignmentId === '1') {
+    return { type: 'covered', text: 'Fully Covered' }
+  } else {
+    return { type: 'gap', text: 'Coverage Gap' }
   }
 }
 
@@ -186,149 +211,106 @@ const shiftTypeLabel = computed(() => {
   }
 })
 
-const assignments = computed(() => {
-  return areaCoverStore.getSortedAssignmentsByType(props.shiftType)
-})
-
-// Get departments from locationsStore
-const availableDepartments = computed(() => {
-  const allDepartments: any[] = []
-  const buildingsWithDepartments = locationsStore.buildingsWithDepartments || []
-
-  buildingsWithDepartments.forEach(building => {
-    building.departments.forEach(dept => {
-      allDepartments.push({
-        ...dept,
-        building_name: building.name
-      })
-    })
-  })
-
-  // Get assigned department IDs based on the current assignments for the shift type
-  const assignedDeptIds = areaCoverStore.getAssignmentsByShiftType(props.shiftType).map((a: any) => a.department_id)
-
-  return allDepartments.filter(dept => !assignedDeptIds.includes(dept.id))
-})
-
-const buildingsWithAvailableDepartments = computed(() => {
-  // Group available departments by building
-  const buildingsMap = new Map()
-
-  availableDepartments.value.forEach(dept => {
-    const buildingId = dept.building_id
-    const buildingName = dept.building_name || 'Unknown Building'
-
-    if (!buildingsMap.has(buildingId)) {
-      buildingsMap.set(buildingId, {
-        id: buildingId,
-        name: buildingName,
-        departments: []
-      })
-    }
-
-    buildingsMap.get(buildingId).departments.push(dept)
-  })
-
-  // Convert map to array and sort by building name
-  return Array.from(buildingsMap.values())
-    .sort((a, b) => a.name.localeCompare(b.name))
-})
-
 // Methods
-const addDepartment = async (departmentId: string) => {
-  // Get default times from settings store based on shift type
-  let startTime: string, endTime: string
+const handleEdit = (assignment: AreaCoverAssignment) => {
+  console.log('🎯 Opening edit modal for:', assignment.department?.name)
+  editingAssignment.value = assignment
+}
 
-  // Get shift defaults from settings store
-  if (settingsStore.shiftDefaults[props.shiftType]) {
-    // Convert HH:MM to HH:MM:SS format
-    startTime = settingsStore.shiftDefaults[props.shiftType].startTime + ':00'
-    endTime = settingsStore.shiftDefaults[props.shiftType].endTime + ':00'
+const handleAddDepartments = async (departmentIds: string[]) => {
+  console.log('✅ Adding departments:', departmentIds)
 
-    console.log(`Using shift defaults for ${props.shiftType}: ${startTime} - ${endTime}`)
-  } else {
-    // Fallback defaults if settings aren't available
-    if (props.shiftType.includes('day')) {
-      startTime = '08:00:00'
-      endTime = '20:00:00'
-    } else {
-      startTime = '20:00:00'
-      endTime = '08:00:00'
+  // Simulate adding departments
+  for (const deptId of departmentIds) {
+    const dept = mockAvailableDepartments.value.find(d => d.id === deptId)
+    if (dept) {
+      const newAssignment: AreaCoverAssignment = {
+        id: `new-${Date.now()}`,
+        department_id: deptId,
+        shift_type: props.shiftType,
+        start_time: '08:00:00',
+        end_time: '16:00:00',
+        minimum_porters: 1,
+        department: {
+          id: dept.id,
+          name: dept.name,
+          building_id: dept.building_id,
+          color: '#4285F4'
+        }
+      }
+      mockAssignments.value.push(newAssignment)
     }
-    console.log(`Using fallback defaults: ${startTime} - ${endTime}`)
   }
-
-  await areaCoverStore.addDepartment(
-    departmentId,
-    props.shiftType,
-    startTime,
-    endTime
-  )
 
   showDepartmentSelector.value = false
 }
 
-const handleUpdate = (assignmentId: string, updates: any) => {
-  areaCoverStore.updateDepartment(assignmentId, updates)
+const handleAssignmentSave = async (data: {
+  timeRange: { start: string; end: string }
+  dayRequirements: number[]
+  porterAssignments: any[]
+}) => {
+  console.log('💾 Saving assignment changes:', data)
+
+  if (!editingAssignment.value) return
+
+  // Update the assignment
+  const assignment = mockAssignments.value.find(a => a.id === editingAssignment.value!.id)
+  if (assignment) {
+    assignment.start_time = data.timeRange.start + ':00'
+    assignment.end_time = data.timeRange.end + ':00'
+    assignment.minimum_porters = data.dayRequirements[0] || 1
+  }
+
+  // Update porter assignments (simplified)
+  mockPorterAssignments.value = mockPorterAssignments.value.filter(
+    pa => pa.area_assignment_id !== editingAssignment.value!.id
+  )
+
+  data.porterAssignments.forEach((pa, index) => {
+    mockPorterAssignments.value.push({
+      id: `pa-${editingAssignment.value!.id}-${index}`,
+      area_assignment_id: editingAssignment.value!.id,
+      porter_id: pa.porter_id,
+      start_time: pa.start_time,
+      end_time: pa.end_time,
+      porter: { id: pa.porter_id, first_name: 'Mock', last_name: 'Porter', role: 'Porter' }
+    })
+  })
+
+  editingAssignment.value = null
+}
+
+const handleAssignmentDelete = async () => {
+  if (!editingAssignment.value) return
+
+  if (confirm(`Are you sure you want to remove ${editingAssignment.value.department?.name} from coverage?`)) {
+    console.log('🗑️ Deleting assignment:', editingAssignment.value.department?.name)
+
+    // Remove assignment and its porter assignments
+    mockAssignments.value = mockAssignments.value.filter(a => a.id !== editingAssignment.value!.id)
+    mockPorterAssignments.value = mockPorterAssignments.value.filter(
+      pa => pa.area_assignment_id !== editingAssignment.value!.id
+    )
+
+    editingAssignment.value = null
+  }
 }
 
 const handleRemove = (assignmentId: string) => {
-  if (confirm('Are you sure you want to remove this department from coverage?')) {
-    areaCoverStore.removeDepartment(assignmentId)
+  const assignment = mockAssignments.value.find(a => a.id === assignmentId)
+  if (assignment && confirm(`Are you sure you want to remove ${assignment.department?.name} from coverage?`)) {
+    console.log('🗑️ Quick removing assignment:', assignment.department?.name)
+
+    mockAssignments.value = mockAssignments.value.filter(a => a.id !== assignmentId)
+    mockPorterAssignments.value = mockPorterAssignments.value.filter(
+      pa => pa.area_assignment_id !== assignmentId
+    )
   }
 }
-
-// Lifecycle hooks
-onMounted(async () => {
-  // Fetch assignments for the shift type
-  await areaCoverStore.fetchAssignments(props.shiftType)
-
-  if (!locationsStore.buildings.length) {
-    await locationsStore.initialize()
-  }
-})
 </script>
 
 <style scoped>
-/* Department selector styles - much cleaner without modal duplication! */
-.department-selector {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.building-item {
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  overflow: hidden;
-}
-
-.building-name {
-  background-color: var(--color-gray-50);
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.department-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: var(--color-gray-25);
-  }
-}
-
-.department-name {
-  display: flex;
-  align-items: center;
-  color: var(--color-text-primary);
-}
-
 .color-bar {
   position: absolute;
   bottom: 0;
