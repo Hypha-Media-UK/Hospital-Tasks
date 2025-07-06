@@ -16,29 +16,17 @@
     </div>
 
     <div v-else class="department-grid">
-      <div
+      <BaseAssignmentCard
         v-for="assignment in assignments"
         :key="assignment.id"
-        class="department-card"
-      >
-        <div class="department-header">
-          <h4>{{ assignment.department?.name || 'Unknown Department' }}</h4>
-          <span class="building-name">{{ assignment.department?.building?.name || 'Unknown Building' }}</span>
-        </div>
-        <div class="department-details">
-          <div class="time-range">
-            <strong>Time:</strong> {{ assignment.start_time.slice(0, 5) }} - {{ assignment.end_time.slice(0, 5) }}
-          </div>
-          <div class="actions">
-            <BaseButton size="sm" variant="secondary" @click="handleUpdate(assignment.id, {})">
-              Edit
-            </BaseButton>
-            <BaseButton size="sm" variant="danger" @click="handleRemove(assignment.id)">
-              Remove
-            </BaseButton>
-          </div>
-        </div>
-      </div>
+        :title="assignment.department?.name || 'Unknown Department'"
+        :time-range="formatTimeRange(assignment.start_time, assignment.end_time)"
+        :minimum-porters="assignment.minimum_porters"
+        :porter-assignments="getFormattedPorterAssignments(assignment.id)"
+        :coverage-status="getFormattedCoverageStatus(assignment.id)"
+        @edit="handleUpdate(assignment.id, {})"
+        @delete="handleRemove(assignment.id)"
+      />
     </div>
 
     <!-- Department Selector Modal -->
@@ -81,8 +69,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useAreaCoverStore } from '../../stores/areaCoverStore'
 import { useLocationsStore } from '../../stores/locationsStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useStaffStore } from '../../stores/staffStore'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseModal from '../ui/BaseModal.vue'
+import BaseAssignmentCard from '../ui/BaseAssignmentCard.vue'
 import type { ShiftType } from '../../types/areaCover'
 
 interface Props {
@@ -94,8 +84,85 @@ const props = defineProps<Props>()
 const areaCoverStore = useAreaCoverStore()
 const locationsStore = useLocationsStore()
 const settingsStore = useSettingsStore()
+const staffStore = useStaffStore()
 
 const showDepartmentSelector = ref(false)
+
+// Helper functions
+const formatTimeRange = (startTime: string, endTime: string): string => {
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':')
+    return `${hours}:${minutes}`
+  }
+  return `${formatTime(startTime)} - ${formatTime(endTime)}`
+}
+
+// Get porter assignments for a department
+const getFormattedPorterAssignments = (assignmentId: string) => {
+  const porterAssignments = areaCoverStore.getPorterAssignmentsByAreaId(assignmentId)
+
+  return porterAssignments.map((porter: any) => {
+    const absence = getPorterAbsence(porter.porter_id)
+    return {
+      id: porter.id,
+      name: `${porter.porter?.first_name} ${porter.porter?.last_name}`,
+      timeRange: formatTimeRange(porter.start_time, porter.end_time),
+      absenceBadge: absence ? {
+        text: getAbsenceBadgeText(porter.porter_id),
+        class: getAbsenceBadgeClass(porter.porter_id)
+      } : undefined
+    }
+  })
+}
+
+// Get coverage status for a department
+const getFormattedCoverageStatus = (assignmentId: string) => {
+  const gaps = areaCoverStore.getCoverageGaps(assignmentId)
+  const shortages = areaCoverStore.getStaffingShortages(assignmentId)
+
+  let type: 'covered' | 'gap' | 'shortage' = 'covered'
+  let text = 'Fully Covered'
+
+  if (gaps.hasGap) {
+    type = 'gap'
+    text = 'Coverage Gap'
+  } else if (shortages.hasShortage) {
+    type = 'shortage'
+    text = 'Staff Shortage'
+  }
+
+  return { type, text }
+}
+
+// Get porter absence details
+const getPorterAbsence = (porterId: string) => {
+  const today = new Date()
+  return staffStore.getPorterAbsenceDetails(porterId, today)
+}
+
+// Get absence badge CSS class
+const getAbsenceBadgeClass = (porterId: string) => {
+  const absence = getPorterAbsence(porterId)
+  if (!absence) return ''
+
+  switch (absence.absence_type) {
+    case 'illness': return 'absence-illness'
+    case 'annual_leave': return 'absence-annual-leave'
+    default: return 'absence-other'
+  }
+}
+
+// Get absence badge text
+const getAbsenceBadgeText = (porterId: string) => {
+  const absence = getPorterAbsence(porterId)
+  if (!absence) return ''
+
+  switch (absence.absence_type) {
+    case 'illness': return 'ILL'
+    case 'annual_leave': return 'AL'
+    default: return 'ABS'
+  }
+}
 
 // Computed properties
 const shiftTypeLabel = computed(() => {
@@ -127,7 +194,7 @@ const availableDepartments = computed(() => {
   })
 
   // Get assigned department IDs based on the current assignments for the shift type
-  const assignedDeptIds = areaCoverStore.getAssignmentsByShiftType(props.shiftType).map(a => a.department_id)
+  const assignedDeptIds = areaCoverStore.getAssignmentsByShiftType(props.shiftType).map((a: any) => a.department_id)
 
   return allDepartments.filter(dept => !assignedDeptIds.includes(dept.id))
 })
