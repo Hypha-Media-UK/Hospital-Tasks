@@ -8,9 +8,7 @@
 
       <div class="modal-body">
         <!-- Entity-specific information slot -->
-        <div v-if="$slots['entity-info']" class="entity-info-section">
-          <slot name="entity-info" />
-        </div>
+        <slot name="entity-info" />
 
         <!-- Time Range Editor -->
         <div class="time-settings">
@@ -595,28 +593,31 @@ onMounted(async () => {
 }
 
 .modal-container {
-  background-color: white;
-  border-radius: 12px;
+  background-color: var(--color-background);
+  border-radius: var(--radius-lg);
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
 }
 
 .modal-header {
-  padding: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--color-background-alt);
 }
 
 .modal-title {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
+  color: var(--color-text);
 }
 
 .modal-close {
@@ -624,25 +625,34 @@ onMounted(async () => {
   border: none;
   font-size: 24px;
   cursor: pointer;
-  padding: 0;
+  padding: var(--spacing-xs);
   line-height: 1;
+  color: var(--color-text-light);
+  border-radius: var(--radius);
+  transition: all 0.15s ease-in-out;
+}
+
+.modal-close:hover {
+  background: var(--color-border-light);
+  color: var(--color-text);
 }
 
 .modal-body {
-  padding: 16px;
+  padding: var(--spacing-lg);
   overflow-y: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-lg);
 }
 
 .modal-footer {
-  padding: 16px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: var(--color-background-alt);
 }
 
 .footer-left {
@@ -651,7 +661,7 @@ onMounted(async () => {
 
 .footer-right {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-sm);
 }
 
 /* Entity info section */
@@ -688,20 +698,21 @@ onMounted(async () => {
 .time-group label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.7);
+  color: var(--color-text-light);
 }
 
 .time-group input[type="time"] {
-  padding: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  font-size: 1rem;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
 .time-group input[type="time"]:focus {
   outline: none;
-  border-color: #4285f4;
-  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
 }
 
 /* Minimum porter settings */
@@ -1005,52 +1016,62 @@ onMounted(async () => {
   border-radius: 16px;
 }
 
-/* Button styles */
+/* Button styles - using design system */
 .btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   font-size: 0.875rem;
-}
-
-.btn--primary {
-  background-color: #4285f4;
-  color: white;
-}
-
-.btn--primary:hover:not(:disabled) {
-  background-color: #3367d6;
-}
-
-.btn--secondary {
-  background-color: #f1f1f1;
-  color: #333;
-}
-
-.btn--secondary:hover:not(:disabled) {
-  background-color: #e8e8e8;
-}
-
-.btn--danger {
-  background-color: rgba(234, 67, 53, 0.1);
-  color: #ea4335;
-}
-
-.btn--danger:hover:not(:disabled) {
-  background-color: #ea4335;
-  color: white;
-}
-
-.btn--small {
-  padding: 6px 12px;
-  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn--secondary {
+  background: var(--color-background);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: var(--color-background-alt);
+}
+
+.btn--danger {
+  background: var(--color-danger);
+  color: white;
+  border-color: var(--color-danger);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn--small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.75rem;
 }
 </style>
