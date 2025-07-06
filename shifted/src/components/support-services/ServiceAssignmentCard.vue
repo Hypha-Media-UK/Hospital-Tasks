@@ -46,13 +46,27 @@ const formatTimeRange = (startTime: string, endTime: string): string => {
 
 // Get porter assignments for this service
 const porterAssignments = computed(() => {
-  return supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id) || []
+  try {
+    // Use the computed getter from the store
+    const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id)
+    console.log('Porter assignments for service', props.assignment.id, ':', assignments)
+    return assignments || []
+  } catch (error) {
+    console.error('Error getting porter assignments:', error)
+    return []
+  }
 })
 
 // Get porter absence details
 const getPorterAbsence = (porterId: string) => {
-  const today = new Date()
-  return staffStore.getPorterAbsenceDetails(porterId, today)
+  try {
+    const today = new Date()
+    // Use the computed getter from the store
+    return staffStore.getPorterAbsenceDetails(porterId, today)
+  } catch (error) {
+    console.error('Error getting porter absence:', error)
+    return null
+  }
 }
 
 // Get absence badge CSS class
@@ -81,24 +95,40 @@ const getAbsenceBadgeText = (porterId: string) => {
 
 // Format porter assignments for BaseAssignmentCard
 const formattedPorterAssignments = computed(() => {
-  return porterAssignments.value.map(porter => ({
-    id: porter.id,
-    name: `${porter.porter?.first_name} ${porter.porter?.last_name}`,
-    timeRange: formatTimeRange(porter.start_time, porter.end_time),
-    absenceBadge: getPorterAbsence(porter.porter_id) ? {
-      text: getAbsenceBadgeText(porter.porter_id),
-      class: getAbsenceBadgeClass(porter.porter_id)
-    } : undefined
-  }))
+  try {
+    return porterAssignments.value.map(porter => {
+      const porterName = porter.porter
+        ? `${porter.porter.first_name} ${porter.porter.last_name}`
+        : 'Unknown Porter'
+
+      return {
+        id: porter.id,
+        name: porterName,
+        timeRange: formatTimeRange(porter.start_time, porter.end_time),
+        absenceBadge: getPorterAbsence(porter.porter_id) ? {
+          text: getAbsenceBadgeText(porter.porter_id),
+          class: getAbsenceBadgeClass(porter.porter_id)
+        } : undefined
+      }
+    })
+  } catch (error) {
+    console.error('Error formatting porter assignments:', error)
+    return []
+  }
 })
 
 const coverageStatus = computed(() => {
-  const gaps = supportServicesStore.getCoverageGaps(props.assignment.id)
-  const shortages = supportServicesStore.getStaffingShortages(props.assignment.id)
+  try {
+    const gaps = supportServicesStore.getCoverageGaps(props.assignment.id)
+    const shortages = supportServicesStore.getStaffingShortages(props.assignment.id)
 
-  if (gaps.hasGap) return 'gap'
-  if (shortages.hasShortage) return 'shortage'
-  return 'covered'
+    if (gaps.hasGap) return 'gap'
+    if (shortages.hasShortage) return 'shortage'
+    return 'covered'
+  } catch (error) {
+    console.error('Error getting coverage status:', error)
+    return 'covered'
+  }
 })
 
 // Format coverage status for BaseAssignmentCard

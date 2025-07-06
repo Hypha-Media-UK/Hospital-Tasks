@@ -238,7 +238,7 @@ const getAbsenceBadgeClass = (porterId: string): string => {
 
 const getPorterAbsence = (porterId: string) => {
   const today = new Date()
-  return staffStore.getPorterAbsenceDetails?.(porterId, today) || null
+  return staffStore.getPorterAbsenceDetails(porterId, today) || null
 }
 
 const handlePorterClick = (porterId: string) => {
@@ -310,7 +310,7 @@ const detectCoverageGap = (): boolean => {
 
   // Filter out absent porters
   const availableAssignments = assignments.value.filter(assignment => {
-    return !staffStore.isPorterAbsent?.(assignment.porter_id, new Date())
+    return !staffStore.isPorterAbsent(assignment.porter_id, new Date())
   })
 
   if (availableAssignments.length === 0) return true

@@ -167,7 +167,7 @@ const availablePorters = computed(() => {
   const today = new Date()
   return allPorters.filter(porter => {
     if (assignedPorterIds.includes(porter.id)) return false
-    if (staffStore.isPorterAbsent?.(porter.id, today)) return false
+    if (staffStore.isPorterAbsent(porter.id, today)) return false
     return true
   })
 })
@@ -268,7 +268,9 @@ watch(() => props.assignment, () => {
 // Initialize staff data if needed
 onMounted(async () => {
   if (!staffStore.porters || staffStore.porters.length === 0) {
-    await staffStore.fetchPorters?.()
+    if (staffStore.fetchPorters) {
+      await staffStore.fetchPorters()
+    }
   }
 })
 </script>

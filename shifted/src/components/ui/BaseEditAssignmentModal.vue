@@ -2,44 +2,17 @@
   <div class="modal-overlay" @click.stop="closeModal">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">
-          Edit {{ assignment.service?.name || 'Service' }} Coverage
-        </h3>
+        <h3 class="modal-title">{{ modalTitle }}</h3>
         <button class="modal-close" @click.stop="closeModal">&times;</button>
       </div>
 
       <div class="modal-body">
-        <!-- Service Info Display -->
-        <div class="service-info">
-          <div class="service-header">
-            <div class="service-details">
-              <h4 class="service-name">{{ assignment.service?.name || 'Unknown Service' }}</h4>
-              <p v-if="assignment.service?.description" class="service-description">
-                {{ assignment.service.description }}
-              </p>
-            </div>
-            <div class="service-meta">
-              <div class="service-type-badge">Support Service</div>
-            </div>
-          </div>
-
-          <div class="service-stats">
-            <div class="stat-item">
-              <span class="stat-label">Service ID:</span>
-              <span class="stat-value">{{ assignment.service?.id }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Assignment ID:</span>
-              <span class="stat-value">{{ assignment.id }}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Minimum Porters:</span>
-              <span class="stat-value">{{ assignment.minimum_porters || 1 }}</span>
-            </div>
-          </div>
+        <!-- Entity-specific information slot -->
+        <div v-if="$slots['entity-info']" class="entity-info-section">
+          <slot name="entity-info" />
         </div>
 
-        <!-- Service Time settings -->
+        <!-- Time Range Editor -->
         <div class="time-settings">
           <div class="time-group">
             <label for="startTime">Start Time</label>
@@ -120,8 +93,18 @@
               class="porter-assignment-item"
             >
               <div class="porter-pill">
-                <span class="porter-name">
+                <span
+                  class="porter-name"
+                  :class="{
+                    'porter-absent': getPorterAbsence(porterAssignment.porter_id),
+                    'porter-illness': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness',
+                    'porter-annual-leave': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'
+                  }"
+                  @click="handlePorterClick(porterAssignment.porter_id)"
+                >
                   {{ porterAssignment.porter?.first_name }} {{ porterAssignment.porter?.last_name }}
+                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
+                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
                 </span>
               </div>
 
@@ -213,27 +196,38 @@
             </div>
           </div>
         </div>
+
+        <!-- Additional content slot -->
+        <div v-if="$slots['additional-content']" class="additional-content-section">
+          <slot name="additional-content" />
+        </div>
       </div>
 
       <div class="modal-footer">
-        <button
-          class="btn btn--primary"
-          @click.stop="saveAllChanges"
-        >
-          Update Service
-        </button>
-        <button
-          class="btn btn--secondary"
-          @click.stop="closeModal"
-        >
-          Cancel
-        </button>
-        <button
-          class="btn btn--danger ml-auto"
-          @click.stop="confirmDelete"
-        >
-          Delete Service
-        </button>
+        <div class="footer-left">
+          <button
+            v-if="showDeleteButton"
+            class="btn btn--danger"
+            @click.stop="handleDelete"
+          >
+            {{ deleteButtonText }}
+          </button>
+        </div>
+
+        <div class="footer-right">
+          <button
+            class="btn btn--secondary"
+            @click.stop="closeModal"
+          >
+            Cancel
+          </button>
+          <button
+            class="btn btn--primary"
+            @click.stop="handleSave"
+          >
+            {{ saveButtonText }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -242,28 +236,67 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useStaffStore } from '../../stores/staffStore'
-import { useSupportServicesStore } from '../../stores/supportServicesStore'
-import type { ServiceAssignment } from '../../types/supportServices'
+
+interface PorterAssignment {
+  id?: string
+  porter_id: string
+  start_time?: string
+  end_time?: string
+  start_time_display?: string
+  end_time_display?: string
+  porter?: any
+  isNew?: boolean
+}
+
+interface AssignmentData {
+  id?: string
+  start_time?: string
+  end_time?: string
+  minimum_porters?: number
+  minimum_porters_mon?: number
+  minimum_porters_tue?: number
+  minimum_porters_wed?: number
+  minimum_porters_thu?: number
+  minimum_porters_fri?: number
+  minimum_porters_sat?: number
+  minimum_porters_sun?: number
+}
 
 interface Props {
-  assignment: ServiceAssignment
+  modalTitle: string
+  assignment: AssignmentData
+  saveButtonText?: string
+  deleteButtonText?: string
+  showDeleteButton?: boolean
+  getPorterAssignments: (assignmentId: string) => PorterAssignment[]
 }
 
 interface Emits {
   (e: 'close'): void
-  (e: 'saved'): void
+  (e: 'save', data: {
+    timeRange: { start: string; end: string }
+    dayRequirements: number[]
+    porterAssignments: PorterAssignment[]
+    removedPorterIds: string[]
+  }): void
+  (e: 'delete'): void
+  (e: 'porter-clicked', porterId: string): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  saveButtonText: 'Update',
+  deleteButtonText: 'Delete',
+  showDeleteButton: false
+})
+
 const emit = defineEmits<Emits>()
 
 const staffStore = useStaffStore()
-const supportServicesStore = useSupportServicesStore()
 
-// Local state for all editable properties
+// Local state
 const localStartTime = ref('')
 const localEndTime = ref('')
-const localPorterAssignments = ref<any[]>([])
+const localPorterAssignments = ref<PorterAssignment[]>([])
 const showAddPorter = ref(false)
 const removedPorterIds = ref<string[]>([])
 
@@ -319,19 +352,30 @@ const availablePorters = computed(() => {
   })
 })
 
+// Get porter absence details
+const getPorterAbsence = (porterId: string) => {
+  try {
+    const today = new Date()
+    return staffStore.getPorterAbsenceDetails(porterId, today)
+  } catch (error) {
+    console.error('Error getting porter absence:', error)
+    return null
+  }
+}
+
 // Check for coverage gaps with local data
 const hasLocalCoverageGap = computed(() => {
   if (localPorterAssignments.value.length === 0) return true
 
-  // Convert service times to minutes for easier comparison
-  const serviceStart = timeToMinutes(localStartTime.value + ':00')
-  const serviceEnd = timeToMinutes(localEndTime.value + ':00')
+  // Convert assignment times to minutes for easier comparison
+  const assignmentStart = timeToMinutes(localStartTime.value + ':00')
+  const assignmentEnd = timeToMinutes(localEndTime.value + ':00')
 
   // First check if any single porter covers the entire time period
   const fullCoverageExists = localPorterAssignments.value.some(assignment => {
     const porterStart = timeToMinutes(assignment.start_time_display + ':00')
     const porterEnd = timeToMinutes(assignment.end_time_display + ':00')
-    return porterStart <= serviceStart && porterEnd >= serviceEnd
+    return porterStart <= assignmentStart && porterEnd >= assignmentEnd
   })
 
   // If at least one porter provides full coverage, there's no gap
@@ -345,7 +389,7 @@ const hasLocalCoverageGap = computed(() => {
   })
 
   // Check for gap at the beginning
-  if (timeToMinutes(sortedAssignments[0].start_time_display + ':00') > serviceStart) {
+  if (timeToMinutes(sortedAssignments[0].start_time_display + ':00') > assignmentStart) {
     return true
   }
 
@@ -361,7 +405,7 @@ const hasLocalCoverageGap = computed(() => {
 
   // Check for gap at the end
   const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time_display + ':00')
-  if (lastEnd < serviceEnd) {
+  if (lastEnd < assignmentEnd) {
     return true
   }
 
@@ -371,6 +415,10 @@ const hasLocalCoverageGap = computed(() => {
 // Methods
 const closeModal = () => {
   emit('close')
+}
+
+const handlePorterClick = (porterId: string) => {
+  emit('porter-clicked', porterId)
 }
 
 const addLocalPorterAssignment = () => {
@@ -387,7 +435,6 @@ const addLocalPorterAssignment = () => {
     // Add to local state with a temporary ID
     localPorterAssignments.value.push({
       id: `temp-${Date.now()}`,
-      service_assignment_id: props.assignment.id,
       porter_id: newPorterAssignment.value.porter_id,
       start_time: newPorterAssignment.value.start_time + ':00',
       end_time: newPorterAssignment.value.end_time + ':00',
@@ -429,77 +476,25 @@ const cancelAddPorter = () => {
   showAddPorter.value = false
 }
 
-const saveAllChanges = async () => {
-  try {
-    console.log('💾 Saving service assignment changes...')
-
-    // 1. Update service assignment (times, minimum porters)
-    const updateData: any = {
-      start_time: localStartTime.value + ':00',
-      end_time: localEndTime.value + ':00',
-      minimum_porters: parseInt(String(sameForAllDaysValue.value)) || 1
-    }
-
-    // Add day-specific minimum porter counts
-    days.forEach((day, index) => {
-      updateData[day.field] = parseInt(String(dayMinPorters.value[index])) || 1
-    })
-
-    await supportServicesStore.updateServiceAssignment(props.assignment.id, updateData)
-
-    // 2. Remove porter assignments that were deleted
-    for (const porterId of removedPorterIds.value) {
-      await supportServicesStore.removePorterAssignment(porterId)
-    }
-
-    // 3. Process porter assignments
-    for (const assignment of localPorterAssignments.value) {
-      if (assignment.isNew) {
-        // Add new assignment
-        await supportServicesStore.addPorterToServiceAssignment(
-          props.assignment.id,
-          assignment.porter_id,
-          assignment.start_time,
-          assignment.end_time
-        )
-      } else {
-        // Update existing assignment
-        await supportServicesStore.updatePorterAssignment(assignment.id, {
-          start_time: assignment.start_time_display + ':00',
-          end_time: assignment.end_time_display + ':00'
-        })
-      }
-    }
-
-    console.log('✅ Service assignment saved successfully')
-    emit('saved')
-  } catch (error) {
-    console.error('❌ Error saving changes:', error)
-    alert('Failed to save changes. Please try again.')
-  }
+const handleSave = () => {
+  emit('save', {
+    timeRange: {
+      start: localStartTime.value + ':00',
+      end: localEndTime.value + ':00'
+    },
+    dayRequirements: dayMinPorters.value,
+    porterAssignments: localPorterAssignments.value,
+    removedPorterIds: removedPorterIds.value
+  })
 }
 
-const confirmDelete = () => {
-  if (confirm(`Are you sure you want to delete "${props.assignment.service?.name}"?`)) {
-    handleDelete()
-  }
-}
-
-const handleDelete = async () => {
-  try {
-    console.log('🗑️ Deleting service assignment...')
-    await supportServicesStore.deleteServiceAssignment(props.assignment.id)
-    console.log('✅ Service assignment deleted successfully')
-    emit('saved')
-  } catch (error) {
-    console.error('❌ Error deleting service assignment:', error)
-    alert('Failed to delete service. Please try again.')
-  }
+const handleDelete = () => {
+  emit('delete')
 }
 
 // Initialize component state from props
 const initializeState = () => {
-  console.log('🔧 Initializing EditServiceModal state...')
+  console.log('🔧 Initializing BaseEditAssignmentModal state...')
   console.log('Assignment:', props.assignment)
 
   // Initialize times
@@ -548,8 +543,8 @@ const initializeState = () => {
   }
 
   // Initialize porter assignments
-  const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id)
-  console.log('Porter assignments from store:', assignments)
+  const assignments = props.getPorterAssignments(props.assignment.id!)
+  console.log('Porter assignments from prop function:', assignments)
 
   localPorterAssignments.value = assignments.map((pa: any) => ({
     ...pa,
@@ -573,7 +568,7 @@ function timeToMinutes(timeStr: string): number {
 
 // Fetch porters if not already loaded and initialize state
 onMounted(async () => {
-  console.log('🚀 EditServiceModal mounted')
+  console.log('🚀 BaseEditAssignmentModal mounted')
 
   if (!staffStore.porters || staffStore.porters.length === 0) {
     console.log('📥 Fetching porters...')
@@ -646,88 +641,25 @@ onMounted(async () => {
   padding: 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-left {
+  display: flex;
+}
+
+.footer-right {
+  display: flex;
   gap: 12px;
 }
 
-.ml-auto {
-  margin-left: auto;
-}
-
-/* Service info */
-.service-info {
-  background: var(--color-background, #f8f9fa);
-  border: 1px solid var(--color-border, #e9ecef);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.service-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.service-details {
-  flex: 1;
-}
-
-.service-name {
-  margin: 0 0 8px 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--color-text-primary, #212529);
-}
-
-.service-description {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--color-text-muted, #6c757d);
-  line-height: 1.5;
-}
-
-.service-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.service-type-badge {
-  padding: 4px 8px;
-  border-radius: 16px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background-color: var(--color-success-light, #d1e7dd);
-  color: var(--color-success, #198754);
-}
-
-.service-stats {
+/* Entity info section */
+.entity-info-section,
+.additional-content-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-border, #e9ecef);
-}
-
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: var(--color-text-muted, #6c757d);
-  font-weight: 500;
-}
-
-.stat-value {
-  font-size: 0.875rem;
-  color: var(--color-text-primary, #212529);
-  font-weight: 500;
+  gap: 12px;
 }
 
 /* Section title */
@@ -909,6 +841,41 @@ onMounted(async () => {
   font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+}
+
+.porter-name.porter-absent {
+  opacity: 0.9;
+}
+
+.porter-name.porter-illness {
+  background-color: rgba(234, 67, 53, 0.15);
+  color: #d32f2f;
+}
+
+.porter-name.porter-annual-leave {
+  background-color: rgba(251, 192, 45, 0.2);
+  color: #f57c00;
+}
+
+.absence-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-left: 5px;
+}
+
+.absence-badge.illness {
+  background-color: #d32f2f;
+  color: white;
+}
+
+.absence-badge.annual-leave {
+  background-color: #f57c00;
+  color: white;
 }
 
 .porter-times {
