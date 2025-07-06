@@ -1,6 +1,6 @@
 <template>
   <BaseEditAssignmentModal
-    :modal-title="`Edit ${assignment.department?.name || 'Department'} Coverage`"
+    :modal-title="assignment.department?.name || 'Department'"
     :assignment="assignment"
     save-button-text="Update Coverage"
     delete-button-text="Remove from Coverage"

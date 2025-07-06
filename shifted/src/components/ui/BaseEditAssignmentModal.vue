@@ -73,11 +73,27 @@
 
         <!-- Porter assignments -->
         <div class="porter-assignments">
-          <div class="section-title">
-            Porters
-            <span v-if="hasLocalCoverageGap" class="coverage-gap-indicator">
-              Coverage Gap Detected
-            </span>
+          <div class="porter-header">
+            <div class="porter-status">
+              <span v-if="hasLocalCoverageGap" class="coverage-gap-indicator">
+                Coverage Gap Detected
+              </span>
+            </div>
+
+            <div class="add-porter">
+              <div class="add-porter-button">
+                <button
+                  class="btn btn--primary"
+                  @click.stop="showAddPorter = true"
+                  :disabled="availablePorters.length === 0"
+                >
+                  Add Porter
+                </button>
+                <p v-if="availablePorters.length === 0" class="no-porters-message">
+                  No available porters to assign
+                </p>
+              </div>
+            </div>
           </div>
 
           <div v-if="localPorterAssignments.length === 0" class="empty-state">
@@ -85,68 +101,7 @@
           </div>
 
           <div v-else class="porter-list">
-            <div
-              v-for="(porterAssignment, index) in localPorterAssignments"
-              :key="porterAssignment.id || `new-${index}`"
-              class="porter-assignment-item"
-            >
-              <div class="porter-pill">
-                <span
-                  class="porter-name"
-                  :class="{
-                    'porter-absent': getPorterAbsence(porterAssignment.porter_id),
-                    'porter-illness': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness',
-                    'porter-annual-leave': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'
-                  }"
-                  @click="handlePorterClick(porterAssignment.porter_id)"
-                >
-                  {{ porterAssignment.porter?.first_name }} {{ porterAssignment.porter?.last_name }}
-                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
-                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
-                </span>
-              </div>
-
-              <div class="porter-times">
-                <div class="time-group">
-                  <input
-                    type="time"
-                    v-model="porterAssignment.start_time_display"
-                  />
-                </div>
-                <span class="time-separator">to</span>
-                <div class="time-group">
-                  <input
-                    type="time"
-                    v-model="porterAssignment.end_time_display"
-                  />
-                </div>
-              </div>
-
-              <button
-                class="btn btn--icon"
-                title="Remove porter assignment"
-                @click.stop="removeLocalPorterAssignment(index)"
-              >
-                &times;
-              </button>
-            </div>
-          </div>
-
-          <div class="add-porter">
-            <div v-if="!showAddPorter" class="add-porter-button">
-              <button
-                class="btn btn--primary"
-                @click.stop="showAddPorter = true"
-                :disabled="availablePorters.length === 0"
-              >
-                Add Porter
-              </button>
-              <p v-if="availablePorters.length === 0" class="no-porters-message">
-                No available porters to assign
-              </p>
-            </div>
-
-            <div v-else class="add-porter-form">
+            <div v-if="showAddPorter" class="add-porter-form">
               <div class="form-row">
                 <select v-model="newPorterAssignment.porter_id">
                   <option value="">-- Select Porter --</option>
@@ -191,6 +146,51 @@
                   </button>
                 </div>
               </div>
+            </div>
+            <div
+              v-for="(porterAssignment, index) in localPorterAssignments"
+              :key="porterAssignment.id || `new-${index}`"
+              class="porter-assignment-item"
+            >
+              <div class="porter-pill">
+                <span
+                  class="porter-name"
+                  :class="{
+                    'porter-absent': getPorterAbsence(porterAssignment.porter_id),
+                    'porter-illness': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness',
+                    'porter-annual-leave': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'
+                  }"
+                  @click="handlePorterClick(porterAssignment.porter_id)"
+                >
+                  {{ porterAssignment.porter?.first_name }} {{ porterAssignment.porter?.last_name }}
+                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
+                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
+                </span>
+              </div>
+
+              <div class="porter-times">
+                <div class="time-group">
+                  <input
+                    type="time"
+                    v-model="porterAssignment.start_time_display"
+                  />
+                </div>
+                <span class="time-separator">to</span>
+                <div class="time-group">
+                  <input
+                    type="time"
+                    v-model="porterAssignment.end_time_display"
+                  />
+                </div>
+              </div>
+
+              <button
+                class="btn btn--icon"
+                title="Remove porter assignment"
+                @click.stop="removeLocalPorterAssignment(index)"
+              >
+                &times;
+              </button>
             </div>
           </div>
         </div>
@@ -430,8 +430,8 @@ const addLocalPorterAssignment = () => {
   const porter = staffStore.porters.find(p => p.id === newPorterAssignment.value.porter_id)
 
   if (porter) {
-    // Add to local state with a temporary ID
-    localPorterAssignments.value.push({
+    // Add to the top of the local state with a temporary ID
+    localPorterAssignments.value.unshift({
       id: `temp-${Date.now()}`,
       porter_id: newPorterAssignment.value.porter_id,
       start_time: newPorterAssignment.value.start_time + ':00',
@@ -594,7 +594,7 @@ onMounted(async () => {
 
 .modal-container {
   background-color: var(--color-background);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
@@ -704,7 +704,7 @@ onMounted(async () => {
 .time-group input[type="time"] {
   padding: var(--spacing-sm);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 0;
   font-size: 0.875rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
@@ -753,7 +753,7 @@ onMounted(async () => {
   width: 60px;
   padding: 8px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 1rem;
   text-align: center;
 }
@@ -804,7 +804,7 @@ onMounted(async () => {
   padding: 6px 4px;
   text-align: center;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 1rem;
 }
 
@@ -815,12 +815,24 @@ onMounted(async () => {
   gap: 12px;
 }
 
+.porter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.porter-status {
+  display: flex;
+  align-items: center;
+}
+
 .empty-state {
   padding: 12px;
   text-align: center;
   color: rgba(0, 0, 0, 0.6);
   background-color: rgba(0, 0, 0, 0.03);
-  border-radius: 8px;
+  border-radius: 0;
 }
 
 .porter-list {
@@ -834,7 +846,7 @@ onMounted(async () => {
   align-items: center;
   padding: 12px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  border-radius: 0;
   background-color: white;
 }
 
@@ -847,7 +859,7 @@ onMounted(async () => {
   display: inline-block;
   background-color: rgba(66, 133, 244, 0.1);
   color: #4285f4;
-  border-radius: 16px;
+  border-radius: 0;
   padding: 4px 12px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -903,7 +915,7 @@ onMounted(async () => {
 .porter-times .time-group input[type="time"] {
   padding: 4px 6px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 0.875rem;
   width: 100%;
 }
@@ -952,7 +964,7 @@ onMounted(async () => {
 .add-porter-form {
   padding: 12px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  border-radius: 0;
   background-color: rgba(0, 0, 0, 0.02);
 }
 
@@ -968,7 +980,7 @@ onMounted(async () => {
   min-width: 150px;
   padding: 8px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 0.875rem;
 }
 
@@ -980,7 +992,7 @@ onMounted(async () => {
   width: 100%;
   padding: 8px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 0.875rem;
 }
 
@@ -1024,7 +1036,7 @@ onMounted(async () => {
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing);
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: 0;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25rem;
