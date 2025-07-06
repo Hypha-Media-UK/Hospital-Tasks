@@ -1,23 +1,26 @@
 <template>
-  <div class="area-cover-shift-list">
-    <div class="area-cover-shift-list__header">
-      <BaseButton @click="showDepartmentSelector = true" variant="primary">
+  <BaseListContainer
+    :title="`${shiftTypeLabel} Area Coverage`"
+    item-type="department"
+    :items="assignments"
+    :loading="areaCoverStore.loading.departments"
+    :loading-text="`Loading ${shiftTypeLabel.toLowerCase()} coverage...`"
+  >
+    <template #header-actions>
+      <BaseButton @click="showDepartmentSelector = true" variant="primary" size="sm">
+        <PlusIcon class="w-4 h-4" />
         Add Department
       </BaseButton>
-    </div>
+    </template>
 
-    <div v-if="areaCoverStore.loading.departments" class="loading">
-      Loading {{ shiftTypeLabel.toLowerCase() }} coverage...
-    </div>
+    <template #empty-state>
+      <p>No departments assigned to {{ shiftTypeLabel.toLowerCase() }} coverage.</p>
+      <p>Add departments using the button above.</p>
+    </template>
 
-    <div v-else-if="assignments.length === 0" class="empty-state">
-      No departments assigned to {{ shiftTypeLabel.toLowerCase() }} coverage.
-      Add departments using the button above.
-    </div>
-
-    <div v-else class="department-grid">
+    <template #items="{ items }">
       <BaseAssignmentCard
-        v-for="assignment in assignments"
+        v-for="assignment in items"
         :key="assignment.id"
         :title="assignment.department?.name || 'Unknown Department'"
         :time-range="formatTimeRange(assignment.start_time, assignment.end_time)"
@@ -26,42 +29,48 @@
         :coverage-status="getFormattedCoverageStatus(assignment.id)"
         @edit="handleUpdate(assignment.id, {})"
         @delete="handleRemove(assignment.id)"
-      />
-    </div>
+      >
+        <template #footer>
+          <div v-if="assignment.department?.color" class="color-bar" :style="{ backgroundColor: assignment.department.color }"></div>
+        </template>
+      </BaseAssignmentCard>
+    </template>
 
-    <!-- Department Selector Modal -->
-    <BaseModal
-      v-if="showDepartmentSelector"
-      title="Add Department to Coverage"
-      size="lg"
-      show-footer
-      @close="showDepartmentSelector = false"
-    >
-      <div class="department-selector">
-        <p>This modal now uses the BaseModal component instead of duplicated CSS!</p>
-        <p>Previously this component had ~100 lines of duplicate modal styles.</p>
+    <template #modals>
+      <!-- Department Selector Modal -->
+      <BaseModal
+        v-if="showDepartmentSelector"
+        title="Add Department to Coverage"
+        size="lg"
+        show-footer
+        @close="showDepartmentSelector = false"
+      >
+        <div class="department-selector">
+          <p>This modal now uses the BaseModal component instead of duplicated CSS!</p>
+          <p>Previously this component had ~100 lines of duplicate modal styles.</p>
 
-        <div class="building-item">
-          <div class="building-name">Example Building</div>
-          <div class="department-item">
-            <div class="department-name">Example Department</div>
-            <BaseButton size="sm" variant="primary">
-              Add
-            </BaseButton>
+          <div class="building-item">
+            <div class="building-name">Example Building</div>
+            <div class="department-item">
+              <div class="department-name">Example Department</div>
+              <BaseButton size="sm" variant="primary">
+                Add
+              </BaseButton>
+            </div>
           </div>
         </div>
-      </div>
 
-      <template #footer>
-        <BaseButton variant="secondary" @click="showDepartmentSelector = false">
-          Cancel
-        </BaseButton>
-        <BaseButton variant="primary">
-          Save
-        </BaseButton>
-      </template>
-    </BaseModal>
-  </div>
+        <template #footer>
+          <BaseButton variant="secondary" @click="showDepartmentSelector = false">
+            Cancel
+          </BaseButton>
+          <BaseButton variant="primary">
+            Save
+          </BaseButton>
+        </template>
+      </BaseModal>
+    </template>
+  </BaseListContainer>
 </template>
 
 <script setup lang="ts">
@@ -73,6 +82,8 @@ import { useStaffStore } from '../../stores/staffStore'
 import BaseButton from '../ui/BaseButton.vue'
 import BaseModal from '../ui/BaseModal.vue'
 import BaseAssignmentCard from '../ui/BaseAssignmentCard.vue'
+import BaseListContainer from '../ui/BaseListContainer.vue'
+import PlusIcon from '../icons/PlusIcon.vue'
 import type { ShiftType } from '../../types/areaCover'
 
 interface Props {
@@ -279,72 +290,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.area-cover-shift-list {
-  &__header {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-bottom: var(--spacing-lg);
-  }
-}
-
-.loading, .empty-state {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--color-text-secondary);
-}
-
-.department-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--spacing-lg);
-}
-
-.department-card {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
-  transition: box-shadow 0.2s ease;
-
-  &:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-}
-
-.department-header {
-  margin-bottom: var(--spacing-md);
-
-  h4 {
-    margin: 0 0 var(--spacing-xs) 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .building-name {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-  }
-}
-
-.department-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--spacing-md);
-
-  .time-range {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-  }
-
-  .actions {
-    display: flex;
-    gap: var(--spacing-sm);
-  }
-}
-
 /* Department selector styles - much cleaner without modal duplication! */
 .department-selector {
   display: flex;
@@ -382,5 +327,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   color: var(--color-text-primary);
+}
+
+.color-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
 }
 </style>
