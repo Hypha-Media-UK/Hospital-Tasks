@@ -1,28 +1,31 @@
 <template>
-  <div class="task-item-row" :class="{ 'is-regular': taskItem.is_regular }">
-    <div class="item-content">
-      <div v-if="isEditing" class="edit-form">
-        <input
-          v-model="editName"
-          ref="editInput"
-          class="edit-input"
-          @keyup.enter="saveEdit"
-          @keyup.esc="cancelEdit"
-          @blur="saveEdit"
-        />
-      </div>
-      <div v-else class="item-info">
+  <BaseListItem
+    :highlighted="taskItem.is_regular"
+    :editing="isEditing"
+  >
+    <template #edit-form>
+      <input
+        v-model="editName"
+        ref="editInput"
+        class="edit-input"
+        @keyup.enter="saveEdit"
+        @keyup.esc="cancelEdit"
+        @blur="saveEdit"
+      />
+    </template>
+
+    <template #content>
+      <div class="item-info">
         <span class="item-name">{{ taskItem.name }}</span>
         <div class="item-badges">
           <span v-if="taskItem.is_regular" class="regular-badge">Regular</span>
           <span v-if="hasAssignments" class="assignments-badge">Assigned</span>
         </div>
       </div>
-    </div>
+    </template>
 
-    <div class="item-actions">
+    <template #actions>
       <BaseButton
-        v-if="!isEditing"
         @click="toggleRegular"
         variant="ghost"
         size="sm"
@@ -33,7 +36,6 @@
       </BaseButton>
 
       <BaseButton
-        v-if="!isEditing"
         @click="openAssignmentModal"
         variant="ghost"
         size="sm"
@@ -44,7 +46,6 @@
       </BaseButton>
 
       <BaseButton
-        v-if="!isEditing"
         @click="startEdit"
         variant="ghost"
         size="sm"
@@ -54,7 +55,6 @@
       </BaseButton>
 
       <BaseButton
-        v-if="!isEditing"
         @click="confirmDelete"
         variant="ghost"
         size="sm"
@@ -62,8 +62,8 @@
       >
         <TrashIcon />
       </BaseButton>
-    </div>
-  </div>
+    </template>
+  </BaseListItem>
 </template>
 
 <script setup lang="ts">
@@ -71,6 +71,7 @@ import { ref, computed, nextTick } from 'vue'
 import { useTaskTypesStore } from '../../stores/taskTypesStore'
 import type { TaskItem } from '../../types/taskTypes'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseListItem from '../ui/BaseListItem.vue'
 import StarIcon from '../icons/StarIcon.vue'
 import MapPinIcon from '../icons/MapPinIcon.vue'
 import EditIcon from '../icons/EditIcon.vue'
@@ -147,48 +148,19 @@ const openAssignmentModal = () => {
 </script>
 
 <style scoped>
-.task-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-md);
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-md);
-  transition: all 0.2s ease;
-}
-
-.task-item-row:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary-alpha);
-}
-
-.task-item-row.is-regular {
-  background: var(--color-primary-light);
-  border-color: var(--color-primary);
-}
-
-.item-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.edit-form {
-  width: 100%;
-}
-
 .edit-input {
   width: 100%;
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-primary);
-  border-radius: var(--border-radius-sm);
+  border-radius: var(--radius);
   font-size: 0.875rem;
-  background: white;
+  background: var(--color-background);
 }
 
 .edit-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-primary-alpha);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .item-info {
@@ -199,7 +171,7 @@ const openAssignmentModal = () => {
 
 .item-name {
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .item-badges {
@@ -211,7 +183,7 @@ const openAssignmentModal = () => {
 .assignments-badge {
   font-size: 0.75rem;
   padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-full);
+  border-radius: var(--radius-full);
   font-weight: 500;
 }
 
@@ -221,13 +193,8 @@ const openAssignmentModal = () => {
 }
 
 .assignments-badge {
-  background: var(--color-gray-200);
-  color: var(--color-text-secondary);
-}
-
-.item-actions {
-  display: flex;
-  gap: var(--spacing-xs);
+  background: var(--color-background-alt);
+  color: var(--color-text-light);
 }
 
 .is-active {
@@ -238,21 +205,12 @@ const openAssignmentModal = () => {
   color: var(--color-primary);
 }
 
-@container (max-width: 768px) {
-  .task-item-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing-sm);
-  }
-
+/* Mobile responsive */
+@media (max-width: 768px) {
   .item-info {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-xs);
-  }
-
-  .item-actions {
-    justify-content: center;
   }
 }
 </style>

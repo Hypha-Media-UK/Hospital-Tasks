@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '../services/supabase'
+import { useBaseStoreLoading } from '../composables/useBaseStoreLoading'
 import type { Building, Department, DepartmentTaskAssignment, BuildingWithDepartments } from '../types/locations'
 
 export const useLocationsStore = defineStore('locations', () => {
@@ -9,12 +10,16 @@ export const useLocationsStore = defineStore('locations', () => {
   const departments = ref<Department[]>([])
   const departmentTaskAssignments = ref<DepartmentTaskAssignment[]>([])
 
-  const loading = ref({
-    buildings: false,
-    departments: false,
-    sorting: false,
-    departmentTaskAssignments: false
-  })
+  const {
+    setEntitiesLoading,
+    setDetailsLoading,
+    setAssignmentsLoading,
+    setOperationsLoading,
+    isEntitiesLoading,
+    isDetailsLoading,
+    isAssignmentsLoading,
+    isOperationsLoading
+  } = useBaseStoreLoading()
 
   const error = ref<string | null>(null)
 
@@ -83,7 +88,7 @@ export const useLocationsStore = defineStore('locations', () => {
 
   // Actions
   const fetchBuildings = async (): Promise<void> => {
-    loading.value.buildings = true
+    setEntitiesLoading(true)
     error.value = null
 
     try {
@@ -99,12 +104,12 @@ export const useLocationsStore = defineStore('locations', () => {
       console.error('Error fetching buildings:', err)
       error.value = 'Failed to load buildings'
     } finally {
-      loading.value.buildings = false
+      setEntitiesLoading(false)
     }
   }
 
   const addBuilding = async (building: Omit<Building, 'id' | 'created_at' | 'updated_at'>): Promise<Building | null> => {
-    loading.value.buildings = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -126,12 +131,12 @@ export const useLocationsStore = defineStore('locations', () => {
       error.value = 'Failed to add building'
       return null
     } finally {
-      loading.value.buildings = false
+      setOperationsLoading(false)
     }
   }
 
   const updateBuilding = async (id: string, updates: Partial<Building>): Promise<boolean> => {
-    loading.value.buildings = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -156,12 +161,12 @@ export const useLocationsStore = defineStore('locations', () => {
       error.value = 'Failed to update building'
       return false
     } finally {
-      loading.value.buildings = false
+      setOperationsLoading(false)
     }
   }
 
   const deleteBuilding = async (id: string): Promise<boolean> => {
-    loading.value.buildings = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -181,12 +186,12 @@ export const useLocationsStore = defineStore('locations', () => {
       error.value = 'Failed to delete building'
       return false
     } finally {
-      loading.value.buildings = false
+      setOperationsLoading(false)
     }
   }
 
   const fetchDepartments = async (): Promise<void> => {
-    loading.value.departments = true
+    setDetailsLoading(true)
     error.value = null
 
     try {
@@ -202,12 +207,12 @@ export const useLocationsStore = defineStore('locations', () => {
       console.error('Error fetching departments:', err)
       error.value = 'Failed to load departments'
     } finally {
-      loading.value.departments = false
+      setDetailsLoading(false)
     }
   }
 
   const addDepartment = async (department: Omit<Department, 'id' | 'created_at' | 'updated_at'>): Promise<Department | null> => {
-    loading.value.departments = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -229,12 +234,12 @@ export const useLocationsStore = defineStore('locations', () => {
       error.value = 'Failed to add department'
       return null
     } finally {
-      loading.value.departments = false
+      setOperationsLoading(false)
     }
   }
 
   const updateDepartment = async (id: string, updates: Partial<Department>): Promise<boolean> => {
-    loading.value.departments = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -259,7 +264,7 @@ export const useLocationsStore = defineStore('locations', () => {
       error.value = 'Failed to update department'
       return false
     } finally {
-      loading.value.departments = false
+      setOperationsLoading(false)
     }
   }
 
@@ -271,7 +276,7 @@ export const useLocationsStore = defineStore('locations', () => {
   }
 
   const deleteDepartment = async (id: string): Promise<boolean> => {
-    loading.value.departments = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -290,7 +295,7 @@ export const useLocationsStore = defineStore('locations', () => {
       error.value = 'Failed to delete department'
       return false
     } finally {
-      loading.value.departments = false
+      setOperationsLoading(false)
     }
   }
 
@@ -306,8 +311,13 @@ export const useLocationsStore = defineStore('locations', () => {
     buildings,
     departments,
     departmentTaskAssignments,
-    loading,
     error,
+
+    // Loading states
+    isEntitiesLoading,
+    isDetailsLoading,
+    isAssignmentsLoading,
+    isOperationsLoading,
 
     // Getters
     sortedBuildings,

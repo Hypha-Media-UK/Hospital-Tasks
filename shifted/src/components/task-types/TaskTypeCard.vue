@@ -1,58 +1,56 @@
 <template>
-  <div class="task-type-card">
-    <div class="card-header">
-      <div class="header-content">
-        <div v-if="isEditing" class="edit-form">
-          <input
-            v-model="editName"
-            ref="editInput"
-            class="edit-input"
-            @keyup.enter="saveEdit"
-            @keyup.esc="cancelEdit"
-            @blur="saveEdit"
-          />
-        </div>
-        <div v-else class="title-section">
-          <h3 class="task-type-name">{{ taskType.name }}</h3>
-          <div class="item-count">{{ taskType.items.length }} items</div>
-        </div>
+  <BaseCard>
+    <template #header>
+      <div v-if="isEditing" class="edit-form">
+        <input
+          v-model="editName"
+          ref="editInput"
+          class="edit-input"
+          @keyup.enter="saveEdit"
+          @keyup.esc="cancelEdit"
+          @blur="saveEdit"
+        />
       </div>
-
-      <div class="actions">
-        <BaseButton
-          v-if="!isEditing"
-          @click="openAssignmentModal"
-          variant="ghost"
-          size="sm"
-          :class="{ 'has-assignments': hasAssignments }"
-          title="Manage Department Assignments"
-        >
-          <MapPinIcon />
-        </BaseButton>
-
-        <BaseButton
-          v-if="!isEditing"
-          @click="startEdit"
-          variant="ghost"
-          size="sm"
-          title="Edit Task Type"
-        >
-          <EditIcon />
-        </BaseButton>
-
-        <BaseButton
-          v-if="!isEditing"
-          @click="confirmDelete"
-          variant="ghost"
-          size="sm"
-          title="Delete Task Type"
-        >
-          <TrashIcon />
-        </BaseButton>
+      <div v-else class="title-section">
+        <h3 class="task-type-name">{{ taskType.name }}</h3>
+        <div class="item-count">{{ taskType.items.length }} items</div>
       </div>
-    </div>
+    </template>
 
-    <div class="card-body">
+    <template #actions>
+      <BaseButton
+        v-if="!isEditing"
+        @click="openAssignmentModal"
+        variant="ghost"
+        size="sm"
+        :class="{ 'has-assignments': hasAssignments }"
+        title="Manage Department Assignments"
+      >
+        <MapPinIcon />
+      </BaseButton>
+
+      <BaseButton
+        v-if="!isEditing"
+        @click="startEdit"
+        variant="ghost"
+        size="sm"
+        title="Edit Task Type"
+      >
+        <EditIcon />
+      </BaseButton>
+
+      <BaseButton
+        v-if="!isEditing"
+        @click="confirmDelete"
+        variant="ghost"
+        size="sm"
+        title="Delete Task Type"
+      >
+        <TrashIcon />
+      </BaseButton>
+    </template>
+
+    <template #content>
       <!-- Add Task Item Form -->
       <div v-if="showAddForm" class="add-item-form">
         <div class="form-row">
@@ -98,8 +96,8 @@
           Add Task Item
         </BaseButton>
       </div>
-    </div>
-  </div>
+    </template>
+  </BaseCard>
 </template>
 
 <script setup lang="ts">
@@ -107,6 +105,7 @@ import { ref, computed, nextTick } from 'vue'
 import { useTaskTypesStore } from '../../stores/taskTypesStore'
 import type { TaskTypeWithItems } from '../../types/taskTypes'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseCard from '../ui/BaseCard.vue'
 import TaskItemRow from './TaskItemRow.vue'
 import MapPinIcon from '../icons/MapPinIcon.vue'
 import EditIcon from '../icons/EditIcon.vue'
@@ -223,33 +222,6 @@ const handleItemAssignmentClick = (title: string, taskItemId: string) => {
 </script>
 
 <style scoped>
-.task-type-card {
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.task-type-card:hover {
-  box-shadow: var(--shadow-md);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-gray-50);
-}
-
-.header-content {
-  flex: 1;
-  min-width: 0;
-}
-
 .title-section {
   display: flex;
   align-items: center;
@@ -258,17 +230,14 @@ const handleItemAssignmentClick = (title: string, taskItemId: string) => {
 
 .task-type-name {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text);
 }
 
 .item-count {
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  background: var(--color-gray-200);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-full);
+  color: var(--color-text-light);
 }
 
 .edit-form {
@@ -277,30 +246,22 @@ const handleItemAssignmentClick = (title: string, taskItemId: string) => {
 
 .edit-input {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-sm);
   border: 1px solid var(--color-primary);
-  border-radius: var(--border-radius-md);
-  font-size: 1.25rem;
+  border-radius: var(--radius);
+  font-size: 1.125rem;
   font-weight: 600;
-  background: white;
+  background: var(--color-background);
 }
 
 .edit-input:focus {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-primary-alpha);
-}
-
-.actions {
-  display: flex;
-  gap: var(--spacing-xs);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .has-assignments {
   color: var(--color-primary);
-}
-
-.card-body {
-  padding: var(--spacing-lg);
 }
 
 .add-item-form {

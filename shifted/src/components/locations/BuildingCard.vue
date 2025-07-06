@@ -1,129 +1,132 @@
 <template>
-  <div class="building-card">
-    <div class="building-header">
+  <BaseCard>
+    <template #header>
       <div class="building-info">
         <h3 class="building-name">{{ building.name }}</h3>
         <span class="department-count">
           {{ departmentCount }} {{ departmentCount === 1 ? 'department' : 'departments' }}
         </span>
       </div>
+    </template>
 
-      <div class="building-actions">
-        <BaseButton variant="ghost" size="sm" @click="$emit('edit', building)">
-          <EditIcon class="w-4 h-4" />
-        </BaseButton>
-        <BaseButton variant="ghost" size="sm" @click="$emit('delete', building)">
-          <TrashIcon class="w-4 h-4" />
-        </BaseButton>
-      </div>
-    </div>
+    <template #actions>
+      <BaseButton variant="ghost" size="sm" @click="$emit('edit', building)">
+        <EditIcon class="w-4 h-4" />
+      </BaseButton>
+      <BaseButton variant="ghost" size="sm" @click="$emit('delete', building)">
+        <TrashIcon class="w-4 h-4" />
+      </BaseButton>
+    </template>
 
-    <div class="departments-section">
-      <div class="departments-header">
-        <h4 class="departments-title">Departments</h4>
-        <BaseButton variant="ghost" size="sm" @click="showAddDepartment = true">
-          <PlusIcon class="w-4 h-4" />
-          Add Department
-        </BaseButton>
-      </div>
+    <template #content>
+      <div class="departments-section">
+        <div class="departments-header">
+          <h4 class="departments-title">Departments</h4>
+          <BaseButton variant="ghost" size="sm" @click="showAddDepartment = true">
+            <PlusIcon class="w-4 h-4" />
+            Add Department
+          </BaseButton>
+        </div>
 
-      <div v-if="showAddDepartment" class="add-department-form">
-        <div class="form-row">
-          <input
-            v-model="newDepartmentName"
-            type="text"
-            placeholder="Department name"
-            class="form-control"
-            ref="departmentInput"
-            @keyup.enter="addDepartment"
-            @keyup.esc="cancelAddDepartment"
+        <div v-if="showAddDepartment" class="add-department-form">
+          <div class="form-row">
+            <input
+              v-model="newDepartmentName"
+              type="text"
+              placeholder="Department name"
+              class="form-control"
+              ref="departmentInput"
+              @keyup.enter="addDepartment"
+              @keyup.esc="cancelAddDepartment"
+            />
+            <BaseButton
+              variant="primary"
+              size="sm"
+              @click="addDepartment"
+              :disabled="!newDepartmentName.trim() || locationsStore.loading.departments"
+            >
+              Add
+            </BaseButton>
+            <BaseButton variant="secondary" size="sm" @click="cancelAddDepartment">
+              Cancel
+            </BaseButton>
+          </div>
+        </div>
+
+        <div v-if="departments.length === 0 && !showAddDepartment" class="no-departments">
+          No departments added yet
+        </div>
+
+        <div v-else class="departments-list">
+          <DepartmentItem
+            v-for="department in departments"
+            :key="department.id"
+            :department="department"
+            @edit="editDepartment"
+            @delete="deleteDepartment"
+            @toggle-frequent="toggleFrequent"
           />
-          <BaseButton
-            variant="primary"
-            size="sm"
-            @click="addDepartment"
-            :disabled="!newDepartmentName.trim() || locationsStore.loading.departments"
-          >
-            Add
-          </BaseButton>
-          <BaseButton variant="secondary" size="sm" @click="cancelAddDepartment">
-            Cancel
-          </BaseButton>
         </div>
       </div>
 
-      <div v-if="departments.length === 0 && !showAddDepartment" class="no-departments">
-        No departments added yet
-      </div>
+      <!-- Edit Department Modal -->
+      <div v-if="showEditDepartmentModal" class="modal-overlay">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3 class="modal-title">Edit Department</h3>
+            <button class="modal-close" @click="closeEditDepartmentModal">&times;</button>
+          </div>
 
-      <div v-else class="departments-list">
-        <DepartmentItem
-          v-for="department in departments"
-          :key="department.id"
-          :department="department"
-          @edit="editDepartment"
-          @delete="deleteDepartment"
-          @toggle-frequent="toggleFrequent"
-        />
-      </div>
-    </div>
-
-    <!-- Edit Department Modal -->
-    <div v-if="showEditDepartmentModal" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Edit Department</h3>
-          <button class="modal-close" @click="closeEditDepartmentModal">&times;</button>
-        </div>
-
-        <div class="modal-body">
-          <form @submit.prevent="updateDepartment">
-            <div class="form-group">
-              <label for="editDepartmentName">Department Name</label>
-              <input
-                id="editDepartmentName"
-                v-model="editDepartmentForm.name"
-                type="text"
-                required
-                class="form-control"
-                placeholder="Enter department name"
-              />
-            </div>
-
-            <div class="form-group">
-              <div class="checkbox-container">
+          <div class="modal-body">
+            <form @submit.prevent="updateDepartment">
+              <div class="form-group">
+                <label for="editDepartmentName">Department Name</label>
                 <input
-                  type="checkbox"
-                  id="isFrequent"
-                  v-model="editDepartmentForm.is_frequent"
+                  id="editDepartmentName"
+                  v-model="editDepartmentForm.name"
+                  type="text"
+                  required
+                  class="form-control"
+                  placeholder="Enter department name"
                 />
-                <label for="isFrequent">Mark as frequent department</label>
               </div>
-            </div>
 
-            <div class="form-actions">
-              <BaseButton variant="secondary" @click="closeEditDepartmentModal">
-                Cancel
-              </BaseButton>
-              <BaseButton
-                variant="primary"
-                type="submit"
-                :disabled="!editDepartmentForm.name.trim() || locationsStore.loading.departments"
-              >
-                {{ locationsStore.loading.departments ? 'Updating...' : 'Update Department' }}
-              </BaseButton>
-            </div>
-          </form>
+              <div class="form-group">
+                <div class="checkbox-container">
+                  <input
+                    type="checkbox"
+                    id="isFrequent"
+                    v-model="editDepartmentForm.is_frequent"
+                  />
+                  <label for="isFrequent">Mark as frequent department</label>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <BaseButton variant="secondary" @click="closeEditDepartmentModal">
+                  Cancel
+                </BaseButton>
+                <BaseButton
+                  variant="primary"
+                  type="submit"
+                  :disabled="!editDepartmentForm.name.trim() || locationsStore.loading.departments"
+                >
+                  {{ locationsStore.loading.departments ? 'Updating...' : 'Update Department' }}
+                </BaseButton>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
+    </template>
+  </BaseCard>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { useLocationsStore } from '../../stores/locationsStore'
 import BaseButton from '../ui/BaseButton.vue'
+import BaseCard from '../ui/BaseCard.vue'
 import DepartmentItem from './DepartmentItem.vue'
 import EditIcon from '../icons/EditIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
@@ -231,26 +234,6 @@ const showAddDepartmentForm = async () => {
 </script>
 
 <style scoped>
-.building-card {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.building-header {
-  padding: var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--spacing);
-}
-
-.building-info {
-  flex: 1;
-}
-
 .building-name {
   font-size: 1.125rem;
   font-weight: 600;
@@ -261,15 +244,6 @@ const showAddDepartmentForm = async () => {
 .department-count {
   font-size: 0.875rem;
   color: var(--color-text-light);
-}
-
-.building-actions {
-  display: flex;
-  gap: var(--spacing-xs);
-}
-
-.departments-section {
-  padding: var(--spacing-lg);
 }
 
 .departments-header {

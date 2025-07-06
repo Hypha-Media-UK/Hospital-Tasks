@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '../services/supabase'
+import { useBaseStoreLoading } from '../composables/useBaseStoreLoading'
 import type {
   TaskType,
   TaskItem,
@@ -17,12 +18,16 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
   const typeAssignments = ref<TaskTypeAssignment[]>([])
   const itemAssignments = ref<TaskItemAssignment[]>([])
 
-  const loading = ref({
-    taskTypes: false,
-    taskItems: false,
-    typeAssignments: false,
-    itemAssignments: false
-  })
+  const {
+    setEntitiesLoading,
+    setDetailsLoading,
+    setAssignmentsLoading,
+    setOperationsLoading,
+    isEntitiesLoading,
+    isDetailsLoading,
+    isAssignmentsLoading,
+    isOperationsLoading
+  } = useBaseStoreLoading()
 
   const error = ref<string | null>(null)
 
@@ -87,7 +92,7 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
 
   // Actions - Task Types
   const fetchTaskTypes = async (): Promise<void> => {
-    loading.value.taskTypes = true
+    setEntitiesLoading(true)
     error.value = null
 
     try {
@@ -103,12 +108,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       console.error('Error fetching task types:', err)
       error.value = 'Failed to load task types'
     } finally {
-      loading.value.taskTypes = false
+      setEntitiesLoading(false)
     }
   }
 
   const addTaskType = async (taskType: Omit<TaskType, 'id' | 'created_at' | 'updated_at'>): Promise<TaskType | null> => {
-    loading.value.taskTypes = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -130,12 +135,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to add task type'
       return null
     } finally {
-      loading.value.taskTypes = false
+      setOperationsLoading(false)
     }
   }
 
   const updateTaskType = async (id: string, updates: Partial<TaskType>): Promise<boolean> => {
-    loading.value.taskTypes = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -160,12 +165,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to update task type'
       return false
     } finally {
-      loading.value.taskTypes = false
+      setOperationsLoading(false)
     }
   }
 
   const deleteTaskType = async (id: string): Promise<boolean> => {
-    loading.value.taskTypes = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -187,13 +192,13 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to delete task type'
       return false
     } finally {
-      loading.value.taskTypes = false
+      setOperationsLoading(false)
     }
   }
 
   // Actions - Task Items
   const fetchTaskItems = async (): Promise<void> => {
-    loading.value.taskItems = true
+    setDetailsLoading(true)
     error.value = null
 
     try {
@@ -209,12 +214,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       console.error('Error fetching task items:', err)
       error.value = 'Failed to load task items'
     } finally {
-      loading.value.taskItems = false
+      setDetailsLoading(false)
     }
   }
 
   const addTaskItem = async (taskItem: Omit<TaskItem, 'id' | 'created_at' | 'updated_at'>): Promise<TaskItem | null> => {
-    loading.value.taskItems = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -236,12 +241,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to add task item'
       return null
     } finally {
-      loading.value.taskItems = false
+      setOperationsLoading(false)
     }
   }
 
   const updateTaskItem = async (id: string, updates: Partial<TaskItem>): Promise<boolean> => {
-    loading.value.taskItems = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -266,12 +271,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to update task item'
       return false
     } finally {
-      loading.value.taskItems = false
+      setOperationsLoading(false)
     }
   }
 
   const setTaskItemRegular = async (taskItemId: string, isRegular: boolean = true): Promise<boolean> => {
-    loading.value.taskItems = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -321,12 +326,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to update task item'
       return false
     } finally {
-      loading.value.taskItems = false
+      setOperationsLoading(false)
     }
   }
 
   const deleteTaskItem = async (id: string): Promise<boolean> => {
-    loading.value.taskItems = true
+    setOperationsLoading(true)
     error.value = null
 
     try {
@@ -347,13 +352,13 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to delete task item'
       return false
     } finally {
-      loading.value.taskItems = false
+      setOperationsLoading(false)
     }
   }
 
   // Actions - Assignments
   const fetchTypeAssignments = async (): Promise<void> => {
-    loading.value.typeAssignments = true
+    setAssignmentsLoading(true)
     error.value = null
 
     try {
@@ -368,12 +373,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       console.error('Error fetching type assignments:', err)
       error.value = 'Failed to load department assignments for task types'
     } finally {
-      loading.value.typeAssignments = false
+      setAssignmentsLoading(false)
     }
   }
 
   const fetchItemAssignments = async (): Promise<void> => {
-    loading.value.itemAssignments = true
+    setAssignmentsLoading(true)
     error.value = null
 
     try {
@@ -388,12 +393,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       console.error('Error fetching item assignments:', err)
       error.value = 'Failed to load department assignments for task items'
     } finally {
-      loading.value.itemAssignments = false
+      setAssignmentsLoading(false)
     }
   }
 
   const updateTypeAssignments = async (taskTypeId: string, departmentAssignments: DepartmentAssignmentData[]): Promise<boolean> => {
-    loading.value.typeAssignments = true
+    setAssignmentsLoading(true)
     error.value = null
 
     try {
@@ -439,12 +444,12 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to update department assignments for task type'
       return false
     } finally {
-      loading.value.typeAssignments = false
+      setAssignmentsLoading(false)
     }
   }
 
   const updateItemAssignments = async (taskItemId: string, departmentAssignments: DepartmentAssignmentData[]): Promise<boolean> => {
-    loading.value.itemAssignments = true
+    setAssignmentsLoading(true)
     error.value = null
 
     try {
@@ -490,7 +495,7 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
       error.value = 'Failed to update department assignments for task item'
       return false
     } finally {
-      loading.value.itemAssignments = false
+      setAssignmentsLoading(false)
     }
   }
 
@@ -510,8 +515,13 @@ export const useTaskTypesStore = defineStore('taskTypes', () => {
     taskItems,
     typeAssignments,
     itemAssignments,
-    loading,
     error,
+
+    // Loading states
+    isEntitiesLoading,
+    isDetailsLoading,
+    isAssignmentsLoading,
+    isOperationsLoading,
 
     // Getters
     taskTypesWithItems,

@@ -1,7 +1,7 @@
 <template>
-  <div class="department-item" :class="{ 'department-item--frequent': department.is_frequent }">
-    <div class="department-content">
-      <div class="department-name">
+  <BaseListItem :highlighted="department.is_frequent">
+    <template #content>
+      <div class="item-name">
         {{ department.name }}
         <StarIcon
           v-if="department.is_frequent"
@@ -9,9 +9,9 @@
           title="Frequent department"
         />
       </div>
-    </div>
+    </template>
 
-    <div class="department-actions">
+    <template #actions>
       <BaseButton
         variant="ghost"
         size="sm"
@@ -31,12 +31,13 @@
       <BaseButton variant="ghost" size="sm" @click="$emit('delete', department)">
         <TrashIcon class="w-4 h-4" />
       </BaseButton>
-    </div>
-  </div>
+    </template>
+  </BaseListItem>
 </template>
 
 <script setup lang="ts">
 import BaseButton from '../ui/BaseButton.vue'
+import BaseListItem from '../ui/BaseListItem.vue'
 import StarIcon from '../icons/StarIcon.vue'
 import EditIcon from '../icons/EditIcon.vue'
 import TrashIcon from '../icons/TrashIcon.vue'
@@ -57,37 +58,7 @@ defineEmits<Emits>()
 </script>
 
 <style scoped>
-.department-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing);
-  background: var(--color-background-alt);
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.department-item:hover {
-  border-color: var(--color-border);
-  background: var(--color-background);
-}
-
-.department-item--frequent {
-  background: rgba(255, 193, 7, 0.1);
-  border-color: rgba(255, 193, 7, 0.3);
-}
-
-.department-item--frequent:hover {
-  background: rgba(255, 193, 7, 0.15);
-  border-color: rgba(255, 193, 7, 0.4);
-}
-
-.department-content {
-  flex: 1;
-}
-
-.department-name {
+.item-name {
   font-weight: 500;
   color: var(--color-text);
   display: flex;
@@ -98,11 +69,6 @@ defineEmits<Emits>()
 .frequent-icon {
   color: #fbbf24;
   fill: currentColor;
-}
-
-.department-actions {
-  display: flex;
-  gap: var(--spacing-xs);
 }
 
 .star-filled {
