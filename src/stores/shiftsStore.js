@@ -891,7 +891,14 @@ export const useShiftsStore = defineStore('shifts', {
           
           // Automatically add supervisor to porter pool
           console.log(`Adding supervisor ${supervisorId} to porter pool for shift ${newShift.id}`);
-          await this.addSupervisorToPorterPool(newShift.id, supervisorId);
+          const supervisorResult = await this.addSupervisorToPorterPool(newShift.id, supervisorId);
+
+          if (!supervisorResult) {
+            console.error('Failed to add supervisor to porter pool - this may cause UI issues');
+            // Continue with shift creation but log the issue
+          } else {
+            console.log('Successfully added supervisor to porter pool:', supervisorResult);
+          }
           
           // Add the new shift to activeShifts array
           this.activeShifts.unshift(newShift);
@@ -2586,31 +2593,74 @@ export const useShiftsStore = defineStore('shifts', {
     async addSupervisorToPorterPool(shiftId, supervisorId) {
       this.loading.porterPool = true;
       this.error = null;
-      
+
       try {
-        // Add supervisor to shift pool with is_supervisor flag
-        const { data, error } = await supabase
-          .from('shift_porter_pool')
-          .insert({
-            shift_id: shiftId,
-            porter_id: supervisorId,
-            is_supervisor: true
-          })
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name)
-          `);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Add to local state
-          this.shiftPorterPool.push(data[0]);
+        console.log(`Attempting to add supervisor ${supervisorId} to shift ${shiftId} porter pool`);
+
+        // Check if supervisor is already in the porter pool
+        const existingEntry = this.shiftPorterPool.find(
+          p => p.shift_id === shiftId && p.porter_id === supervisorId
+        );
+
+        if (existingEntry) {
+          console.log('Supervisor already exists in porter pool, updating is_supervisor flag');
+          // Update existing entry to mark as supervisor
+          const { data, error } = await supabase
+            .from('shift_porter_pool')
+            .update({ is_supervisor: true })
+            .eq('id', existingEntry.id)
+            .select(`
+              *,
+              porter:porter_id(id, first_name, last_name)
+            `);
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            // Update local state
+            existingEntry.is_supervisor = true;
+            console.log('Successfully updated existing porter pool entry to supervisor');
+            return data[0];
+          }
+        } else {
+          // Add supervisor to shift pool with is_supervisor flag
+          const { data, error } = await supabase
+            .from('shift_porter_pool')
+            .insert({
+              shift_id: shiftId,
+              porter_id: supervisorId,
+              is_supervisor: true
+            })
+            .select(`
+              *,
+              porter:porter_id(id, first_name, last_name)
+            `);
+
+          if (error) {
+            console.error('Database error when inserting supervisor:', error);
+            throw error;
+          }
+
+          if (data && data.length > 0) {
+            // Add to local state
+            this.shiftPorterPool.push(data[0]);
+            console.log('Successfully added new supervisor to porter pool');
+            return data[0];
+          } else {
+            console.error('No data returned from supervisor insertion');
+            return null;
+          }
         }
-        
-        return data?.[0] || null;
+
+        return null;
       } catch (error) {
         console.error('Error adding supervisor to porter pool:', error);
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         this.error = 'Failed to add supervisor to porter pool';
         return null;
       } finally {

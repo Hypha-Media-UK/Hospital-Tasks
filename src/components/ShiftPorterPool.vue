@@ -11,7 +11,10 @@
     </div>
     
     <div v-else-if="sortedPorterPool.length === 0 && supervisors.length === 0" class="empty-state">
-      No porters assigned to this shift yet. Click "Add Porter" to get started.
+      <p>No porters assigned to this shift yet. Click "Add Porter" to get started.</p>
+      <button class="btn btn--primary" @click="openPorterSelector" style="margin-top: 16px;">
+        Add Porter
+      </button>
     </div>
     
     <!-- Supervisors Section -->
@@ -69,24 +72,33 @@
       </div>
     </div>
     
+    <!-- Add Porter Button (always available when there are supervisors but no regular porters) -->
+    <div v-if="supervisors.length > 0 && sortedPorterPool.length === 0" class="add-porter-section">
+      <div class="add-porter-controls">
+        <button class="btn btn--primary" @click="openPorterSelector">
+          Add Porter
+        </button>
+      </div>
+    </div>
+
     <!-- Regular Porters Section -->
     <div v-if="sortedPorterPool.length > 0" class="porters-section">
       <h4 v-if="supervisors.length > 0" class="section-title">Porters</h4>
-      
+
       <!-- Filter controls with Add Porter button -->
       <div class="filter-controls">
         <div class="filter-left">
           <div class="filter-label">Sort by:</div>
           <div class="filter-options">
-            <button 
-              class="filter-btn" 
+            <button
+              class="filter-btn"
               :class="{ active: sortFilter === 'alphabetical' }"
               @click="sortFilter = 'alphabetical'"
             >
               A-Z
             </button>
-            <button 
-              class="filter-btn" 
+            <button
+              class="filter-btn"
               :class="{ active: sortFilter === 'available' }"
               @click="sortFilter = 'available'"
             >
@@ -94,7 +106,7 @@
             </button>
           </div>
         </div>
-        
+
         <button class="btn btn--primary" @click="openPorterSelector">
           Add Porter
         </button>
@@ -1425,6 +1437,17 @@ onMounted(async () => {
   }
 }
 
+.add-porter-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+
+  .add-porter-controls {
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
 .porters-section {
   .section-header {
     display: flex;
@@ -1432,7 +1455,7 @@ onMounted(async () => {
     align-items: center;
     margin-bottom: 16px;
   }
-  
+
   .section-title {
     margin: 0;
   }
