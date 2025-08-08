@@ -201,9 +201,9 @@ export function minutesToTime(minutes) {
  */
 export function createShiftStartDateTime(shiftDate, shiftType) {
   const settingsStore = useSettingsStore();
-  const shiftDefaults = settingsStore.shiftDefaults[shiftType];
+  const shiftDefaults = settingsStore.shiftDefaultsByType[shiftType];
   
-  if (!shiftDefaults || !shiftDefaults.startTime) {
+  if (!shiftDefaults || !shiftDefaults.start_time) {
     console.warn(`No shift defaults found for type: ${shiftType}`);
     return null;
   }
@@ -215,8 +215,10 @@ export function createShiftStartDateTime(shiftDate, shiftType) {
     return null;
   }
   
-  // Parse the start time (HH:MM format)
-  const [hours, minutes] = shiftDefaults.startTime.split(':').map(Number);
+  // Parse the start time from database format (Date object)
+  const startTime = new Date(shiftDefaults.start_time);
+  const hours = startTime.getUTCHours();
+  const minutes = startTime.getUTCMinutes();
   
   // Create the shift start datetime - use the date from the shift but set the time from settings
   const shiftStart = new Date(baseDate);
@@ -233,9 +235,9 @@ export function createShiftStartDateTime(shiftDate, shiftType) {
  */
 export function createShiftEndDateTime(shiftDate, shiftType) {
   const settingsStore = useSettingsStore();
-  const shiftDefaults = settingsStore.shiftDefaults[shiftType];
+  const shiftDefaults = settingsStore.shiftDefaultsByType[shiftType];
   
-  if (!shiftDefaults || !shiftDefaults.endTime) {
+  if (!shiftDefaults || !shiftDefaults.end_time) {
     console.warn(`No shift defaults found for type: ${shiftType}`);
     return null;
   }
@@ -247,16 +249,18 @@ export function createShiftEndDateTime(shiftDate, shiftType) {
     return null;
   }
   
-  // Parse the end time (HH:MM format)
-  const [hours, minutes] = shiftDefaults.endTime.split(':').map(Number);
+  // Parse the end time from database format (Date object)
+  const endTime = new Date(shiftDefaults.end_time);
+  const hours = endTime.getUTCHours();
+  const minutes = endTime.getUTCMinutes();
   
   // Create the shift end datetime - use the date from the shift but set the time from settings
   const shiftEnd = new Date(baseDate);
   shiftEnd.setUTCHours(hours, minutes, 0, 0);
   
   // Handle night shifts that end the next day
-  const startTime = shiftDefaults.startTime;
-  const [startHours] = startTime.split(':').map(Number);
+  const startTime = new Date(shiftDefaults.start_time);
+  const startHours = startTime.getUTCHours();
   
   if (hours < startHours) {
     // End time is next day (e.g., night shift ending at 08:00)

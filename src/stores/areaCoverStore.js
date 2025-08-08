@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { areaCoverApi, ApiError } from '../services/api';
+import { apiRequest } from '../services/api';
 
 // Helper function to convert time string (HH:MM:SS) to minutes
 function timeToMinutes(timeStr) {
@@ -219,6 +220,12 @@ export const useAreaCoverStore = defineStore('areaCover', {
       return gaps.hasGap;
     },
     
+    // Alias for hasAreaCoverageGap (used by components)
+    hasAreaCoverageGap: (state, getters) => (areaCoverId) => {
+      const gaps = getters.getCoverageGaps(areaCoverId);
+      return gaps.hasGap;
+    },
+    
     // Get all coverage issues (both gaps and staffing shortages)
     getCoverageIssues: (state, getters) => (areaCoverId) => {
       const gaps = getters.getCoverageGaps(areaCoverId);
@@ -311,11 +318,8 @@ export const useAreaCoverStore = defineStore('areaCover', {
     // Fetch porter assignments for a specific area assignment
     async fetchPorterAssignments(areaAssignmentId) {
       try {
-        const response = await fetch(`http://localhost:3000/api/area-cover/assignments/${areaAssignmentId}/porter-assignments`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
+        // Use the directly imported apiRequest function
+        const data = await apiRequest(`/area-cover/assignments/${areaAssignmentId}/porter-assignments`);
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error fetching porter assignments for area:', areaAssignmentId, error);
@@ -419,6 +423,12 @@ export const useAreaCoverStore = defineStore('areaCover', {
     // Initialize store
     async initialize() {
       await this.fetchAreaAssignments();
+    },
+
+    // Fetch shift porter building assignments (placeholder)
+    async fetchShiftPorterBuildingAssignments(shiftId) {
+      console.log(`fetchShiftPorterBuildingAssignments called for shift ${shiftId} - not yet implemented`);
+      return [];
     }
   }
 });

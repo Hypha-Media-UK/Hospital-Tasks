@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { buildingsApi, departmentsApi, ApiError } from '../services/api';
+import { buildingsApi, departmentsApi, ApiError, apiRequest } from '../services/api';
 
 export const useLocationsStore = defineStore('locations', {
   state: () => ({
@@ -433,11 +433,7 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const response = await fetch('http://localhost:3000/api/departments/task-assignments/all');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await apiRequest('/departments/task-assignments/all');
         this.departmentTaskAssignments = Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error fetching department task assignments:', error);
@@ -453,22 +449,13 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const response = await fetch(`http://localhost:3000/api/departments/${departmentId}/task-assignments`, {
+        const data = await apiRequest(`/departments/${departmentId}/task-assignments`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
             task_type_id: taskTypeId,
             task_item_id: taskItemId
           })
         });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
         
         // Update local state
         const existingIndex = this.departmentTaskAssignments.findIndex(
@@ -505,13 +492,9 @@ export const useLocationsStore = defineStore('locations', {
           return true; // Already removed
         }
         
-        const response = await fetch(`http://localhost:3000/api/departments/task-assignments/${assignment.id}`, {
+        await apiRequest(`/departments/task-assignments/${assignment.id}`, {
           method: 'DELETE'
         });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
         
         // Remove from local state
         this.departmentTaskAssignments = this.departmentTaskAssignments.filter(

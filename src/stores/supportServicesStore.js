@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { supportServicesApi, ApiError } from '../services/api';
+import { supportServicesApi, shiftsApi, ApiError } from '../services/api';
 
 export const useSupportServicesStore = defineStore('supportServices', {
   state: () => ({
@@ -84,6 +84,36 @@ export const useSupportServicesStore = defineStore('supportServices', {
       // For default service assignments, we need to find the assignment and return its porter assignments
       const assignment = state.defaultServiceAssignments.find(a => a.id === serviceId);
       return assignment?.default_service_cover_porter_assignments || [];
+    },
+
+    // Get service coverage gaps (for compatibility with components)
+    getServiceCoverageGaps: (state) => (serviceId) => {
+      try {
+        const assignment = state.defaultServiceAssignments.find(a => a.id === serviceId);
+        if (!assignment) {
+          return { hasGap: false, gaps: [] };
+        }
+
+        const porterAssignments = assignment.default_service_cover_porter_assignments || [];
+        if (porterAssignments.length === 0) {
+          // No porters assigned - entire period is a gap
+          return {
+            hasGap: true,
+            gaps: [{
+              startTime: assignment.start_time,
+              endTime: assignment.end_time,
+              type: 'no_coverage',
+              missingPorters: assignment.minimum_porters || 1
+            }]
+          };
+        }
+
+        // For now, simplified gap detection - assume no gaps if porters are assigned
+        return { hasGap: false, gaps: [] };
+      } catch (error) {
+        console.error('Error in getServiceCoverageGaps:', error);
+        return { hasGap: false, gaps: [] };
+      }
     }
   },
   
@@ -423,6 +453,30 @@ export const useSupportServicesStore = defineStore('supportServices', {
       }
       
       return this.getDefaultAssignmentsByType(shiftType);
+    },
+
+    // Setup shift support services from defaults
+    async setupShiftSupportServicesFromDefaults(shiftId, shiftType) {
+      this.loading.creating = true;
+      this.error = null;
+      
+      try {
+        console.log(`Setting up support services from defaults for shift ${shiftId}, type ${shiftType}`);
+        const result = await shiftsApi.initializeSupportServices(shiftId);
+        
+        if (result && result.assignments) {
+          console.log(`Successfully initialized ${result.assignments.length} support service assignments`);
+          return true;
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error setting up shift support services from defaults:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to initialize support services from defaults';
+        return false;
+      } finally {
+        this.loading.creating = false;
+      }
     }
   }
 });

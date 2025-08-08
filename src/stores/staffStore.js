@@ -111,6 +111,20 @@ export const useStaffStore = defineStore('staff', {
       }) || null;
     },
     
+    // Check if a porter is on scheduled absence (alias for isPorterAbsent)
+    isPorterOnScheduledAbsence: (state) => (porterId, date = new Date()) => {
+      // Convert string date to Date object if needed
+      const checkDate = typeof date === 'string' ? new Date(date) : date;
+      
+      return state.porterAbsences.some(absence => {
+        const startDate = new Date(absence.start_date);
+        const endDate = new Date(absence.end_date);
+        return absence.porter_id === porterId && 
+               checkDate >= startDate && 
+               checkDate <= endDate;
+      });
+    },
+    
     // Format availability for display
     formatAvailability: () => (porter) => {
       if (porter.availability_pattern) {

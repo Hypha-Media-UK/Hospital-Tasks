@@ -243,14 +243,16 @@ const isDayWeekend = computed(() => {
 
 const dayShiftTime = computed(() => {
   const shiftType = isDayWeekend.value ? 'weekend_day' : 'week_day';
-  const defaults = settingsStore.shiftDefaults[shiftType];
-  return `${defaults.startTime} - ${defaults.endTime}`;
+  const defaults = settingsStore.shiftDefaultsByType[shiftType];
+  if (!defaults) return '08:00 - 20:00'; // fallback
+  return `${settingsStore.formatTime(defaults.start_time)} - ${settingsStore.formatTime(defaults.end_time)}`;
 });
 
 const nightShiftTime = computed(() => {
   const shiftType = isDayWeekend.value ? 'weekend_night' : 'week_night';
-  const defaults = settingsStore.shiftDefaults[shiftType];
-  return `${defaults.startTime} - ${defaults.endTime}`;
+  const defaults = settingsStore.shiftDefaultsByType[shiftType];
+  if (!defaults) return '20:00 - 08:00'; // fallback
+  return `${settingsStore.formatTime(defaults.start_time)} - ${settingsStore.formatTime(defaults.end_time)}`;
 });
 
 const supervisors = computed(() => staffStore.sortedSupervisors);
@@ -278,7 +280,7 @@ function getShiftColor(shiftType) {
   const fullShiftType = isDayWeekend.value 
     ? `weekend_${shiftType}` 
     : `week_${shiftType}`;
-  return settingsStore.shiftDefaults[fullShiftType]?.color || '#4285F4';
+  return settingsStore.shiftDefaultsByType[fullShiftType]?.color || '#4285F4';
 }
 
 function getSupervisorName(supervisorId) {

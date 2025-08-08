@@ -10,18 +10,18 @@ const getApiBaseUrl = () => {
   const currentOrigin = window.location.origin;
   
   if (currentOrigin.includes('ddev.site')) {
-    // DDEV environment
-    return 'https://hospital-tasks.ddev.site:3001';
+    // DDEV environment - API should be on same origin with /api path
+    return `${currentOrigin}/api`;
   } else if (currentOrigin.includes('localhost:5173')) {
     // Local development
-    return 'http://localhost:3000';
+    return 'http://localhost:3000/api';
   } else {
     // Production fallback - assume API is on same origin with /api path
     return `${currentOrigin}/api`;
   }
 };
 
-const API_BASE_URL = `${getApiBaseUrl()}/api`;
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiError extends Error {
   constructor(message, status, data) {
@@ -560,6 +560,46 @@ export const shiftsApi = {
     return apiRequest(`/shifts/${id}/end`, {
       method: 'PUT'
     });
+  },
+
+  // Shift area cover endpoints
+  async getAreaCover(id) {
+    return apiRequest(`/shifts/${id}/area-cover`);
+  },
+
+  async initializeAreaCover(id) {
+    return apiRequest(`/shifts/${id}/area-cover/initialize`, {
+      method: 'POST'
+    });
+  },
+
+  // Shift support services endpoints
+  async getSupportServices(id) {
+    return apiRequest(`/shifts/${id}/support-services`);
+  },
+
+  async initializeSupportServices(id) {
+    return apiRequest(`/shifts/${id}/support-services/initialize`, {
+      method: 'POST'
+    });
+  },
+
+  // Shift porter pool endpoints
+  async getPorterPool(id) {
+    return apiRequest(`/shifts/${id}/porter-pool`);
+  },
+
+  async addPorterToPool(id, porterId) {
+    return apiRequest(`/shifts/${id}/porter-pool`, {
+      method: 'POST',
+      body: JSON.stringify({ porter_id: porterId })
+    });
+  },
+
+  async removePorterFromPool(id, porterId) {
+    return apiRequest(`/shifts/${id}/porter-pool/${porterId}`, {
+      method: 'DELETE'
+    });
   }
 };
 
@@ -630,8 +670,8 @@ export async function fetchData(table, filters = {}) {
   }
 }
 
-// Export the API error class for error handling
-export { ApiError };
+// Export the API error class and apiRequest function for error handling
+export { ApiError, apiRequest };
 
 // Default export for backward compatibility
 export default {
