@@ -109,7 +109,9 @@ const assignments = computed(() => {
 const timeRange = computed(() => {
   if (props.shiftType && settingsStore.shiftDefaults[props.shiftType]) {
     const shiftSettings = settingsStore.shiftDefaults[props.shiftType];
-    return `${shiftSettings.startTime} - ${shiftSettings.endTime}`;
+    const startTime = shiftSettings.start_time?.slice(0, 5) || '00:00';
+    const endTime = shiftSettings.end_time?.slice(0, 5) || '00:00';
+    return `${startTime} - ${endTime}`;
   }
   return '';
 });
@@ -171,8 +173,9 @@ const addDepartment = async (departmentId) => {
   // Get shift defaults from settings store
   if (settingsStore.shiftDefaults[shiftTypeToUse]) {
     // Convert HH:MM to HH:MM:SS format
-    startTime = settingsStore.shiftDefaults[shiftTypeToUse].startTime + ':00';
-    endTime = settingsStore.shiftDefaults[shiftTypeToUse].endTime + ':00';
+    const shiftSettings = settingsStore.shiftDefaults[shiftTypeToUse];
+    startTime = (shiftSettings.start_time?.slice(0, 5) || '08:00') + ':00';
+    endTime = (shiftSettings.end_time?.slice(0, 5) || '16:00') + ':00';
     
     console.log(`Using shift defaults for ${shiftTypeToUse}: ${startTime} - ${endTime}`);
   } else {

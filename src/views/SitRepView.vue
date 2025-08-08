@@ -758,23 +758,9 @@ const historicalAbsences = ref([]);
 // Fetch all historical absences for this shift (including expired ones)
 const fetchHistoricalAbsences = async () => {
   try {
-    const { supabase } = await import('../services/supabase');
-    
-    const { data, error } = await supabase
-      .from('shift_porter_absences')
-      .select(`
-        *,
-        porter:porter_id(id, first_name, last_name)
-      `)
-      .eq('shift_id', shiftId.value);
-    
-    if (error) {
-      console.error('Error fetching historical absences:', error);
-      return;
-    }
-    
-    historicalAbsences.value = data || [];
-    console.log(`Loaded ${historicalAbsences.value.length} historical absences for SitRep`);
+    // TODO: Implement absences API endpoint
+    console.log('Historical absences API not yet implemented');
+    historicalAbsences.value = [];
   } catch (error) {
     console.error('Error in fetchHistoricalAbsences:', error);
   }
@@ -783,24 +769,12 @@ const fetchHistoricalAbsences = async () => {
 // Load shift data
 const loadShiftData = async () => {
   try {
-    const { supabase } = await import('../services/supabase');
-    
-    const { data, error } = await supabase
-      .from('shifts')
-      .select(`
-        *,
-        supervisor:supervisor_id(id, first_name, last_name)
-      `)
-      .eq('id', shiftId.value)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching shift:', error);
-      return;
+    // Use the shifts store to fetch shift data
+    const shiftData = await shiftsStore.fetchShiftById(shiftId.value);
+    if (shiftData) {
+      shift.value = shiftData;
+      console.log('Loaded shift data:', shiftData);
     }
-    
-    shift.value = data;
-    console.log('Loaded shift data:', data);
   } catch (error) {
     console.error('Error in loadShiftData:', error);
   }

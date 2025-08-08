@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { supabase } from '../services/supabase';
+import { staffApi, absencesApi, ApiError } from '../services/api';
 
 export const useStaffStore = defineStore('staff', {
   state: () => ({
@@ -118,7 +118,38 @@ export const useStaffStore = defineStore('staff', {
         if (porter.availability_pattern.includes('Days and Nights')) {
           return `${porter.availability_pattern} (24hrs)`;
         } else if (porter.contracted_hours_start && porter.contracted_hours_end) {
-          return `${porter.availability_pattern} (${porter.contracted_hours_start.substring(0, 5)}-${porter.contracted_hours_end.substring(0, 5)})`;
+          // Helper function to safely format time
+          const formatTime = (timeValue) => {
+            if (!timeValue) return '00:00';
+            
+            // If it's already a string in HH:MM format, return first 5 chars
+            if (typeof timeValue === 'string' && timeValue.includes(':')) {
+              return timeValue.substring(0, 5);
+            }
+            
+            // If it's a Date object, format it
+            if (timeValue instanceof Date) {
+              return timeValue.toTimeString().substring(0, 5);
+            }
+            
+            // If it's a timestamp or other format, try to convert
+            try {
+              const date = new Date(timeValue);
+              if (!isNaN(date.getTime())) {
+                return date.toTimeString().substring(0, 5);
+              }
+            } catch (error) {
+              console.warn('Invalid time format:', timeValue);
+            }
+            
+            // Fallback to default time
+            return '00:00';
+          };
+          
+          const startTime = formatTime(porter.contracted_hours_start);
+          const endTime = formatTime(porter.contracted_hours_end);
+          
+          return `${porter.availability_pattern} (${startTime}-${endTime})`;
         } else {
           return porter.availability_pattern;
         }
@@ -129,6 +160,13 @@ export const useStaffStore = defineStore('staff', {
     // Determine porter shift type based on contracted hours vs shift defaults
     getPorterShiftType: () => (porter, shiftDefaults) => {
       if (!porter.contracted_hours_start || !porter.contracted_hours_end || !shiftDefaults) {
+        return 'unknown';
+      }
+      
+      // Check if shiftDefaults has the expected structure
+      if (!shiftDefaults.week_day || !shiftDefaults.week_night || 
+          !shiftDefaults.week_day.startTime || !shiftDefaults.week_day.endTime ||
+          !shiftDefaults.week_night.startTime || !shiftDefaults.week_night.endTime) {
         return 'unknown';
       }
       
@@ -249,18 +287,11 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('staff')
-          .select('*, department:department_id(id, name, building_id)')
-          .eq('role', 'supervisor')
-          .order('first_name');
-        
-        if (error) throw error;
-        
+        const data = await staffApi.getAll({ role: 'supervisor' });
         this.supervisors = data || [];
       } catch (error) {
         console.error('Error fetching supervisors:', error);
-        this.error = 'Failed to load supervisors';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load supervisors';
       } finally {
         this.loading.supervisors = false;
       }
@@ -272,18 +303,11 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('staff')
-          .select('*, department:department_id(id, name, building_id)')
-          .eq('role', 'porter')
-          .order('first_name');
-        
-        if (error) throw error;
-        
+        const data = await staffApi.getAll({ role: 'porter' });
         this.porters = data || [];
       } catch (error) {
         console.error('Error fetching porters:', error);
-        this.error = 'Failed to load porters';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load porters';
       } finally {
         this.loading.porters = false;
       }
@@ -295,25 +319,20 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('staff')
-          .insert(staffData)
-          .select();
+        const data = await staffApi.create(staffData);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
+        if (data) {
           if (staffData.role === 'supervisor') {
-            this.supervisors.push(data[0]);
+            this.supervisors.push(data);
           } else {
-            this.porters.push(data[0]);
+            this.porters.push(data);
           }
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
         console.error('Error adding staff member:', error);
-        this.error = 'Failed to add staff member';
+        this.error = error instanceof ApiError ? error.message : 'Failed to add staff member';
         return null;
       } finally {
         this.loading.staff = false;
@@ -326,26 +345,18 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('staff')
-          .update(updates)
-          .eq('id', id)
-          .select();
+        const data = await staffApi.update(id, updates);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          const updatedStaff = data[0];
-          
-          if (updatedStaff.role === 'supervisor') {
+        if (data) {
+          if (data.role === 'supervisor') {
             const index = this.supervisors.findIndex(s => s.id === id);
             if (index !== -1) {
-              this.supervisors[index] = updatedStaff;
+              this.supervisors[index] = data;
             }
           } else {
             const index = this.porters.findIndex(p => p.id === id);
             if (index !== -1) {
-              this.porters[index] = updatedStaff;
+              this.porters[index] = data;
             }
           }
         }
@@ -353,7 +364,7 @@ export const useStaffStore = defineStore('staff', {
         return true;
       } catch (error) {
         console.error('Error updating staff member:', error);
-        this.error = 'Failed to update staff member';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update staff member';
         return false;
       } finally {
         this.loading.staff = false;
@@ -366,12 +377,7 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('staff')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
+        await staffApi.delete(id);
         
         // Remove from local state
         if (role === 'supervisor') {
@@ -383,7 +389,7 @@ export const useStaffStore = defineStore('staff', {
         return true;
       } catch (error) {
         console.error('Error deleting staff member:', error);
-        this.error = 'Failed to delete staff member';
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete staff member';
         return false;
       } finally {
         this.loading.staff = false;
@@ -396,28 +402,19 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        // First, update the staff record with the department ID
-        const { data, error } = await supabase
-          .from('staff')
-          .update({ department_id: departmentId })
-          .eq('id', staffId)
-          .select('*, department:department_id(id, name, building_id)');
-        
-        if (error) throw error;
+        const data = await staffApi.update(staffId, { department_id: departmentId });
         
         // Update local state
-        if (data && data.length > 0) {
-          const updatedStaff = data[0];
-          
-          if (updatedStaff.role === 'supervisor') {
+        if (data) {
+          if (data.role === 'supervisor') {
             const index = this.supervisors.findIndex(s => s.id === staffId);
             if (index !== -1) {
-              this.supervisors[index] = updatedStaff;
+              this.supervisors[index] = data;
             }
           } else {
             const index = this.porters.findIndex(p => p.id === staffId);
             if (index !== -1) {
-              this.porters[index] = updatedStaff;
+              this.porters[index] = data;
             }
           }
         }
@@ -425,7 +422,7 @@ export const useStaffStore = defineStore('staff', {
         return true;
       } catch (error) {
         console.error('Error assigning department:', error);
-        this.error = 'Failed to assign department';
+        this.error = error instanceof ApiError ? error.message : 'Failed to assign department';
         return false;
       } finally {
         this.loading.staff = false;
@@ -438,23 +435,41 @@ export const useStaffStore = defineStore('staff', {
     },
     
     // Fetch porter absences
-    async fetchPorterAbsences() {
+    async fetchPorterAbsences(filters = {}) {
       this.loading.absences = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('porter_absences')
-          .select('*, porter:porter_id(id, first_name, last_name)')
-          .order('start_date');
-        
-        if (error) throw error;
-        
+        const data = await absencesApi.getAll(filters);
         this.porterAbsences = data || [];
         return this.porterAbsences;
       } catch (error) {
         console.error('Error fetching porter absences:', error);
-        this.error = 'Failed to load porter absences';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load porter absences';
+        return [];
+      } finally {
+        this.loading.absences = false;
+      }
+    },
+    
+    // Fetch absences for a specific porter
+    async fetchPorterAbsencesById(porterId, filters = {}) {
+      this.loading.absences = true;
+      this.error = null;
+      
+      try {
+        const data = await absencesApi.getByPorter(porterId, filters);
+        
+        // Replace absences for this porter in local state
+        this.porterAbsences = this.porterAbsences.filter(absence => absence.porter_id !== porterId);
+        if (data) {
+          this.porterAbsences.push(...data);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error fetching porter absences:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load porter absences';
         return [];
       } finally {
         this.loading.absences = false;
@@ -467,21 +482,16 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('porter_absences')
-          .insert(porterAbsence)
-          .select('*, porter:porter_id(id, first_name, last_name)');
+        const data = await absencesApi.create(porterAbsence);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          this.porterAbsences.push(data[0]);
+        if (data) {
+          this.porterAbsences.push(data);
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
         console.error('Error adding porter absence:', error);
-        this.error = 'Failed to add porter absence';
+        this.error = error instanceof ApiError ? error.message : 'Failed to add porter absence';
         return null;
       } finally {
         this.loading.absences = false;
@@ -494,26 +504,20 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('porter_absences')
-          .update(updates)
-          .eq('id', id)
-          .select('*, porter:porter_id(id, first_name, last_name)');
+        const data = await absencesApi.update(id, updates);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          const index = this.porterAbsences.findIndex(a => a.id === id);
+        if (data) {
+          const index = this.porterAbsences.findIndex(absence => absence.id === id);
           if (index !== -1) {
-            this.porterAbsences[index] = data[0];
+            this.porterAbsences[index] = data;
           }
         }
         
-        return data?.[0] || null;
+        return true;
       } catch (error) {
         console.error('Error updating porter absence:', error);
-        this.error = 'Failed to update porter absence';
-        return null;
+        this.error = error instanceof ApiError ? error.message : 'Failed to update porter absence';
+        return false;
       } finally {
         this.loading.absences = false;
       }
@@ -525,20 +529,15 @@ export const useStaffStore = defineStore('staff', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('porter_absences')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
+        await absencesApi.delete(id);
         
         // Remove from local state
-        this.porterAbsences = this.porterAbsences.filter(a => a.id !== id);
+        this.porterAbsences = this.porterAbsences.filter(absence => absence.id !== id);
         
         return true;
       } catch (error) {
         console.error('Error deleting porter absence:', error);
-        this.error = 'Failed to delete porter absence';
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete porter absence';
         return false;
       } finally {
         this.loading.absences = false;

@@ -1,0 +1,76 @@
+name: hospital-tasks
+type: php
+docroot: dist
+php_version: "8.2"
+webserver_type: nginx-fpm
+nodejs_version: "18"
+router_http_port: "80"
+router_https_port: "443"
+xdebug_enabled: false
+additional_hostnames: []
+additional_fqdns: []
+web_extra_exposed_ports:
+  - name: api-server
+    container_port: 3000
+    http_port: 3000
+    https_port: 3001
+database:
+  type: mysql
+  version: "8.0"
+use_dns_when_possible: true
+composer_version: "2"
+
+# Environment variables for the application
+web_environment:
+  - NODE_ENV=development
+  - VITE_API_URL=https://hospital-tasks.ddev.site:3001/api
+  - DB_HOST=db
+  - DB_PORT=3306
+  - DB_NAME=hospital_tasks
+  - DB_USER=db
+  - DB_PASSWORD=db
+
+# Hooks for setup
+hooks:
+  post-start:
+    - exec: "if command -v npm >/dev/null 2>&1; then npm install; else echo 'Node.js not available yet'; fi"
+
+# Custom commands
+commands:
+  web:
+    service: web
+    description: "Run web development server"
+    cmd: npm run dev
+    
+  build:
+    service: web
+    description: "Build the Vue.js application"
+    cmd: npm run build
+    
+  db-import-schema:
+    service: db
+    description: "Import MySQL schema"
+    cmd: mysql -u root hospital_tasks < /var/www/html/mysql-schema.sql
+    
+  db-import-data:
+    service: db
+    description: "Import MySQL data"
+    cmd: mysql -u root hospital_tasks < /var/www/html/mysql-data.sql
+    
+  db-reset:
+    service: db
+    description: "Reset database with fresh schema and data"
+    cmd: |
+      mysql -u root -e "DROP DATABASE IF EXISTS hospital_tasks; CREATE DATABASE hospital_tasks;"
+      mysql -u root hospital_tasks < /var/www/html/mysql-schema.sql
+      mysql -u root hospital_tasks < /var/www/html/mysql-data.sql
+
+# Upload directories (if needed for file uploads later)
+upload_dirs:
+  - uploads
+
+# Performance settings
+performance_mode: mutagen
+
+# Disable unused services to save resources
+omit_containers: [ddev-ssh-agent]

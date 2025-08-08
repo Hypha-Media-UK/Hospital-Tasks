@@ -108,22 +108,51 @@ const nightEndTime = ref('');
 const nightShiftColor = ref('');
 
 // UI state
-const loading = computed(() => settingsStore.loading);
+const loading = computed(() => settingsStore.loading.updating);
 const error = computed(() => settingsStore.error);
 const saveSuccess = ref(false);
 
+// Helper function to convert datetime string to HH:MM format
+const formatTimeForInput = (timeString) => {
+  if (!timeString) return '';
+  
+  // If it's already in HH:MM format, return as is
+  if (/^\d{2}:\d{2}$/.test(timeString)) {
+    return timeString;
+  }
+  
+  // If it's a full datetime string, extract just the time part
+  try {
+    const date = new Date(timeString);
+    if (isNaN(date.getTime())) return '';
+    
+    return date.toTimeString().slice(0, 5); // Get HH:MM part
+  } catch (error) {
+    console.warn('Invalid time format:', timeString);
+    return '';
+  }
+};
+
 // Initialize form values from store
 const initializeForm = () => {
-  const { week_day, week_night } = settingsStore.shiftDefaults;
+  const shiftDefaultsByType = settingsStore.shiftDefaultsByType;
+  
+  // Get week_day and week_night defaults
+  const weekDay = shiftDefaultsByType.week_day;
+  const weekNight = shiftDefaultsByType.week_night;
   
   // Make sure to set default values in case they're missing from store
-  dayStartTime.value = week_day.startTime || '08:00';
-  dayEndTime.value = week_day.endTime || '16:00';
-  dayShiftColor.value = week_day.color || '#4285F4';
+  if (weekDay) {
+    dayStartTime.value = formatTimeForInput(weekDay.start_time) || '08:00';
+    dayEndTime.value = formatTimeForInput(weekDay.end_time) || '16:00';
+    dayShiftColor.value = weekDay.color || '#4285F4';
+  }
   
-  nightStartTime.value = week_night.startTime || '20:00';
-  nightEndTime.value = week_night.endTime || '08:00';
-  nightShiftColor.value = week_night.color || '#673AB7';
+  if (weekNight) {
+    nightStartTime.value = formatTimeForInput(weekNight.start_time) || '20:00';
+    nightEndTime.value = formatTimeForInput(weekNight.end_time) || '08:00';
+    nightShiftColor.value = weekNight.color || '#673AB7';
+  }
 };
 
 // Initialize with defaults immediately (don't wait for store)
@@ -139,29 +168,47 @@ const saveDefaults = async () => {
   // Reset status
   saveSuccess.value = false;
   
-  // Update store values
-  settingsStore.updateDayShiftDefaults({
-    startTime: dayStartTime.value,
-    endTime: dayEndTime.value,
-    color: dayShiftColor.value
-  });
-  
-  settingsStore.updateNightShiftDefaults({
-    startTime: nightStartTime.value,
-    endTime: nightEndTime.value,
-    color: nightShiftColor.value
-  });
-  
-  // Save to Supabase
-  const result = await settingsStore.saveShiftDefaults();
-  
-  if (result) {
+  try {
+    const shiftDefaultsByType = settingsStore.shiftDefaultsByType;
+    
+    // Update or create week_day shift default
+    const weekDay = shiftDefaultsByType.week_day;
+    const dayData = {
+      shift_type: 'week_day',
+      start_time: dayStartTime.value,
+      end_time: dayEndTime.value,
+      color: dayShiftColor.value
+    };
+    
+    if (weekDay) {
+      await settingsStore.updateShiftDefault(weekDay.id, dayData);
+    } else {
+      await settingsStore.createShiftDefault(dayData);
+    }
+    
+    // Update or create week_night shift default
+    const weekNight = shiftDefaultsByType.week_night;
+    const nightData = {
+      shift_type: 'week_night',
+      start_time: nightStartTime.value,
+      end_time: nightEndTime.value,
+      color: nightShiftColor.value
+    };
+    
+    if (weekNight) {
+      await settingsStore.updateShiftDefault(weekNight.id, nightData);
+    } else {
+      await settingsStore.createShiftDefault(nightData);
+    }
+    
     saveSuccess.value = true;
     
     // Auto-hide success message after 3 seconds
     setTimeout(() => {
       saveSuccess.value = false;
     }, 3000);
+  } catch (error) {
+    console.error('Error saving shift defaults:', error);
   }
 };
 

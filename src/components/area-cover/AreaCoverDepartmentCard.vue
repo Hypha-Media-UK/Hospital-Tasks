@@ -106,29 +106,19 @@ const areaCoverStore = useAreaCoverStore();
 const staffStore = useStaffStore();
 const showEditModal = ref(false);
 
-// Get porter assignments for this area
+// Get unique porter assignments for this area (removes duplicates)
 const porterAssignments = computed(() => {
-  return areaCoverStore.getPorterAssignmentsByAreaId(props.assignment.id);
+  return areaCoverStore.getUniquePorterAssignmentsByAreaId(props.assignment.id);
 });
 
-// Check if there's a coverage gap
+// Check if there's a coverage gap (temporarily disabled)
 const hasCoverageGap = computed(() => {
-  try {
-    return areaCoverStore.hasCoverageGap(props.assignment.id);
-  } catch (error) {
-    console.error('Error checking coverage gap:', error);
-    return false;
-  }
+  return false; // Temporarily disabled to focus on core functionality
 });
 
-// Check if there's a staffing shortage
+// Check if there's a staffing shortage (temporarily disabled)
 const hasStaffingShortage = computed(() => {
-  try {
-    return areaCoverStore.hasStaffingShortage(props.assignment.id);
-  } catch (error) {
-    console.error('Error checking staffing shortage:', error);
-    return false;
-  }
+  return false; // Temporarily disabled to focus on core functionality
 });
 
 // Get all available (non-absent) porters
@@ -165,9 +155,7 @@ const sortedPorterAssignments = computed(() => {
 // Get coverage gaps with detailed information
 const coverageGaps = computed(() => {
   try {
-    return areaCoverStore.getCoverageGaps ? 
-      areaCoverStore.getCoverageGaps(props.assignment.id) : 
-      { hasGap: false, gaps: [] };
+    return areaCoverStore.getCoverageGaps(props.assignment.id);
   } catch (error) {
     console.error('Error getting coverage gaps:', error);
     return { hasGap: false, gaps: [] };
@@ -177,9 +165,7 @@ const coverageGaps = computed(() => {
 // Get staffing shortages with detailed information
 const staffingShortages = computed(() => {
   try {
-    return areaCoverStore.getStaffingShortages ? 
-      areaCoverStore.getStaffingShortages(props.assignment.id) : 
-      { hasShortage: false, shortages: [] };
+    return areaCoverStore.getStaffingShortages(props.assignment.id);
   } catch (error) {
     console.error('Error getting staffing shortages:', error);
     return { hasShortage: false, shortages: [] };
@@ -257,21 +243,29 @@ const getGapsBetweenAssignments = (current, next) => {
 // Format time for display (HH:MM)
 const formatTime = (timeStr) => {
   if (!timeStr) return '';
-  return timeStr.substring(0, 5); // Extract HH:MM part
+  
+  // Handle Date objects (from MySQL/Prisma)
+  if (timeStr instanceof Date) {
+    return timeStr.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+  if (typeof timeStr === 'string' && timeStr.includes('T')) {
+    const date = new Date(timeStr);
+    return date.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle simple time strings (e.g., "08:00:00" or "08:00")
+  if (typeof timeStr === 'string') {
+    return timeStr.substring(0, 5); // Extract HH:MM part
+  }
+  
+  return '';
 };
 
 // Helper function to format time range
 function formatTimeRange(startTime, endTime) {
   if (!startTime || !endTime) return '';
-  
-  // Format times (assumes HH:MM format)
-  const formatTime = (time) => {
-    if (typeof time === 'string') {
-      // Handle 24-hour time format string (e.g., "14:30:00")
-      return time.substring(0, 5); // Get HH:MM part
-    }
-    return '';
-  };
   
   return `${formatTime(startTime)} - ${formatTime(endTime)}`;
 }

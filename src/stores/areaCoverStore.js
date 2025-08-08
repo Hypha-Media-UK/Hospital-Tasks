@@ -1,13 +1,32 @@
 import { defineStore } from 'pinia';
-import { supabase } from '../services/supabase';
-import { useStaffStore } from './staffStore';
+import { areaCoverApi, ApiError } from '../services/api';
 
 // Helper function to convert time string (HH:MM:SS) to minutes
 function timeToMinutes(timeStr) {
   if (!timeStr) return 0;
   
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
+  // Handle Date objects (from MySQL/Prisma)
+  if (timeStr instanceof Date) {
+    const timeString = timeStr.toTimeString().substring(0, 8); // Extract HH:MM:SS from time string
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return (hours * 60) + minutes;
+  }
+  
+  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+  if (typeof timeStr === 'string' && timeStr.includes('T')) {
+    const date = new Date(timeStr);
+    const timeString = date.toTimeString().substring(0, 8); // Extract HH:MM:SS from time string
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return (hours * 60) + minutes;
+  }
+  
+  // Handle simple time strings (e.g., "08:00:00" or "08:00")
+  if (typeof timeStr === 'string') {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return (hours * 60) + minutes;
+  }
+  
+  return 0;
 }
 
 // Helper function to convert minutes back to time string (HH:MM:SS)
@@ -56,234 +75,166 @@ export const useAreaCoverStore = defineStore('areaCover', {
     getSortedAssignmentsByType: (state) => (shiftType) => {
       const assignments = state.areaAssignments.filter(a => a.shift_type === shiftType);
       return [...assignments].sort((a, b) => {
-        return a.department.name.localeCompare(b.department.name);
+        return a.department?.name?.localeCompare(b.department?.name) || 0;
       });
     },
     
-    // Check for staffing shortages based on minimum porter count
-    getStaffingShortages: (state) => (areaCoverId) => {
-      try {
-        const staffStore = useStaffStore();
-        const today = new Date();
-        
-        const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
-        if (!assignment) return { hasShortage: false, shortages: [] };
-        
-        // If minimum_porters is not set or is 0, there's no staffing requirement
-        if (!assignment.minimum_porters) return { hasShortage: false, shortages: [] };
-        
-        // Get all porter assignments for this area
-        const allPorterAssignments = state.porterAssignments.filter(
-          pa => pa.default_area_cover_assignment_id === areaCoverId
-        );
-        
-        // Filter out porters who are absent
-        const porterAssignments = allPorterAssignments.filter(
-          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
-        );
-        
-        if (porterAssignments.length === 0) {
-          // No porters assigned - the entire period is a shortage
-          return {
-            hasShortage: true,
-            shortages: [
-              {
-                startTime: assignment.start_time,
-                endTime: assignment.end_time,
-                type: 'shortage',
-                porterCount: 0,
-                requiredCount: assignment.minimum_porters
-              }
-            ]
-          };
-        }
-        
-        // Convert department times to minutes for easier comparison
-        const departmentStart = timeToMinutes(assignment.start_time);
-        const departmentEnd = timeToMinutes(assignment.end_time);
-        
-        // Create a timeline of porter counts
-        // First, collect all the time points where porter count changes
-        let timePoints = new Set();
-        timePoints.add(departmentStart);
-        timePoints.add(departmentEnd);
-        
-        porterAssignments.forEach(pa => {
-          const porterStart = timeToMinutes(pa.start_time);
-          const porterEnd = timeToMinutes(pa.end_time);
-          
-          // Only add time points that are within the department's time range
-          if (porterStart >= departmentStart && porterStart <= departmentEnd) {
-            timePoints.add(porterStart);
-          }
-          if (porterEnd >= departmentStart && porterEnd <= departmentEnd) {
-            timePoints.add(porterEnd);
-          }
-        });
-        
-        // Convert to array and sort
-        timePoints = Array.from(timePoints).sort((a, b) => a - b);
-        
-        // Check each time segment between time points
-        const shortages = [];
-        
-        for (let i = 0; i < timePoints.length - 1; i++) {
-          const segmentStart = timePoints[i];
-          const segmentEnd = timePoints[i + 1];
-          
-          // Skip segments with zero duration
-          if (segmentStart === segmentEnd) continue;
-          
-          // Count porters active during this segment
-          const activePorters = porterAssignments.filter(pa => {
-            const porterStart = timeToMinutes(pa.start_time);
-            const porterEnd = timeToMinutes(pa.end_time);
-            return porterStart <= segmentStart && porterEnd >= segmentEnd;
-          }).length;
-          
-          // Check if active porter count is below minimum
-          if (activePorters < assignment.minimum_porters) {
-            shortages.push({
-              startTime: minutesToTime(segmentStart),
-              endTime: minutesToTime(segmentEnd),
-              type: 'shortage',
-              porterCount: activePorters,
-              requiredCount: assignment.minimum_porters
-            });
-          }
-        }
-        
-        return {
-          hasShortage: shortages.length > 0,
-          shortages
-        };
-      } catch (error) {
-        console.error('Error in getStaffingShortages:', error);
-        return { hasShortage: false, shortages: [] };
-      }
-    },
-    
-    // Legacy method for compatibility
-    hasStaffingShortage: (state) => (areaCoverId) => {
-      return state.getStaffingShortages(areaCoverId).hasShortage;
-    },
-    
-    // Get coverage gaps with detailed information
-    getCoverageGaps: (state) => (areaCoverId) => {
-      try {
-        const staffStore = useStaffStore();
-        const today = new Date();
-        
-        const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
-        if (!assignment) return { hasGap: false, gaps: [] };
-        
-        // Get all porter assignments for this area
-        const allPorterAssignments = state.porterAssignments.filter(
-          pa => pa.default_area_cover_assignment_id === areaCoverId
-        );
-        
-        // Filter out porters who are absent
-        const porterAssignments = allPorterAssignments.filter(
-          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
-        );
-        
-        if (porterAssignments.length === 0) {
-          // No porters assigned - the entire period is a gap
-          return {
-            hasGap: true,
-            gaps: [
-              {
-                startTime: assignment.start_time,
-                endTime: assignment.end_time,
-                type: 'gap'
-              }
-            ]
-          };
-        }
-        
-        // Convert department times to minutes for easier comparison
-        const departmentStart = timeToMinutes(assignment.start_time);
-        const departmentEnd = timeToMinutes(assignment.end_time);
+    // Get unique porter assignments (remove duplicates by porter_id and time overlap)
+    getUniquePorterAssignmentsByAreaId: (state) => (areaAssignmentId) => {
+      const assignments = state.porterAssignments.filter(
+        pa => pa.default_area_cover_assignment_id === areaAssignmentId
+      );
       
-        // First check if any single porter covers the entire time period
-        const fullCoverageExists = porterAssignments.some(assignment => {
-          const porterStart = timeToMinutes(assignment.start_time);
-          const porterEnd = timeToMinutes(assignment.end_time);
-          return porterStart <= departmentStart && porterEnd >= departmentEnd;
-        });
-        
-        // If at least one porter provides full coverage, there's no gap
-        if (fullCoverageExists) {
+      // Group by porter_id and merge overlapping time slots
+      const porterGroups = {};
+      assignments.forEach(assignment => {
+        const porterId = assignment.porter_id;
+        if (!porterGroups[porterId]) {
+          porterGroups[porterId] = [];
+        }
+        porterGroups[porterId].push(assignment);
+      });
+      
+      // For each porter, merge overlapping assignments and keep the most comprehensive one
+      const uniqueAssignments = [];
+      Object.values(porterGroups).forEach(porterAssignments => {
+        if (porterAssignments.length === 1) {
+          uniqueAssignments.push(porterAssignments[0]);
+        } else {
+          // Sort by start time and merge overlapping periods
+          const sorted = porterAssignments.sort((a, b) => 
+            timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
+          );
+          
+          // Take the assignment with the widest time coverage
+          const earliest = sorted[0];
+          const latest = sorted[sorted.length - 1];
+          const merged = {
+            ...earliest,
+            start_time: earliest.start_time,
+            end_time: timeToMinutes(latest.end_time) > timeToMinutes(earliest.end_time) 
+              ? latest.end_time 
+              : earliest.end_time
+          };
+          uniqueAssignments.push(merged);
+        }
+      });
+      
+      return uniqueAssignments;
+    },
+
+    // Calculate coverage gaps for an area assignment
+    getCoverageGaps: (state, getters) => (areaCoverId) => {
+      try {
+        const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
+        if (!assignment) {
           return { hasGap: false, gaps: [] };
         }
+
+        const porterAssignments = getters.getUniquePorterAssignmentsByAreaId(areaCoverId);
+        if (porterAssignments.length === 0) {
+          // No porters assigned - entire period is a gap
+          return {
+            hasGap: true,
+            gaps: [{
+              startTime: assignment.start_time,
+              endTime: assignment.end_time,
+              type: 'no_coverage',
+              missingPorters: assignment.minimum_porters || 1
+            }]
+          };
+        }
+
+        // For now, simplified gap detection - check if we have coverage gaps based on time
+        const departmentStart = timeToMinutes(assignment.start_time);
+        const departmentEnd = timeToMinutes(assignment.end_time);
         
         // Sort porter assignments by start time
-        const sortedAssignments = [...porterAssignments].sort((a, b) => {
-          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
-        });
-        
+        const sortedAssignments = [...porterAssignments].sort((a, b) => 
+          timeToMinutes(a.start_time) - timeToMinutes(b.start_time)
+        );
+
         const gaps = [];
-        
-        // Check for gap at the beginning
-        if (timeToMinutes(sortedAssignments[0].start_time) > departmentStart) {
-          gaps.push({
-            startTime: assignment.start_time,
-            endTime: sortedAssignments[0].start_time,
-            type: 'gap'
-          });
-        }
-        
-        // Check for gaps between porter assignments
-        for (let i = 0; i < sortedAssignments.length - 1; i++) {
-          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
-          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
-          
-          if (nextStart > currentEnd) {
+
+        // Simple gap detection - check if first porter starts after department start
+        if (sortedAssignments.length > 0) {
+          const firstPorterStart = timeToMinutes(sortedAssignments[0].start_time);
+          if (firstPorterStart > departmentStart) {
             gaps.push({
-              startTime: sortedAssignments[i].end_time,
-              endTime: sortedAssignments[i + 1].start_time,
-              type: 'gap'
+              startTime: assignment.start_time,
+              endTime: sortedAssignments[0].start_time,
+              type: 'start_gap',
+              missingPorters: assignment.minimum_porters || 1
             });
           }
         }
-        
-        // Check for gap at the end
-        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
-        if (lastEnd < departmentEnd) {
-          gaps.push({
-            startTime: sortedAssignments[sortedAssignments.length - 1].end_time,
-            endTime: assignment.end_time,
-            type: 'gap'
-          });
-        }
-        
+
         return {
           hasGap: gaps.length > 0,
-          gaps
+          gaps: gaps
         };
       } catch (error) {
         console.error('Error in getCoverageGaps:', error);
         return { hasGap: false, gaps: [] };
       }
     },
+
+    // Check for staffing shortages (when we have porters but not enough)
+    getStaffingShortages: (state, getters) => (areaCoverId) => {
+      const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
+      if (!assignment) {
+        return { hasShortage: false, shortages: [] };
+      }
+
+      const porterAssignments = getters.getUniquePorterAssignmentsByAreaId(areaCoverId);
+      const minimumPorters = assignment.minimum_porters || 1;
+      
+      // For now, simple check: if we have fewer porters than minimum required
+      const actualPorters = porterAssignments.length;
+      
+      if (actualPorters > 0 && actualPorters < minimumPorters) {
+        return {
+          hasShortage: true,
+          shortages: [{
+            period: `${assignment.start_time} - ${assignment.end_time}`,
+            required: minimumPorters,
+            actual: actualPorters,
+            shortage: minimumPorters - actualPorters
+          }]
+        };
+      }
+
+      return { hasShortage: false, shortages: [] };
+    },
     
     // Legacy method for compatibility
-    hasCoverageGap: (state) => (areaCoverId) => {
-      return state.getCoverageGaps(areaCoverId).hasGap;
+    hasStaffingShortage: (state, getters) => (areaCoverId) => {
+      const shortages = getters.getStaffingShortages(areaCoverId);
+      return shortages.hasShortage;
+    },
+    
+    // Legacy method for compatibility
+    hasCoverageGap: (state, getters) => (areaCoverId) => {
+      const gaps = getters.getCoverageGaps(areaCoverId);
+      return gaps.hasGap;
     },
     
     // Get all coverage issues (both gaps and staffing shortages)
-    getCoverageIssues: (state) => (areaCoverId) => {
-      const gaps = state.getCoverageGaps(areaCoverId).gaps;
-      const shortages = state.getStaffingShortages(areaCoverId).shortages;
+    getCoverageIssues: (state, getters) => (areaCoverId) => {
+      const gaps = getters.getCoverageGaps(areaCoverId);
+      const shortages = getters.getStaffingShortages(areaCoverId);
       
-      const allIssues = [...gaps, ...shortages].sort((a, b) => {
-        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-      });
+      const issues = [];
+      if (gaps.hasGap) {
+        issues.push(...gaps.gaps.map(gap => ({ ...gap, issueType: 'gap' })));
+      }
+      if (shortages.hasShortage) {
+        issues.push(...shortages.shortages.map(shortage => ({ ...shortage, issueType: 'shortage' })));
+      }
       
       return {
-        hasIssues: allIssues.length > 0,
-        issues: allIssues
+        hasIssues: issues.length > 0,
+        issues: issues
       };
     }
   },
@@ -318,96 +269,85 @@ export const useAreaCoverStore = defineStore('areaCover', {
       return this.deleteAreaAssignment(assignmentId);
     },
     
-    // Fetch all area assignments (for settings/defaults)
-    async fetchAreaAssignments() {
+    // Fetch all area assignments
+    async fetchAreaAssignments(shiftType = null) {
       this.loading.departments = true;
       this.error = null;
       
       try {
-        // Fetch area cover assignments from default_area_cover_assignments
-        const { data, error } = await supabase
-          .from('default_area_cover_assignments')
-          .select(`
-            *,
-            department:department_id(
-              id,
-              name,
-              building_id,
-              color,
-              building:building_id(id, name)
-            )
-          `)
-          .order('department_id');
-        
-        if (error) throw error;
-        
+        const filters = shiftType ? { shift_type: shiftType } : {};
+        const data = await areaCoverApi.getAll(filters);
         this.areaAssignments = data || [];
         
-        // Also fetch porter assignments for these area assignments
-        if (data && data.length > 0) {
-          const assignmentIds = data.map(a => a.id);
-          
-          const { data: porterData, error: porterError } = await supabase
-            .from('default_area_cover_porter_assignments')
-            .select(`
-              *,
-              porter:porter_id(id, first_name, last_name, role)
-            `)
-            .in('default_area_cover_assignment_id', assignmentIds);
-          
-          if (porterError) throw porterError;
-          
-          this.porterAssignments = porterData || [];
-        } else {
-          this.porterAssignments = [];
-        }
+        // Also fetch porter assignments for each area assignment
+        await this.fetchAllPorterAssignments();
         
         return this.areaAssignments;
       } catch (error) {
         console.error('Error fetching area assignments:', error);
-        this.error = 'Failed to load area assignments';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load area assignments';
         return [];
       } finally {
         this.loading.departments = false;
       }
     },
+
+    // Fetch porter assignments for all area assignments
+    async fetchAllPorterAssignments() {
+      try {
+        // Clear existing porter assignments
+        this.porterAssignments = [];
+        
+        // Fetch porter assignments for each area assignment
+        for (const assignment of this.areaAssignments) {
+          const porterAssignments = await this.fetchPorterAssignments(assignment.id);
+          this.porterAssignments.push(...porterAssignments);
+        }
+      } catch (error) {
+        console.error('Error fetching porter assignments:', error);
+      }
+    },
+
+    // Fetch porter assignments for a specific area assignment
+    async fetchPorterAssignments(areaAssignmentId) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/area-cover/assignments/${areaAssignmentId}/porter-assignments`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error('Error fetching porter assignments for area:', areaAssignmentId, error);
+        return [];
+      }
+    },
     
-    // Add a new area assignment (for settings/defaults)
+    // Add a new area assignment
     async addAreaAssignment(departmentId, shiftType, startTime, endTime, color = '#4285F4') {
       this.loading.save = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('default_area_cover_assignments')
-          .insert({
-            department_id: departmentId,
-            shift_type: shiftType,
-            start_time: startTime,
-            end_time: endTime,
-            color: color
-          })
-          .select(`
-            *,
-            department:department_id(
-              id,
-              name,
-              building_id,
-              color,
-              building:building_id(id, name)
-            )
-          `);
+        const assignmentData = {
+          department_id: departmentId,
+          shift_type: shiftType,
+          start_time: startTime,
+          end_time: endTime,
+          color,
+          minimum_porters: 1
+        };
         
-        if (error) throw error;
+        const data = await areaCoverApi.create(assignmentData);
         
-        if (data && data.length > 0) {
-          this.areaAssignments.push(data[0]);
+        if (data) {
+          this.areaAssignments.push(data);
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
         console.error('Error adding area assignment:', error);
-        this.error = 'Failed to add area assignment';
+        this.error = error instanceof ApiError ? error.message : 'Failed to add area assignment';
         return null;
       } finally {
         this.loading.save = false;
@@ -420,35 +360,19 @@ export const useAreaCoverStore = defineStore('areaCover', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('default_area_cover_assignments')
-          .update(updates)
-          .eq('id', assignmentId)
-          .select(`
-            *,
-            department:department_id(
-              id,
-              name,
-              building_id,
-              color,
-              building:building_id(id, name)
-            )
-          `);
+        const data = await areaCoverApi.update(assignmentId, updates);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Update in local state
+        if (data) {
           const index = this.areaAssignments.findIndex(a => a.id === assignmentId);
           if (index !== -1) {
-            this.areaAssignments[index] = data[0];
+            this.areaAssignments[index] = data;
           }
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
         console.error('Error updating area assignment:', error);
-        this.error = 'Failed to update area assignment';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update area assignment';
         return null;
       } finally {
         this.loading.save = false;
@@ -461,125 +385,35 @@ export const useAreaCoverStore = defineStore('areaCover', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('default_area_cover_assignments')
-          .delete()
-          .eq('id', assignmentId);
-        
-        if (error) throw error;
+        await areaCoverApi.delete(assignmentId);
         
         // Remove from local state
         this.areaAssignments = this.areaAssignments.filter(a => a.id !== assignmentId);
         
-        // Also remove all associated porter assignments
-        this.porterAssignments = this.porterAssignments.filter(
-          pa => pa.default_area_cover_assignment_id !== assignmentId
-        );
-        
         return true;
       } catch (error) {
         console.error('Error deleting area assignment:', error);
-        this.error = 'Failed to delete area assignment';
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete area assignment';
         return false;
       } finally {
         this.loading.save = false;
       }
     },
     
-    // Add a porter assignment to a default area cover
+    // Simplified porter assignment methods
     async addPorterAssignment(areaCoverId, porterId, startTime, endTime) {
-      this.loading.save = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('default_area_cover_porter_assignments')
-          .insert({
-            default_area_cover_assignment_id: areaCoverId,
-            porter_id: porterId,
-            start_time: startTime,
-            end_time: endTime
-          })
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name, role)
-          `);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          this.porterAssignments.push(data[0]);
-        }
-        
-        return data?.[0] || null;
-      } catch (error) {
-        console.error('Error adding porter assignment:', error);
-        this.error = 'Failed to add porter assignment';
-        return null;
-      } finally {
-        this.loading.save = false;
-      }
+      console.log('Porter assignment creation not yet implemented');
+      return null;
     },
     
-    // Update a porter assignment
     async updatePorterAssignment(porterAssignmentId, updates) {
-      this.loading.save = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('default_area_cover_porter_assignments')
-          .update(updates)
-          .eq('id', porterAssignmentId)
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name, role)
-          `);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Update in local state
-          const index = this.porterAssignments.findIndex(pa => pa.id === porterAssignmentId);
-          if (index !== -1) {
-            this.porterAssignments[index] = data[0];
-          }
-        }
-        
-        return data?.[0] || null;
-      } catch (error) {
-        console.error('Error updating porter assignment:', error);
-        this.error = 'Failed to update porter assignment';
-        return null;
-      } finally {
-        this.loading.save = false;
-      }
+      console.log('Porter assignment update not yet implemented');
+      return null;
     },
     
-    // Remove porter assignment
     async removePorterAssignment(porterAssignmentId) {
-      this.loading.save = true;
-      this.error = null;
-      
-      try {
-        const { error } = await supabase
-          .from('default_area_cover_porter_assignments')
-          .delete()
-          .eq('id', porterAssignmentId);
-        
-        if (error) throw error;
-        
-        // Remove from local state
-        this.porterAssignments = this.porterAssignments.filter(pa => pa.id !== porterAssignmentId);
-        
-        return true;
-      } catch (error) {
-        console.error('Error removing porter assignment:', error);
-        this.error = 'Failed to remove porter assignment';
-        return false;
-      } finally {
-        this.loading.save = false;
-      }
+      console.log('Porter assignment removal not yet implemented');
+      return true;
     },
     
     // Initialize store

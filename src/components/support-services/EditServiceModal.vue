@@ -108,7 +108,7 @@
             >
               <div class="porter-pill">
                 <span class="porter-name">
-                  {{ porterAssignment.porter.first_name }} {{ porterAssignment.porter.last_name }}
+                  {{ porterAssignment.porter?.first_name || porterAssignment.staff?.first_name || 'Unknown' }} {{ porterAssignment.porter?.last_name || porterAssignment.staff?.last_name || 'Porter' }}
                 </span>
               </div>
               
@@ -487,15 +487,15 @@ const initializeState = () => {
   // Initialize name
   localName.value = props.service.name || '';
   
-  // Initialize times
+  // Initialize times - handle both Date objects and strings
   if (serviceAssignment.value && serviceAssignment.value.start_time) {
-    localStartTime.value = serviceAssignment.value.start_time.slice(0, 5);
+    localStartTime.value = formatTimeForInput(serviceAssignment.value.start_time);
   } else {
     localStartTime.value = '08:00';
   }
   
   if (serviceAssignment.value && serviceAssignment.value.end_time) {
-    localEndTime.value = serviceAssignment.value.end_time.slice(0, 5);
+    localEndTime.value = formatTimeForInput(serviceAssignment.value.end_time);
   } else {
     localEndTime.value = '16:00';
   }
@@ -539,8 +539,8 @@ const initializeState = () => {
     const assignments = supportServicesStore.getPorterAssignmentsByServiceId(serviceAssignment.value.id);
     localPorterAssignments.value = assignments.map(pa => ({
       ...pa,
-      start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
-      end_time_display: pa.end_time ? pa.end_time.slice(0, 5) : ''
+      start_time_display: pa.start_time ? formatTimeForInput(pa.start_time) : '',
+      end_time_display: pa.end_time ? formatTimeForInput(pa.end_time) : ''
     }));
   } else {
     localPorterAssignments.value = [];
@@ -556,6 +556,29 @@ function timeToMinutes(timeStr) {
   
   const [hours, minutes] = timeStr.split(':').map(Number);
   return (hours * 60) + minutes;
+}
+
+// Helper function to format time for input fields (handles Date objects and strings)
+function formatTimeForInput(timeValue) {
+  if (!timeValue) return '';
+  
+  // Handle Date objects (from MySQL/Prisma)
+  if (timeValue instanceof Date) {
+    return timeValue.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+  if (typeof timeValue === 'string' && timeValue.includes('T')) {
+    const date = new Date(timeValue);
+    return date.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle simple time strings (e.g., "08:00:00" or "08:00")
+  if (typeof timeValue === 'string') {
+    return timeValue.substring(0, 5); // Extract HH:MM part
+  }
+  
+  return '';
 }
 
 // Fetch porters if not already loaded

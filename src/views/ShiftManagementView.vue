@@ -1987,19 +1987,21 @@ function determineAreaCoverType(shift) {
 
 // Get color for shift type
 function getShiftColor() {
-  if (!shift.value) return settingsStore.shiftDefaults.week_day.color;
+  const shiftDefaults = settingsStore.shiftDefaultsByType;
+  
+  if (!shift.value) return shiftDefaults.week_day?.color || '#4285F4';
   
   switch (shift.value.shift_type) {
     case 'week_day':
-      return settingsStore.shiftDefaults.week_day.color;
+      return shiftDefaults.week_day?.color || '#4285F4';
     case 'week_night':
-      return settingsStore.shiftDefaults.week_night.color;
+      return shiftDefaults.week_night?.color || '#673AB7';
     case 'weekend_day':
-      return settingsStore.shiftDefaults.weekend_day.color;
+      return shiftDefaults.weekend_day?.color || '#4285F4';
     case 'weekend_night':
-      return settingsStore.shiftDefaults.weekend_night.color;
+      return shiftDefaults.weekend_night?.color || '#673AB7';
     default:
-      return settingsStore.shiftDefaults.week_day.color;
+      return shiftDefaults.week_day?.color || '#4285F4';
   }
 }
 

@@ -141,8 +141,8 @@ onMounted(async () => {
     await locationsStore.initialize();
   }
   
-  // Get existing assignments for this task item
-  const existingAssignments = taskTypesStore.getItemAssignmentsByItemId(props.taskItem.id);
+  // Fetch existing assignments for this task item
+  const existingAssignments = await taskTypesStore.fetchItemAssignments(props.taskItem.id);
   
   // Find the origin and destination departments (if any)
   const originAssignment = existingAssignments.find(a => a.is_origin);

@@ -635,6 +635,39 @@ onMounted(async () => {
   await settingsStore.loadSettings();
 });
 
+// Helper function to safely format time
+const formatTime = (timeValue) => {
+  if (!timeValue) return '00:00';
+  
+  // If it's already a string in HH:MM format, return as is
+  if (typeof timeValue === 'string' && timeValue.includes(':') && timeValue.length === 5) {
+    return timeValue;
+  }
+  
+  // If it's a longer string, extract first 5 characters
+  if (typeof timeValue === 'string' && timeValue.includes(':')) {
+    return timeValue.substring(0, 5);
+  }
+  
+  // If it's a Date object, format it
+  if (timeValue instanceof Date) {
+    return timeValue.toTimeString().substring(0, 5);
+  }
+  
+  // If it's a timestamp or other format, try to convert
+  try {
+    const date = new Date(timeValue);
+    if (!isNaN(date.getTime())) {
+      return date.toTimeString().substring(0, 5);
+    }
+  } catch (error) {
+    console.warn('Invalid time format:', timeValue);
+  }
+  
+  // Fallback to default time
+  return '00:00';
+};
+
 // Get area assignments for a porter
 const getPorterAreaAssignments = (porterId) => {
   const assignments = [];
@@ -654,8 +687,8 @@ const getPorterAreaAssignments = (porterId) => {
                   assignment.shift_type === 'week_night' ? 'Weekdays - Nights' :
                   assignment.shift_type === 'weekend_day' ? 'Weekends - Days' :
                   assignment.shift_type === 'weekend_night' ? 'Weekends - Nights' : '',
-          startTime: pa.start_time ? pa.start_time.substring(0, 5) : '',
-          endTime: pa.end_time ? pa.end_time.substring(0, 5) : ''
+          startTime: formatTime(pa.start_time),
+          endTime: formatTime(pa.end_time)
         });
       }
     }
@@ -683,8 +716,8 @@ const getPorterServiceAssignments = (porterId) => {
                   assignment.shift_type === 'week_night' ? 'Weekdays - Nights' :
                   assignment.shift_type === 'weekend_day' ? 'Weekends - Days' :
                   assignment.shift_type === 'weekend_night' ? 'Weekends - Nights' : '',
-          startTime: pa.start_time ? pa.start_time.substring(0, 5) : '',
-          endTime: pa.end_time ? pa.end_time.substring(0, 5) : ''
+          startTime: formatTime(pa.start_time),
+          endTime: formatTime(pa.end_time)
         });
       }
     }
@@ -693,12 +726,26 @@ const getPorterServiceAssignments = (porterId) => {
   return assignments;
 };
 
-// Get all assignments (area and service) for a porter
+// Get all assignments (area and service) for a porter with deduplication
 const getPorterAssignments = (porterId) => {
   const areaAssignments = getPorterAreaAssignments(porterId);
   const serviceAssignments = getPorterServiceAssignments(porterId);
   
-  return [...areaAssignments, ...serviceAssignments];
+  const allAssignments = [...areaAssignments, ...serviceAssignments];
+  
+  // Deduplicate assignments based on name, pattern, and times
+  const uniqueAssignments = [];
+  const seen = new Set();
+  
+  for (const assignment of allAssignments) {
+    const key = `${assignment.name}-${assignment.pattern}-${assignment.startTime}-${assignment.endTime}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueAssignments.push(assignment);
+    }
+  }
+  
+  return uniqueAssignments;
 };
 
 // Get porter shift type for styling

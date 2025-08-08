@@ -1,724 +1,428 @@
 import { defineStore } from 'pinia';
-import { supabase } from '../services/supabase';
-import { useStaffStore } from './staffStore';
-
-// Helper function to convert time string (HH:MM:SS) to minutes
-function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
-}
-
-// Helper function to convert minutes back to time string (HH:MM:SS)
-function minutesToTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
-}
+import { supportServicesApi, ApiError } from '../services/api';
 
 export const useSupportServicesStore = defineStore('supportServices', {
   state: () => ({
-    services: [],
+    supportServices: [],
     serviceAssignments: [],
-    porterAssignments: [],
+    defaultServiceAssignments: [],
     loading: {
       services: false,
-      save: false
+      assignments: false,
+      creating: false,
+      updating: false,
+      deleting: false
     },
     error: null
   }),
   
   getters: {
-    // Get sorted list of services by name
+    // Get active support services
+    activeServices: (state) => {
+      return state.supportServices.filter(service => service.is_active);
+    },
+    
+    // Get inactive support services
+    inactiveServices: (state) => {
+      return state.supportServices.filter(service => !service.is_active);
+    },
+    
+    // Get services sorted by name
     sortedServices: (state) => {
-      return [...state.services].sort((a, b) => a.name.localeCompare(b.name));
+      return [...state.supportServices].sort((a, b) => a.name.localeCompare(b.name));
     },
     
-    // Get all active support services
-    activeSupportServices: (state) => {
-      return state.services.filter(service => service.is_active !== false);
+    // Get active services sorted by name
+    sortedActiveServices: (state) => {
+      return state.supportServices
+        .filter(service => service.is_active)
+        .sort((a, b) => a.name.localeCompare(b.name));
     },
     
-    // Get service assignment by ID
-    getAssignmentById: (state) => (id) => {
-      return state.serviceAssignments.find(a => a.id === id);
+    // Get service by ID
+    getServiceById: (state) => (id) => {
+      return state.supportServices.find(service => service.id === id);
     },
     
-    // Get service assignments by shift type
-    getAssignmentsByShiftType: (state) => (shiftType) => {
-      return state.serviceAssignments.filter(a => a.shift_type === shiftType);
+    // Get assignments for a specific service
+    getAssignmentsByService: (state) => (serviceId) => {
+      return state.serviceAssignments.filter(assignment => assignment.service_id === serviceId);
     },
     
-    // Get porter assignments for a specific service assignment
-    getPorterAssignmentsByServiceId: (state) => (serviceAssignmentId) => {
-      return state.porterAssignments.filter(pa => pa.support_service_assignment_id === serviceAssignmentId ||
-                                                 pa.default_service_cover_assignment_id === serviceAssignmentId);
+    // Get assignments for a specific service and shift type
+    getAssignmentsByServiceAndShift: (state) => (serviceId, shiftType) => {
+      return state.serviceAssignments.filter(assignment => 
+        assignment.service_id === serviceId && assignment.shift_type === shiftType
+      );
     },
     
-    // Get sorted assignments by shift type (migrated from defaultServiceCoverStore)
+    // Get sorted assignments by shift type (for compatibility with area cover store)
     getSortedAssignmentsByType: (state) => (shiftType) => {
-      const assignments = state.serviceAssignments.filter(a => a.shift_type === shiftType);
+      const assignments = state.defaultServiceAssignments.filter(assignment => assignment.shift_type === shiftType);
       return [...assignments].sort((a, b) => {
-        return a.service.name.localeCompare(b.service.name);
+        return a.support_services?.name?.localeCompare(b.support_services?.name) || 0;
       });
     },
-    
-    // Get staffing shortages with detailed information
-    getStaffingShortages: (state) => (serviceId) => {
-      try {
-        const staffStore = useStaffStore();
-        const today = new Date();
-        
-        const assignment = state.serviceAssignments.find(a => a.id === serviceId);
-        if (!assignment) return { hasShortage: false, shortages: [] };
-        
-        // If minimum_porters is not set or is 0, there's no staffing requirement
-        if (!assignment.minimum_porters && 
-            !assignment.minimum_porters_mon && 
-            !assignment.minimum_porters_tue && 
-            !assignment.minimum_porters_wed && 
-            !assignment.minimum_porters_thu && 
-            !assignment.minimum_porters_fri && 
-            !assignment.minimum_porters_sat && 
-            !assignment.minimum_porters_sun) {
-          return { hasShortage: false, shortages: [] };
-        }
-        
-        // Get all porter assignments for this service
-        const allPorterAssignments = state.porterAssignments.filter(
-          pa => pa.default_service_cover_assignment_id === serviceId ||
-                pa.support_service_assignment_id === serviceId
-        );
-        
-        // Filter out porters who are absent
-        const porterAssignments = allPorterAssignments.filter(
-          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
-        );
-        
-        if (porterAssignments.length === 0) {
-          // No porters assigned or all porters are absent - the entire period is a shortage
-          return {
-            hasShortage: true,
-            shortages: [
-              {
-                startTime: assignment.start_time,
-                endTime: assignment.end_time,
-                type: 'shortage',
-                porterCount: 0,
-                requiredCount: assignment.minimum_porters || 1
-              }
-            ]
-          };
-        }
-        
-        // Convert service times to minutes for easier comparison
-        const serviceStart = timeToMinutes(assignment.start_time);
-        const serviceEnd = timeToMinutes(assignment.end_time);
-        
-        // Create a timeline of porter counts
-        // First, collect all the time points where porter count changes
-        let timePoints = new Set();
-        timePoints.add(serviceStart);
-        timePoints.add(serviceEnd);
-        
-        porterAssignments.forEach(pa => {
-          const porterStart = timeToMinutes(pa.start_time);
-          const porterEnd = timeToMinutes(pa.end_time);
-          
-          // Only add time points that are within the service's time range
-          if (porterStart >= serviceStart && porterStart <= serviceEnd) {
-            timePoints.add(porterStart);
-          }
-          if (porterEnd >= serviceStart && porterEnd <= serviceEnd) {
-            timePoints.add(porterEnd);
-          }
-        });
-        
-        // Convert to array and sort
-        timePoints = Array.from(timePoints).sort((a, b) => a - b);
-        
-        // Check each time segment between time points
-        const shortages = [];
-        
-        for (let i = 0; i < timePoints.length - 1; i++) {
-          const segmentStart = timePoints[i];
-          const segmentEnd = timePoints[i + 1];
-          
-          // Skip segments with zero duration
-          if (segmentStart === segmentEnd) continue;
-          
-          // Count porters active during this segment
-          const activePorters = porterAssignments.filter(pa => {
-            const porterStart = timeToMinutes(pa.start_time);
-            const porterEnd = timeToMinutes(pa.end_time);
-            return porterStart <= segmentStart && porterEnd >= segmentEnd;
-          }).length;
-          
-          // Get the day of week for this segment (0 = Sunday, 1 = Monday, etc.)
-          // For simplicity, we're using the start of the segment to determine the day
-          const date = new Date();
-          const hours = Math.floor(segmentStart / 60);
-          const minutes = segmentStart % 60;
-          date.setHours(hours, minutes, 0, 0);
-          const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-          
-          // Get the minimum porter count for this day
-          let requiredCount = assignment.minimum_porters || 1; // Default to global minimum
-          
-          // Override with day-specific minimum if available
-          switch (dayOfWeek) {
-            case 1: // Monday
-              requiredCount = assignment.minimum_porters_mon ?? requiredCount;
-              break;
-            case 2: // Tuesday
-              requiredCount = assignment.minimum_porters_tue ?? requiredCount;
-              break;
-            case 3: // Wednesday
-              requiredCount = assignment.minimum_porters_wed ?? requiredCount;
-              break;
-            case 4: // Thursday
-              requiredCount = assignment.minimum_porters_thu ?? requiredCount;
-              break;
-            case 5: // Friday
-              requiredCount = assignment.minimum_porters_fri ?? requiredCount;
-              break;
-            case 6: // Saturday
-              requiredCount = assignment.minimum_porters_sat ?? requiredCount;
-              break;
-            case 0: // Sunday
-              requiredCount = assignment.minimum_porters_sun ?? requiredCount;
-              break;
-          }
-          
-          // Check if active porter count is below minimum
-          if (activePorters < requiredCount) {
-            shortages.push({
-              startTime: minutesToTime(segmentStart),
-              endTime: minutesToTime(segmentEnd),
-              type: 'shortage',
-              porterCount: activePorters,
-              requiredCount: requiredCount
-            });
-          }
-        }
-        
-        return {
-          hasShortage: shortages.length > 0,
-          shortages
-        };
-      } catch (error) {
-        console.error('Error in getStaffingShortages:', error);
-        return { hasShortage: false, shortages: [] };
-      }
+
+    // Get default assignments for a specific shift type
+    getDefaultAssignmentsByType: (state) => (shiftType) => {
+      return state.defaultServiceAssignments.filter(assignment => assignment.shift_type === shiftType);
     },
-    
-    // Legacy method for compatibility
-    hasStaffingShortage: (state) => (serviceId) => {
-      return state.getStaffingShortages(serviceId).hasShortage;
+
+    // Get all default assignments
+    allDefaultAssignments: (state) => {
+      return state.defaultServiceAssignments;
     },
-    
-    // Get coverage gaps with detailed information
-    getCoverageGaps: (state) => (serviceId) => {
-      try {
-        const staffStore = useStaffStore();
-        const today = new Date();
-        
-        const assignment = state.serviceAssignments.find(a => a.id === serviceId);
-        if (!assignment) return { hasGap: false, gaps: [] };
-        
-        // Get all porter assignments for this service
-        const allPorterAssignments = state.porterAssignments.filter(
-          pa => pa.default_service_cover_assignment_id === serviceId ||
-                pa.support_service_assignment_id === serviceId
-        );
-        
-        // Filter out porters who are absent
-        const porterAssignments = allPorterAssignments.filter(
-          pa => !staffStore.isPorterAbsent(pa.porter_id, today)
-        );
-        
-        if (porterAssignments.length === 0) {
-          // No porters assigned or all porters are absent - the entire period is a gap
-          return {
-            hasGap: true,
-            gaps: [
-              {
-                startTime: assignment.start_time,
-                endTime: assignment.end_time,
-                type: 'gap'
-              }
-            ]
-          };
-        }
-        
-        // Convert service times to minutes for easier comparison
-        const serviceStart = timeToMinutes(assignment.start_time);
-        const serviceEnd = timeToMinutes(assignment.end_time);
-      
-        // First check if any single porter covers the entire time period
-        const fullCoverageExists = porterAssignments.some(assignment => {
-          const porterStart = timeToMinutes(assignment.start_time);
-          const porterEnd = timeToMinutes(assignment.end_time);
-          return porterStart <= serviceStart && porterEnd >= serviceEnd;
-        });
-        
-        // If at least one porter provides full coverage, there's no gap
-        if (fullCoverageExists) {
-          return { hasGap: false, gaps: [] };
-        }
-        
-        // Sort porter assignments by start time
-        const sortedAssignments = [...porterAssignments].sort((a, b) => {
-          return timeToMinutes(a.start_time) - timeToMinutes(b.start_time);
-        });
-        
-        const gaps = [];
-        
-        // Check for gap at the beginning
-        if (timeToMinutes(sortedAssignments[0].start_time) > serviceStart) {
-          gaps.push({
-            startTime: assignment.start_time,
-            endTime: sortedAssignments[0].start_time,
-            type: 'gap'
-          });
-        }
-        
-        // Check for gaps between porter assignments
-        for (let i = 0; i < sortedAssignments.length - 1; i++) {
-          const currentEnd = timeToMinutes(sortedAssignments[i].end_time);
-          const nextStart = timeToMinutes(sortedAssignments[i + 1].start_time);
-          
-          if (nextStart > currentEnd) {
-            gaps.push({
-              startTime: sortedAssignments[i].end_time,
-              endTime: sortedAssignments[i + 1].start_time,
-              type: 'gap'
-            });
-          }
-        }
-        
-        // Check for gap at the end
-        const lastEnd = timeToMinutes(sortedAssignments[sortedAssignments.length - 1].end_time);
-        if (lastEnd < serviceEnd) {
-          gaps.push({
-            startTime: sortedAssignments[sortedAssignments.length - 1].end_time,
-            endTime: assignment.end_time,
-            type: 'gap'
-          });
-        }
-        
-        return {
-          hasGap: gaps.length > 0,
-          gaps
-        };
-      } catch (error) {
-        console.error('Error in getCoverageGaps:', error);
-        return { hasGap: false, gaps: [] };
-      }
+
+    // Alias for services property (for compatibility)
+    services: (state) => {
+      return state.supportServices;
     },
-    
-    // Legacy method for compatibility
-    hasCoverageGap: (state) => (serviceId) => {
-      return state.getCoverageGaps(serviceId).hasGap;
-    },
-    
-    // Get all coverage issues (both gaps and staffing shortages)
-    getCoverageIssues: (state) => (serviceId) => {
-      const gaps = state.getCoverageGaps(serviceId).gaps;
-      const shortages = state.getStaffingShortages(serviceId).shortages;
-      
-      const allIssues = [...gaps, ...shortages].sort((a, b) => {
-        return timeToMinutes(a.startTime) - timeToMinutes(b.startTime);
-      });
-      
-      return {
-        hasIssues: allIssues.length > 0,
-        issues: allIssues
-      };
+
+    // Get porter assignments for a specific service (for compatibility with SupportServiceItem)
+    getPorterAssignmentsByServiceId: (state) => (serviceId) => {
+      // For default service assignments, we need to find the assignment and return its porter assignments
+      const assignment = state.defaultServiceAssignments.find(a => a.id === serviceId);
+      return assignment?.default_service_cover_porter_assignments || [];
     }
   },
   
   actions: {
-    // Make sure assignments are loaded for a specific shift type
-    async ensureAssignmentsLoaded(shiftType) {
-      if (!this.serviceAssignments || this.serviceAssignments.length === 0) {
-        await this.fetchServiceAssignments();
-      }
-      return this.getAssignmentsByShiftType(shiftType);
-    },
-    
-    // Load all service assignments for all shift types
-    async loadAllServiceAssignments() {
-      return await this.fetchServiceAssignments();
-    },
-    
-    // Fetch all support services
-    async fetchServices() {
+    // Support Services CRUD operations
+    async fetchSupportServices(includeInactive = true) {
       this.loading.services = true;
+      this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('support_services')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        
-        this.services = data || [];
+        const filters = includeInactive ? {} : { is_active: true };
+        const data = await supportServicesApi.getAll(filters);
+        this.supportServices = data || [];
       } catch (error) {
         console.error('Error fetching support services:', error);
-        this.error = error.message;
+        this.error = error instanceof ApiError ? error.message : 'Failed to load support services';
       } finally {
         this.loading.services = false;
       }
     },
     
-    // Add a new support service
-    async addService(name, description) {
-      this.loading.save = true;
+    async fetchSupportService(id) {
+      this.loading.services = true;
+      this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('support_services')
-          .insert({
-            name,
-            description
-          })
-          .select();
+        const data = await supportServicesApi.getById(id);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Add the new service to the state
-          this.services.push(data[0]);
-        }
-        
-        return data?.[0] || null;
-      } catch (error) {
-        console.error('Error adding support service:', error);
-        this.error = error.message;
-        return null;
-      } finally {
-        this.loading.save = false;
-      }
-    },
-    
-    // Update an existing support service
-    async updateService(id, updates) {
-      this.loading.save = true;
-      
-      try {
-        const { data, error } = await supabase
-          .from('support_services')
-          .update(updates)
-          .eq('id', id)
-          .select();
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Update the service in the state
-          const index = this.services.findIndex(s => s.id === id);
+        if (data) {
+          // Update or add to support services
+          const index = this.supportServices.findIndex(s => s.id === id);
           if (index !== -1) {
-            this.services[index] = data[0];
+            this.supportServices[index] = data;
+          } else {
+            this.supportServices.push(data);
           }
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
-        console.error('Error updating support service:', error);
-        this.error = error.message;
+        console.error('Error fetching support service:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load support service';
         return null;
       } finally {
-        this.loading.save = false;
+        this.loading.services = false;
       }
     },
     
-    // Delete a support service
-    async deleteService(id) {
-      this.loading.save = true;
+    async createSupportService(serviceData) {
+      this.loading.creating = true;
+      this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('support_services')
-          .delete()
-          .eq('id', id);
+        const data = await supportServicesApi.create(serviceData);
         
-        if (error) throw error;
+        if (data) {
+          this.supportServices.push(data);
+        }
         
-        // Remove the service from the state
-        this.services = this.services.filter(s => s.id !== id);
+        return data;
+      } catch (error) {
+        console.error('Error creating support service:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to create support service';
+        return null;
+      } finally {
+        this.loading.creating = false;
+      }
+    },
+    
+    async updateSupportService(id, updates) {
+      this.loading.updating = true;
+      this.error = null;
+      
+      try {
+        const data = await supportServicesApi.update(id, updates);
+        
+        if (data) {
+          const index = this.supportServices.findIndex(s => s.id === id);
+          if (index !== -1) {
+            this.supportServices[index] = data;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error updating support service:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to update support service';
+        return false;
+      } finally {
+        this.loading.updating = false;
+      }
+    },
+    
+    async toggleServiceActive(id) {
+      this.loading.updating = true;
+      this.error = null;
+      
+      try {
+        const data = await supportServicesApi.toggleActive(id);
+        
+        if (data) {
+          const index = this.supportServices.findIndex(s => s.id === id);
+          if (index !== -1) {
+            this.supportServices[index] = data;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error toggling service active status:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to toggle active status';
+        return false;
+      } finally {
+        this.loading.updating = false;
+      }
+    },
+    
+    async deleteSupportService(id) {
+      this.loading.deleting = true;
+      this.error = null;
+      
+      try {
+        await supportServicesApi.delete(id);
+        
+        // Remove from local state
+        this.supportServices = this.supportServices.filter(s => s.id !== id);
+        // Also remove associated assignments
+        this.serviceAssignments = this.serviceAssignments.filter(a => a.service_id !== id);
         
         return true;
       } catch (error) {
         console.error('Error deleting support service:', error);
-        this.error = error.message;
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete support service';
         return false;
       } finally {
-        this.loading.save = false;
+        this.loading.deleting = false;
       }
     },
     
-    // Fetch service assignments
-    async fetchServiceAssignments() {
-      this.loading.services = true;
+    // Service Assignments operations
+    async fetchServiceAssignments(serviceId, shiftType = null) {
+      this.loading.assignments = true;
+      this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('default_service_cover_assignments')
-          .select(`
-            *,
-            service:service_id(id, name, description)
-          `)
-          .order('service_id');
+        const data = await supportServicesApi.getAssignments(serviceId, shiftType);
         
-        if (error) throw error;
-        
-        this.serviceAssignments = data || [];
-        
-        // Also fetch porter assignments
-        if (data && data.length > 0) {
-          const assignmentIds = data.map(a => a.id);
-          
-          const { data: porterData, error: porterError } = await supabase
-            .from('default_service_cover_porter_assignments')
-            .select(`
-              *,
-              porter:porter_id(id, first_name, last_name, role)
-            `)
-            .in('default_service_cover_assignment_id', assignmentIds);
-          
-          if (porterError) throw porterError;
-          
-          this.porterAssignments = porterData || [];
-        } else {
-          this.porterAssignments = [];
+        // Replace assignments for this service
+        this.serviceAssignments = this.serviceAssignments.filter(a => a.service_id !== serviceId);
+        if (data) {
+          this.serviceAssignments.push(...data);
         }
         
-        return this.serviceAssignments;
+        return data;
       } catch (error) {
         console.error('Error fetching service assignments:', error);
-        this.error = error.message;
+        this.error = error instanceof ApiError ? error.message : 'Failed to load service assignments';
         return [];
       } finally {
-        this.loading.services = false;
+        this.loading.assignments = false;
       }
     },
     
-    // Add a service assignment (for default settings)
-    async addServiceAssignment(serviceId, shiftType, startTime, endTime, color = '#4285F4') {
-      this.loading.save = true;
+    async createServiceAssignment(serviceId, assignmentData) {
+      this.loading.creating = true;
+      this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('default_service_cover_assignments')
-          .insert({
-            service_id: serviceId,
-            shift_type: shiftType,
-            start_time: startTime,
-            end_time: endTime,
-            color: color
-          })
-          .select(`
-            *,
-            service:service_id(id, name, description)
-          `);
+        const data = await supportServicesApi.createAssignment(serviceId, assignmentData);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Add the assignment to the state
-          this.serviceAssignments.push(data[0]);
+        if (data) {
+          this.serviceAssignments.push(data);
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
-        console.error('Error adding service assignment:', error);
-        this.error = error.message;
+        console.error('Error creating service assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to create service assignment';
         return null;
       } finally {
-        this.loading.save = false;
+        this.loading.creating = false;
       }
     },
     
-    // Update a service assignment
-    async updateServiceAssignment(assignmentId, updates) {
-      this.loading.save = true;
+    // Utility methods
+    async refreshService(id) {
+      return this.fetchSupportService(id);
+    },
+    
+    async refreshServiceAssignments(serviceId) {
+      return this.fetchServiceAssignments(serviceId);
+    },
+    
+    // Get service statistics
+    getServiceStats: () => (state) => {
+      return {
+        total: state.supportServices.length,
+        active: state.supportServices.filter(s => s.is_active).length,
+        inactive: state.supportServices.filter(s => !s.is_active).length
+      };
+    },
+    
+    // Alias for compatibility
+    async fetchServices(includeInactive = true) {
+      return this.fetchSupportServices(includeInactive);
+    },
+    
+    // Default Service Cover Assignments operations
+    async fetchDefaultServiceAssignments(shiftType = null) {
+      this.loading.assignments = true;
+      this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('default_service_cover_assignments')
-          .update(updates)
-          .eq('id', assignmentId)
-          .select(`
-            *,
-            service:service_id(id, name, description)
-          `);
+        const data = await supportServicesApi.getDefaultAssignments(shiftType);
         
-        if (error) throw error;
+        if (shiftType) {
+          // Replace assignments for this shift type
+          this.defaultServiceAssignments = this.defaultServiceAssignments.filter(a => a.shift_type !== shiftType);
+          if (data) {
+            this.defaultServiceAssignments.push(...data);
+          }
+        } else {
+          // Replace all assignments
+          this.defaultServiceAssignments = data || [];
+        }
         
-        if (data && data.length > 0) {
-          // Update the assignment in the state
-          const index = this.serviceAssignments.findIndex(a => a.id === assignmentId);
+        return data;
+      } catch (error) {
+        console.error('Error fetching default service assignments:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load default service assignments';
+        return [];
+      } finally {
+        this.loading.assignments = false;
+      }
+    },
+
+    async createDefaultServiceAssignment(assignmentData) {
+      this.loading.creating = true;
+      this.error = null;
+      
+      try {
+        const data = await supportServicesApi.createDefaultAssignment(assignmentData);
+        
+        if (data) {
+          this.defaultServiceAssignments.push(data);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error creating default service assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to create default service assignment';
+        return null;
+      } finally {
+        this.loading.creating = false;
+      }
+    },
+
+    async updateDefaultServiceAssignment(id, updates) {
+      this.loading.updating = true;
+      this.error = null;
+      
+      try {
+        const data = await supportServicesApi.updateDefaultAssignment(id, updates);
+        
+        if (data) {
+          const index = this.defaultServiceAssignments.findIndex(a => a.id === id);
           if (index !== -1) {
-            this.serviceAssignments[index] = data[0];
+            this.defaultServiceAssignments[index] = data;
           }
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
-        console.error('Error updating service assignment:', error);
-        this.error = error.message;
+        console.error('Error updating default service assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to update default service assignment';
         return null;
       } finally {
-        this.loading.save = false;
+        this.loading.updating = false;
       }
     },
-    
-    // Delete a service assignment
-    async deleteServiceAssignment(assignmentId) {
-      this.loading.save = true;
+
+    async deleteDefaultServiceAssignment(id) {
+      this.loading.deleting = true;
+      this.error = null;
       
       try {
-        // First, delete any porter assignments related to this service assignment
-        console.log('Deleting porter assignments for service assignment ID:', assignmentId);
-        const { error: porterError } = await supabase
-          .from('default_service_cover_porter_assignments')
-          .delete()
-          .eq('default_service_cover_assignment_id', assignmentId);
+        await supportServicesApi.deleteDefaultAssignment(id);
         
-        if (porterError) {
-          console.error('Error deleting related porter assignments:', porterError);
-          throw porterError;
-        }
-        
-        // Now delete the service assignment itself
-        console.log('Deleting service assignment with ID:', assignmentId);
-        const { error } = await supabase
-          .from('default_service_cover_assignments')
-          .delete()
-          .eq('id', assignmentId);
-        
-        if (error) throw error;
-        
-        // Remove the assignment from the state
-        this.serviceAssignments = this.serviceAssignments.filter(a => a.id !== assignmentId);
-        
-        // Also remove associated porter assignments from state
-        this.porterAssignments = this.porterAssignments.filter(
-          pa => pa.default_service_cover_assignment_id !== assignmentId
-        );
-        
-        console.log('Service assignment successfully deleted');
-        return true;
-      } catch (error) {
-        console.error('Error deleting service assignment:', error);
-        this.error = error.message;
-        return false;
-      } finally {
-        this.loading.save = false;
-      }
-    },
-    
-    // Add a porter to a service assignment
-    async addPorterToServiceAssignment(assignmentId, porterId, startTime, endTime) {
-      this.loading = true;
-      
-      try {
-        const { data, error } = await supabase
-          .from('default_service_cover_porter_assignments')
-          .insert({
-            default_service_cover_assignment_id: assignmentId,
-            porter_id: porterId,
-            start_time: startTime,
-            end_time: endTime
-          })
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name, role)
-          `);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Add the porter assignment to the state
-          this.porterAssignments.push(data[0]);
-        }
-        
-        return data?.[0] || null;
-      } catch (error) {
-        console.error('Error adding porter to service assignment:', error);
-        this.error = error.message;
-        return null;
-      } finally {
-        this.loading = false;
-      }
-    },
-    
-    // Update a porter assignment
-    async updatePorterAssignment(porterAssignmentId, updates) {
-      this.loading.save = true;
-      
-      try {
-        const { data, error } = await supabase
-          .from('default_service_cover_porter_assignments')
-          .update(updates)
-          .eq('id', porterAssignmentId)
-          .select(`
-            *,
-            porter:porter_id(id, first_name, last_name, role)
-          `);
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          // Update the porter assignment in the state
-          const index = this.porterAssignments.findIndex(pa => pa.id === porterAssignmentId);
-          if (index !== -1) {
-            this.porterAssignments[index] = data[0];
-          }
-        }
-        
-        return data?.[0] || null;
-      } catch (error) {
-        console.error('Error updating porter assignment:', error);
-        this.error = error.message;
-        return null;
-      } finally {
-        this.loading.save = false;
-      }
-    },
-    
-    // Remove a porter from a service assignment
-    async removePorterAssignment(porterAssignmentId) {
-      this.loading = true;
-      
-      try {
-        const { error } = await supabase
-          .from('default_service_cover_porter_assignments')
-          .delete()
-          .eq('id', porterAssignmentId);
-        
-        if (error) throw error;
-        
-        // Remove the porter assignment from the state
-        this.porterAssignments = this.porterAssignments.filter(pa => pa.id !== porterAssignmentId);
+        // Remove from local state
+        this.defaultServiceAssignments = this.defaultServiceAssignments.filter(a => a.id !== id);
         
         return true;
       } catch (error) {
-        console.error('Error removing porter assignment:', error);
-        this.error = error.message;
+        console.error('Error deleting default service assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete default service assignment';
         return false;
       } finally {
-        this.loading = false;
+        this.loading.deleting = false;
       }
     },
-    
-    // Initialize store
+
+    // Convenience methods for adding/removing service assignments
+    async addServiceAssignment(serviceId, shiftType, startTime, endTime, color) {
+      return this.createDefaultServiceAssignment({
+        service_id: serviceId,
+        shift_type: shiftType,
+        start_time: startTime,
+        end_time: endTime,
+        color: color
+      });
+    },
+
+    async updateServiceAssignment(id, updates) {
+      return this.updateDefaultServiceAssignment(id, updates);
+    },
+
+    async deleteServiceAssignment(id) {
+      return this.deleteDefaultServiceAssignment(id);
+    },
+
+    // Initialize data
     async initialize() {
-      await this.fetchServices();
-      await this.fetchServiceAssignments();
+      await Promise.all([
+        this.fetchSupportServices(true), // Include inactive services
+        this.fetchDefaultServiceAssignments() // Load all default assignments
+      ]);
+    },
+    
+    // Ensure assignments are loaded for a specific shift type
+    async ensureAssignmentsLoaded(shiftType) {
+      // Check if we already have assignments for this shift type
+      const existingAssignments = this.defaultServiceAssignments.filter(a => a.shift_type === shiftType);
+      
+      if (existingAssignments.length === 0) {
+        // Load assignments for this shift type
+        await this.fetchDefaultServiceAssignments(shiftType);
+      }
+      
+      return this.getDefaultAssignmentsByType(shiftType);
     }
   }
 });

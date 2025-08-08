@@ -385,12 +385,18 @@ onUnmounted(() => {
 function determineShiftType() {
   const now = new Date();
   const isCurrentDayWeekend = isWeekend(now);
+  const shiftDefaults = settingsStore.shiftDefaultsByType;
+  
+  // Check if shift defaults are loaded
+  if (!shiftDefaults.week_day || !shiftDefaults.week_night) {
+    return; // Exit early if shift defaults aren't loaded yet
+  }
   
   // Parse settings times into minutes for easier comparison
-  const dayStartMinutes = parseTimeString(settingsStore.shiftDefaults.week_day.startTime);
-  const dayEndMinutes = parseTimeString(settingsStore.shiftDefaults.week_day.endTime);
-  const nightStartMinutes = parseTimeString(settingsStore.shiftDefaults.week_night.startTime);
-  const nightEndMinutes = parseTimeString(settingsStore.shiftDefaults.week_night.endTime);
+  const dayStartMinutes = parseTimeString(settingsStore.formatTime(shiftDefaults.week_day.start_time));
+  const dayEndMinutes = parseTimeString(settingsStore.formatTime(shiftDefaults.week_day.end_time));
+  const nightStartMinutes = parseTimeString(settingsStore.formatTime(shiftDefaults.week_night.start_time));
+  const nightEndMinutes = parseTimeString(settingsStore.formatTime(shiftDefaults.week_night.end_time));
   
   // Get current time in minutes
   const currentHours = now.getHours();
@@ -531,15 +537,17 @@ function isWeekend(date) {
 
 // Get the appropriate color for a shift type
 function getShiftColor(shiftType) {
+  const shiftDefaults = settingsStore.shiftDefaultsByType;
+  
   switch (shiftType) {
     case 'week_day':
     case 'weekend_day':
       // Use day shift color for both weekday and weekend day shifts
-      return settingsStore.shiftDefaults.week_day.color;
+      return shiftDefaults.week_day?.color || '#4285F4';
     case 'week_night':
     case 'weekend_night':
       // Use night shift color for both weekday and weekend night shifts
-      return settingsStore.shiftDefaults.week_night.color;
+      return shiftDefaults.week_night?.color || '#673AB7';
     default:
       return '#4285F4'; // Default blue color
   }

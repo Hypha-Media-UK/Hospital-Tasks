@@ -1,13 +1,13 @@
 <template>
   <div 
     class="service-card" 
-    :style="{ borderLeftColor: assignment.service.color || '#CCCCCC' }"
+    :style="{ borderLeftColor: serviceData.color || assignment.color || '#CCCCCC' }"
     @click="showEditModal = true"
   >
     <div class="service-card__content">
       <div class="service-card__header">
         <div class="service-card__name">
-          {{ assignment.service.name }}
+          {{ serviceData.name }}
         </div>
         <div class="service-card__time">
           {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
@@ -30,11 +30,11 @@
                      'porter-absent': getPorterAbsence(assignment.porter_id),
                      'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
                      'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave',
-                     'porter-scheduled-absence': isShiftAssignment && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id),
+                     'porter-scheduled-absence': isShiftAssignment && shiftsStore.isPorterOnScheduledAbsence && shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id),
                      'pool-porter': isPoolPorter(assignment.porter_id),
-                     'porter-outside-hours': isShiftAssignment && shiftsStore.isShiftInSetupMode(shiftsStore.currentShift) && isPorterOutsideContractedHours(assignment.porter_id)
+                     'porter-outside-hours': isShiftAssignment && shiftsStore.isShiftInSetupMode && shiftsStore.isShiftInSetupMode(shiftsStore.currentShift) && isPorterOutsideContractedHours(assignment.porter_id)
                    }">
-                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+                {{ assignment.porter?.first_name || assignment.staff?.first_name || 'Unknown' }} {{ assignment.porter?.last_name || assignment.staff?.last_name || 'Porter' }}
                 <!-- Show time for available porters, absence badge for absent porters -->
                 <span v-if="!getPorterAbsence(assignment.porter_id)" class="porter-time">
                   <template v-if="assignment.agreed_absence">
@@ -100,7 +100,7 @@
       <!-- For default settings assignments -->
       <EditServiceModal 
         v-else
-        :service="assignment.service"
+        :service="serviceData"
         :assignment="assignment"
         @close="showEditModal = false"
         @update="handleUpdate"
@@ -133,6 +133,21 @@ const supportServicesStore = useSupportServicesStore();
 const staffStore = useStaffStore();
 const showEditModal = ref(false);
 
+// Handle different data structures for service data
+const serviceData = computed(() => {
+  // For default service cover assignments, service data is in support_services
+  // For shift assignments, service data is in service
+  const service = props.assignment.support_services || props.assignment.service || {};
+  
+  // Add fallback for missing properties
+  return {
+    name: service.name || 'Unknown Service',
+    description: service.description || '',
+    color: service.color || props.assignment.color || '#CCCCCC',
+    ...service
+  };
+});
+
 // Function to check if a porter is in the porter pool
 const isPoolPorter = (porterId) => {
   // Get the porter pool for the current shift
@@ -147,12 +162,12 @@ const porterAssignments = computed(() => {
   if (isShiftAssignment.value) {
     // Use the shiftsStore getter for shift-specific assignments
     const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
-    console.log(`Service ${props.assignment.service.name} porter assignments:`, assignments);
+    console.log(`Service ${serviceData.value.name} porter assignments:`, assignments);
     return Array.isArray(assignments) ? assignments : [];
   } else {
     // Use the supportServicesStore getter for default settings
     const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id);
-    console.log(`Service ${props.assignment.service.name} porter assignments:`, assignments);
+    console.log(`Service ${serviceData.value.name} porter assignments:`, assignments);
     return Array.isArray(assignments) ? assignments : [];
   }
 });
@@ -160,7 +175,7 @@ const porterAssignments = computed(() => {
 // Get all available (non-absent and currently active) porters
 const availablePorters = computed(() => {
   const shift = shiftsStore.currentShift;
-  const isSetupMode = shiftsStore.isShiftInSetupMode(shift);
+  const isSetupMode = shiftsStore.isShiftInSetupMode ? shiftsStore.isShiftInSetupMode(shift) : false;
   
   if (isShiftAssignment.value && isSetupMode) {
     // In setup mode for shift assignments: show ALL assigned porters regardless of absence status or contracted hours
@@ -401,21 +416,29 @@ const getGapsBetweenAssignments = (current, next) => {
 // Format time for display (HH:MM)
 const formatTime = (timeStr) => {
   if (!timeStr) return '';
-  return timeStr.substring(0, 5); // Extract HH:MM part
+  
+  // Handle Date objects (from MySQL/Prisma)
+  if (timeStr instanceof Date) {
+    return timeStr.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+  if (typeof timeStr === 'string' && timeStr.includes('T')) {
+    const date = new Date(timeStr);
+    return date.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle simple time strings (e.g., "08:00:00" or "08:00")
+  if (typeof timeStr === 'string') {
+    return timeStr.substring(0, 5); // Extract HH:MM part
+  }
+  
+  return '';
 };
 
 // Helper function to format time range
 function formatTimeRange(startTime, endTime) {
   if (!startTime || !endTime) return '';
-  
-  // Format times (assumes HH:MM format)
-  const formatTime = (time) => {
-    if (typeof time === 'string') {
-      // Handle 24-hour time format string (e.g., "14:30:00")
-      return time.substring(0, 5); // Get HH:MM part
-    }
-    return '';
-  };
   
   return `${formatTime(startTime)} - ${formatTime(endTime)}`;
 }

@@ -1,529 +1,457 @@
 import { defineStore } from 'pinia';
-import { supabase } from '../services/supabase';
+import { taskTypesApi, taskItemsApi, ApiError } from '../services/api';
 
 export const useTaskTypesStore = defineStore('taskTypes', {
   state: () => ({
     taskTypes: [],
     taskItems: [],
+    taskItemAssignments: [],
     typeAssignments: [],
-    itemAssignments: [],
     loading: {
       taskTypes: false,
       taskItems: false,
+      itemAssignments: false,
       typeAssignments: false,
-      itemAssignments: false
+      creating: false,
+      updating: false,
+      deleting: false
     },
     error: null
   }),
   
   getters: {
+    // Get task types sorted by name
+    sortedTaskTypes: (state) => {
+      return [...state.taskTypes].sort((a, b) => a.name.localeCompare(b.name));
+    },
+    
+    // Get task items for a specific task type
+    getTaskItemsByType: (state) => (taskTypeId) => {
+      return state.taskItems.filter(item => item.task_type_id === taskTypeId);
+    },
+    
+    // Get regular task items
+    regularTaskItems: (state) => {
+      return state.taskItems.filter(item => item.is_regular);
+    },
+    
+    // Get task type by ID
+    getTaskTypeById: (state) => (id) => {
+      return state.taskTypes.find(type => type.id === id);
+    },
+    
+    // Get task item by ID
+    getTaskItemById: (state) => (id) => {
+      return state.taskItems.find(item => item.id === id);
+    },
+    
+    // Get task types with their items
     taskTypesWithItems: (state) => {
-      return state.taskTypes.map(taskType => {
-        const items = state.taskItems.filter(
-          item => item.task_type_id === taskType.id
-        );
-        return {
-          ...taskType,
-          items
-        };
-      });
-    },
-    
-    getTaskItemsByTypeId: (state) => (typeId) => {
-      return state.taskItems.filter(item => item.task_type_id === typeId);
-    },
-    
-    getTaskItemsByType: (state) => (typeId) => {
-      return state.taskItems.filter(item => item.task_type_id === typeId);
-    },
-    
-    // Task Type Assignment Getters
-    getTypeAssignmentsByTypeId: (state) => (typeId) => {
-      return state.typeAssignments.filter(
-        assignment => assignment.task_type_id === typeId
-      );
-    },
-    
-    hasTypeAssignments: (state) => (typeId) => {
-      return state.typeAssignments.some(
-        assignment => assignment.task_type_id === typeId
-      );
-    },
-    
-    getTypeDepartmentAssignment: (state) => (typeId, departmentId) => {
-      return state.typeAssignments.find(
-        a => a.task_type_id === typeId && a.department_id === departmentId
-      ) || { is_origin: false, is_destination: false };
-    },
-    
-    // Task Item Assignment Getters
-    getItemAssignmentsByItemId: (state) => (itemId) => {
-      return state.itemAssignments.filter(
-        assignment => assignment.task_item_id === itemId
-      );
-    },
-    
-    hasItemAssignments: (state) => (itemId) => {
-      return state.itemAssignments.some(
-        assignment => assignment.task_item_id === itemId
-      );
-    },
-    
-    getItemDepartmentAssignment: (state) => (itemId, departmentId) => {
-      return state.itemAssignments.find(
-        a => a.task_item_id === itemId && a.department_id === departmentId
-      ) || { is_origin: false, is_destination: false };
-    },
-    
-    // Get the regular task item for a task type
-    getRegularTaskItem: (state) => (typeId) => {
-      return state.taskItems.find(
-        item => item.task_type_id === typeId && item.is_regular
-      );
+      return state.taskTypes.map(taskType => ({
+        ...taskType,
+        items: state.taskItems.filter(item => item.task_type_id === taskType.id)
+      }));
     }
   },
   
   actions: {
     // Task Types CRUD operations
-    async fetchTaskTypes() {
+    async fetchTaskTypes(includeItems = false) {
       this.loading.taskTypes = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('task_types')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        
+        const data = await taskTypesApi.getAll(includeItems);
         this.taskTypes = data || [];
+        
+        // If items were included, extract them
+        if (includeItems) {
+          const allItems = [];
+          this.taskTypes.forEach(taskType => {
+            if (taskType.task_items) {
+              allItems.push(...taskType.task_items);
+            }
+          });
+          this.taskItems = allItems;
+        }
       } catch (error) {
         console.error('Error fetching task types:', error);
-        this.error = 'Failed to load task types';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load task types';
       } finally {
         this.loading.taskTypes = false;
       }
     },
     
-    async addTaskType(taskType) {
+    async fetchTaskType(id, includeItems = true) {
       this.loading.taskTypes = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('task_types')
-          .insert(taskType)
-          .select();
+        const data = await taskTypesApi.getById(id, includeItems);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          this.taskTypes.push(data[0]);
+        if (data) {
+          // Update or add to task types
+          const index = this.taskTypes.findIndex(t => t.id === id);
+          if (index !== -1) {
+            this.taskTypes[index] = data;
+          } else {
+            this.taskTypes.push(data);
+          }
+          
+          // If items were included, update task items
+          if (includeItems && data.task_items) {
+            // Remove existing items for this task type
+            this.taskItems = this.taskItems.filter(item => item.task_type_id !== id);
+            // Add new items
+            this.taskItems.push(...data.task_items);
+          }
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
-        console.error('Error adding task type:', error);
-        this.error = 'Failed to add task type';
+        console.error('Error fetching task type:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load task type';
         return null;
       } finally {
         this.loading.taskTypes = false;
       }
     },
     
-    async updateTaskType(id, updates) {
-      this.loading.taskTypes = true;
+    async createTaskType(taskTypeData) {
+      this.loading.creating = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('task_types')
-          .update(updates)
-          .eq('id', id)
-          .select();
+        const data = await taskTypesApi.create(taskTypeData);
         
-        if (error) throw error;
+        if (data) {
+          this.taskTypes.push(data);
+        }
         
-        if (data && data.length > 0) {
+        return data;
+      } catch (error) {
+        console.error('Error creating task type:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to create task type';
+        return null;
+      } finally {
+        this.loading.creating = false;
+      }
+    },
+    
+    async updateTaskType(id, updates) {
+      this.loading.updating = true;
+      this.error = null;
+      
+      try {
+        const data = await taskTypesApi.update(id, updates);
+        
+        if (data) {
           const index = this.taskTypes.findIndex(t => t.id === id);
           if (index !== -1) {
-            this.taskTypes[index] = data[0];
+            this.taskTypes[index] = data;
           }
         }
         
         return true;
       } catch (error) {
         console.error('Error updating task type:', error);
-        this.error = 'Failed to update task type';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update task type';
         return false;
       } finally {
-        this.loading.taskTypes = false;
+        this.loading.updating = false;
       }
     },
     
     async deleteTaskType(id) {
-      this.loading.taskTypes = true;
+      this.loading.deleting = true;
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('task_types')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
+        await taskTypesApi.delete(id);
         
         // Remove from local state
         this.taskTypes = this.taskTypes.filter(t => t.id !== id);
-        // Also remove associated task items and assignments
-        this.taskItems = this.taskItems.filter(i => i.task_type_id !== id);
-        this.typeAssignments = this.typeAssignments.filter(a => a.task_type_id !== id);
+        // Also remove associated task items
+        this.taskItems = this.taskItems.filter(item => item.task_type_id !== id);
         
         return true;
       } catch (error) {
         console.error('Error deleting task type:', error);
-        this.error = 'Failed to delete task type';
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete task type';
         return false;
       } finally {
-        this.loading.taskTypes = false;
+        this.loading.deleting = false;
       }
     },
     
     // Task Items CRUD operations
-    async fetchTaskItems() {
+    async fetchTaskItems(filters = {}) {
       this.loading.taskItems = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('task_items')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        
+        const data = await taskItemsApi.getAll(filters);
         this.taskItems = data || [];
       } catch (error) {
         console.error('Error fetching task items:', error);
-        this.error = 'Failed to load task items';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load task items';
       } finally {
         this.loading.taskItems = false;
       }
     },
     
-    async addTaskItem(taskItem) {
+    async fetchTaskItemsForType(taskTypeId, filters = {}) {
       this.loading.taskItems = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('task_items')
-          .insert(taskItem)
-          .select();
+        const data = await taskTypesApi.getItems(taskTypeId, filters);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          this.taskItems.push(data[0]);
+        // Replace items for this task type
+        this.taskItems = this.taskItems.filter(item => item.task_type_id !== taskTypeId);
+        if (data) {
+          this.taskItems.push(...data);
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
-        console.error('Error adding task item:', error);
-        this.error = 'Failed to add task item';
-        return null;
-      } finally {
-        this.loading.taskItems = false;
-      }
-    },
-    
-    async updateTaskItem(id, updates) {
-      this.loading.taskItems = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('task_items')
-          .update(updates)
-          .eq('id', id)
-          .select();
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          const index = this.taskItems.findIndex(i => i.id === id);
-          if (index !== -1) {
-            this.taskItems[index] = data[0];
-          }
-        }
-        
-        return true;
-      } catch (error) {
-        console.error('Error updating task item:', error);
-        this.error = 'Failed to update task item';
-        return false;
-      } finally {
-        this.loading.taskItems = false;
-      }
-    },
-    
-    // Set a task item as regular and ensure only one per task type is regular
-    async setTaskItemRegular(taskItemId, isRegular = true) {
-      this.loading.taskItems = true;
-      this.error = null;
-      
-      try {
-        // Get the task item to find its task type
-        const taskItem = this.taskItems.find(item => item.id === taskItemId);
-        if (!taskItem) {
-          throw new Error('Task item not found');
-        }
-        
-        const taskTypeId = taskItem.task_type_id;
-        
-        if (isRegular) {
-          // First, unmark any other regular task items for this task type
-          const currentRegularItem = this.getRegularTaskItem(taskTypeId);
-          if (currentRegularItem && currentRegularItem.id !== taskItemId) {
-            // Update in database
-            await supabase
-              .from('task_items')
-              .update({ is_regular: false })
-              .eq('id', currentRegularItem.id);
-            
-            // Update in local state
-            const index = this.taskItems.findIndex(i => i.id === currentRegularItem.id);
-            if (index !== -1) {
-              this.taskItems[index].is_regular = false;
-            }
-          }
-        }
-        
-        // Now update the target task item
-        const { data, error } = await supabase
-          .from('task_items')
-          .update({ is_regular: isRegular })
-          .eq('id', taskItemId)
-          .select();
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          const index = this.taskItems.findIndex(i => i.id === taskItemId);
-          if (index !== -1) {
-            this.taskItems[index] = data[0];
-          }
-        }
-        
-        return true;
-      } catch (error) {
-        console.error('Error setting task item as regular:', error);
-        this.error = 'Failed to update task item';
-        return false;
-      } finally {
-        this.loading.taskItems = false;
-      }
-    },
-    
-    async deleteTaskItem(id) {
-      this.loading.taskItems = true;
-      this.error = null;
-      
-      try {
-        const { error } = await supabase
-          .from('task_items')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
-        
-        // Remove from local state
-        this.taskItems = this.taskItems.filter(i => i.id !== id);
-        // Also remove associated assignments
-        this.itemAssignments = this.itemAssignments.filter(a => a.task_item_id !== id);
-        
-        return true;
-      } catch (error) {
-        console.error('Error deleting task item:', error);
-        this.error = 'Failed to delete task item';
-        return false;
-      } finally {
-        this.loading.taskItems = false;
-      }
-    },
-    
-    // Fetch task items for a specific type
-    async fetchTaskItemsByType(typeId) {
-      this.loading.taskItems = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('task_items')
-          .select('*')
-          .eq('task_type_id', typeId)
-          .order('name');
-        
-        if (error) throw error;
-        
-        // Only update the items of this type, preserve others
-        const existingItems = this.taskItems.filter(item => item.task_type_id !== typeId);
-        this.taskItems = [...existingItems, ...(data || [])];
-        
-        return data || [];
-      } catch (error) {
-        console.error('Error fetching task items by type:', error);
-        this.error = 'Failed to load task items';
+        console.error('Error fetching task items for type:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load task items';
         return [];
       } finally {
         this.loading.taskItems = false;
       }
     },
     
-    // Task Type Department Assignments operations
+    async createTaskItem(itemData) {
+      this.loading.creating = true;
+      this.error = null;
+      
+      try {
+        const data = await taskItemsApi.create(itemData);
+        
+        if (data) {
+          this.taskItems.push(data);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error creating task item:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to create task item';
+        return null;
+      } finally {
+        this.loading.creating = false;
+      }
+    },
+    
+    async createTaskItemForType(taskTypeId, itemData) {
+      this.loading.creating = true;
+      this.error = null;
+      
+      try {
+        const data = await taskTypesApi.createItem(taskTypeId, itemData);
+        
+        if (data) {
+          this.taskItems.push(data);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error creating task item for type:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to create task item';
+        return null;
+      } finally {
+        this.loading.creating = false;
+      }
+    },
+    
+    async updateTaskItem(id, updates) {
+      this.loading.updating = true;
+      this.error = null;
+      
+      try {
+        const data = await taskItemsApi.update(id, updates);
+        
+        if (data) {
+          const index = this.taskItems.findIndex(item => item.id === id);
+          if (index !== -1) {
+            this.taskItems[index] = data;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error updating task item:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to update task item';
+        return false;
+      } finally {
+        this.loading.updating = false;
+      }
+    },
+    
+    async deleteTaskItem(id) {
+      this.loading.deleting = true;
+      this.error = null;
+      
+      try {
+        await taskItemsApi.delete(id);
+        
+        // Remove from local state
+        this.taskItems = this.taskItems.filter(item => item.id !== id);
+        
+        return true;
+      } catch (error) {
+        console.error('Error deleting task item:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete task item';
+        return false;
+      } finally {
+        this.loading.deleting = false;
+      }
+    },
+    
+    // Utility methods
+    async toggleTaskItemRegular(id) {
+      const item = this.getTaskItemById(id);
+      if (!item) return false;
+      
+      return this.updateTaskItem(id, { is_regular: !item.is_regular });
+    },
+    
+    async setTaskItemRegular(id, isRegular) {
+      return this.updateTaskItem(id, { is_regular: isRegular });
+    },
+    
+    // Alias for createTaskItemForType for compatibility
+    async addTaskItem(itemData) {
+      return this.createTaskItem(itemData);
+    },
+    
+    // Task Item Department Assignments
+    async fetchItemAssignments(itemId) {
+      this.loading.itemAssignments = true;
+      this.error = null;
+      
+      try {
+        const data = await taskItemsApi.getAssignments(itemId);
+        
+        // Update assignments in state
+        this.taskItemAssignments = this.taskItemAssignments.filter(
+          assignment => assignment.task_item_id !== itemId
+        );
+        if (data) {
+          this.taskItemAssignments.push(...data);
+        }
+        
+        return data || [];
+      } catch (error) {
+        console.error('Error fetching task item assignments:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load task item assignments';
+        return [];
+      } finally {
+        this.loading.itemAssignments = false;
+      }
+    },
+    
+    async updateItemAssignments(itemId, assignments) {
+      this.loading.itemAssignments = true;
+      this.error = null;
+      
+      try {
+        const data = await taskItemsApi.updateAssignments(itemId, assignments);
+        
+        // Update assignments in state
+        this.taskItemAssignments = this.taskItemAssignments.filter(
+          assignment => assignment.task_item_id !== itemId
+        );
+        if (data) {
+          this.taskItemAssignments.push(...data);
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error updating task item assignments:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to update task item assignments';
+        return false;
+      } finally {
+        this.loading.itemAssignments = false;
+      }
+    },
+    
+    // Get assignments for a specific task item
+    getItemAssignmentsByItemId(itemId) {
+      return this.taskItemAssignments.filter(assignment => assignment.task_item_id === itemId);
+    },
+    
+    // Task Type Department Assignments
     async fetchTypeAssignments() {
       this.loading.typeAssignments = true;
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('task_type_department_assignments')
-          .select('*');
-        
-        if (error) throw error;
-        
-        this.typeAssignments = data || [];
-        console.log('Loaded task type assignments:', this.typeAssignments);
+        // For now, return empty array as placeholder
+        // TODO: Implement API endpoint for task type department assignments
+        this.typeAssignments = [];
+        return [];
       } catch (error) {
-        console.error('Error fetching type assignments:', error);
-        this.error = 'Failed to load department assignments for task types';
+        console.error('Error fetching task type assignments:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to load task type assignments';
+        return [];
       } finally {
         this.loading.typeAssignments = false;
       }
     },
     
-    async updateTypeAssignments(taskTypeId, departmentAssignments) {
+    async updateTypeAssignments(taskTypeId, assignments) {
       this.loading.typeAssignments = true;
       this.error = null;
       
       try {
-        // First, delete all existing assignments for this task type
-        const { error: deleteError } = await supabase
-          .from('task_type_department_assignments')
-          .delete()
-          .eq('task_type_id', taskTypeId);
-        
-        if (deleteError) throw deleteError;
-        
-        // Filter out assignments where both is_origin and is_destination are false
-        const validAssignments = departmentAssignments.filter(
-          a => a.is_origin || a.is_destination
-        );
-        
-        // If there are valid assignments, insert them
-        if (validAssignments.length > 0) {
-          const { error: insertError } = await supabase
-            .from('task_type_department_assignments')
-            .insert(validAssignments);
-          
-          if (insertError) throw insertError;
-        }
-        
-        // Update local state
+        // For now, just update local state as placeholder
+        // TODO: Implement API endpoint for updating task type department assignments
         this.typeAssignments = this.typeAssignments.filter(
-          a => a.task_type_id !== taskTypeId
+          assignment => assignment.task_type_id !== taskTypeId
         );
-        
-        validAssignments.forEach(assignment => {
-          this.typeAssignments.push(assignment);
-        });
+        if (assignments) {
+          this.typeAssignments.push(...assignments);
+        }
         
         return true;
       } catch (error) {
-        console.error('Error updating type assignments:', error);
-        this.error = 'Failed to update department assignments for task type';
+        console.error('Error updating task type assignments:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to update task type assignments';
         return false;
       } finally {
         this.loading.typeAssignments = false;
       }
     },
     
-    // Task Item Department Assignments operations
-    async fetchItemAssignments() {
-      this.loading.itemAssignments = true;
-      this.error = null;
-      
-      try {
-        const { data, error } = await supabase
-          .from('task_item_department_assignments')
-          .select('*');
-        
-        if (error) throw error;
-        
-        this.itemAssignments = data || [];
-        console.log('Loaded task item assignments:', this.itemAssignments);
-      } catch (error) {
-        console.error('Error fetching item assignments:', error);
-        this.error = 'Failed to load department assignments for task items';
-      } finally {
-        this.loading.itemAssignments = false;
-      }
+    // Get assignments for a specific task type
+    getTypeAssignmentsByTypeId(taskTypeId) {
+      return this.typeAssignments.filter(assignment => assignment.task_type_id === taskTypeId);
     },
     
-    async updateItemAssignments(taskItemId, departmentAssignments) {
-      this.loading.itemAssignments = true;
-      this.error = null;
-      
-      try {
-        // First, delete all existing assignments for this task item
-        const { error: deleteError } = await supabase
-          .from('task_item_department_assignments')
-          .delete()
-          .eq('task_item_id', taskItemId);
-        
-        if (deleteError) throw deleteError;
-        
-        // Filter out assignments where both is_origin and is_destination are false
-        const validAssignments = departmentAssignments.filter(
-          a => a.is_origin || a.is_destination
-        );
-        
-        // If there are valid assignments, insert them
-        if (validAssignments.length > 0) {
-          const { error: insertError } = await supabase
-            .from('task_item_department_assignments')
-            .insert(validAssignments);
-          
-          if (insertError) throw insertError;
-        }
-        
-        // Update local state
-        this.itemAssignments = this.itemAssignments.filter(
-          a => a.task_item_id !== taskItemId
-        );
-        
-        validAssignments.forEach(assignment => {
-          this.itemAssignments.push(assignment);
-        });
-        
-        return true;
-      } catch (error) {
-        console.error('Error updating item assignments:', error);
-        this.error = 'Failed to update department assignments for task item';
-        return false;
-      } finally {
-        this.loading.itemAssignments = false;
-      }
+    // Alias for fetchTaskItemsForType for compatibility
+    async fetchTaskItemsByType(taskTypeId, filters = {}) {
+      return this.fetchTaskItemsForType(taskTypeId, filters);
+    },
+    
+    // Check if task type has department assignments
+    hasTypeAssignments(taskTypeId) {
+      const assignments = this.getTypeAssignmentsByTypeId(taskTypeId);
+      return assignments.length > 0;
+    },
+    
+    // Check if task item has department assignments
+    hasItemAssignments(itemId) {
+      const assignments = this.getItemAssignmentsByItemId(itemId);
+      return assignments.length > 0;
     },
     
     // Initialize data
     async initialize() {
       await Promise.all([
-        this.fetchTaskTypes(),
-        this.fetchTaskItems(),
-        this.fetchTypeAssignments(),
-        this.fetchItemAssignments()
+        this.fetchTaskTypes(true), // Include items
+        // this.fetchTaskItems() // Already loaded with task types
       ]);
     }
   }

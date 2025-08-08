@@ -312,18 +312,24 @@ onMounted(async () => {
 // Methods
 function initializeFormDefaults() {
   // Set default times based on the specific shift type
+  const shiftDefaults = settingsStore.shiftDefaultsByType;
+  
   if (props.shiftType === 'week_day') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_day?.startTime || '08:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_day?.endTime || '16:00';
+    const weekDay = shiftDefaults.week_day;
+    addServiceForm.value.startTime = weekDay?.start_time?.slice(0, 5) || '08:00';
+    addServiceForm.value.endTime = weekDay?.end_time?.slice(0, 5) || '16:00';
   } else if (props.shiftType === 'week_night') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.week_night?.startTime || '20:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.week_night?.endTime || '08:00';
+    const weekNight = shiftDefaults.week_night;
+    addServiceForm.value.startTime = weekNight?.start_time?.slice(0, 5) || '20:00';
+    addServiceForm.value.endTime = weekNight?.end_time?.slice(0, 5) || '08:00';
   } else if (props.shiftType === 'weekend_day') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_day?.startTime || '08:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_day?.endTime || '16:00';
+    const weekendDay = shiftDefaults.weekend_day;
+    addServiceForm.value.startTime = weekendDay?.start_time?.slice(0, 5) || '08:00';
+    addServiceForm.value.endTime = weekendDay?.end_time?.slice(0, 5) || '16:00';
   } else if (props.shiftType === 'weekend_night') {
-    addServiceForm.value.startTime = settingsStore.shiftDefaults.weekend_night?.startTime || '20:00';
-    addServiceForm.value.endTime = settingsStore.shiftDefaults.weekend_night?.endTime || '08:00';
+    const weekendNight = shiftDefaults.weekend_night;
+    addServiceForm.value.startTime = weekendNight?.start_time?.slice(0, 5) || '20:00';
+    addServiceForm.value.endTime = weekendNight?.end_time?.slice(0, 5) || '08:00';
   }
 }
 

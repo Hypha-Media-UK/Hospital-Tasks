@@ -1,0 +1,193 @@
+import { Router, Request, Response } from 'express';
+import { prisma } from '../server';
+
+const router = Router();
+
+// GET /api/settings - Get app settings
+router.get('/', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const settings = await prisma.app_settings.findFirst();
+    
+    if (!settings) {
+      // Return default settings if none exist
+      const defaultSettings = {
+        timezone: 'UTC',
+        time_format: '24h'
+      };
+      res.json(defaultSettings);
+      return;
+    }
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to fetch settings'
+    });
+  }
+});
+
+// PUT /api/settings - Update app settings
+router.put('/', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { timezone, time_format } = req.body;
+
+    // Check if settings exist
+    const existingSettings = await prisma.app_settings.findFirst();
+
+    let settings;
+    if (existingSettings) {
+      // Update existing settings
+      settings = await prisma.app_settings.update({
+        where: { id: existingSettings.id },
+        data: {
+          timezone: timezone || existingSettings.timezone,
+          time_format: time_format || existingSettings.time_format
+        }
+      });
+    } else {
+      // Create new settings
+      settings = await prisma.app_settings.create({
+        data: {
+          timezone: timezone || 'UTC',
+          time_format: time_format || '24h'
+        }
+      });
+    }
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to update settings'
+    });
+  }
+});
+
+// GET /api/settings/shift-defaults - Get shift defaults
+router.get('/shift-defaults', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const shiftDefaults = await prisma.shift_defaults.findMany({
+      orderBy: { shift_type: 'asc' }
+    });
+    
+    res.json(shiftDefaults);
+  } catch (error) {
+    console.error('Error fetching shift defaults:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to fetch shift defaults'
+    });
+  }
+});
+
+// PUT /api/settings/shift-defaults/:id - Update shift default
+router.put('/shift-defaults/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    // Remove id from update data if present
+    delete updateData.id;
+
+    // Convert time strings to Date objects if provided
+    if (updateData.start_time && typeof updateData.start_time === 'string') {
+      updateData.start_time = new Date(`1970-01-01T${updateData.start_time}`);
+    }
+    if (updateData.end_time && typeof updateData.end_time === 'string') {
+      updateData.end_time = new Date(`1970-01-01T${updateData.end_time}`);
+    }
+
+    const shiftDefault = await prisma.shift_defaults.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json(shiftDefault);
+  } catch (error: any) {
+    console.error('Error updating shift default:', error);
+    
+    if (error.code === 'P2025') {
+      res.status(404).json({ 
+        error: 'Not Found',
+        message: 'Shift default not found'
+      });
+      return;
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to update shift default'
+    });
+  }
+});
+
+// POST /api/settings/shift-defaults - Create new shift default
+router.post('/shift-defaults', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      shift_type,
+      start_time,
+      end_time,
+      color
+    } = req.body;
+
+    // Validate required fields
+    if (!shift_type || !start_time || !end_time || !color) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'shift_type, start_time, end_time, and color are required'
+      });
+      return;
+    }
+
+    const shiftDefault = await prisma.shift_defaults.create({
+      data: {
+        shift_type,
+        start_time: new Date(`1970-01-01T${start_time}`),
+        end_time: new Date(`1970-01-01T${end_time}`),
+        color
+      }
+    });
+
+    res.status(201).json(shiftDefault);
+  } catch (error) {
+    console.error('Error creating shift default:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to create shift default'
+    });
+  }
+});
+
+// DELETE /api/settings/shift-defaults/:id - Delete shift default
+router.delete('/shift-defaults/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    await prisma.shift_defaults.delete({
+      where: { id }
+    });
+
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Error deleting shift default:', error);
+    
+    if (error.code === 'P2025') {
+      res.status(404).json({ 
+        error: 'Not Found',
+        message: 'Shift default not found'
+      });
+      return;
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to delete shift default'
+    });
+  }
+});
+
+export default router;

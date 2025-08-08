@@ -516,13 +516,13 @@ const confirmRemove = () => {
 
 // Initialize component state from props
 const initializeState = () => {
-  // Initialize times
+  // Initialize times - handle both Date objects and strings
   if (props.assignment.start_time) {
-    localStartTime.value = props.assignment.start_time.slice(0, 5);
+    localStartTime.value = formatTimeForInput(props.assignment.start_time);
   }
   
   if (props.assignment.end_time) {
-    localEndTime.value = props.assignment.end_time.slice(0, 5);
+    localEndTime.value = formatTimeForInput(props.assignment.end_time);
   }
   
   // Initialize minimum porter count (for backwards compatibility)
@@ -558,12 +558,12 @@ const initializeState = () => {
     dayMinPorters.value = Array(7).fill(defaultValue);
   }
   
-  // Initialize porter assignments
-  const assignments = areaCoverStore.getPorterAssignmentsByAreaId(props.assignment.id);
+  // Initialize porter assignments - use unique assignments to avoid duplicates
+  const assignments = areaCoverStore.getUniquePorterAssignmentsByAreaId(props.assignment.id);
   localPorterAssignments.value = assignments.map(pa => ({
     ...pa,
-    start_time_display: pa.start_time ? pa.start_time.slice(0, 5) : '',
-    end_time_display: pa.end_time ? pa.end_time.slice(0, 5) : ''
+    start_time_display: pa.start_time ? formatTimeForInput(pa.start_time) : '',
+    end_time_display: pa.end_time ? formatTimeForInput(pa.end_time) : ''
   }));
   
   // Clear the removed porters list
@@ -576,6 +576,29 @@ function timeToMinutes(timeStr) {
   
   const [hours, minutes] = timeStr.split(':').map(Number);
   return (hours * 60) + minutes;
+}
+
+// Helper function to format time for input fields (handles Date objects and strings)
+function formatTimeForInput(timeValue) {
+  if (!timeValue) return '';
+  
+  // Handle Date objects (from MySQL/Prisma)
+  if (timeValue instanceof Date) {
+    return timeValue.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+  if (typeof timeValue === 'string' && timeValue.includes('T')) {
+    const date = new Date(timeValue);
+    return date.toTimeString().substring(0, 5); // Extract HH:MM from time string
+  }
+  
+  // Handle simple time strings (e.g., "08:00:00" or "08:00")
+  if (typeof timeValue === 'string') {
+    return timeValue.substring(0, 5); // Extract HH:MM part
+  }
+  
+  return '';
 }
 
 // Fetch porters if not already loaded

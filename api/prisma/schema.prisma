@@ -1,0 +1,508 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Staff {
+  id                                       String                                     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  first_name                               String                                     @db.VarChar(255)
+  last_name                                String                                     @db.VarChar(255)
+  role                                     StaffRole
+  created_at                               DateTime?                                  @default(now()) @db.Timestamp(0)
+  updated_at                               DateTime?                                  @default(now()) @updatedAt @db.Timestamp(0)
+  department_id                            String?                                    @db.Char(36)
+  porter_type                              String?                                    @default("shift") @db.VarChar(50)
+  availability_pattern                     String?                                    @db.VarChar(100)
+  contracted_hours_start                   DateTime?                                  @db.Time(0)
+  contracted_hours_end                     DateTime?                                  @db.Time(0)
+  default_area_cover_porter_assignments    default_area_cover_porter_assignments[]
+  default_service_cover_porter_assignments default_service_cover_porter_assignments[]
+  porter_absences                          porter_absences[]
+  shift_area_cover_porter_assignments      shift_area_cover_porter_assignments[]
+  shift_porter_absences                    shift_porter_absences[]
+  shift_porter_building_assignments        shift_porter_building_assignments[]
+  shift_porter_pool                        shift_porter_pool[]
+  shift_support_service_porter_assignments shift_support_service_porter_assignments[]
+  shift_tasks                              shift_tasks[]
+  shifts                                   shifts[]
+  departments                              Department?                                @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "staff_ibfk_1")
+  staff_department_assignments             staff_department_assignments[]
+  support_service_porter_assignments       support_service_porter_assignments[]
+
+  @@index([department_id], map: "idx_staff_department_id")
+  @@index([role], map: "idx_staff_role")
+  @@map("staff")
+}
+
+model Building {
+  id                                String                              @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name                              String                              @db.VarChar(255)
+  address                           String?                             @db.Text
+  created_at                        DateTime?                           @default(now()) @db.Timestamp(0)
+  updated_at                        DateTime?                           @default(now()) @updatedAt @db.Timestamp(0)
+  sort_order                        Int?                                @default(0)
+  porter_serviced                   Boolean?                            @default(true)
+  abbreviation                      String?                             @db.VarChar(10)
+  
+  // Relations
+  departments                       Department[]
+  shift_porter_building_assignments shift_porter_building_assignments[]
+
+  @@map("buildings")
+}
+
+model Department {
+  id                                                             String                             @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  building_id                                                    String                             @db.Char(36)
+  name                                                           String                             @db.VarChar(255)
+  is_frequent                                                    Boolean?                           @default(false)
+  created_at                                                     DateTime?                          @default(now()) @db.Timestamp(0)
+  updated_at                                                     DateTime?                          @default(now()) @updatedAt @db.Timestamp(0)
+  sort_order                                                     Int?                               @default(0)
+  color                                                          String?                            @default("#CCCCCC") @db.VarChar(20)
+  default_area_cover_assignments                                 default_area_cover_assignments[]
+  department_task_assignments                                    department_task_assignments[]
+  buildings                                                      Building                           @relation(fields: [building_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "departments_ibfk_1")
+  shift_area_cover_assignments                                   shift_area_cover_assignments[]
+  shift_tasks_shift_tasks_origin_department_idTodepartments      shift_tasks[]                      @relation("shift_tasks_origin_department_idTodepartments")
+  shift_tasks_shift_tasks_destination_department_idTodepartments shift_tasks[]                      @relation("shift_tasks_destination_department_idTodepartments")
+  staff                                                          Staff[]
+  staff_department_assignments                                   staff_department_assignments[]
+  task_item_department_assignments                               task_item_department_assignments[]
+  task_type_department_assignments                               task_type_department_assignments[]
+
+  @@index([building_id], map: "idx_departments_building_id")
+  @@map("departments")
+}
+
+model TaskType {
+  id                               String                             @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name                             String                             @db.VarChar(255)
+  description                      String?                            @db.Text
+  created_at                       DateTime?                          @default(now()) @db.Timestamp(0)
+  updated_at                       DateTime?                          @default(now()) @updatedAt @db.Timestamp(0)
+  department_task_assignments      department_task_assignments[]
+  task_items                       TaskItem[]
+  task_type_department_assignments task_type_department_assignments[]
+
+  @@map("task_types")
+}
+
+model TaskItem {
+  id                               String                             @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  task_type_id                     String                             @db.Char(36)
+  name                             String                             @db.VarChar(255)
+  description                      String?                            @db.Text
+  created_at                       DateTime?                          @default(now()) @db.Timestamp(0)
+  updated_at                       DateTime?                          @default(now()) @updatedAt @db.Timestamp(0)
+  is_regular                       Boolean?                           @default(false)
+  department_task_assignments      department_task_assignments[]
+  shift_tasks                      shift_tasks[]
+  task_item_department_assignments task_item_department_assignments[]
+  task_types                       TaskType                           @relation(fields: [task_type_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_items_ibfk_1")
+
+  @@index([task_type_id], map: "idx_task_items_task_type_id")
+  @@map("task_items")
+}
+
+model SupportService {
+  id                                String                              @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name                              String                              @db.VarChar(255)
+  description                       String?                             @db.Text
+  is_active                         Boolean?                            @default(true)
+  created_at                        DateTime?                           @default(now()) @db.Timestamp(0)
+  updated_at                        DateTime?                           @default(now()) @updatedAt @db.Timestamp(0)
+  default_service_cover_assignments default_service_cover_assignments[]
+  shift_support_service_assignments shift_support_service_assignments[]
+  support_service_assignments       support_service_assignments[]
+
+  @@map("support_services")
+}
+
+model app_settings {
+  id          String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  timezone    String    @default("UTC") @db.VarChar(50)
+  time_format String    @default("24h") @db.VarChar(10)
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model default_area_cover_assignments {
+  id                                    String                                  @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  department_id                         String                                  @db.Char(36)
+  shift_type                            String                                  @db.VarChar(50)
+  start_time                            DateTime?                               @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                              DateTime?                               @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  color                                 String?                                 @default("#4285F4") @db.VarChar(20)
+  created_at                            DateTime?                               @default(now()) @db.Timestamp(0)
+  updated_at                            DateTime?                               @default(now()) @db.Timestamp(0)
+  minimum_porters                       Int?                                    @default(1)
+  minimum_porters_mon                   Int?                                    @default(1)
+  minimum_porters_tue                   Int?                                    @default(1)
+  minimum_porters_wed                   Int?                                    @default(1)
+  minimum_porters_thu                   Int?                                    @default(1)
+  minimum_porters_fri                   Int?                                    @default(1)
+  minimum_porters_sat                   Int?                                    @default(1)
+  minimum_porters_sun                   Int?                                    @default(1)
+  departments                           Department                              @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "default_area_cover_assignments_ibfk_1")
+  default_area_cover_porter_assignments default_area_cover_porter_assignments[]
+
+  @@unique([department_id, shift_type], map: "unique_department_shift_type")
+}
+
+model default_area_cover_porter_assignments {
+  id                               String                         @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  default_area_cover_assignment_id String                         @db.Char(36)
+  porter_id                        String                         @db.Char(36)
+  start_time                       DateTime?                      @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                         DateTime?                      @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  created_at                       DateTime?                      @default(now()) @db.Timestamp(0)
+  updated_at                       DateTime?                      @default(now()) @db.Timestamp(0)
+  default_area_cover_assignments   default_area_cover_assignments @relation(fields: [default_area_cover_assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "default_area_cover_porter_assignments_ibfk_1")
+  staff                            Staff                          @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "default_area_cover_porter_assignments_ibfk_2")
+
+  @@index([default_area_cover_assignment_id], map: "default_area_cover_assignment_id")
+  @@index([porter_id], map: "porter_id")
+}
+
+model default_service_cover_assignments {
+  id                                       String                                     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  service_id                               String                                     @db.Char(36)
+  shift_type                               String                                     @db.VarChar(50)
+  start_time                               DateTime?                                  @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                                 DateTime?                                  @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  color                                    String?                                    @default("#4285F4") @db.VarChar(20)
+  created_at                               DateTime?                                  @default(now()) @db.Timestamp(0)
+  updated_at                               DateTime?                                  @default(now()) @db.Timestamp(0)
+  minimum_porters                          Int?                                       @default(1)
+  minimum_porters_mon                      Int?                                       @default(1)
+  minimum_porters_tue                      Int?                                       @default(1)
+  minimum_porters_wed                      Int?                                       @default(1)
+  minimum_porters_thu                      Int?                                       @default(1)
+  minimum_porters_fri                      Int?                                       @default(1)
+  minimum_porters_sat                      Int?                                       @default(1)
+  minimum_porters_sun                      Int?                                       @default(1)
+  support_services                         SupportService                             @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "default_service_cover_assignments_ibfk_1")
+  default_service_cover_porter_assignments default_service_cover_porter_assignments[]
+
+  @@unique([service_id, shift_type], map: "unique_service_shift_type")
+}
+
+model default_service_cover_porter_assignments {
+  id                                  String                            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  default_service_cover_assignment_id String                            @db.Char(36)
+  porter_id                           String                            @db.Char(36)
+  start_time                          DateTime?                         @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                            DateTime?                         @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  created_at                          DateTime?                         @default(now()) @db.Timestamp(0)
+  updated_at                          DateTime?                         @default(now()) @db.Timestamp(0)
+  default_service_cover_assignments   default_service_cover_assignments @relation(fields: [default_service_cover_assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "default_service_cover_porter_assignments_ibfk_1")
+  staff                               Staff                             @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "default_service_cover_porter_assignments_ibfk_2")
+
+  @@index([default_service_cover_assignment_id], map: "default_service_cover_assignment_id")
+  @@index([porter_id], map: "porter_id")
+}
+
+model department_task_assignments {
+  id            String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  department_id String     @db.Char(36)
+  task_type_id  String     @db.Char(36)
+  task_item_id  String     @db.Char(36)
+  created_at    DateTime?  @default(now()) @db.Timestamp(0)
+  departments   Department @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "department_task_assignments_ibfk_1")
+  task_types    TaskType   @relation(fields: [task_type_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "department_task_assignments_ibfk_2")
+  task_items    TaskItem   @relation(fields: [task_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "department_task_assignments_ibfk_3")
+
+  @@index([department_id], map: "department_id")
+  @@index([task_item_id], map: "task_item_id")
+  @@index([task_type_id], map: "task_type_id")
+}
+
+model porter_absences {
+  id           String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  porter_id    String    @db.Char(36)
+  absence_type String    @db.VarChar(50)
+  start_date   DateTime  @db.Date
+  end_date     DateTime  @db.Date
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+  updated_at   DateTime? @default(now()) @db.Timestamp(0)
+  notes        String?   @db.Text
+  staff        Staff     @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "porter_absences_ibfk_1")
+
+  @@index([start_date, end_date], map: "idx_porter_absences_dates")
+  @@index([porter_id], map: "idx_porter_absences_porter_id")
+}
+
+model shift_area_cover_assignments {
+  id                                  String                                @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id                            String                                @db.Char(36)
+  department_id                       String                                @db.Char(36)
+  start_time                          DateTime?                             @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                            DateTime?                             @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  color                               String?                               @default("#4285F4") @db.VarChar(20)
+  created_at                          DateTime?                             @default(now()) @db.Timestamp(0)
+  updated_at                          DateTime?                             @default(now()) @db.Timestamp(0)
+  minimum_porters                     Int?                                  @default(1)
+  minimum_porters_mon                 Int?                                  @default(1)
+  minimum_porters_tue                 Int?                                  @default(1)
+  minimum_porters_wed                 Int?                                  @default(1)
+  minimum_porters_thu                 Int?                                  @default(1)
+  minimum_porters_fri                 Int?                                  @default(1)
+  minimum_porters_sat                 Int?                                  @default(1)
+  minimum_porters_sun                 Int?                                  @default(1)
+  shifts                              shifts                                @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_area_cover_assignments_ibfk_1")
+  departments                         Department                            @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_area_cover_assignments_ibfk_2")
+  shift_area_cover_porter_assignments shift_area_cover_porter_assignments[]
+
+  @@unique([shift_id, department_id], map: "unique_shift_department")
+  @@index([department_id], map: "idx_shift_area_cover_dept_id")
+  @@index([shift_id], map: "idx_shift_area_cover_shift_id")
+}
+
+model shift_area_cover_porter_assignments {
+  id                             String                       @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_area_cover_assignment_id String                       @db.Char(36)
+  porter_id                      String                       @db.Char(36)
+  start_time                     DateTime?                    @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                       DateTime?                    @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  created_at                     DateTime?                    @default(now()) @db.Timestamp(0)
+  updated_at                     DateTime?                    @default(now()) @db.Timestamp(0)
+  agreed_absence                 String?                      @db.VarChar(255)
+  shift_area_cover_assignments   shift_area_cover_assignments @relation(fields: [shift_area_cover_assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_area_cover_porter_assignments_ibfk_1")
+  staff                          Staff                        @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_area_cover_porter_assignments_ibfk_2")
+
+  @@unique([shift_area_cover_assignment_id, porter_id], map: "unique_area_cover_porter")
+  @@index([shift_area_cover_assignment_id], map: "idx_shift_area_porter_assignment_id")
+  @@index([porter_id], map: "porter_id")
+}
+
+model shift_defaults {
+  id         String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_type String    @db.VarChar(50)
+  start_time DateTime  @db.Time(0)
+  end_time   DateTime  @db.Time(0)
+  color      String    @db.VarChar(20)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  updated_at DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model shift_porter_absences {
+  id             String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id       String    @db.Char(36)
+  porter_id      String    @db.Char(36)
+  start_time     DateTime  @db.Time(0)
+  end_time       DateTime  @db.Time(0)
+  absence_reason String    @db.VarChar(255)
+  created_at     DateTime? @default(now()) @db.Timestamp(0)
+  shifts         shifts    @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_absences_ibfk_1")
+  staff          Staff     @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_absences_ibfk_2")
+
+  @@index([porter_id], map: "idx_shift_porter_absences_porter_id")
+  @@index([shift_id], map: "idx_shift_porter_absences_shift_id")
+}
+
+model shift_porter_building_assignments {
+  id          String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id    String    @db.Char(36)
+  porter_id   String    @db.Char(36)
+  building_id String    @db.Char(36)
+  created_at  DateTime? @default(now()) @db.Timestamp(0)
+  updated_at  DateTime? @default(now()) @db.Timestamp(0)
+  shifts      shifts    @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_building_assignments_ibfk_1")
+  staff       Staff     @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_building_assignments_ibfk_2")
+  buildings   Building  @relation(fields: [building_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_building_assignments_ibfk_3")
+
+  @@index([building_id], map: "building_id")
+  @@index([porter_id], map: "porter_id")
+  @@index([shift_id], map: "shift_id")
+}
+
+model shift_porter_pool {
+  id            String    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id      String    @db.Char(36)
+  porter_id     String    @db.Char(36)
+  created_at    DateTime? @default(now()) @db.Timestamp(0)
+  updated_at    DateTime? @default(now()) @db.Timestamp(0)
+  is_supervisor Boolean?  @default(false)
+  shifts        shifts    @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_pool_ibfk_1")
+  staff         Staff     @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_porter_pool_ibfk_2")
+
+  @@unique([shift_id, porter_id], map: "unique_shift_porter")
+  @@index([is_supervisor], map: "idx_shift_porter_pool_is_supervisor")
+  @@index([porter_id], map: "idx_shift_porter_pool_porter_id")
+  @@index([shift_id], map: "idx_shift_porter_pool_shift_id")
+}
+
+model shift_support_service_assignments {
+  id                                       String                                     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id                                 String                                     @db.Char(36)
+  service_id                               String                                     @db.Char(36)
+  start_time                               DateTime?                                  @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                                 DateTime?                                  @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  color                                    String?                                    @default("#4285F4") @db.VarChar(20)
+  created_at                               DateTime?                                  @default(now()) @db.Timestamp(0)
+  updated_at                               DateTime?                                  @default(now()) @db.Timestamp(0)
+  minimum_porters                          Int?                                       @default(1)
+  minimum_porters_mon                      Int?                                       @default(1)
+  minimum_porters_tue                      Int?                                       @default(1)
+  minimum_porters_wed                      Int?                                       @default(1)
+  minimum_porters_thu                      Int?                                       @default(1)
+  minimum_porters_fri                      Int?                                       @default(1)
+  minimum_porters_sat                      Int?                                       @default(1)
+  minimum_porters_sun                      Int?                                       @default(1)
+  shifts                                   shifts                                     @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_support_service_assignments_ibfk_1")
+  support_services                         SupportService                             @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_support_service_assignments_ibfk_2")
+  shift_support_service_porter_assignments shift_support_service_porter_assignments[]
+
+  @@unique([shift_id, service_id], map: "unique_shift_service")
+  @@index([service_id], map: "idx_shift_support_service_service_id")
+  @@index([shift_id], map: "idx_shift_support_service_shift_id")
+}
+
+model shift_support_service_porter_assignments {
+  id                                  String                            @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_support_service_assignment_id String                            @db.Char(36)
+  porter_id                           String                            @db.Char(36)
+  start_time                          DateTime?                         @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                            DateTime?                         @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  created_at                          DateTime?                         @default(now()) @db.Timestamp(0)
+  updated_at                          DateTime?                         @default(now()) @db.Timestamp(0)
+  agreed_absence                      String?                           @db.VarChar(255)
+  shift_support_service_assignments   shift_support_service_assignments @relation(fields: [shift_support_service_assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_support_service_porter_assignments_ibfk_1")
+  staff                               Staff                             @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_support_service_porter_assignments_ibfk_2")
+
+  @@index([shift_support_service_assignment_id], map: "idx_shift_support_porter_assignment_id")
+  @@index([porter_id], map: "porter_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model shift_tasks {
+  id                                                             String      @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id                                                       String      @db.Char(36)
+  task_item_id                                                   String      @db.Char(36)
+  porter_id                                                      String?     @db.Char(36)
+  origin_department_id                                           String?     @db.Char(36)
+  destination_department_id                                      String?     @db.Char(36)
+  status                                                         String?     @default("pending") @db.VarChar(20)
+  created_at                                                     DateTime?   @default(now()) @db.Timestamp(0)
+  updated_at                                                     DateTime?   @default(now()) @db.Timestamp(0)
+  time_received                                                  String?     @default("00:00") @db.VarChar(50)
+  time_allocated                                                 String?     @default("00:01") @db.VarChar(50)
+  time_completed                                                 String?     @default("00:20") @db.VarChar(50)
+  shifts                                                         shifts      @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_tasks_ibfk_1")
+  task_items                                                     TaskItem    @relation(fields: [task_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_tasks_ibfk_2")
+  staff                                                          Staff?      @relation(fields: [porter_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_3")
+  departments_shift_tasks_origin_department_idTodepartments      Department? @relation("shift_tasks_origin_department_idTodepartments", fields: [origin_department_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_4")
+  departments_shift_tasks_destination_department_idTodepartments Department? @relation("shift_tasks_destination_department_idTodepartments", fields: [destination_department_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_5")
+
+  @@index([destination_department_id], map: "idx_shift_tasks_dest_dept")
+  @@index([origin_department_id], map: "idx_shift_tasks_origin_dept")
+  @@index([porter_id], map: "idx_shift_tasks_porter_id")
+  @@index([shift_id], map: "idx_shift_tasks_shift_id")
+  @@index([status], map: "idx_shift_tasks_status")
+  @@index([task_item_id], map: "task_item_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model shifts {
+  id                                String                              @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  supervisor_id                     String                              @db.Char(36)
+  shift_type                        String                              @db.VarChar(50)
+  start_time                        DateTime?                           @default(now()) @db.Timestamp(0)
+  end_time                          DateTime?                           @db.Timestamp(0)
+  is_active                         Boolean?                            @default(true)
+  created_at                        DateTime?                           @default(now()) @db.Timestamp(0)
+  updated_at                        DateTime?                           @default(now()) @db.Timestamp(0)
+  shift_date                        DateTime                            @db.Date
+  shift_area_cover_assignments      shift_area_cover_assignments[]
+  shift_porter_absences             shift_porter_absences[]
+  shift_porter_building_assignments shift_porter_building_assignments[]
+  shift_porter_pool                 shift_porter_pool[]
+  shift_support_service_assignments shift_support_service_assignments[]
+  shift_tasks                       shift_tasks[]
+  staff                             Staff                               @relation(fields: [supervisor_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shifts_ibfk_1")
+
+  @@index([is_active], map: "idx_shifts_is_active")
+  @@index([shift_date], map: "idx_shifts_shift_date")
+  @@index([supervisor_id], map: "idx_shifts_supervisor_id")
+}
+
+model staff_department_assignments {
+  id            String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  staff_id      String     @db.Char(36)
+  department_id String     @db.Char(36)
+  created_at    DateTime?  @default(now()) @db.Timestamp(0)
+  staff         Staff      @relation(fields: [staff_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "staff_department_assignments_ibfk_1")
+  departments   Department @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "staff_department_assignments_ibfk_2")
+
+  @@index([department_id], map: "department_id")
+  @@index([staff_id], map: "staff_id")
+}
+
+model support_service_assignments {
+  id                                 String                               @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  service_id                         String                               @db.Char(36)
+  start_time                         DateTime?                            @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                           DateTime?                            @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  color                              String?                              @default("#4285F4") @db.VarChar(20)
+  created_at                         DateTime?                            @default(now()) @db.Timestamp(0)
+  updated_at                         DateTime?                            @default(now()) @db.Timestamp(0)
+  shift_type                         String                               @db.VarChar(50)
+  support_services                   SupportService                       @relation(fields: [service_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "support_service_assignments_ibfk_1")
+  support_service_porter_assignments support_service_porter_assignments[]
+
+  @@index([service_id], map: "service_id")
+}
+
+model support_service_porter_assignments {
+  id                            String                      @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  support_service_assignment_id String                      @db.Char(36)
+  porter_id                     String                      @db.Char(36)
+  start_time                    DateTime?                   @default(dbgenerated("'08:00:00'")) @db.Time(0)
+  end_time                      DateTime?                   @default(dbgenerated("'16:00:00'")) @db.Time(0)
+  created_at                    DateTime?                   @default(now()) @db.Timestamp(0)
+  updated_at                    DateTime?                   @default(now()) @db.Timestamp(0)
+  support_service_assignments   support_service_assignments @relation(fields: [support_service_assignment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "support_service_porter_assignments_ibfk_1")
+  staff                         Staff                       @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "support_service_porter_assignments_ibfk_2")
+
+  @@index([porter_id], map: "porter_id")
+  @@index([support_service_assignment_id], map: "support_service_assignment_id")
+}
+
+model task_item_department_assignments {
+  id             String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  task_item_id   String     @db.Char(36)
+  department_id  String     @db.Char(36)
+  is_origin      Boolean?   @default(false)
+  is_destination Boolean?   @default(false)
+  created_at     DateTime?  @default(now()) @db.Timestamp(0)
+  task_items     TaskItem   @relation(fields: [task_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_item_department_assignments_ibfk_1")
+  departments    Department @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_item_department_assignments_ibfk_2")
+
+  @@index([department_id], map: "department_id")
+  @@index([task_item_id], map: "task_item_id")
+}
+
+model task_type_department_assignments {
+  id             String     @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  task_type_id   String     @db.Char(36)
+  department_id  String     @db.Char(36)
+  is_origin      Boolean?   @default(false)
+  is_destination Boolean?   @default(false)
+  created_at     DateTime?  @default(now()) @db.Timestamp(0)
+  task_types     TaskType   @relation(fields: [task_type_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_type_department_assignments_ibfk_1")
+  departments    Department @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "task_type_department_assignments_ibfk_2")
+
+  @@index([department_id], map: "department_id")
+  @@index([task_type_id], map: "task_type_id")
+}
+
+enum StaffRole {
+  supervisor
+  porter
+}

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { supabase } from '../services/supabase';
+import { buildingsApi, departmentsApi, ApiError } from '../services/api';
 
 export const useLocationsStore = defineStore('locations', {
   state: () => ({
@@ -136,17 +136,11 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('buildings')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        
+        const data = await buildingsApi.getAll();
         this.buildings = data || [];
       } catch (error) {
         console.error('Error fetching buildings:', error);
-        this.error = 'Failed to load buildings';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load buildings';
       } finally {
         this.loading.buildings = false;
       }
@@ -157,21 +151,16 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('buildings')
-          .insert(building)
-          .select();
+        const data = await buildingsApi.create(building);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          this.buildings.push(data[0]);
+        if (data) {
+          this.buildings.push(data);
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
         console.error('Error adding building:', error);
-        this.error = 'Failed to add building';
+        this.error = error instanceof ApiError ? error.message : 'Failed to add building';
         return null;
       } finally {
         this.loading.buildings = false;
@@ -183,25 +172,19 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('buildings')
-          .update(updates)
-          .eq('id', id)
-          .select();
+        const data = await buildingsApi.update(id, updates);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
+        if (data) {
           const index = this.buildings.findIndex(b => b.id === id);
           if (index !== -1) {
-            this.buildings[index] = data[0];
+            this.buildings[index] = data;
           }
         }
         
         return true;
       } catch (error) {
         console.error('Error updating building:', error);
-        this.error = 'Failed to update building';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update building';
         return false;
       } finally {
         this.loading.buildings = false;
@@ -213,12 +196,7 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('buildings')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
+        await buildingsApi.delete(id);
         
         // Remove from local state
         this.buildings = this.buildings.filter(b => b.id !== id);
@@ -228,7 +206,7 @@ export const useLocationsStore = defineStore('locations', {
         return true;
       } catch (error) {
         console.error('Error deleting building:', error);
-        this.error = 'Failed to delete building';
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete building';
         return false;
       } finally {
         this.loading.buildings = false;
@@ -241,17 +219,11 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('departments')
-          .select('*')
-          .order('name');
-        
-        if (error) throw error;
-        
+        const data = await departmentsApi.getAll();
         this.departments = data || [];
       } catch (error) {
         console.error('Error fetching departments:', error);
-        this.error = 'Failed to load departments';
+        this.error = error instanceof ApiError ? error.message : 'Failed to load departments';
       } finally {
         this.loading.departments = false;
       }
@@ -262,21 +234,16 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('departments')
-          .insert(department)
-          .select();
+        const data = await departmentsApi.create(department);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          this.departments.push(data[0]);
+        if (data) {
+          this.departments.push(data);
         }
         
-        return data?.[0] || null;
+        return data;
       } catch (error) {
         console.error('Error adding department:', error);
-        this.error = 'Failed to add department';
+        this.error = error instanceof ApiError ? error.message : 'Failed to add department';
         return null;
       } finally {
         this.loading.departments = false;
@@ -288,25 +255,19 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('departments')
-          .update(updates)
-          .eq('id', id)
-          .select();
+        const data = await departmentsApi.update(id, updates);
         
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
+        if (data) {
           const index = this.departments.findIndex(d => d.id === id);
           if (index !== -1) {
-            this.departments[index] = data[0];
+            this.departments[index] = data;
           }
         }
         
         return true;
       } catch (error) {
         console.error('Error updating department:', error);
-        this.error = 'Failed to update department';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update department';
         return false;
       } finally {
         this.loading.departments = false;
@@ -314,10 +275,27 @@ export const useLocationsStore = defineStore('locations', {
     },
     
     async toggleFrequent(id) {
-      const department = this.departments.find(d => d.id === id);
-      if (!department) return false;
+      this.loading.departments = true;
+      this.error = null;
       
-      return this.updateDepartment(id, { is_frequent: !department.is_frequent });
+      try {
+        const data = await departmentsApi.toggleFrequent(id);
+        
+        if (data) {
+          const index = this.departments.findIndex(d => d.id === id);
+          if (index !== -1) {
+            this.departments[index] = data;
+          }
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('Error toggling department frequent status:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to toggle frequent status';
+        return false;
+      } finally {
+        this.loading.departments = false;
+      }
     },
     
     async deleteDepartment(id) {
@@ -325,12 +303,7 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('departments')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
+        await departmentsApi.delete(id);
         
         // Remove from local state
         this.departments = this.departments.filter(d => d.id !== id);
@@ -338,7 +311,7 @@ export const useLocationsStore = defineStore('locations', {
         return true;
       } catch (error) {
         console.error('Error deleting department:', error);
-        this.error = 'Failed to delete department';
+        this.error = error instanceof ApiError ? error.message : 'Failed to delete department';
         return false;
       } finally {
         this.loading.departments = false;
@@ -351,12 +324,7 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('buildings')
-          .update({ sort_order: newSortOrder })
-          .eq('id', buildingId);
-        
-        if (error) throw error;
+        await buildingsApi.update(buildingId, { sort_order: newSortOrder });
         
         // Update in local state
         const index = this.buildings.findIndex(b => b.id === buildingId);
@@ -367,7 +335,7 @@ export const useLocationsStore = defineStore('locations', {
         return true;
       } catch (error) {
         console.error('Error updating building sort order:', error);
-        this.error = 'Failed to update building order';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update building order';
         return false;
       } finally {
         this.loading.sorting = false;
@@ -379,12 +347,7 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('departments')
-          .update({ sort_order: newSortOrder })
-          .eq('id', departmentId);
-        
-        if (error) throw error;
+        await departmentsApi.update(departmentId, { sort_order: newSortOrder });
         
         // Update in local state
         const index = this.departments.findIndex(d => d.id === departmentId);
@@ -395,7 +358,7 @@ export const useLocationsStore = defineStore('locations', {
         return true;
       } catch (error) {
         console.error('Error updating department sort order:', error);
-        this.error = 'Failed to update department order';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update department order';
         return false;
       } finally {
         this.loading.sorting = false;
@@ -408,36 +371,15 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        // Find the original building objects to get all required fields
-        const buildingsToUpdate = buildingsWithNewOrder.map(newOrderBuilding => {
-          // Find the original building with all its fields
-          const originalBuilding = this.buildings.find(b => b.id === newOrderBuilding.id);
-          if (!originalBuilding) {
-            console.warn(`Building with ID ${newOrderBuilding.id} not found in store`);
-            return null;
-          }
-          
-          // Return a new object with all original fields plus the new sort_order
-          return {
-            ...originalBuilding,
-            sort_order: newOrderBuilding.sort_order
-          };
-        }).filter(Boolean); // Remove any null values
+        // Update each building individually
+        const updatePromises = buildingsWithNewOrder.map(building => 
+          buildingsApi.update(building.id, { sort_order: building.sort_order })
+        );
         
-        if (buildingsToUpdate.length === 0) {
-          console.warn('No valid buildings to update');
-          return false;
-        }
-        
-        // Execute the updates as a batch
-        const { error } = await supabase
-          .from('buildings')
-          .upsert(buildingsToUpdate, { onConflict: 'id' });
-        
-        if (error) throw error;
+        await Promise.all(updatePromises);
         
         // Update local state for each building
-        buildingsToUpdate.forEach(updatedBuilding => {
+        buildingsWithNewOrder.forEach(updatedBuilding => {
           const index = this.buildings.findIndex(b => b.id === updatedBuilding.id);
           if (index !== -1) {
             this.buildings[index].sort_order = updatedBuilding.sort_order;
@@ -447,7 +389,7 @@ export const useLocationsStore = defineStore('locations', {
         return true;
       } catch (error) {
         console.error('Error batch updating building sort orders:', error);
-        this.error = 'Failed to update building orders';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update building orders';
         return false;
       } finally {
         this.loading.sorting = false;
@@ -460,36 +402,15 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        // Find the original department objects to get all required fields
-        const departmentsToUpdate = departmentsWithNewOrder.map(newOrderDept => {
-          // Find the original department with all its fields
-          const originalDept = this.departments.find(d => d.id === newOrderDept.id);
-          if (!originalDept) {
-            console.warn(`Department with ID ${newOrderDept.id} not found in store`);
-            return null;
-          }
-          
-          // Return a new object with all original fields plus the new sort_order
-          return {
-            ...originalDept,
-            sort_order: newOrderDept.sort_order
-          };
-        }).filter(Boolean); // Remove any null values
+        // Update each department individually
+        const updatePromises = departmentsWithNewOrder.map(department => 
+          departmentsApi.update(department.id, { sort_order: department.sort_order })
+        );
         
-        if (departmentsToUpdate.length === 0) {
-          console.warn('No valid departments to update');
-          return false;
-        }
-        
-        // Execute the updates as a batch
-        const { error } = await supabase
-          .from('departments')
-          .upsert(departmentsToUpdate, { onConflict: 'id' });
-        
-        if (error) throw error;
+        await Promise.all(updatePromises);
         
         // Update local state for each department
-        departmentsToUpdate.forEach(updatedDepartment => {
+        departmentsWithNewOrder.forEach(updatedDepartment => {
           const index = this.departments.findIndex(d => d.id === updatedDepartment.id);
           if (index !== -1) {
             this.departments[index].sort_order = updatedDepartment.sort_order;
@@ -499,7 +420,7 @@ export const useLocationsStore = defineStore('locations', {
         return true;
       } catch (error) {
         console.error('Error batch updating department sort orders:', error);
-        this.error = 'Failed to update department orders';
+        this.error = error instanceof ApiError ? error.message : 'Failed to update department orders';
         return false;
       } finally {
         this.loading.sorting = false;
@@ -512,17 +433,16 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { data, error } = await supabase
-          .from('department_task_assignments')
-          .select('*');
-        
-        if (error) throw error;
-        
-        this.departmentTaskAssignments = data || [];
-        console.log('Loaded department task assignments:', this.departmentTaskAssignments);
+        const response = await fetch('http://localhost:3000/api/departments/task-assignments/all');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        this.departmentTaskAssignments = Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Error fetching department task assignments:', error);
         this.error = 'Failed to load department task assignments';
+        this.departmentTaskAssignments = [];
       } finally {
         this.loading.departmentTaskAssignments = false;
       }
@@ -533,49 +453,32 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        // First check if assignment already exists
-        const existingAssignment = this.getDepartmentTaskAssignment(departmentId);
+        const response = await fetch(`http://localhost:3000/api/departments/${departmentId}/task-assignments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            task_type_id: taskTypeId,
+            task_item_id: taskItemId
+          })
+        });
         
-        if (existingAssignment) {
-          // Update existing assignment
-          const { error } = await supabase
-            .from('department_task_assignments')
-            .update({
-              task_type_id: taskTypeId,
-              task_item_id: taskItemId
-            })
-            .eq('department_id', departmentId);
-          
-          if (error) throw error;
-          
-          // Update in local state
-          const index = this.departmentTaskAssignments.findIndex(
-            a => a.department_id === departmentId
-          );
-          
-          if (index !== -1) {
-            this.departmentTaskAssignments[index] = {
-              ...this.departmentTaskAssignments[index],
-              task_type_id: taskTypeId,
-              task_item_id: taskItemId
-            };
-          }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update local state
+        const existingIndex = this.departmentTaskAssignments.findIndex(
+          assignment => assignment.department_id === departmentId
+        );
+        
+        if (existingIndex !== -1) {
+          this.departmentTaskAssignments[existingIndex] = data;
         } else {
-          // Create new assignment
-          const { data, error } = await supabase
-            .from('department_task_assignments')
-            .insert({
-              department_id: departmentId,
-              task_type_id: taskTypeId,
-              task_item_id: taskItemId
-            })
-            .select();
-          
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            this.departmentTaskAssignments.push(data[0]);
-          }
+          this.departmentTaskAssignments.push(data);
         }
         
         return true;
@@ -593,16 +496,26 @@ export const useLocationsStore = defineStore('locations', {
       this.error = null;
       
       try {
-        const { error } = await supabase
-          .from('department_task_assignments')
-          .delete()
-          .eq('department_id', departmentId);
+        // Find the assignment to delete
+        const assignment = this.departmentTaskAssignments.find(
+          assignment => assignment.department_id === departmentId
+        );
         
-        if (error) throw error;
+        if (!assignment) {
+          return true; // Already removed
+        }
+        
+        const response = await fetch(`http://localhost:3000/api/departments/task-assignments/${assignment.id}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
         // Remove from local state
         this.departmentTaskAssignments = this.departmentTaskAssignments.filter(
-          a => a.department_id !== departmentId
+          assignment => assignment.department_id !== departmentId
         );
         
         return true;

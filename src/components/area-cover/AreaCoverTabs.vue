@@ -64,7 +64,7 @@ const activeTab = ref('week_day');
 
 onMounted(async () => {
   // Load shift defaults if not already loaded
-  if (!settingsStore.shiftDefaults.week_day.startTime) {
+  if (!settingsStore.shiftDefaults.week_day?.start_time) {
     await settingsStore.loadSettings();
   }
   
@@ -96,7 +96,9 @@ function setActiveTab(tabId) {
 // Format time range for display (e.g., "08:00 - 16:00")
 function formatTimeRange(shiftSettings) {
   if (!shiftSettings) return '';
-  return `${shiftSettings.startTime} - ${shiftSettings.endTime}`;
+  const startTime = shiftSettings.start_time?.slice(0, 5) || '00:00';
+  const endTime = shiftSettings.end_time?.slice(0, 5) || '00:00';
+  return `${startTime} - ${endTime}`;
 }
 </script>
 
