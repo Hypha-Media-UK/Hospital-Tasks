@@ -1,6 +1,0 @@
-FILENAME="hospital-$(date +%Y%m%d-%H%M).sql" && \
-supabase db dump -f schema_temp.sql && \
-supabase db dump -f data_temp.sql --data-only && \
-cat schema_temp.sql data_temp.sql > "$FILENAME" && \
-rm schema_temp.sql data_temp.sql && \
-echo "Backup created: $FILENAME ($(du -h "$FILENAME" | cut -f1))"
