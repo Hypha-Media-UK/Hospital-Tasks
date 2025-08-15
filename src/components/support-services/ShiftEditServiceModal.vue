@@ -434,6 +434,9 @@ async function saveChanges() {
     
     // Emit update event
     emit('update', props.assignment.id, updates);
+    
+    // Close the modal after successful save
+    emit('close');
   } catch (error) {
     console.error('Error saving service assignment:', error);
   } finally {

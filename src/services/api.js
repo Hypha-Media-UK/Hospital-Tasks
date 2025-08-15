@@ -620,6 +620,27 @@ export const shiftsApi = {
     return apiRequest(`/shifts/${shiftId}/area-cover/porter-assignments/${assignmentId}`, {
       method: 'DELETE'
     });
+  },
+
+  // Support service porter assignment endpoints
+  async addSupportServicePorter(shiftId, serviceId, porterData) {
+    return apiRequest(`/shifts/${shiftId}/support-services/${serviceId}/porter-assignments`, {
+      method: 'POST',
+      body: JSON.stringify(porterData)
+    });
+  },
+
+  async updateSupportServicePorter(shiftId, assignmentId, updates) {
+    return apiRequest(`/shifts/${shiftId}/support-services/porter-assignments/${assignmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+  },
+
+  async removeSupportServicePorter(shiftId, assignmentId) {
+    return apiRequest(`/shifts/${shiftId}/support-services/porter-assignments/${assignmentId}`, {
+      method: 'DELETE'
+    });
   }
 };
 

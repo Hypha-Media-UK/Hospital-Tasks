@@ -992,19 +992,24 @@ export const useShiftsStore = defineStore('shifts', {
     // Add a porter to a support service assignment
     async addShiftSupportServicePorter(serviceAssignmentId, porterId, startTime, endTime) {
       try {
-        // For now, create a placeholder implementation since the API endpoint doesn't exist yet
-        const newAssignment = {
-          id: Date.now().toString(), // Temporary ID
-          shift_support_service_assignment_id: serviceAssignmentId,
+        if (!this.currentShift) {
+          throw new Error('No current shift selected');
+        }
+
+        const data = await shiftsApi.addSupportServicePorter(this.currentShift.id, serviceAssignmentId, {
           porter_id: porterId,
           start_time: startTime,
           end_time: endTime
-        };
+        });
 
-        this.shiftSupportServicePorterAssignments.push(newAssignment);
-        console.log('Added porter to support service (placeholder):', newAssignment);
+        if (data) {
+          // Add to local state
+          this.shiftSupportServicePorterAssignments.push(data);
+          console.log('Added porter to support service:', data);
+          return data;
+        }
 
-        return newAssignment;
+        return null;
       } catch (error) {
         console.error('Error adding porter to support service:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to add porter to support service';
@@ -1015,15 +1020,20 @@ export const useShiftsStore = defineStore('shifts', {
     // Update a support service porter assignment
     async updateShiftSupportServicePorter(assignmentId, updates) {
       try {
-        // For now, create a placeholder implementation since the API endpoint doesn't exist yet
-        const index = this.shiftSupportServicePorterAssignments.findIndex(a => a.id === assignmentId);
-        if (index !== -1) {
-          this.shiftSupportServicePorterAssignments[index] = {
-            ...this.shiftSupportServicePorterAssignments[index],
-            ...updates
-          };
-          console.log('Updated porter assignment (placeholder):', this.shiftSupportServicePorterAssignments[index]);
-          return this.shiftSupportServicePorterAssignments[index];
+        if (!this.currentShift) {
+          throw new Error('No current shift selected');
+        }
+
+        const data = await shiftsApi.updateSupportServicePorter(this.currentShift.id, assignmentId, updates);
+
+        if (data) {
+          // Update in local state
+          const index = this.shiftSupportServicePorterAssignments.findIndex(a => a.id === assignmentId);
+          if (index !== -1) {
+            this.shiftSupportServicePorterAssignments[index] = data;
+          }
+          console.log('Updated support service porter assignment:', data);
+          return data;
         }
 
         return null;
@@ -1037,12 +1047,18 @@ export const useShiftsStore = defineStore('shifts', {
     // Remove a porter from a support service assignment
     async removeShiftSupportServicePorter(assignmentId) {
       try {
-        // For now, create a placeholder implementation since the API endpoint doesn't exist yet
+        if (!this.currentShift) {
+          throw new Error('No current shift selected');
+        }
+
+        await shiftsApi.removeSupportServicePorter(this.currentShift.id, assignmentId);
+
+        // Remove from local state
         this.shiftSupportServicePorterAssignments = this.shiftSupportServicePorterAssignments.filter(
           a => a.id !== assignmentId
         );
 
-        console.log('Removed porter from support service (placeholder):', assignmentId);
+        console.log('Removed porter from support service:', assignmentId);
         return true;
       } catch (error) {
         console.error('Error removing porter from support service:', error);
