@@ -111,13 +111,6 @@
               
               <div class="porter-actions">
                 <button 
-                  @click.stop="editPorterAssignment(assignment)"
-                  class="btn btn--icon"
-                  title="Edit porter assignment"
-                >
-                  <EditIcon />
-                </button>
-                <button 
                   @click.stop="removePorterAssignment(assignment.id)"
                   class="btn btn--icon btn--danger"
                   title="Remove porter assignment"
@@ -128,13 +121,6 @@
             </div>
           </div>
           
-          <div class="button-container">
-            <button @click.stop="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2 ml-auto">
-              Add Porter
-            </button>
-          </div>
-          
-          <!-- Coverage Status removed as requested -->
         </div>
       </div>
       
@@ -160,77 +146,6 @@
         </button>
       </div>
     </div>
-    <!-- Add/Edit Porter Modal -->
-    <div v-if="showPorterModal" class="nested-modal-overlay" @click.stop="closePorterModal">
-      <div class="nested-modal-container" @click.stop>
-        <div class="modal-header">
-          <h3 class="modal-title">
-            {{ editingPorterAssignment ? 'Edit Porter Assignment' : 'Add Porter' }}
-          </h3>
-          <button class="modal-close" @click.stop="closePorterModal">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="porter">Select Porter</label>
-            <select 
-              id="porter"
-              v-model="porterForm.porterId"
-              class="form-control"
-              :disabled="editingPorterAssignment"
-            >
-              <option value="">Select a porter</option>
-              <option 
-                v-for="porter in availablePorters" 
-                :key="porter.id" 
-                :value="porter.id"
-              >
-                {{ porter.first_name }} {{ porter.last_name }}
-              </option>
-            </select>
-          </div>
-          
-          <div class="time-range-container">
-            <div class="form-group">
-              <label for="porter-start-time">Start Time</label>
-              <input 
-                type="time"
-                id="porter-start-time"
-                v-model="porterForm.startTime"
-                class="form-control"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label for="porter-end-time">End Time</label>
-              <input 
-                type="time"
-                id="porter-end-time"
-                v-model="porterForm.endTime"
-                class="form-control"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button 
-            @click.stop="savePorterAssignment" 
-            class="btn btn--primary"
-            :disabled="!canSavePorter || savingPorter"
-          >
-            {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
-          </button>
-          <button 
-            @click.stop="closePorterModal" 
-            class="btn btn--secondary"
-            :disabled="savingPorter"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
   <Teleport to="body">
     <PorterAbsenceModal
@@ -244,11 +159,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
-import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
@@ -300,21 +214,9 @@ const applySameValueToAllDays = () => {
   }
 };
 const saving = ref(false);
-const showPorterModal = ref(false);
-const showAddPorterModal = ref(false);
-const editingPorterAssignment = ref(false);
-const editingPorterAssignmentId = ref(null);
-const savingPorter = ref(false);
 const showAbsenceModal = ref(false);
 const selectedPorterId = ref(null);
 const currentPorterAbsence = ref(null);
-
-// Form data for porter assignment
-const porterForm = ref({
-  porterId: '',
-  startTime: '',
-  endTime: ''
-});
 
 // Computed
 const isFormValid = computed(() => {
@@ -336,35 +238,6 @@ const hasStaffingShortage = computed(() => {
   return shiftsStore.hasServiceStaffingShortage?.(props.assignment.id) || false;
 });
 
-// Get available porters for assignment
-const availablePorters = computed(() => {
-  // Get porters from the shift pool
-  const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
-  
-  // If editing an existing assignment, include the current porter
-  if (editingPorterAssignment.value && porterForm.value.porterId) {
-    // Check if the current porter is in the shift pool
-    const currentPorterInPool = shiftPorters.some(p => p.id === porterForm.value.porterId);
-    
-    // If not in pool, add them to the available porters list
-    if (!currentPorterInPool) {
-      const currentPorter = staffStore.porters.find(p => p.id === porterForm.value.porterId);
-      if (currentPorter) {
-        return [...shiftPorters, currentPorter];
-      }
-    }
-  }
-  
-  // Return porters from the shift pool
-  return shiftPorters;
-});
-
-// Check if porter form is valid
-const canSavePorter = computed(() => {
-  return porterForm.value.porterId && 
-         porterForm.value.startTime && 
-         porterForm.value.endTime;
-});
 
 // Initialize form with assignment data
 onMounted(() => {
@@ -451,67 +324,6 @@ function confirmDelete() {
   }
 }
 
-// Porter assignment methods
-function editPorterAssignment(assignment) {
-  editingPorterAssignment.value = true;
-  editingPorterAssignmentId.value = assignment.id;
-  
-  porterForm.value = {
-    porterId: assignment.porter_id,
-    startTime: assignment.start_time ? assignment.start_time.substring(0, 5) : '08:00',
-    endTime: assignment.end_time ? assignment.end_time.substring(0, 5) : '16:00'
-  };
-  
-  showPorterModal.value = true;
-}
-
-function closePorterModal() {
-  showPorterModal.value = false;
-  showAddPorterModal.value = false;
-  editingPorterAssignment.value = false;
-  editingPorterAssignmentId.value = null;
-  
-  // Reset form
-  porterForm.value = {
-    porterId: '',
-    startTime: '',
-    endTime: ''
-  };
-}
-
-async function savePorterAssignment() {
-  if (!canSavePorter.value || savingPorter.value) return;
-  
-  savingPorter.value = true;
-  
-  try {
-    // Format times for storage (add seconds)
-    const startTime = porterForm.value.startTime + ':00';
-    const endTime = porterForm.value.endTime + ':00';
-    
-    if (editingPorterAssignment.value) {
-      // Update existing assignment
-      await shiftsStore.updateShiftSupportServicePorter(editingPorterAssignmentId.value, {
-        start_time: startTime,
-        end_time: endTime
-      });
-    } else {
-      // Add new assignment
-      await shiftsStore.addShiftSupportServicePorter(
-        props.assignment.id,
-        porterForm.value.porterId,
-        startTime,
-        endTime
-      );
-    }
-    
-    closePorterModal();
-  } catch (error) {
-    console.error('Error saving porter assignment:', error);
-  } finally {
-    savingPorter.value = false;
-  }
-}
 
 async function removePorterAssignment(assignmentId) {
   if (confirm('Are you sure you want to remove this porter assignment?')) {
@@ -541,19 +353,6 @@ function handleAbsenceSave() {
   currentPorterAbsence.value = null;
 }
 
-// Watch for "Add Porter" button click
-watch(showAddPorterModal, (newValue) => {
-  if (newValue) {
-    // Set default values for the form
-    porterForm.value = {
-      porterId: '',
-      startTime: editForm.value.startTime,
-      endTime: editForm.value.endTime
-    };
-    
-    showPorterModal.value = true;
-  }
-});
 </script>
 
 <style lang="scss" scoped>

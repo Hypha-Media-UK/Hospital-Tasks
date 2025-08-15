@@ -108,13 +108,6 @@
               
               <div class="porter-actions">
                 <button 
-                  @click="editPorterAssignment(assignment)"
-                  class="btn btn--icon"
-                  title="Edit porter assignment"
-                >
-                  <EditIcon />
-                </button>
-                <button 
                   @click="removePorterAssignment(assignment.id)"
                   class="btn btn--icon btn--danger"
                   title="Remove porter assignment"
@@ -125,13 +118,6 @@
             </div>
           </div>
           
-          <div class="button-container">
-            <button @click="showAddPorterModal = true" class="btn btn--primary btn--sm mt-2 ml-auto">
-              Add Porter
-            </button>
-          </div>
-          
-          <!-- Coverage Status removed as requested -->
         </div>
       </div>
       
@@ -159,78 +145,6 @@
         </button>
       </div>
     </div>
-    
-    <!-- Add/Edit Porter Modal -->
-    <div v-if="showPorterModal" class="nested-modal-overlay" @click.self="closePorterModal">
-      <div class="nested-modal-container" @click.stop>
-        <div class="modal-header">
-          <h3 class="modal-title">
-            {{ editingPorterAssignment ? 'Edit Porter Assignment' : 'Add Porter' }}
-          </h3>
-          <button class="modal-close" @click.stop="closePorterModal">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="porter">Select Porter</label>
-            <select 
-              id="porter"
-              v-model="porterForm.porterId"
-              class="form-control"
-              :disabled="editingPorterAssignment"
-            >
-              <option value="">Select a porter</option>
-              <option 
-                v-for="porter in availablePorters" 
-                :key="porter.id" 
-                :value="porter.id"
-              >
-                {{ porter.first_name }} {{ porter.last_name }}
-              </option>
-            </select>
-          </div>
-          
-          <div class="time-range-container">
-            <div class="form-group">
-              <label for="porter-start-time">Start Time</label>
-              <input 
-                type="time"
-                id="porter-start-time"
-                v-model="porterForm.startTime"
-                class="form-control"
-              />
-            </div>
-            
-            <div class="form-group">
-              <label for="porter-end-time">End Time</label>
-              <input 
-                type="time"
-                id="porter-end-time"
-                v-model="porterForm.endTime"
-                class="form-control"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button 
-            @click="savePorterAssignment" 
-            class="btn btn--primary"
-            :disabled="!canSavePorter || savingPorter"
-          >
-            {{ savingPorter ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
-          </button>
-          <button 
-            @click.stop="closePorterModal" 
-            class="btn btn--secondary"
-            :disabled="savingPorter"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <Teleport to="body">
@@ -245,11 +159,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
-import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
@@ -301,20 +214,8 @@ const applySameValueToAllDays = () => {
   }
 };
 
-// Form data for porter assignment
-const porterForm = ref({
-  porterId: '',
-  startTime: '',
-  endTime: ''
-});
-
 // UI state
 const saving = ref(false);
-const showPorterModal = ref(false);
-const showAddPorterModal = ref(false);
-const editingPorterAssignment = ref(false);
-const editingPorterAssignmentId = ref(null);
-const savingPorter = ref(false);
 const showAbsenceModal = ref(false);
 const selectedPorterId = ref(null);
 const currentPorterAbsence = ref(null);
@@ -381,33 +282,6 @@ const hasStaffingShortage = computed(() => {
   return shiftsStore.hasAreaStaffingShortage?.(props.assignment.id) || false;
 });
 
-const availablePorters = computed(() => {
-  // Get porters from the shift pool
-  const shiftPorters = shiftsStore.shiftPorterPool.map(p => p.porter);
-  
-  // If editing an existing assignment, include the current porter
-  if (editingPorterAssignment.value && porterForm.value.porterId) {
-    // Check if the current porter is in the shift pool
-    const currentPorterInPool = shiftPorters.some(p => p.id === porterForm.value.porterId);
-    
-    // If not in pool, add them to the available porters list
-    if (!currentPorterInPool) {
-      const currentPorter = staffStore.porters.find(p => p.id === porterForm.value.porterId);
-      if (currentPorter) {
-        return [...shiftPorters, currentPorter];
-      }
-    }
-  }
-  
-  // Return porters from the shift pool
-  return shiftPorters;
-});
-
-const canSavePorter = computed(() => {
-  return porterForm.value.porterId && 
-         porterForm.value.startTime && 
-         porterForm.value.endTime;
-});
 
 // Methods
 const saveChanges = async () => {
@@ -452,20 +326,6 @@ const confirmRemove = () => {
   }
 };
 
-// Porter assignment methods
-const editPorterAssignment = (assignment) => {
-  editingPorterAssignment.value = true;
-  editingPorterAssignmentId.value = assignment.id;
-  
-  porterForm.value = {
-    porterId: assignment.porter_id,
-    startTime: assignment.start_time ? assignment.start_time.substring(0, 5) : '08:00',
-    endTime: assignment.end_time ? assignment.end_time.substring(0, 5) : '16:00'
-  };
-  
-  showPorterModal.value = true;
-};
-
 // Open absence modal for a specific porter
 const openAbsenceModal = (porterId) => {
   if (!porterId) return;
@@ -482,58 +342,14 @@ const handleAbsenceSave = () => {
   currentPorterAbsence.value = null;
 };
 
-const closePorterModal = () => {
-  showPorterModal.value = false;
-  showAddPorterModal.value = false;
-  editingPorterAssignment.value = false;
-  editingPorterAssignmentId.value = null;
-  
-  // Reset form
-  porterForm.value = {
-    porterId: '',
-    startTime: '',
-    endTime: ''
-  };
-};
-
-const savePorterAssignment = async () => {
-  if (!canSavePorter.value || savingPorter.value) return;
-  
-  savingPorter.value = true;
-  
-  try {
-    // Format times for storage (add seconds)
-    const startTime = porterForm.value.startTime + ':00';
-    const endTime = porterForm.value.endTime + ':00';
-    
-    if (editingPorterAssignment.value) {
-      // Update existing assignment - use shift-specific method
-      await shiftsStore.updateShiftAreaCoverPorter(editingPorterAssignmentId.value, {
-        start_time: startTime,
-        end_time: endTime
-      });
-    } else {
-      // Add new assignment - use shift-specific method
-      await shiftsStore.addShiftAreaCoverPorter(
-        props.assignment.id,
-        porterForm.value.porterId,
-        startTime,
-        endTime
-      );
-    }
-    
-    closePorterModal();
-  } catch (error) {
-    console.error('Error saving porter assignment:', error);
-  } finally {
-    savingPorter.value = false;
-  }
-};
-
 const removePorterAssignment = async (assignmentId) => {
   if (confirm('Are you sure you want to remove this porter assignment?')) {
-    // Use shift-specific method to remove porter assignment
-    await shiftsStore.removeShiftAreaCoverPorter(assignmentId);
+    try {
+      // Use shift-specific method to remove porter assignment
+      await shiftsStore.removeShiftAreaCoverPorter(assignmentId);
+    } catch (error) {
+      console.error('Error removing porter assignment:', error);
+    }
   }
 };
 
@@ -543,19 +359,6 @@ const formatTime = (timeStr) => {
   return timeStr.substring(0, 5); // Extract HH:MM from HH:MM:SS
 };
 
-// Watch for "Add Porter" button click
-watch(showAddPorterModal, (newValue) => {
-  if (newValue) {
-    // Set default values for the form
-    porterForm.value = {
-      porterId: '',
-      startTime: formData.value.startTime,
-      endTime: formData.value.endTime
-    };
-    
-    showPorterModal.value = true;
-  }
-});
 </script>
 
 <style lang="scss" scoped>

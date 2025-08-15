@@ -46,16 +46,21 @@
             <div class="porter-card__assignments">
               <div v-if="getPorterAssignments(entry.porter_id).length > 0" class="assignments-list">
                 <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" 
-                     class="assignment-item" 
-                     :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }">
-                  {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                     class="assignment-item clickable" 
+                     :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }"
+                     @click.stop="editAssignment(entry.porter, assignment)"
+                     :title="'Click to edit assignment times'">
+                  <span class="assignment-text">
+                    {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                  </span>
+                  <EditIcon :size="12" class="edit-icon" />
                 </div>
               </div>
               <div v-else class="assignments-list">
                 <div class="assignment-item" style="background-color: rgba(128, 128, 128, 0.15);">
-                  Supervisor
+                  Runner
                 </div>
-            </div>
+              </div>
             </div>
           </div>
           
@@ -138,9 +143,14 @@
           <div class="porter-card__assignments">
             <div v-if="getPorterAssignments(entry.porter_id).length > 0" class="assignments-list">
               <div v-for="assignment in getPorterAssignments(entry.porter_id)" :key="assignment.id" 
-                   class="assignment-item" 
-                   :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }">
-                {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                   class="assignment-item clickable" 
+                   :style="{ backgroundColor: getAssignmentBackgroundColor(assignment) }"
+                   @click.stop="editAssignment(entry.porter, assignment)"
+                   :title="'Click to edit assignment times'">
+                <span class="assignment-text">
+                  {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
+                </span>
+                <EditIcon :size="12" class="edit-icon" />
               </div>
             </div>
             <div v-else class="assignments-list">
@@ -188,6 +198,7 @@
       v-if="showAllocationModal" 
       :porter="selectedPorter"
       :shift-id="shiftId"
+      :editing-assignment="editingAssignment"
       @close="showAllocationModal = false"
       @allocated="handlePorterAllocated"
     />
@@ -263,6 +274,7 @@ import { useAreaCoverStore } from '../stores/areaCoverStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import AllocatePorterModal from './AllocatePorterModal.vue';
+import EditIcon from './icons/EditIcon.vue';
 
 // Event for opening allocation modal
 const emits = defineEmits(['openAllocationModal']);
@@ -283,6 +295,7 @@ const locationsStore = useLocationsStore();
 const showPorterSelector = ref(false);
 const showAllocationModal = ref(false);
 const selectedPorter = ref(null);
+const editingAssignment = ref(null);
 const sortFilter = ref('alphabetical'); // Default to alphabetical sorting
 
 // Expose showPorterSelector method to parent
@@ -299,6 +312,14 @@ defineExpose({
 const openAllocationModal = (porter) => {
   // Open the modal directly instead of emitting an event
   selectedPorter.value = porter;
+  editingAssignment.value = null; // Clear any editing assignment
+  showAllocationModal.value = true;
+};
+
+// Edit an assignment
+const editAssignment = (porter, assignment) => {
+  selectedPorter.value = porter;
+  editingAssignment.value = assignment;
   showAllocationModal.value = true;
 };
 
@@ -1066,6 +1087,36 @@ onMounted(async () => {
       padding: 2px 8px;
       border-radius: 4px;
       display: inline-block;
+      
+      &.clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        
+        &:hover {
+          background-color: rgba(66, 133, 244, 0.2);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          
+          .edit-icon {
+            opacity: 1;
+          }
+        }
+        
+        .assignment-text {
+          flex: 1;
+        }
+        
+        .edit-icon {
+          opacity: 0.6;
+          color: rgba(0, 0, 0, 0.5);
+          transition: opacity 0.2s ease;
+          flex-shrink: 0;
+        }
+      }
     }
     
     .no-assignments {

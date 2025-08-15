@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="closeModal">
     <div class="modal-container">
       <div class="modal-header">
-        <h3>Allocate Porter</h3>
+        <h3>{{ modalTitle }}</h3>
         <button class="modal-close" @click="closeModal">×</button>
       </div>
       
@@ -45,6 +45,18 @@
             >
               Absence
             </button>
+          </div>
+          
+          <!-- Conflict Error Display -->
+          <div v-if="conflictError" class="conflict-error">
+            <div class="error-message">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              {{ conflictError }}
+            </div>
           </div>
           
           <div class="tab-content">
@@ -176,7 +188,7 @@
           Cancel
         </button>
         <button @click="allocatePorter" class="btn btn-primary" :disabled="!canAllocate || processing">
-          {{ processing ? 'Allocating...' : 'Allocate Porter' }}
+          {{ submitButtonText }}
         </button>
       </div>
     </div>
@@ -198,6 +210,10 @@ const props = defineProps({
   shiftId: {
     type: String,
     required: true
+  },
+  editingAssignment: {
+    type: Object,
+    default: null
   }
 });
 
@@ -229,6 +245,21 @@ const absenceStartTime = ref('');
 const absenceEndTime = ref('');
 
 // Computed properties
+const isEditMode = computed(() => {
+  return props.editingAssignment !== null;
+});
+
+const modalTitle = computed(() => {
+  return isEditMode.value ? 'Edit Assignment' : 'Allocate Porter';
+});
+
+const submitButtonText = computed(() => {
+  if (processing.value) {
+    return isEditMode.value ? 'Updating...' : 'Allocating...';
+  }
+  return isEditMode.value ? 'Update Assignment' : 'Allocate Porter';
+});
+
 const availableDepartments = computed(() => {
   // Get all departments with area cover assignments for this shift
   const deptIds = shiftsStore.shiftAreaCoverAssignments.map(a => a.department_id);
@@ -287,94 +318,298 @@ const closeModal = () => {
   emits('close');
 };
 
+// Time conflict detection
+const conflictError = ref('');
+
+// Helper function to convert time string (HH:MM) to minutes
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+};
+
+// Check for time conflicts with existing assignments
+const checkTimeConflicts = (startTime, endTime) => {
+  if (!props.porter || !startTime || !endTime) return null;
+  
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  
+  // Get all existing assignments for this porter
+  const areaAssignments = shiftsStore.shiftAreaCoverPorterAssignments.filter(
+    a => a.porter_id === props.porter.id
+  );
+  
+  const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments.filter(
+    a => a.porter_id === props.porter.id
+  );
+  
+  const absenceAssignments = shiftsStore.shiftPorterAbsences.filter(
+    a => a.porter_id === props.porter.id
+  );
+  
+  const allAssignments = [...areaAssignments, ...serviceAssignments, ...absenceAssignments];
+  
+  // Check for overlaps
+  for (const assignment of allAssignments) {
+    // In edit mode, skip the assignment we're currently editing
+    if (isEditMode.value && props.editingAssignment && assignment.id === props.editingAssignment.id) {
+      continue;
+    }
+    
+    const assignmentStart = timeToMinutes(assignment.start_time.substring(0, 5));
+    const assignmentEnd = timeToMinutes(assignment.end_time.substring(0, 5));
+    
+    // Check for overlap
+    const hasOverlap = (startMinutes < assignmentEnd && endMinutes > assignmentStart);
+    
+    if (hasOverlap) {
+      // Get assignment name for better error message
+      let assignmentName = 'Unknown Assignment';
+      
+      if (assignment.shift_area_cover_assignment_id) {
+        const areaCover = shiftsStore.shiftAreaCoverAssignments.find(
+          a => a.id === assignment.shift_area_cover_assignment_id
+        );
+        assignmentName = areaCover?.department?.name || 'Department Assignment';
+      } else if (assignment.shift_support_service_assignment_id) {
+        const service = shiftsStore.shiftSupportServiceAssignments.find(
+          s => s.id === assignment.shift_support_service_assignment_id
+        );
+        assignmentName = service?.service?.name || 'Service Assignment';
+      } else if (assignment.absence_reason) {
+        assignmentName = `Absence: ${assignment.absence_reason}`;
+      }
+      
+      return {
+        hasConflict: true,
+        message: `Porter already assigned to "${assignmentName}" during ${assignment.start_time.substring(0, 5)} - ${assignment.end_time.substring(0, 5)}`,
+        conflictingAssignment: assignment
+      };
+    }
+  }
+  
+  return { hasConflict: false };
+};
+
+// Initialize form for edit mode
+const initializeEditMode = () => {
+  if (!isEditMode.value || !props.editingAssignment) return;
+  
+  const assignment = props.editingAssignment;
+  
+  // Determine assignment type and set active tab
+  if (assignment.shift_area_cover_assignment_id) {
+    // Department assignment
+    activeTab.value = 'department';
+    
+    // Find the department ID from the area cover assignment
+    const areaCover = shiftsStore.shiftAreaCoverAssignments.find(
+      a => a.id === assignment.shift_area_cover_assignment_id
+    );
+    if (areaCover) {
+      departmentId.value = areaCover.department_id;
+    }
+    
+    // Set times
+    departmentStartTime.value = formatTime(assignment.start_time);
+    departmentEndTime.value = formatTime(assignment.end_time);
+    
+  } else if (assignment.shift_support_service_assignment_id) {
+    // Service assignment
+    activeTab.value = 'service';
+    
+    // Find the service ID from the service assignment
+    const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+      s => s.id === assignment.shift_support_service_assignment_id
+    );
+    if (serviceAssignment) {
+      serviceId.value = serviceAssignment.service_id;
+    }
+    
+    // Set times
+    serviceStartTime.value = formatTime(assignment.start_time);
+    serviceEndTime.value = formatTime(assignment.end_time);
+    
+  } else if (assignment.absence_reason !== undefined) {
+    // Absence assignment
+    activeTab.value = 'absence';
+    absenceReason.value = assignment.absence_reason || '';
+    
+    // Set times
+    absenceStartTime.value = formatTime(assignment.start_time);
+    absenceEndTime.value = formatTime(assignment.end_time);
+  }
+};
+
 const allocatePorter = async () => {
   if (!canAllocate.value || !props.porter || processing.value) return;
+  
+  // Clear any previous conflict errors
+  conflictError.value = '';
+  
+  // Check for time conflicts before proceeding
+  let startTime, endTime;
+  
+  if (activeTab.value === 'department') {
+    startTime = departmentStartTime.value;
+    endTime = departmentEndTime.value;
+  } else if (activeTab.value === 'service') {
+    startTime = serviceStartTime.value;
+    endTime = serviceEndTime.value;
+  } else if (activeTab.value === 'absence') {
+    startTime = absenceStartTime.value;
+    endTime = absenceEndTime.value;
+  }
+  
+  const conflictCheck = checkTimeConflicts(startTime, endTime);
+  
+  if (conflictCheck?.hasConflict) {
+    conflictError.value = conflictCheck.message;
+    return;
+  }
   
   processing.value = true;
   
   try {
     let result;
     
-    if (activeTab.value === 'department') {
-      // Get the area cover assignment for this department
-      const areaAssignment = shiftsStore.shiftAreaCoverAssignments.find(
-        a => a.department_id === departmentId.value
-      );
-      
-      if (!areaAssignment) {
-        throw new Error('Area assignment not found');
+    if (isEditMode.value) {
+      // Edit mode - update existing assignment
+      if (activeTab.value === 'department') {
+        // Update area cover porter assignment
+        result = await shiftsStore.updateShiftAreaCoverPorter(props.editingAssignment.id, {
+          start_time: departmentStartTime.value + ':00',
+          end_time: departmentEndTime.value + ':00'
+        });
+        
+        emits('allocated', {
+          type: 'department',
+          assignment_id: props.editingAssignment.id,
+          porter_id: props.porter.id,
+          start_time: departmentStartTime.value,
+          end_time: departmentEndTime.value,
+          isEdit: true
+        });
+        
+      } else if (activeTab.value === 'service') {
+        // Update service porter assignment
+        result = await shiftsStore.updateShiftSupportServicePorter(props.editingAssignment.id, {
+          start_time: serviceStartTime.value + ':00',
+          end_time: serviceEndTime.value + ':00'
+        });
+        
+        emits('allocated', {
+          type: 'service',
+          assignment_id: props.editingAssignment.id,
+          porter_id: props.porter.id,
+          start_time: serviceStartTime.value,
+          end_time: serviceEndTime.value,
+          isEdit: true
+        });
+        
+      } else if (activeTab.value === 'absence') {
+        // Update absence assignment
+        result = await shiftsStore.updatePorterAbsence(props.editingAssignment.id, {
+          absence_reason: absenceReason.value,
+          start_time: absenceStartTime.value + ':00',
+          end_time: absenceEndTime.value + ':00'
+        });
+        
+        emits('allocated', {
+          type: 'absence',
+          assignment_id: props.editingAssignment.id,
+          porter_id: props.porter.id,
+          absence_reason: absenceReason.value,
+          start_time: absenceStartTime.value,
+          end_time: absenceEndTime.value,
+          isEdit: true
+        });
       }
       
-      // Allocate porter to department
-      result = await shiftsStore.assignPorterToShiftAreaCover({
-        shift_id: props.shiftId,
-        porter_id: props.porter.id,
-        shift_area_cover_assignment_id: areaAssignment.id,
-        start_time: departmentStartTime.value + ':00', // Add seconds
-        end_time: departmentEndTime.value + ':00' // Add seconds
-      });
-      
-      // Emit allocated event with details
-      emits('allocated', {
-        type: 'department',
-        department_id: departmentId.value,
-        porter_id: props.porter.id,
-        start_time: departmentStartTime.value,
-        end_time: departmentEndTime.value
-      });
-      
-    } else if (activeTab.value === 'service') {
-      // Get the service assignment for this service
-      const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
-        a => a.service_id === serviceId.value
-      );
-      
-      if (!serviceAssignment) {
-        throw new Error('Service assignment not found');
+    } else {
+      // Create mode - new assignment
+      if (activeTab.value === 'department') {
+        // Get the area cover assignment for this department
+        const areaAssignment = shiftsStore.shiftAreaCoverAssignments.find(
+          a => a.department_id === departmentId.value
+        );
+        
+        if (!areaAssignment) {
+          throw new Error('Area assignment not found');
+        }
+        
+        // Allocate porter to department
+        result = await shiftsStore.assignPorterToShiftAreaCover({
+          shift_id: props.shiftId,
+          porter_id: props.porter.id,
+          shift_area_cover_assignment_id: areaAssignment.id,
+          start_time: departmentStartTime.value + ':00', // Add seconds
+          end_time: departmentEndTime.value + ':00' // Add seconds
+        });
+        
+        // Emit allocated event with details
+        emits('allocated', {
+          type: 'department',
+          department_id: departmentId.value,
+          porter_id: props.porter.id,
+          start_time: departmentStartTime.value,
+          end_time: departmentEndTime.value
+        });
+        
+      } else if (activeTab.value === 'service') {
+        // Get the service assignment for this service
+        const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+          a => a.service_id === serviceId.value
+        );
+        
+        if (!serviceAssignment) {
+          throw new Error('Service assignment not found');
+        }
+        
+        // Allocate porter to service
+        result = await shiftsStore.assignPorterToShiftSupportService({
+          shift_id: props.shiftId,
+          porter_id: props.porter.id,
+          shift_support_service_assignment_id: serviceAssignment.id,
+          start_time: serviceStartTime.value + ':00', // Add seconds
+          end_time: serviceEndTime.value + ':00' // Add seconds
+        });
+        
+        // Emit allocated event with details
+        emits('allocated', {
+          type: 'service',
+          service_id: serviceId.value,
+          porter_id: props.porter.id,
+          start_time: serviceStartTime.value,
+          end_time: serviceEndTime.value
+        });
+        
+      } else if (activeTab.value === 'absence') {
+        // Add scheduled absence for porter
+        result = await shiftsStore.addPorterAbsenceToShift({
+          shift_id: props.shiftId,
+          porter_id: props.porter.id,
+          absence_reason: absenceReason.value,
+          start_time: absenceStartTime.value + ':00', // Add seconds
+          end_time: absenceEndTime.value + ':00' // Add seconds
+        });
+        
+        // Emit allocated event with details
+        emits('allocated', {
+          type: 'absence',
+          porter_id: props.porter.id,
+          absence_reason: absenceReason.value,
+          start_time: absenceStartTime.value,
+          end_time: absenceEndTime.value
+        });
       }
-      
-      // Allocate porter to service
-      result = await shiftsStore.assignPorterToShiftSupportService({
-        shift_id: props.shiftId,
-        porter_id: props.porter.id,
-        shift_support_service_assignment_id: serviceAssignment.id,
-        start_time: serviceStartTime.value + ':00', // Add seconds
-        end_time: serviceEndTime.value + ':00' // Add seconds
-      });
-      
-      // Emit allocated event with details
-      emits('allocated', {
-        type: 'service',
-        service_id: serviceId.value,
-        porter_id: props.porter.id,
-        start_time: serviceStartTime.value,
-        end_time: serviceEndTime.value
-      });
-      
-    } else if (activeTab.value === 'absence') {
-      // Add scheduled absence for porter
-      result = await shiftsStore.addPorterAbsenceToShift({
-        shift_id: props.shiftId,
-        porter_id: props.porter.id,
-        absence_reason: absenceReason.value,
-        start_time: absenceStartTime.value + ':00', // Add seconds
-        end_time: absenceEndTime.value + ':00' // Add seconds
-      });
-      
-      // Emit allocated event with details
-      emits('allocated', {
-        type: 'absence',
-        porter_id: props.porter.id,
-        absence_reason: absenceReason.value,
-        start_time: absenceStartTime.value,
-        end_time: absenceEndTime.value
-      });
     }
     
     // Close modal on success
     closeModal();
   } catch (error) {
-    alert('Failed to allocate porter: ' + (error.message || 'Unknown error'));
+    alert(`Failed to ${isEditMode.value ? 'update' : 'allocate'} porter: ` + (error.message || 'Unknown error'));
   } finally {
     processing.value = false;
   }
@@ -401,9 +636,29 @@ const formatTime = (timeString) => {
   }
 };
 
+// Clear conflict error when time fields change
+watch([departmentStartTime, departmentEndTime], () => {
+  if (activeTab.value === 'department') {
+    conflictError.value = '';
+  }
+});
+
+watch([serviceStartTime, serviceEndTime], () => {
+  if (activeTab.value === 'service') {
+    conflictError.value = '';
+  }
+});
+
+watch([absenceStartTime, absenceEndTime], () => {
+  if (activeTab.value === 'absence') {
+    conflictError.value = '';
+  }
+});
+
 // Reset form when tab changes
 watch(activeTab, () => {
-  // No need to reset completely, but could add specific logic here if needed
+  // Clear conflict error when switching tabs
+  conflictError.value = '';
 });
 
 // Reset form when porter changes
@@ -411,10 +666,27 @@ watch(() => props.porter, () => {
   departmentId.value = '';
   serviceId.value = '';
   absenceReason.value = '';
+  conflictError.value = '';
   
   // Initialize times again
-  initializeTimeFields();
+  if (!isEditMode.value) {
+    initializeTimeFields();
+  }
 });
+
+// Watch for editingAssignment changes to initialize edit mode
+watch(() => props.editingAssignment, () => {
+  if (isEditMode.value) {
+    initializeEditMode();
+  } else {
+    // Reset form for new allocation
+    departmentId.value = '';
+    serviceId.value = '';
+    absenceReason.value = '';
+    conflictError.value = '';
+    initializeTimeFields();
+  }
+}, { immediate: true });
 
 // On component mount
 onMounted(() => {
@@ -427,8 +699,12 @@ onMounted(() => {
     supportServicesStore.fetchServices();
   }
   
-  // Initialize time fields
-  initializeTimeFields();
+  // Initialize based on mode
+  if (isEditMode.value) {
+    initializeEditMode();
+  } else {
+    initializeTimeFields();
+  }
 });
 </script>
 
@@ -539,6 +815,28 @@ onMounted(() => {
     
     &:hover:not(.active) {
       background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
+}
+
+.conflict-error {
+  margin-bottom: 16px;
+  
+  .error-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background-color: rgba(234, 67, 53, 0.1);
+    border: 1px solid rgba(234, 67, 53, 0.3);
+    border-radius: 6px;
+    color: #d32f2f;
+    font-size: 0.9rem;
+    font-weight: 500;
+    
+    svg {
+      flex-shrink: 0;
+      color: #d32f2f;
     }
   }
 }
