@@ -1,3 +1,7 @@
+
+
+npm run dev
+cd api && npm run dev
 # Hospital Task Management System
 
 A comprehensive hospital porter task management system built with Vue.js 3, Node.js/Express, and MySQL.

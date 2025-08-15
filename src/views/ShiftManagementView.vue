@@ -1222,7 +1222,6 @@ async function showAddTaskModal() {
   
   // Make sure all task type assignments are loaded
   await taskTypesStore.fetchTypeAssignments();
-  await taskTypesStore.fetchItemAssignments();
   
   showTaskModal.value = true;
 }
@@ -1353,6 +1352,9 @@ async function loadTaskItems() {
     return;
   }
   
+  // Mark task type as touched when loading items - this ensures auto-population works
+  taskTypeFieldTouched.value = true;
+  
   loadingTaskItems.value = true;
   
   try {
@@ -1360,8 +1362,8 @@ async function loadTaskItems() {
     taskItems.value = taskTypesStore.getTaskItemsByType(taskForm.value.taskTypeId);
     
     // Check for task type department assignments and auto-populate
-    // but only if task type was touched first
-    if (taskTypeFieldTouched.value && !departmentFieldTouched.value) {
+    // but only if department fields haven't been touched yet
+    if (!departmentFieldTouched.value) {
       // Also load task type assignments if they haven't been loaded
       await taskTypesStore.fetchTypeAssignments();
       checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
@@ -1397,7 +1399,7 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
     // Look for origin department
     const originAssignment = assignments.find(a => a.is_origin);
     
-    if (originAssignment && !taskForm.value.originDepartmentId) {
+    if (originAssignment) {
       taskForm.value.originDepartmentId = originAssignment.department_id;
       originFieldAutoPopulated.value = true;
       // Reset the flag after animation completes
@@ -1409,7 +1411,7 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
     // Look for destination department
     const destinationAssignment = assignments.find(a => a.is_destination);
     
-    if (destinationAssignment && !taskForm.value.destinationDepartmentId) {
+    if (destinationAssignment) {
       taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
       destinationFieldAutoPopulated.value = true;
       // Reset the flag after animation completes

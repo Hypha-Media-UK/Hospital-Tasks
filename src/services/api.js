@@ -243,6 +243,18 @@ export const taskTypesApi = {
       method: 'POST',
       body: JSON.stringify(itemData)
     });
+  },
+
+  // Task type department assignments
+  async getAssignments(taskTypeId) {
+    return apiRequest(`/task-types/${taskTypeId}/assignments`);
+  },
+
+  async updateAssignments(taskTypeId, assignments) {
+    return apiRequest(`/task-types/${taskTypeId}/assignments`, {
+      method: 'PUT',
+      body: JSON.stringify({ assignments })
+    });
   }
 };
 

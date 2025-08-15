@@ -255,4 +255,111 @@ router.post('/:id/items', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
+// GET /api/task-types/:id/assignments - Get department assignments for a task type
+router.get('/:id/assignments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Verify task type exists
+    const taskType = await prisma.taskType.findUnique({
+      where: { id }
+    });
+
+    if (!taskType) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Task type not found'
+      });
+      return;
+    }
+
+    const assignments = await prisma.task_type_department_assignments.findMany({
+      where: { task_type_id: id },
+      include: {
+        departments: true
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
+    res.json(assignments);
+  } catch (error) {
+    console.error('Error fetching task type assignments:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to fetch task type assignments'
+    });
+  }
+});
+
+// PUT /api/task-types/:id/assignments - Update department assignments for a task type
+router.put('/:id/assignments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { assignments } = req.body;
+
+    // Verify task type exists
+    const taskType = await prisma.taskType.findUnique({
+      where: { id }
+    });
+
+    if (!taskType) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Task type not found'
+      });
+      return;
+    }
+
+    // Validate assignments array
+    if (!Array.isArray(assignments)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'assignments must be an array'
+      });
+      return;
+    }
+
+    // Use transaction to ensure data consistency
+    const result = await prisma.$transaction(async (tx) => {
+      // Delete existing assignments for this task type
+      await tx.task_type_department_assignments.deleteMany({
+        where: { task_type_id: id }
+      });
+
+      // Create new assignments if any provided
+      if (assignments.length > 0) {
+        const newAssignments = await tx.task_type_department_assignments.createMany({
+          data: assignments.map((assignment: any) => ({
+            task_type_id: id,
+            department_id: assignment.department_id,
+            is_origin: assignment.is_origin || false,
+            is_destination: assignment.is_destination || false
+          }))
+        });
+
+        // Fetch the created assignments with department details
+        const createdAssignments = await tx.task_type_department_assignments.findMany({
+          where: { task_type_id: id },
+          include: {
+            departments: true
+          },
+          orderBy: { created_at: 'asc' }
+        });
+
+        return createdAssignments;
+      }
+
+      return [];
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error updating task type assignments:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to update task type assignments'
+    });
+  }
+});
+
 export default router;

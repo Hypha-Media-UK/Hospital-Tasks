@@ -383,17 +383,30 @@ export const useTaskTypesStore = defineStore('taskTypes', {
     },
     
     // Task Type Department Assignments
-    // Note: Task type assignments are managed through individual task items
-    // Each task item can have its own department assignments
     async fetchTypeAssignments() {
       this.loading.typeAssignments = true;
       this.error = null;
       
       try {
-        // Task type assignments are not implemented at the API level
-        // Department assignments are handled per task item instead
-        this.typeAssignments = [];
-        return [];
+        // Fetch all task types and their assignments
+        const taskTypes = await taskTypesApi.getAll();
+        const allAssignments = [];
+        
+        // Fetch assignments for each task type
+        for (const taskType of taskTypes) {
+          try {
+            const assignments = await taskTypesApi.getAssignments(taskType.id);
+            allAssignments.push(...assignments);
+          } catch (error) {
+            // If a task type has no assignments, that's okay, just continue
+            if (error.status !== 404) {
+              console.warn(`Error fetching assignments for task type ${taskType.id}:`, error);
+            }
+          }
+        }
+        
+        this.typeAssignments = allAssignments;
+        return allAssignments;
       } catch (error) {
         console.error('Error fetching task type assignments:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load task type assignments';
@@ -408,13 +421,14 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       this.error = null;
       
       try {
-        // Task type assignments are not implemented at the API level
-        // Department assignments are handled per task item instead
+        const data = await taskTypesApi.updateAssignments(taskTypeId, assignments);
+        
+        // Update assignments in state
         this.typeAssignments = this.typeAssignments.filter(
           assignment => assignment.task_type_id !== taskTypeId
         );
-        if (assignments) {
-          this.typeAssignments.push(...assignments);
+        if (data) {
+          this.typeAssignments.push(...data);
         }
         
         return true;
