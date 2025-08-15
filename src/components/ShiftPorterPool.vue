@@ -21,13 +21,14 @@
     <div v-if="supervisors.length > 0" class="supervisors-section">
       <h4 class="section-title">Supervisors</h4>
       <div class="porter-grid">
-        <div v-for="entry in supervisors" :key="entry.id" class="porter-card supervisor-card" 
-             :class="{ 
-               'assigned': hasActiveAssignments(entry.porter_id),
-               'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
-               'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
-               'off-duty': getPorterDutyStatus(entry.porter_id) === 'off-duty'
-             }"
+      <div v-for="entry in supervisors" :key="entry.id" class="porter-card supervisor-card" 
+           :class="{ 
+             'available': isPorterAvailable(entry.porter_id),
+             'assigned': hasActiveAssignments(entry.porter_id),
+             'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
+             'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
+             'off-duty': getPorterDutyStatus(entry.porter_id) === 'off-duty'
+           }"
              @click.stop="openAllocationModal(entry.porter)">
           <div class="porter-card__content">
             <div class="porter-card__name" 
@@ -123,6 +124,7 @@
     <div v-if="sortedPorterPool.length > 0" class="porter-grid">
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
            :class="{ 
+             'available': isPorterAvailable(entry.porter_id),
              'assigned': hasActiveAssignments(entry.porter_id),
              'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
              'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
@@ -692,6 +694,32 @@ const isPorterOnDuty = (porterId) => {
   return getPorterDutyStatus(porterId) === 'on-duty';
 };
 
+// Check if a porter is available (on duty, not absent, no active assignments)
+const isPorterAvailable = (porterId) => {
+  // Check if porter is absent
+  if (isPorterAbsent(porterId)) {
+    return false;
+  }
+  
+  // Check if porter has scheduled absence
+  if (staffStore.isPorterOnScheduledAbsence(porterId)) {
+    return false;
+  }
+  
+  // Check if porter is on duty
+  if (getPorterDutyStatus(porterId) !== 'on-duty') {
+    return false;
+  }
+  
+  // Check if porter has active assignments
+  if (hasActiveAssignments(porterId)) {
+    return false;
+  }
+  
+  // If all checks pass, porter is available
+  return true;
+};
+
 // Check if a porter has any active assignments at the current time
 const hasActiveAssignments = (porterId) => {
   const now = new Date();
@@ -1049,6 +1077,16 @@ onMounted(async () => {
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     background-color: rgba(66, 133, 244, 0.05);
+  }
+  
+  &.available {
+    background-color: #E8F5E8;  /* Light green background */
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    
+    &:hover {
+      background-color: #E8F5E8;  /* Keep the same background but add shadow */
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15);
+    }
   }
   
   &.assigned {
