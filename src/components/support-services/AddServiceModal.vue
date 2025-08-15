@@ -80,7 +80,6 @@ async function saveService() {
     // Close the modal - the parent component will handle success/error
     emit('close');
   } catch (err) {
-    console.error('Error adding service:', err);
   } finally {
     submitting.value = false;
   }

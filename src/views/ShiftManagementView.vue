@@ -600,13 +600,11 @@ import { nextTick } from 'vue';
 function onBeforeLeave(el) {
   // We don't need to do anything special here for Motion since we're 
   // setting the exit animations directly on the motion.div elements
-  console.log('Before leave hook triggered');
 }
 
 function onAfterLeave() {
   // Reset state after animation completes and modal is fully hidden
   isClosing.value = false;
-  console.log('After leave hook triggered - animation complete');
 }
 
 // Handle time fields visibility toggle
@@ -633,7 +631,6 @@ function toggleTimeFields() {
     container.style.display = '';
     container.classList.remove('visible');
     
-    console.log('Measured time fields height:', timeFieldsHeight.value);
   }
   
   // Toggle the state
@@ -902,18 +899,12 @@ const canSaveTask = computed(() => {
 // Function to check and clean up all expired allocations
 const checkAndCleanupExpiredAllocations = async () => {
   if (shift.value && shift.value.id) {
-    console.log('Checking for expired allocations (absences, departments, services)...');
     const result = await shiftsStore.cleanupAllExpiredAssignments();
-    
-    if (result.total > 0) {
-      console.log(`Cleaned up ${result.total} expired allocations:`, result);
-    }
   }
 };
 
 onMounted(async () => {
   loading.value = true;
-  console.log('ShiftManagementView mounted - loading shift data');
   
   // Tab indicator positioning is now handled by AnimatedTabs component
   
@@ -926,82 +917,39 @@ onMounted(async () => {
     
     // Load shift and its tasks
     await shiftsStore.fetchShiftById(shiftId);
-    console.log('Shift loaded:', shiftsStore.currentShift?.id);
     
     if (shiftsStore.currentShift) {
       // Load shift tasks
       await shiftsStore.fetchShiftTasks(shiftId);
       
     // Load area cover assignments for this shift
-    console.log('Loading area cover assignments for shift:', shiftId);
     await shiftsStore.fetchShiftAreaCover(shiftId);
-    console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
     
-    // Log all area cover assignments in detail
-    if (shiftsStore.shiftAreaCoverAssignments.length > 0) {
-      console.log('Area cover assignments details:');
-      shiftsStore.shiftAreaCoverAssignments.forEach(assignment => {
-        console.log(`- Department: ${assignment.department?.name || 'Unknown'} (ID: ${assignment.department_id})`);
-        console.log(`  Time: ${assignment.start_time} - ${assignment.end_time}`);
-        console.log(`  For shift: ${assignment.shift_id}`);
-      });
-    } else {
-      console.log('No area cover assignments were loaded!');
-      
+    // Check if area cover assignments need initialization
+    if (shiftsStore.shiftAreaCoverAssignments.length === 0) {
       // Check the defaults in the area cover store
       const { useAreaCoverStore } = await import('../stores/areaCoverStore');
       const areaCoverStore = useAreaCoverStore();
       await areaCoverStore.initialize();
       
-      // Log the shift type
-      console.log('Current shift type:', shift.value.shift_type);
-      
       // Check if defaults exist for this shift type
       const shiftType = shift.value.shift_type;
       const defaultAssignments = areaCoverStore[`${shiftType}Assignments`] || [];
-      console.log(`Found ${defaultAssignments.length} default ${shiftType} assignments`);
       
       if (defaultAssignments.length > 0) {
-        console.log('Default assignments:');
-        defaultAssignments.forEach(assignment => {
-          console.log(`- Department: ${assignment.department?.name || 'Unknown'} (ID: ${assignment.department_id})`);
-        });
-        
         // Try to re-initialize the area cover from defaults
-        console.log('Attempting to re-initialize area cover from defaults...');
         await shiftsStore.setupShiftAreaCoverFromDefaults(shiftId, shiftType);
         
         // Check if it worked
         await shiftsStore.fetchShiftAreaCover(shiftId);
-        console.log(`After re-init: ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
       }
     }
     
     // Load support service assignments for this shift
-    console.log('Loading support service assignments for shift:', shiftId);
     await shiftsStore.fetchShiftSupportServices(shiftId);
-    console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
-    
-    // Log all support service assignments in detail
-    if (shiftsStore.shiftSupportServiceAssignments.length > 0) {
-      console.log('Support service assignments details:');
-      shiftsStore.shiftSupportServiceAssignments.forEach(assignment => {
-        console.log(`- Service: ${assignment.service?.name || 'Unknown'} (ID: ${assignment.service_id})`);
-        console.log(`  Time: ${assignment.start_time} - ${assignment.end_time}`);
-      });
-      
-      // Load porter assignments for service assignments
-      console.log('Loading porter assignments for service assignments...');
-      for (const assignment of shiftsStore.shiftSupportServiceAssignments) {
-        // The porter assignments are loaded automatically in fetchShiftSupportServices
-        const porterAssignments = shiftsStore.getPorterAssignmentsByServiceId(assignment.id);
-        console.log(`Service ${assignment.service?.name}: ${porterAssignments.length} porter assignments`);
-      }
-    }
     
     // Load porter pool
     await shiftsStore.fetchShiftPorterPool(shiftId);
-    console.log(`Loaded ${shiftsStore.shiftPorterPool.length} porters in pool`);
     }
     
     // Load supporting data for task management
@@ -1014,10 +962,9 @@ onMounted(async () => {
       settingsStore.loadSettings()
     ]);
   } catch (error) {
-    console.error('Error loading shift data:', error);
+    // Error handling without console logging
   } finally {
     loading.value = false;
-    console.log('ShiftManagementView loading complete');
   }
 });
 
@@ -1025,7 +972,6 @@ onMounted(async () => {
 onUnmounted(() => {
   // Clear timer to prevent memory leaks
   if (cleanupTimer) {
-    console.log('Clearing absence cleanup timer');
     clearInterval(cleanupTimer);
     cleanupTimer = null;
   }
@@ -1066,10 +1012,6 @@ watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
 watch(() => taskForm.value.timeReceived, (newReceivedTime, oldReceivedTime) => {
   if (!newReceivedTime) return;
   
-  console.log('Received time changed:', newReceivedTime, 'Previous:', oldReceivedTime);
-  console.log('Is editing task:', isEditingTask.value);
-  console.log('Original received time:', originalTaskTimes.value.received);
-  
   // Always update the times whenever received time changes, even when editing
   try {
     // Parse the received time
@@ -1089,9 +1031,6 @@ watch(() => taskForm.value.timeReceived, (newReceivedTime, oldReceivedTime) => {
     const newAllocatedTime = formatDateTimeForInput(allocatedDate);
     const newCompletedTime = formatDateTimeForInput(completedDate);
     
-    console.log('New allocated time will be:', newAllocatedTime);
-    console.log('New completed time will be:', newCompletedTime);
-    
     // Always update the times
     taskForm.value.timeAllocated = newAllocatedTime;
     taskForm.value.timeCompleted = newCompletedTime;
@@ -1104,7 +1043,6 @@ watch(() => taskForm.value.timeReceived, (newReceivedTime, oldReceivedTime) => {
       timeFieldsAutoUpdated.value = false;
     }, 1500);
   } catch (error) {
-    console.error('Error updating time fields:', error);
     // Don't update fields if there's an error parsing the time
   }
 });
@@ -1112,8 +1050,6 @@ watch(() => taskForm.value.timeReceived, (newReceivedTime, oldReceivedTime) => {
 // Watch for origin department changes to auto-populate task type and task item
 watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
   if (!newDepartmentId) return;
-  
-  console.log('Origin department changed to:', newDepartmentId);
   
   // Mark that department was touched
   departmentFieldTouched.value = true;
@@ -1132,12 +1068,9 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
         a => a.department_id === newDepartmentId && a.is_origin
       );
       
-      console.log('Task type assignments for department:', typeAssignments);
-      
       if (typeAssignments.length > 0) {
         // Use the first assignment
         const typeAssignment = typeAssignments[0];
-        console.log('Setting task type to:', typeAssignment.task_type_id);
         
         // Set task type ID
         taskForm.value.taskTypeId = typeAssignment.task_type_id;
@@ -1155,7 +1088,6 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
           // Look for regular item
           const regularItem = taskItems.value.find(item => item.is_regular);
           if (regularItem) {
-            console.log('Setting task item to regular item:', regularItem.id);
             taskForm.value.taskItemId = regularItem.id;
             
             // Visual feedback for auto-population
@@ -1171,7 +1103,6 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
           );
           
           if (destinationAssignment) {
-            console.log('Setting destination department to:', destinationAssignment.department_id);
             taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
             
             // Visual feedback for auto-population
@@ -1187,11 +1118,8 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
       if (!foundAssignment) {
         // Check if this department has a task assignment
         const assignment = locationsStore.getDepartmentTaskAssignment(newDepartmentId);
-        console.log('Department task assignment:', assignment);
         
         if (assignment && assignment.task_type_id) {
-          console.log('Setting task type to:', assignment.task_type_id);
-          
           // Set task type ID
           taskForm.value.taskTypeId = assignment.task_type_id;
           
@@ -1206,8 +1134,6 @@ watch(() => taskForm.value.originDepartmentId, (newDepartmentId) => {
           loadTaskItems().then(() => {
             // After loading items, set task item if specified in assignment
             if (assignment.task_item_id) {
-              console.log('Setting task item to:', assignment.task_item_id);
-              
               // Check if this task item exists in the loaded items
               const itemExists = taskItems.value.some(item => item.id === assignment.task_item_id);
               
@@ -1282,7 +1208,7 @@ async function endShift() {
     // Navigate back to home after ending the shift
     router.push('/');
   } catch (error) {
-    console.error('Error ending shift:', error);
+    // Error handling without console logging
   } finally {
     endingShift.value = false;
   }
@@ -1365,8 +1291,6 @@ function editTask(task) {
 
 // Close task modal
 function closeTaskModal() {
-  console.log('Close task modal clicked');
-  
   // Set the closing state to trigger exit animations
   isClosing.value = true;
   
@@ -1446,7 +1370,6 @@ async function loadTaskItems() {
     // Check for regular task item and auto-select it
     const regularItem = taskItems.value.find(item => item.is_regular);
     if (regularItem) {
-      console.log('Found regular task item:', regularItem.name, '- auto-selecting');
       taskForm.value.taskItemId = regularItem.id;
       
       // Set the animation flag for visual feedback
@@ -1457,7 +1380,7 @@ async function loadTaskItems() {
       }, 1500);
     }
   } catch (error) {
-    console.error('Error loading task items:', error);
+    // Error handling without console logging
   } finally {
     loadingTaskItems.value = false;
   }
@@ -1467,23 +1390,14 @@ async function loadTaskItems() {
 function checkTaskTypeDepartmentAssignments(taskTypeId) {
   if (!taskTypeId) return;
   
-  console.log('Checking task type assignments for type ID:', taskTypeId);
-  
-  // Get the task type name for better logging
-  const taskType = taskTypesStore.taskTypes.find(t => t.id === taskTypeId);
-  console.log('Task type name:', taskType?.name);
-  
   // Only apply default departments if department fields haven't been touched yet
   if (!departmentFieldTouched.value) {
     const assignments = taskTypesStore.getTypeAssignmentsByTypeId(taskTypeId);
-    console.log('Found assignments for this task type:', assignments);
     
     // Look for origin department
     const originAssignment = assignments.find(a => a.is_origin);
-    console.log('Origin assignment:', originAssignment);
     
     if (originAssignment && !taskForm.value.originDepartmentId) {
-      console.log('Setting origin department ID to:', originAssignment.department_id);
       taskForm.value.originDepartmentId = originAssignment.department_id;
       originFieldAutoPopulated.value = true;
       // Reset the flag after animation completes
@@ -1494,10 +1408,8 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
     
     // Look for destination department
     const destinationAssignment = assignments.find(a => a.is_destination);
-    console.log('Destination assignment:', destinationAssignment);
     
     if (destinationAssignment && !taskForm.value.destinationDepartmentId) {
-      console.log('Setting destination department ID to:', destinationAssignment.department_id);
       taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
       destinationFieldAutoPopulated.value = true;
       // Reset the flag after animation completes
@@ -1512,23 +1424,14 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
 function checkTaskItemDepartmentAssignments(taskItemId) {
   if (!taskItemId) return;
   
-  console.log('Checking task item assignments for item ID:', taskItemId);
-  
-  // Get the task item name for better logging
-  const taskItem = taskItems.value.find(i => i.id === taskItemId);
-  console.log('Task item name:', taskItem?.name);
-  
   // Only auto-populate departments if they haven't been touched yet
   if (!departmentFieldTouched.value) {
     const assignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
-    console.log('Found assignments for this task item:', assignments);
     
     // Look for origin department
     const originAssignment = assignments.find(a => a.is_origin);
-    console.log('Origin assignment:', originAssignment);
     
     if (originAssignment) {
-      console.log('Setting origin department ID to:', originAssignment.department_id);
       taskForm.value.originDepartmentId = originAssignment.department_id;
       originFieldAutoPopulated.value = true;
       // Reset the flag after animation completes
@@ -1539,10 +1442,8 @@ function checkTaskItemDepartmentAssignments(taskItemId) {
     
     // Look for destination department
     const destinationAssignment = assignments.find(a => a.is_destination);
-    console.log('Destination assignment:', destinationAssignment);
     
     if (destinationAssignment) {
-      console.log('Setting destination department ID to:', destinationAssignment.department_id);
       taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
       destinationFieldAutoPopulated.value = true;
       // Reset the flag after animation completes
@@ -1560,7 +1461,6 @@ function createValidDateTimeString(dateStr, timeStr) {
   try {
     // Make sure time format is valid (HH:MM)
     if (!/^\d{1,2}:\d{2}$/.test(timeStr)) {
-      console.warn("Invalid time format:", timeStr);
       return null;
     }
     
@@ -1574,13 +1474,11 @@ function createValidDateTimeString(dateStr, timeStr) {
     // Validate by creating a date object and checking if it's valid
     const testDate = new Date(dateTimeStr);
     if (isNaN(testDate.getTime())) {
-      console.warn("Invalid date created:", dateTimeStr);
       return null;
     }
     
     return dateTimeStr;
   } catch (error) {
-    console.error("Error creating date string:", error);
     return null;
   }
 }
@@ -1682,8 +1580,6 @@ async function saveTask() {
       taskFormError.value = shiftsStore.error || `Failed to ${isEditingTask.value ? 'update' : 'add'} task`;
     }
   } catch (error) {
-    console.error(`Error ${isEditingTask.value ? 'updating' : 'adding'} task:`, error);
-    
     // Provide more helpful error messages for time-related errors
     if (error instanceof RangeError && error.message.includes('Invalid time value')) {
       taskFormError.value = 'Invalid time format. Please check all time fields.';
@@ -1703,7 +1599,7 @@ async function markTaskCompleted(taskId) {
   try {
     await shiftsStore.updateTaskStatus(taskId, 'completed');
   } catch (error) {
-    console.error('Error marking task as completed:', error);
+    // Error handling without console logging
   } finally {
     updatingTask.value = false;
   }
@@ -1717,7 +1613,7 @@ async function markTaskPending(taskId) {
   try {
     await shiftsStore.updateTaskStatus(taskId, 'pending');
   } catch (error) {
-    console.error('Error marking task as pending:', error);
+    // Error handling without console logging
   } finally {
     updatingTask.value = false;
   }
@@ -1771,8 +1667,6 @@ async function saveTaskWithStatus(status) {
       taskFormError.value = shiftsStore.error || 'Failed to add task';
     }
   } catch (error) {
-    console.error('Error adding task:', error);
-    
     // Provide more helpful error messages for time-related errors
     if (error instanceof RangeError && error.message.includes('Invalid time value')) {
       taskFormError.value = 'Invalid time format. Please check all time fields.';
@@ -1839,7 +1733,6 @@ function formatTime(timeString) {
         });
       }
     } catch (e) {
-      console.error('Error formatting time:', e);
       return timeString || '';
     }
   }
@@ -1853,7 +1746,6 @@ function openAllocatePorterModal(porter) {
 
 // Handle porter allocation result
 function handlePorterAllocation(allocation) {
-  console.log('Porter allocated:', allocation);
   // The store and UI will update automatically due to reactivity
   // Refresh data if needed
   if (allocation.type === 'department') {
@@ -1886,7 +1778,6 @@ function formatDateTimeForInput(timeString) {
       // Format for time input (HH:MM)
       return `${hours}:${minutes}`;
     } catch (e) {
-      console.error('Error formatting time for input:', e);
       return timeString || '';
     }
   }
@@ -1965,24 +1856,11 @@ function getShiftTypeDisplayName() {
 function determineAreaCoverType(shift) {
   if (!shift) return 'week_day'; // Default to week_day if no shift
   
-  console.log('Determining area cover type for shift:', shift.id, 'type:', shift.shift_type);
-  
-  // Get the shift start time
-  const shiftStart = new Date(shift.start_time);
-  
-  // Determine if it's a weekend
-  const isWeekendDay = isWeekend(shiftStart);
-  console.log('Is weekend day?', isWeekendDay);
-  
   // Use the specific shift type directly
   const shiftType = shift.shift_type;
   
   // No need to convert, just use the shift type directly
-  console.log('Using shift type directly:', shiftType);
   return shiftType;
-  
-  console.log('Determined area cover type:', areaCoverType);
-  return areaCoverType;
 }
 
 // Get color for shift type
@@ -2051,7 +1929,7 @@ async function saveSupervisor() {
     await shiftsStore.updateShiftSupervisor(shift.value.id, selectedSupervisor.value);
     closeSupervisorModal();
   } catch (error) {
-    console.error('Error updating supervisor:', error);
+    // Error handling without console logging
   } finally {
     changingSupervisor.value = false;
   }

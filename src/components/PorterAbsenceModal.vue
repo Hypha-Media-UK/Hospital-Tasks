@@ -194,7 +194,6 @@ onMounted(async () => {
       };
     }
   } catch (error) {
-    console.error('Error loading porter details:', error);
   } finally {
     loading.value = false;
   }
@@ -229,7 +228,6 @@ const saveAbsence = async () => {
       emit('close');
     }
   } catch (error) {
-    console.error('Error saving porter absence:', error);
   } finally {
     saving.value = false;
   }
@@ -250,7 +248,6 @@ const confirmDelete = async () => {
         emit('close');
       }
     } catch (error) {
-      console.error('Error deleting porter absence:', error);
     } finally {
       saving.value = false;
     }

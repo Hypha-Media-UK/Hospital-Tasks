@@ -139,7 +139,6 @@ export const useLocationsStore = defineStore('locations', {
         const data = await buildingsApi.getAll();
         this.buildings = data || [];
       } catch (error) {
-        console.error('Error fetching buildings:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load buildings';
       } finally {
         this.loading.buildings = false;
@@ -159,7 +158,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return data;
       } catch (error) {
-        console.error('Error adding building:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to add building';
         return null;
       } finally {
@@ -183,7 +181,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error updating building:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update building';
         return false;
       } finally {
@@ -205,7 +202,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error deleting building:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to delete building';
         return false;
       } finally {
@@ -222,7 +218,6 @@ export const useLocationsStore = defineStore('locations', {
         const data = await departmentsApi.getAll();
         this.departments = data || [];
       } catch (error) {
-        console.error('Error fetching departments:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load departments';
       } finally {
         this.loading.departments = false;
@@ -242,7 +237,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return data;
       } catch (error) {
-        console.error('Error adding department:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to add department';
         return null;
       } finally {
@@ -266,7 +260,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error updating department:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update department';
         return false;
       } finally {
@@ -290,7 +283,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error toggling department frequent status:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to toggle frequent status';
         return false;
       } finally {
@@ -310,7 +302,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error deleting department:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to delete department';
         return false;
       } finally {
@@ -334,7 +325,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error updating building sort order:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update building order';
         return false;
       } finally {
@@ -357,7 +347,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error updating department sort order:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update department order';
         return false;
       } finally {
@@ -388,7 +377,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error batch updating building sort orders:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update building orders';
         return false;
       } finally {
@@ -419,7 +407,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error batch updating department sort orders:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update department orders';
         return false;
       } finally {
@@ -436,7 +423,6 @@ export const useLocationsStore = defineStore('locations', {
         const data = await apiRequest('/departments/task-assignments/all');
         this.departmentTaskAssignments = Array.isArray(data) ? data : [];
       } catch (error) {
-        console.error('Error fetching department task assignments:', error);
         this.error = 'Failed to load department task assignments';
         this.departmentTaskAssignments = [];
       } finally {
@@ -470,7 +456,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error updating department task assignment:', error);
         this.error = 'Failed to update department task assignment';
         return false;
       } finally {
@@ -503,7 +488,6 @@ export const useLocationsStore = defineStore('locations', {
         
         return true;
       } catch (error) {
-        console.error('Error removing department task assignment:', error);
         this.error = 'Failed to remove department task assignment';
         return false;
       } finally {

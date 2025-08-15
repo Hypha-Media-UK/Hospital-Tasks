@@ -304,8 +304,6 @@ const openAllocationModal = (porter) => {
 
 // Handle when a porter has been allocated
 const handlePorterAllocated = (allocation) => {
-  console.log('Porter allocated:', allocation);
-  
   // If this was an absence allocation, we need to refresh porter absences
   if (allocation.type === 'absence') {
     shiftsStore.fetchShiftPorterAbsences(props.shiftId);
@@ -487,7 +485,7 @@ const addSelectedPorters = async () => {
     selectedPorters.value = [];
     showPorterSelector.value = false;
   } catch (error) {
-    console.error('Error adding porters to shift:', error);
+    // Error handling without console logging
   } finally {
     addingPorters.value = false;
   }
@@ -557,23 +555,11 @@ const getPorterDutyStatus = (porterId) => {
   // Get the porter from the store
   const porter = staffStore.porters.find(p => p.id === porterId);
   if (!porter) {
-    console.log(`Porter ${porterId} not found`);
     return 'on-duty'; // Default to on duty if porter not found
-  }
-  
-  // Debug logging for AT Porter
-  if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-    console.log('=== AT Porter Debug ===');
-    console.log('Porter data:', porter);
-    console.log('Contracted hours start:', porter.contracted_hours_start);
-    console.log('Contracted hours end:', porter.contracted_hours_end);
   }
   
   // If no contracted hours set, assume porter is on duty
   if (!porter.contracted_hours_start || !porter.contracted_hours_end) {
-    if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-      console.log('AT Porter: No contracted hours set, defaulting to on-duty');
-    }
     return 'on-duty';
   }
   
@@ -587,19 +573,8 @@ const getPorterDutyStatus = (porterId) => {
   const startTimeMinutes = timeToMinutes(porter.contracted_hours_start);
   const endTimeMinutes = timeToMinutes(porter.contracted_hours_end);
   
-  // Debug logging for AT Porter
-  if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-    console.log('Current time:', `${currentHours}:${currentMinutes.toString().padStart(2, '0')} (${currentTimeInMinutes} minutes)`);
-    console.log('Start time:', porter.contracted_hours_start, `(${startTimeMinutes} minutes)`);
-    console.log('End time:', porter.contracted_hours_end, `(${endTimeMinutes} minutes)`);
-    console.log('Is overnight shift?', endTimeMinutes < startTimeMinutes);
-  }
-  
   // Check if current time is within contracted hours
   if (isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes)) {
-    if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-      console.log('AT Porter: Currently on duty');
-    }
     return 'on-duty';
   }
   
@@ -612,18 +587,9 @@ const getPorterDutyStatus = (porterId) => {
       const timeFromEnd = currentTimeInMinutes - endTimeMinutes;
       const timeToStart = startTimeMinutes - currentTimeInMinutes;
       
-      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-        console.log('AT Porter: Overnight shift gap analysis');
-        console.log('Time from end:', timeFromEnd, 'minutes');
-        console.log('Time to start:', timeToStart, 'minutes');
-      }
-      
       // If we're closer to the end time, consider it "off-duty"
       // If we're closer to the start time, consider it "not-yet-on-duty"
       const result = timeFromEnd <= timeToStart ? 'off-duty' : 'not-yet-on-duty';
-      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-        console.log('AT Porter: Overnight shift result:', result);
-      }
       return result;
     }
   } else {
@@ -640,12 +606,6 @@ const getPorterDutyStatus = (porterId) => {
       // Yesterday's end time would be endTimeMinutes, but we need to account for the day boundary
       const timeSinceYesterdayEnd = currentTimeInMinutes + (24 * 60 - endTimeMinutes);
       
-      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-        console.log('AT Porter: Before start time analysis');
-        console.log('Time until today\'s start:', timeUntilStart, 'minutes');
-        console.log('Time since yesterday\'s end:', timeSinceYesterdayEnd, 'minutes');
-      }
-      
       // Use a threshold-based approach:
       // PRIORITIZE upcoming shifts over past shifts
       // If their next shift starts in less than 4 hours, they're "not-yet-on-duty"
@@ -653,45 +613,24 @@ const getPorterDutyStatus = (porterId) => {
       const THRESHOLD_HOURS = 4;
       const THRESHOLD_MINUTES = THRESHOLD_HOURS * 60;
       
-      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-        console.log('AT Porter: Threshold analysis (4 hour threshold)');
-        console.log('Time since yesterday end:', timeSinceYesterdayEnd, 'minutes vs threshold:', THRESHOLD_MINUTES);
-        console.log('Time until today start:', timeUntilStart, 'minutes vs threshold:', THRESHOLD_MINUTES);
-      }
-      
       // FIRST: Check if their next shift starts within the threshold - prioritize upcoming work
       if (timeUntilStart <= THRESHOLD_MINUTES) {
-        if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-          console.log('AT Porter: Next shift starts within 4 hours - not yet on duty');
-        }
         return 'not-yet-on-duty';
       }
       
       // SECOND: If they've been off duty for more than the threshold, they're "off-duty"
       if (timeSinceYesterdayEnd > THRESHOLD_MINUTES) {
-        if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-          console.log('AT Porter: Been off duty for more than 4 hours - off duty');
-        }
         return 'off-duty';
       }
       
       // Fallback: if both conditions don't match, default to off-duty
-      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-        console.log('AT Porter: Fallback case - off duty');
-      }
       return 'off-duty';
     } else if (currentTimeInMinutes > endTimeMinutes) {
-      if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-        console.log('AT Porter: After end time - off duty');
-      }
       return 'off-duty';
     }
   }
   
   // Fallback
-  if (porter.first_name === 'AT' && porter.last_name === 'Porter') {
-    console.log('AT Porter: Fallback to on-duty');
-  }
   return 'on-duty';
 };
 
@@ -823,7 +762,7 @@ onMounted(async () => {
     // Make sure we have support service assignments too
     await shiftsStore.fetchShiftSupportServices(props.shiftId);
   } catch (error) {
-    console.error('Error loading shift data:', error);
+    // Error handling without console logging
   } finally {
     // Delay slightly to ensure computed values update
     setTimeout(() => {

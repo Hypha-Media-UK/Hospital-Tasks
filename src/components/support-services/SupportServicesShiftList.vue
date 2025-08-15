@@ -200,7 +200,6 @@ const loading = computed(() => {
 const serviceAssignments = computed(() => {
   // If we're in shift mode, use shift-specific assignments
   if (isShiftMode.value) {
-    console.log(`Computing service assignments for shift ${props.shiftId}; total: ${shiftsStore.shiftSupportServiceAssignments.length}`);
     return shiftsStore.shiftSupportServiceAssignments.filter(
       assignment => assignment.shift_id === props.shiftId
     );
@@ -248,7 +247,6 @@ const canAddService = computed(() =>
 
 // Load data when component mounts
 onMounted(async () => {
-  console.log(`SupportServicesShiftList mounted for shift ${props.shiftId} with type ${props.shiftType}`);
 
   // Make sure we have all support services loaded
   if (!supportServicesStore.services || !supportServicesStore.services.length) {
@@ -262,39 +260,29 @@ onMounted(async () => {
   
   try {
     if (isShiftMode.value) {
-      console.log(`Loading support service assignments for shift: ${props.shiftId}`);
       // If in shift mode, load support service assignments for this shift
       await shiftsStore.fetchShiftSupportServices(props.shiftId);
       
       // Log the loaded assignments to check if everything is correctly loaded
-      console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
-      console.log(`Filtered for this shift: ${serviceAssignments.value.length}`);
       
       // Check if this is a new shift without assignments yet
       const existingAssignments = shiftsStore.shiftSupportServiceAssignments.filter(a => a.shift_id === props.shiftId);
       if (existingAssignments.length === 0) {
-        console.log('This appears to be a new shift, initializing support services from defaults');
-        console.log(`ShiftID: ${props.shiftId}, ShiftType: ${props.shiftType}`);
         
         // If this is a new shift, we need to initialize the support services from defaults
         await shiftsStore.setupShiftSupportServicesFromDefaults(props.shiftId, props.shiftType);
         
         // Verify it worked by refetching
         await shiftsStore.fetchShiftSupportServices(props.shiftId);
-        console.log(`After initialization, found ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
-        console.log(`Filtered for this shift: ${shiftsStore.shiftSupportServiceAssignments.filter(a => a.shift_id === props.shiftId).length}`);
       }
 
       // Check porter assignments for each service
       if (serviceAssignments.value.length > 0) {
-        console.log('Checking porter assignments for each service');
         serviceAssignments.value.forEach(assignment => {
           const porterAssignments = shiftsStore.getPorterAssignmentsByServiceId(assignment.id);
-          console.log(`Service ${assignment.id} (${assignment.service.name}) has ${porterAssignments.length} porter assignments`);
           
           // Check if service has coverage gaps
           const gaps = shiftsStore.getServiceCoverageGaps(assignment.id);
-          console.log(`Service ${assignment.id} coverage gaps:`, gaps);
         });
       }
     } else {
@@ -302,7 +290,6 @@ onMounted(async () => {
       await supportServicesStore.ensureAssignmentsLoaded(props.shiftType);
     }
   } catch (error) {
-    console.error('Error loading service assignments:', error);
   }
   
   // Set default times based on shift type
@@ -383,7 +370,6 @@ async function addService() {
     addServiceForm.value.serviceId = '';
     showAddServiceModal.value = false;
   } catch (error) {
-    console.error('Error adding service assignment:', error);
   } finally {
     isSubmitting.value = false;
   }
@@ -413,7 +399,6 @@ async function updateAssignment(assignmentId, updates) {
     showEditModal.value = false;
     selectedAssignment.value = null;
   } catch (error) {
-    console.error('Error updating assignment:', error);
   }
 }
 
@@ -434,7 +419,6 @@ async function confirmRemove(assignmentId) {
       showEditModal.value = false;
       selectedAssignment.value = null;
     } catch (error) {
-      console.error('Error removing assignment:', error);
     }
   }
 }

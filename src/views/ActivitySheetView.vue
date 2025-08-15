@@ -196,7 +196,6 @@ onMounted(async () => {
       await settingsStore.loadSettings();
     }
   } catch (err) {
-    console.error('Error loading activity sheet data:', err);
     error.value = 'Failed to load activity sheet data. Please try again.';
   } finally {
     loading.value = false;
@@ -281,23 +280,17 @@ const uniqueTaskTypes = computed(() => {
 
 // Debug log to track when porterActivity is recalculated
 const debug = (msg, data) => {
-  console.log(`[PorterActivity] ${msg}`, data);
+  // Debug logging removed for production
 };
 
 // Porter activity summary - tracks porters and their task counts
 const porterActivity = computed(() => {
   // If required data isn't loaded yet, return empty array
   if (!tasks.value || !shiftsStore.shiftPorterPool) {
-    debug("Missing required data", { tasks: !!tasks.value, porterPool: !!shiftsStore.shiftPorterPool });
     return [];
   }
   
   try {
-    debug("Calculating porterActivity", { 
-      taskCount: tasks.value.length, 
-      poolSize: shiftsStore.shiftPorterPool.length,
-      areaCoverCount: shiftsStore.shiftAreaCoverPorterAssignments?.length || 0
-    });
     
     // Track porter task counts and department assignments
     const porterData = new Map();
@@ -383,14 +376,8 @@ const porterActivity = computed(() => {
     const result = Array.from(porterData.values());
     const sortedResult = result.sort((a, b) => b.taskCount - a.taskCount);
     
-    debug("Porter activity result", { 
-      porterCount: sortedResult.length,
-      poolPorters: sortedResult.filter(p => p.inPool).length
-    });
-    
     return sortedResult;
   } catch (error) {
-    console.error('Error generating porter activity data:', error);
     return []; // Return empty array on error
   }
 });
@@ -536,7 +523,6 @@ function exportToExcel() {
     // Write to file and trigger download
     XLSX.writeFile(workbook, filename);
   } catch (err) {
-    console.error('Error exporting to Excel:', err);
     alert('Failed to export to Excel. Please try again.');
   }
 }
@@ -577,7 +563,6 @@ function formatTime(timeString) {
         });
       }
     } catch (e) {
-      console.error('Error formatting time:', e);
       return timeString || '-';
     }
   }
@@ -609,7 +594,6 @@ function createTimeDate(timeStr) {
     
     return null; // Invalid format
   } catch (e) {
-    console.error('Error creating date object:', e);
     return null;
   }
 }
@@ -627,7 +611,6 @@ function calculateDuration(task) {
     
     // Verify both dates are valid
     if (!startTime || !endTime) {
-      console.warn('Invalid time format for task:', task.id);
       return '-';
     }
     
@@ -649,7 +632,6 @@ function calculateDuration(task) {
       return `${hours}h ${minutes}m`;
     }
   } catch (e) {
-    console.error('Error calculating duration:', e, task);
     return '-';
   }
 }

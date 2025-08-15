@@ -242,7 +242,6 @@ function formatTime(timeString) {
         });
       }
     } catch (e) {
-      console.error('Error formatting time:', e);
       return timeString || '-';
     }
   }
@@ -277,7 +276,6 @@ function calculateDuration(task) {
       return `${hours}h ${minutes}m`;
     }
   } catch (e) {
-    console.error('Error calculating duration:', e);
     return '-';
   }
 }

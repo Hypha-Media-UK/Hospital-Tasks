@@ -471,7 +471,6 @@ const saveAllChanges = async () => {
     // Close the modal
     closeModal();
   } catch (error) {
-    console.error('Error saving changes:', error);
     alert('Failed to save changes. Please try again.');
   }
 };

@@ -83,7 +83,6 @@ async function submitForm() {
     }
   } catch (err) {
     error.value = 'Failed to add service. Please try again.';
-    console.error('Error adding service:', err);
   } finally {
     submitting.value = false;
   }

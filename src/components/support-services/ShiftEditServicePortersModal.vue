@@ -392,7 +392,6 @@ const savePorterAssignment = async () => {
     
     closePorterModal();
   } catch (error) {
-    console.error('Error saving porter assignment:', error);
   } finally {
     savingPorter.value = false;
   }

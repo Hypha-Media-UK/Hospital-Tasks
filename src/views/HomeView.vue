@@ -494,7 +494,6 @@ async function createShift(baseShiftType) {
     // Get the full shift type (week_day, weekend_night, etc.)
     const completeShiftType = fullShiftType.value;
     
-    console.log(`Creating new shift: type=${completeShiftType}, date=${selectedDate.value}`);
     
     // Create a date object for the selected date with current time
     const selectedDateObj = new Date(selectedDate.value);
@@ -522,7 +521,6 @@ async function createShift(baseShiftType) {
       error.value = 'Failed to create shift';
     }
   } catch (err) {
-    console.error('Error creating shift:', err);
     error.value = 'An unexpected error occurred';
   } finally {
     creating.value = false;
@@ -867,10 +865,8 @@ async function exportSelectedShifts() {
     // Export the file
     XLSX.writeFile(workbook, filename);
     
-    console.log(`Exported ${selectedShifts.value.length} shifts to ${filename}`);
   } catch (error) {
-    console.error('Error exporting shifts:', error);
-    alert('Failed to export shifts. See console for details.');
+    alert('Failed to export shifts. Please try again.');
   }
 }
 

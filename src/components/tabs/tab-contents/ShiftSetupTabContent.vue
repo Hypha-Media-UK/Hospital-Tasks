@@ -194,11 +194,9 @@ async function duplicateShift() {
       }, 5000);
     } else {
       // Show error in the UI instead of an alert
-      console.error('Failed to duplicate shift:', shiftsStore.error);
       alert('Failed to duplicate shift: ' + (shiftsStore.error || 'Unknown error'));
     }
   } catch (error) {
-    console.error('Error duplicating shift:', error);
     alert('Error duplicating shift: ' + error.message);
   } finally {
     duplicating.value = false;

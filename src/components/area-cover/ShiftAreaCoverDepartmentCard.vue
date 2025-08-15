@@ -129,7 +129,6 @@ const isPoolPorter = (porterId) => {
 // Get porter assignments for this area
 const porterAssignments = computed(() => {
   const assignments = shiftsStore.getPorterAssignmentsByAreaId(props.assignment.id);
-  console.log(`Area ${props.assignment.department.name} porter assignments:`, assignments);
   return assignments;
 });
 

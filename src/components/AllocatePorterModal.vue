@@ -374,7 +374,6 @@ const allocatePorter = async () => {
     // Close modal on success
     closeModal();
   } catch (error) {
-    console.error('Error allocating porter:', error);
     alert('Failed to allocate porter: ' + (error.message || 'Unknown error'));
   } finally {
     processing.value = false;
@@ -398,7 +397,6 @@ const formatTime = (timeString) => {
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   } catch (e) {
-    console.error('Error formatting time:', e);
     return timeString; // Return original if parsing fails
   }
 };

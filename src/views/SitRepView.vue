@@ -523,7 +523,6 @@ const getPorterGanttBlocks = (porterId) => {
   }
   
   // DEBUG: Log porter assignment processing
-  console.log(`=== Processing Gantt blocks for porter ${porterId} (${porter.first_name} ${porter.last_name}) ===`);
   
   const totalHours = timelineHours.value.length;
   const shiftStartHour = timelineHours.value[0].hour;
@@ -574,8 +573,6 @@ const getPorterGanttBlocks = (porterId) => {
   const departmentAssignments = shiftsStore.shiftAreaCoverPorterAssignments?.filter(a => a.porter_id === porterId) || [];
   const serviceAssignments = shiftsStore.shiftSupportServicePorterAssignments?.filter(a => a.porter_id === porterId) || [];
   
-  console.log(`Found ${departmentAssignments.length} department assignments for porter ${porterId}:`, departmentAssignments);
-  console.log(`Found ${serviceAssignments.length} service assignments for porter ${porterId}:`, serviceAssignments);
   
   // Process department assignments
   departmentAssignments.forEach((assignment, index) => {
@@ -584,7 +581,6 @@ const getPorterGanttBlocks = (porterId) => {
       const startHour = parseInt(assignment.start_time.split(':')[0]);
       const endHour = parseInt(assignment.end_time.split(':')[0]);
       
-      console.log(`Processing department assignment: ${assignment.start_time} - ${assignment.end_time} (hours ${startHour} - ${endHour})`);
       
       // Mark all hours in this assignment range
       timelineSlots.forEach(slot => {
@@ -594,11 +590,9 @@ const getPorterGanttBlocks = (porterId) => {
           slot.tooltip = `${slot.label}: ${assignment.start_time.substring(0, 5)} - ${assignment.end_time.substring(0, 5)}`;
           slot.priority = 5;
           slot.assignmentType = 'department';
-          console.log(`Marked hour ${slot.hour} as allocated to ${slot.label}`);
         }
       });
     } else {
-      console.warn(`No matching area cover found for assignment ID ${assignment.shift_area_cover_assignment_id}`);
     }
   });
   
@@ -609,7 +603,6 @@ const getPorterGanttBlocks = (porterId) => {
       const startHour = parseInt(assignment.start_time.split(':')[0]);
       const endHour = parseInt(assignment.end_time.split(':')[0]);
       
-      console.log(`Processing service assignment: ${assignment.start_time} - ${assignment.end_time} (hours ${startHour} - ${endHour})`);
       
       // Mark all hours in this assignment range
       timelineSlots.forEach(slot => {
@@ -619,11 +612,9 @@ const getPorterGanttBlocks = (porterId) => {
           slot.tooltip = `${slot.label}: ${assignment.start_time.substring(0, 5)} - ${assignment.end_time.substring(0, 5)}`;
           slot.priority = 5;
           slot.assignmentType = 'service';
-          console.log(`Marked hour ${slot.hour} as allocated to ${slot.label}`);
         }
       });
     } else {
-      console.warn(`No matching service found for assignment ID ${assignment.shift_support_service_assignment_id}`);
     }
   });
   
@@ -633,13 +624,11 @@ const getPorterGanttBlocks = (porterId) => {
     ...(historicalAbsences.value?.filter(a => a.porter_id === porterId) || [])
   ];
   
-  console.log(`Found ${porterAbsences.length} absences for porter ${porterId}:`, porterAbsences);
   
   porterAbsences.forEach((absence, index) => {
     const startHour = parseInt(absence.start_time.split(':')[0]);
     const endHour = parseInt(absence.end_time.split(':')[0]);
     
-    console.log(`Processing absence: ${absence.start_time} - ${absence.end_time} (hours ${startHour} - ${endHour})`);
     
     // Mark all hours in this absence range (highest priority)
     timelineSlots.forEach(slot => {
@@ -648,7 +637,6 @@ const getPorterGanttBlocks = (porterId) => {
         slot.label = 'Absent';
         slot.tooltip = `Absent: ${absence.start_time.substring(0, 5)} - ${absence.end_time.substring(0, 5)}${absence.absence_reason ? ` (${absence.absence_reason})` : ''}`;
         slot.priority = 1; // Highest priority
-        console.log(`Marked hour ${slot.hour} as absent`);
       }
     });
   });
@@ -722,7 +710,6 @@ const getPorterGanttBlocks = (porterId) => {
     }
   }
   
-  console.log(`Generated ${blocks.length} blocks for porter ${porterId}:`, blocks);
   
   return blocks;
 };
@@ -759,10 +746,8 @@ const historicalAbsences = ref([]);
 const fetchHistoricalAbsences = async () => {
   try {
     // TODO: Implement absences API endpoint
-    console.log('Historical absences API not yet implemented');
     historicalAbsences.value = [];
   } catch (error) {
-    console.error('Error in fetchHistoricalAbsences:', error);
   }
 };
 
@@ -773,10 +758,8 @@ const loadShiftData = async () => {
     const shiftData = await shiftsStore.fetchShiftById(shiftId.value);
     if (shiftData) {
       shift.value = shiftData;
-      console.log('Loaded shift data:', shiftData);
     }
   } catch (error) {
-    console.error('Error in loadShiftData:', error);
   }
 };
 
@@ -790,7 +773,6 @@ const updateHourWidth = () => {
 
 // Load required data on mount
 onMounted(async () => {
-  console.log('SitRep view mounting - loading data...');
   
   // Load shift data first
   await loadShiftData();
@@ -800,65 +782,41 @@ onMounted(async () => {
   
   // CRITICAL: Load porters FIRST before anything else that depends on porter data
   if (!staffStore.porters.length) {
-    console.log('Loading porters...');
     await staffStore.fetchPorters();
-    console.log(`Loaded ${staffStore.porters.length} porters`);
   }
   
   // Load locations for building assignments
   if (!locationsStore.buildings.length) {
-    console.log('Loading locations...');
     await locationsStore.fetchBuildings();
-    console.log(`Loaded ${locationsStore.buildings.length} buildings`);
   }
   
   if (!shiftsStore.shiftPorterPool.length) {
-    console.log('Loading shift porter pool...');
     await shiftsStore.fetchShiftPorterPool(shiftId.value);
-    console.log(`Loaded ${shiftsStore.shiftPorterPool.length} porters in pool`);
   }
   
   if (!shiftsStore.shiftAreaCoverAssignments.length) {
-    console.log('Loading area cover assignments...');
     await shiftsStore.fetchShiftAreaCover(shiftId.value);
-    console.log(`Loaded ${shiftsStore.shiftAreaCoverAssignments.length} area cover assignments`);
     
     // DEBUG: Log the area cover assignments data
-    console.log('Area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
-    console.log('Area cover porter assignments:', shiftsStore.shiftAreaCoverPorterAssignments);
   }
   
   if (!shiftsStore.shiftSupportServiceAssignments.length) {
-    console.log('Loading support service assignments...');
     await shiftsStore.fetchShiftSupportServices(shiftId.value);
-    console.log(`Loaded ${shiftsStore.shiftSupportServiceAssignments.length} support service assignments`);
     
     // DEBUG: Log the support service assignments data
-    console.log('Support service assignments:', shiftsStore.shiftSupportServiceAssignments);
-    console.log('Support service porter assignments:', shiftsStore.shiftSupportServicePorterAssignments);
   }
   
   // Fetch historical absences specifically for SitRep
-  console.log('Loading historical absences...');
   await fetchHistoricalAbsences();
   
   // Load porter-building assignments for this shift
-  console.log('Loading porter-building assignments...');
   await shiftsStore.fetchShiftPorterBuildingAssignments(shiftId.value);
-  console.log(`Loaded porter-building assignments for shift ${shiftId.value}`);
   
   // Set CSS custom property for hour width based on timeline length
   updateHourWidth();
   
-  console.log('SitRep view data loading complete');
   
   // DEBUG: Final data state check
-  console.log('=== FINAL DATA STATE ===');
-  console.log('Shift porter pool:', shiftsStore.shiftPorterPool);
-  console.log('Area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
-  console.log('Area cover porter assignments:', shiftsStore.shiftAreaCoverPorterAssignments);
-  console.log('Support service assignments:', shiftsStore.shiftSupportServiceAssignments);
-  console.log('Support service porter assignments:', shiftsStore.shiftSupportServicePorterAssignments);
 });
 
 // Watch for timeline changes and update hour width

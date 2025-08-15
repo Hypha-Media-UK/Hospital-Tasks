@@ -292,17 +292,14 @@ const nightShiftBgColor = computed(() => {
 onMounted(async () => {
   loading.value = true;
   try {
-    console.log('Loading archived shifts...');
     await Promise.all([
       shiftsStore.fetchArchivedShifts(),
       settingsStore.loadSettings()
     ]);
-    console.log(`Loaded ${shiftsStore.archivedShifts.length} archived shifts`);
     
     // Fetch task counts for all archived shifts
     await shiftsStore.fetchArchivedShiftTaskCounts();
   } catch (error) {
-    console.error('Error loading archived shifts:', error);
   } finally {
     loading.value = false;
   }

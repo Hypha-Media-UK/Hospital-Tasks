@@ -25,6 +25,5 @@ const shiftsStore = useShiftsStore();
 
 // Load settings first, then initialize other stores
 settingsStore.loadSettings().then(() => {
-  console.log('Settings loaded, timezone:', settingsStore.appSettings.timezone);
   shiftsStore.initialize();
 });

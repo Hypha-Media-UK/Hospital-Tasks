@@ -81,13 +81,11 @@ export function convertToUserTimezone(date) {
     
     // Verify the date is valid
     if (isNaN(adjustedDate.getTime())) {
-      console.warn(`Failed to parse timezone-adjusted date: ${timeInTimezone}, falling back to original date`);
       return inputDate;
     }
     
     return adjustedDate;
   } catch (error) {
-    console.warn(`Invalid timezone: ${timezone}, falling back to original date`, error);
     return inputDate;
   }
 }
@@ -204,14 +202,15 @@ export function createShiftStartDateTime(shiftDate, shiftType) {
   const shiftDefaults = settingsStore.shiftDefaultsByType[shiftType];
   
   if (!shiftDefaults || !shiftDefaults.start_time) {
-    console.warn(`No shift defaults found for type: ${shiftType}`);
     return null;
   }
   
   // Get the base date (either from shift_date or start_time)
   const baseDate = new Date(shiftDate);
   if (isNaN(baseDate.getTime())) {
-    console.warn('Invalid shift date:', shiftDate);
+    return null;
+  }
+  if (isNaN(baseDate.getTime())) {
     return null;
   }
   
@@ -238,14 +237,12 @@ export function createShiftEndDateTime(shiftDate, shiftType) {
   const shiftDefaults = settingsStore.shiftDefaultsByType[shiftType];
   
   if (!shiftDefaults || !shiftDefaults.end_time) {
-    console.warn(`No shift defaults found for type: ${shiftType}`);
     return null;
   }
   
   // Get the base date (either from shift_date or start_time)
   const baseDate = new Date(shiftDate);
   if (isNaN(baseDate.getTime())) {
-    console.warn('Invalid shift date:', shiftDate);
     return null;
   }
   
@@ -283,7 +280,6 @@ export function isShiftAccessible(shiftDate, shiftType) {
   const shiftEnd = createShiftEndDateTime(shiftDate, shiftType);
   
   if (!shiftStart || !shiftEnd) {
-    console.warn('Could not determine shift times for accessibility check');
     return false;
   }
   
@@ -292,14 +288,6 @@ export function isShiftAccessible(shiftDate, shiftType) {
   
   // Check if current time is within the access window
   const isAccessible = now >= accessStart && now <= shiftEnd;
-  
-  console.log(`Shift accessibility check:`, {
-    now: now.toISOString(),
-    shiftStart: shiftStart.toISOString(),
-    shiftEnd: shiftEnd.toISOString(),
-    accessStart: accessStart.toISOString(),
-    isAccessible
-  });
   
   return isAccessible;
 }
@@ -330,7 +318,6 @@ export function isShiftInSetupMode(shiftDate, shiftType) {
   const shiftStart = createShiftStartDateTime(shiftDate, shiftType);
   
   if (!shiftStart) {
-    console.warn('Could not determine shift start time for setup mode check');
     return false;
   }
   

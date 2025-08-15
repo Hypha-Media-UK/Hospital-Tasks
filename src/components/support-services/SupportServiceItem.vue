@@ -162,12 +162,10 @@ const porterAssignments = computed(() => {
   if (isShiftAssignment.value) {
     // Use the shiftsStore getter for shift-specific assignments
     const assignments = shiftsStore.getPorterAssignmentsByServiceId(props.assignment.id);
-    console.log(`Service ${serviceData.value.name} porter assignments:`, assignments);
     return Array.isArray(assignments) ? assignments : [];
   } else {
     // Use the supportServicesStore getter for default settings
     const assignments = supportServicesStore.getPorterAssignmentsByServiceId(props.assignment.id);
-    console.log(`Service ${serviceData.value.name} porter assignments:`, assignments);
     return Array.isArray(assignments) ? assignments : [];
   }
 });
@@ -277,7 +275,6 @@ const hasCoverageGap = computed(() => {
       // This is the key issue - we need to directly use the getter function
       // Using methods and getters differently in Pinia
       const gaps = shiftsStore.getServiceCoverageGaps(props.assignment.id);
-      console.log(`Service ${props.assignment.id} coverage gaps:`, gaps);
       return gaps.hasGap;
     } else {
       return supportServicesStore.hasCoverageGap ? 
@@ -285,7 +282,6 @@ const hasCoverageGap = computed(() => {
         false;
     }
   } catch (error) {
-    console.error('Error checking coverage gap:', error);
     return false;
   }
 });
@@ -300,7 +296,6 @@ const hasStaffingShortage = computed(() => {
       return supportServicesStore.hasStaffingShortage(props.assignment.id);
     }
   } catch (error) {
-    console.error('Error checking staffing shortage:', error);
     return false;
   }
 });
@@ -328,7 +323,6 @@ const coverageGaps = computed(() => {
         { hasGap: false, gaps: [] };
     }
   } catch (error) {
-    console.error('Error getting coverage gaps:', error);
     return { hasGap: false, gaps: [] };
   }
 });
@@ -377,8 +371,6 @@ const getGapsBetweenAssignments = (current, next) => {
   const nextStart = timeToMinutes(next.start_time);
   
   if (nextStart > currentEnd) {
-    console.log(`Checking gap between ${current.end_time} and ${next.start_time}`);
-    console.log('Coverage gaps object:', coverageGaps.value);
     
     // Make sure coverageGaps.value.gaps exists and is an array
     if (coverageGaps.value && Array.isArray(coverageGaps.value.gaps)) {
@@ -387,21 +379,17 @@ const getGapsBetweenAssignments = (current, next) => {
         const gapStart = timeToMinutes(gap.startTime);
         const gapEnd = timeToMinutes(gap.endTime);
         
-        console.log(`Comparing gap: ${gap.startTime} - ${gap.endTime}`);
         
         // If this gap matches the one between these assignments
         if (Math.abs(gapStart - currentEnd) < 5 && Math.abs(gapEnd - nextStart) < 5) {
-          console.log('Found matching gap!');
           gaps.push(gap);
         }
       });
     } else {
-      console.log('No gaps array found in coverageGaps.value');
     }
     
     // If no coverage gap found, but there's still a time gap, add a generic one
     if (gaps.length === 0) {
-      console.log('Adding generic gap');
       gaps.push({
         startTime: current.end_time,
         endTime: next.start_time,

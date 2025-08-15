@@ -101,7 +101,6 @@ export const useSettingsStore = defineStore('settings', {
           time_format: '24h'
         };
       } catch (error) {
-        console.error('Error fetching app settings:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load app settings';
       } finally {
         this.loading.appSettings = false;
@@ -121,7 +120,6 @@ export const useSettingsStore = defineStore('settings', {
         
         return true;
       } catch (error) {
-        console.error('Error updating app settings:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update app settings';
         return false;
       } finally {
@@ -152,7 +150,6 @@ export const useSettingsStore = defineStore('settings', {
         const data = await settingsApi.getShiftDefaults();
         this.shiftDefaults = data || [];
       } catch (error) {
-        console.error('Error fetching shift defaults:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load shift defaults';
       } finally {
         this.loading.shiftDefaults = false;
@@ -175,7 +172,6 @@ export const useSettingsStore = defineStore('settings', {
         
         return true;
       } catch (error) {
-        console.error('Error updating shift default:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to update shift default';
         return false;
       } finally {
@@ -196,7 +192,6 @@ export const useSettingsStore = defineStore('settings', {
         
         return data;
       } catch (error) {
-        console.error('Error creating shift default:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to create shift default';
         return null;
       } finally {
@@ -216,7 +211,6 @@ export const useSettingsStore = defineStore('settings', {
         
         return true;
       } catch (error) {
-        console.error('Error deleting shift default:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to delete shift default';
         return false;
       } finally {

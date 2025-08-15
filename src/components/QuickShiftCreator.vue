@@ -363,7 +363,6 @@ async function createShift(shiftType) {
       throw new Error('Failed to create shift');
     }
   } catch (err) {
-    console.error('Error creating shift:', err);
     error.value = err.message || 'Failed to create shift';
   } finally {
     creating.value = false;

@@ -173,7 +173,6 @@ export const useShiftsStore = defineStore('shifts', {
 
         return false;
       } catch (error) {
-        console.error('Error in hasAreaCoverageGap:', error);
         return false;
       }
     },
@@ -229,7 +228,6 @@ export const useShiftsStore = defineStore('shifts', {
 
         return false;
       } catch (error) {
-        console.error('Error in hasServiceCoverageGap:', error);
         return false;
       }
     },
@@ -262,7 +260,6 @@ export const useShiftsStore = defineStore('shifts', {
         // For now, simplified gap detection - assume no gaps if porters are assigned
         return { hasGap: false, gaps: [] };
       } catch (error) {
-        console.error('Error in getServiceCoverageGaps:', error);
         return { hasGap: false, gaps: [] };
       }
     },
@@ -283,7 +280,6 @@ export const useShiftsStore = defineStore('shifts', {
         // Return true if we have porters but not enough to meet minimum requirement
         return actualPorters > 0 && actualPorters < minimumPorters;
       } catch (error) {
-        console.error('Error in hasAreaStaffingShortage:', error);
         return false;
       }
     },
@@ -316,7 +312,6 @@ export const useShiftsStore = defineStore('shifts', {
         // For now, simplified gap detection - assume no gaps if porters are assigned
         return { hasGap: false, gaps: [] };
       } catch (error) {
-        console.error('Error in getAreaCoverageGaps:', error);
         return { hasGap: false, gaps: [] };
       }
     },
@@ -350,7 +345,6 @@ export const useShiftsStore = defineStore('shifts', {
 
         return { hasShortage: false, shortages: [] };
       } catch (error) {
-        console.error('Error in getAreaStaffingShortages:', error);
         return { hasShortage: false, shortages: [] };
       }
     },
@@ -363,7 +357,6 @@ export const useShiftsStore = defineStore('shifts', {
     // Check if a porter is assigned to a specific building
     isPorterAssignedToBuilding: () => (porterId, buildingId) => {
       // For now, return false as a placeholder since building assignments aren't fully implemented
-      console.log(`Checking if porter ${porterId} is assigned to building ${buildingId} - not yet implemented`);
       return false;
     },
 
@@ -374,7 +367,6 @@ export const useShiftsStore = defineStore('shifts', {
       try {
         return checkShiftSetupMode(shift.start_time, shift.shift_type);
       } catch (error) {
-        console.error('Error checking if shift is in setup mode:', error);
         return false;
       }
     }
@@ -390,7 +382,6 @@ export const useShiftsStore = defineStore('shifts', {
         const data = await shiftsApi.getAll({ is_active: true });
         this.activeShifts = data || [];
       } catch (error) {
-        console.error('Error fetching active shifts:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load active shifts';
       } finally {
         this.loading.activeShifts = false;
@@ -406,7 +397,6 @@ export const useShiftsStore = defineStore('shifts', {
         const data = await shiftsApi.getAll({ is_active: false });
         this.archivedShifts = data || [];
       } catch (error) {
-        console.error('Error fetching archived shifts:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load archived shifts';
       } finally {
         this.loading.archivedShifts = false;
@@ -782,7 +772,6 @@ export const useShiftsStore = defineStore('shifts', {
     async fetchShiftPorterBuildingAssignments(shiftId) {
       // Placeholder method for porter building assignments
       // This would need to be implemented when the corresponding API endpoint is available
-      console.log(`fetchShiftPorterBuildingAssignments called for shift ${shiftId} - not yet implemented`);
       return [];
     },
     

@@ -69,7 +69,6 @@ async function apiRequest(endpoint, options = {}) {
     }
     
     // Network or other errors
-    console.error('API request failed:', error);
     throw new ApiError('Network error or server unavailable', 0, null);
   }
 }
@@ -650,7 +649,6 @@ export const tasksApi = {
 
 // Legacy compatibility function for existing code
 export async function fetchData(table, filters = {}) {
-  console.warn('fetchData is deprecated. Use specific API methods instead.');
   
   switch (table) {
     case 'staff':
