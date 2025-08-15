@@ -779,4 +779,224 @@ router.delete('/:id/porter-pool/:porterId', async (req: Request, res: Response):
   }
 });
 
+// POST /api/shifts/:id/area-cover/:areaCoverId/porter-assignments - Add porter to area cover assignment
+router.post('/:id/area-cover/:areaCoverId/porter-assignments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId, areaCoverId } = req.params;
+    const { porter_id, start_time, end_time } = req.body;
+
+    if (!porter_id || !start_time || !end_time) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'porter_id, start_time, and end_time are required'
+      });
+      return;
+    }
+
+    // Verify the area cover assignment exists and belongs to this shift
+    const areaCoverAssignment = await prisma.shift_area_cover_assignments.findFirst({
+      where: {
+        id: areaCoverId,
+        shift_id: shiftId
+      }
+    });
+
+    if (!areaCoverAssignment) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Area cover assignment not found for this shift'
+      });
+      return;
+    }
+
+    // Verify porter exists
+    const porter = await prisma.staff.findUnique({
+      where: { id: porter_id }
+    });
+
+    if (!porter) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Porter not found'
+      });
+      return;
+    }
+
+    // Parse time strings to create proper datetime objects
+    // We'll use a base date and just set the time portion
+    const baseDate = new Date();
+    baseDate.setHours(0, 0, 0, 0);
+    
+    const [startHours, startMinutes] = start_time.split(':').map(Number);
+    const [endHours, endMinutes] = end_time.split(':').map(Number);
+    
+    const startDateTime = new Date(baseDate);
+    startDateTime.setHours(startHours, startMinutes, 0, 0);
+    
+    const endDateTime = new Date(baseDate);
+    endDateTime.setHours(endHours, endMinutes, 0, 0);
+
+    const porterAssignment = await prisma.shift_area_cover_porter_assignments.create({
+      data: {
+        shift_area_cover_assignment_id: areaCoverId,
+        porter_id: porter_id,
+        start_time: startDateTime,
+        end_time: endDateTime
+      },
+      include: {
+        staff: true
+      }
+    });
+
+    // Transform the response to match expected format
+    const transformedAssignment = {
+      id: porterAssignment.id,
+      shift_area_cover_assignment_id: porterAssignment.shift_area_cover_assignment_id,
+      porter_id: porterAssignment.porter_id,
+      start_time: porterAssignment.start_time 
+        ? porterAssignment.start_time.toISOString().substring(11, 16) 
+        : null,
+      end_time: porterAssignment.end_time 
+        ? porterAssignment.end_time.toISOString().substring(11, 16) 
+        : null,
+      porter: {
+        id: porterAssignment.staff.id,
+        first_name: porterAssignment.staff.first_name,
+        last_name: porterAssignment.staff.last_name,
+        role: porterAssignment.staff.role
+      }
+    };
+
+    res.status(201).json(transformedAssignment);
+  } catch (error) {
+    console.error('Error adding porter to area cover assignment:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to add porter to area cover assignment'
+    });
+  }
+});
+
+// PUT /api/shifts/:id/area-cover/porter-assignments/:assignmentId - Update porter assignment
+router.put('/:id/area-cover/porter-assignments/:assignmentId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId, assignmentId } = req.params;
+    const { start_time, end_time } = req.body;
+
+    if (!start_time || !end_time) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'start_time and end_time are required'
+      });
+      return;
+    }
+
+    // Verify the porter assignment exists and belongs to this shift
+    const existingAssignment = await prisma.shift_area_cover_porter_assignments.findFirst({
+      where: {
+        id: assignmentId,
+        shift_area_cover_assignments: {
+          shift_id: shiftId
+        }
+      }
+    });
+
+    if (!existingAssignment) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Porter assignment not found for this shift'
+      });
+      return;
+    }
+
+    // Parse time strings to create proper datetime objects
+    const baseDate = new Date();
+    baseDate.setHours(0, 0, 0, 0);
+    
+    const [startHours, startMinutes] = start_time.split(':').map(Number);
+    const [endHours, endMinutes] = end_time.split(':').map(Number);
+    
+    const startDateTime = new Date(baseDate);
+    startDateTime.setHours(startHours, startMinutes, 0, 0);
+    
+    const endDateTime = new Date(baseDate);
+    endDateTime.setHours(endHours, endMinutes, 0, 0);
+
+    const updatedAssignment = await prisma.shift_area_cover_porter_assignments.update({
+      where: { id: assignmentId },
+      data: {
+        start_time: startDateTime,
+        end_time: endDateTime
+      },
+      include: {
+        staff: true
+      }
+    });
+
+    // Transform the response to match expected format
+    const transformedAssignment = {
+      id: updatedAssignment.id,
+      shift_area_cover_assignment_id: updatedAssignment.shift_area_cover_assignment_id,
+      porter_id: updatedAssignment.porter_id,
+      start_time: updatedAssignment.start_time 
+        ? updatedAssignment.start_time.toISOString().substring(11, 16) 
+        : null,
+      end_time: updatedAssignment.end_time 
+        ? updatedAssignment.end_time.toISOString().substring(11, 16) 
+        : null,
+      porter: {
+        id: updatedAssignment.staff.id,
+        first_name: updatedAssignment.staff.first_name,
+        last_name: updatedAssignment.staff.last_name,
+        role: updatedAssignment.staff.role
+      }
+    };
+
+    res.json(transformedAssignment);
+  } catch (error) {
+    console.error('Error updating porter assignment:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to update porter assignment'
+    });
+  }
+});
+
+// DELETE /api/shifts/:id/area-cover/porter-assignments/:assignmentId - Remove porter from area cover assignment
+router.delete('/:id/area-cover/porter-assignments/:assignmentId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId, assignmentId } = req.params;
+
+    // Verify the porter assignment exists and belongs to this shift
+    const existingAssignment = await prisma.shift_area_cover_porter_assignments.findFirst({
+      where: {
+        id: assignmentId,
+        shift_area_cover_assignments: {
+          shift_id: shiftId
+        }
+      }
+    });
+
+    if (!existingAssignment) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Porter assignment not found for this shift'
+      });
+      return;
+    }
+
+    await prisma.shift_area_cover_porter_assignments.delete({
+      where: { id: assignmentId }
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error removing porter from area cover assignment:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to remove porter from area cover assignment'
+    });
+  }
+});
+
 export default router;

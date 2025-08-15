@@ -599,6 +599,27 @@ export const shiftsApi = {
     return apiRequest(`/shifts/${id}/porter-pool/${porterId}`, {
       method: 'DELETE'
     });
+  },
+
+  // Area cover porter assignment endpoints
+  async addAreaCoverPorter(shiftId, areaCoverId, porterData) {
+    return apiRequest(`/shifts/${shiftId}/area-cover/${areaCoverId}/porter-assignments`, {
+      method: 'POST',
+      body: JSON.stringify(porterData)
+    });
+  },
+
+  async updateAreaCoverPorter(shiftId, assignmentId, updates) {
+    return apiRequest(`/shifts/${shiftId}/area-cover/porter-assignments/${assignmentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+  },
+
+  async removeAreaCoverPorter(shiftId, assignmentId) {
+    return apiRequest(`/shifts/${shiftId}/area-cover/porter-assignments/${assignmentId}`, {
+      method: 'DELETE'
+    });
   }
 };
 
