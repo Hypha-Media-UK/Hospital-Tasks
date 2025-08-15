@@ -62,6 +62,14 @@
           <div class="tab-content">
             <!-- Department Tab -->
             <div v-if="activeTab === 'department'" class="tab-pane">
+              <!-- Debug Info -->
+              <div style="background: #f0f0f0; padding: 8px; margin-bottom: 16px; font-size: 12px;">
+                <div><strong>Debug Info:</strong></div>
+                <div>departmentId: {{ departmentId }}</div>
+                <div>availableDepartments.length: {{ availableDepartments.length }}</div>
+                <div>availableDepartments: {{ availableDepartments.map(d => d.name).join(', ') }}</div>
+              </div>
+              
               <div class="form-group">
                 <label for="departmentSelect">Department</label>
                 <select 
@@ -75,6 +83,12 @@
                     {{ dept.name }}
                   </option>
                 </select>
+                <!-- Additional debug to see what's happening -->
+                <div style="font-size: 10px; color: #666; margin-top: 4px;">
+                  Current departmentId: {{ departmentId }}<br>
+                  Available options: {{ availableDepartments.length }}<br>
+                  Selected dept: {{ availableDepartments.find(d => d.id === departmentId)?.name || 'None' }}
+                </div>
               </div>
               
               <div class="time-fields">
@@ -87,6 +101,9 @@
                     class="form-control"
                     :disabled="processing"
                   />
+                  <div style="font-size: 10px; color: #666;">
+                    departmentStartTime: {{ departmentStartTime }}
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="departmentEndTime">End Time</label>
@@ -97,6 +114,9 @@
                     class="form-control"
                     :disabled="processing"
                   />
+                  <div style="font-size: 10px; color: #666;">
+                    departmentEndTime: {{ departmentEndTime }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -263,9 +283,13 @@ const submitButtonText = computed(() => {
 const availableDepartments = computed(() => {
   // Get all departments with area cover assignments for this shift
   const deptIds = shiftsStore.shiftAreaCoverAssignments.map(a => a.department_id);
+  console.log('Available department IDs from shift area cover assignments:', JSON.stringify(deptIds));
+  console.log('All departments from locations store:', JSON.stringify(locationsStore.departments));
   
   // Return only departments that have area cover assignments in this shift
-  return locationsStore.departments.filter(dept => deptIds.includes(dept.id));
+  const filtered = locationsStore.departments.filter(dept => deptIds.includes(dept.id));
+  console.log('Filtered available departments:', JSON.stringify(filtered));
+  return filtered;
 });
 
 const availableServices = computed(() => {
@@ -397,6 +421,7 @@ const initializeEditMode = () => {
   if (!isEditMode.value || !props.editingAssignment) return;
   
   const assignment = props.editingAssignment;
+  console.log('Initializing edit mode for assignment:', assignment);
   
   // Determine assignment type and set active tab
   if (assignment.shift_area_cover_assignment_id) {
@@ -407,8 +432,19 @@ const initializeEditMode = () => {
     const areaCover = shiftsStore.shiftAreaCoverAssignments.find(
       a => a.id === assignment.shift_area_cover_assignment_id
     );
-    if (areaCover) {
+    console.log('Found area cover assignment:', areaCover);
+    console.log('Available area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
+    
+    if (areaCover && areaCover.department_id) {
       departmentId.value = areaCover.department_id;
+      console.log('Set departmentId to:', areaCover.department_id);
+    } else {
+      console.warn('Could not find department_id for area cover assignment');
+      // Fallback: try to get department_id from the assignment itself if it exists
+      if (assignment.department_id) {
+        departmentId.value = assignment.department_id;
+        console.log('Using fallback departmentId from assignment:', assignment.department_id);
+      }
     }
     
     // Set times
@@ -423,8 +459,19 @@ const initializeEditMode = () => {
     const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
       s => s.id === assignment.shift_support_service_assignment_id
     );
-    if (serviceAssignment) {
+    console.log('Found service assignment:', serviceAssignment);
+    console.log('Available service assignments:', shiftsStore.shiftSupportServiceAssignments);
+    
+    if (serviceAssignment && serviceAssignment.service_id) {
       serviceId.value = serviceAssignment.service_id;
+      console.log('Set serviceId to:', serviceAssignment.service_id);
+    } else {
+      console.warn('Could not find service_id for service assignment');
+      // Fallback: try to get service_id from the assignment itself if it exists
+      if (assignment.service_id) {
+        serviceId.value = assignment.service_id;
+        console.log('Using fallback serviceId from assignment:', assignment.service_id);
+      }
     }
     
     // Set times
@@ -440,6 +487,8 @@ const initializeEditMode = () => {
     absenceStartTime.value = formatTime(assignment.start_time);
     absenceEndTime.value = formatTime(assignment.end_time);
   }
+  
+  console.log('Edit mode initialized - departmentId:', departmentId.value, 'serviceId:', serviceId.value);
 };
 
 const allocatePorter = async () => {
@@ -477,35 +526,97 @@ const allocatePorter = async () => {
     if (isEditMode.value) {
       // Edit mode - update existing assignment
       if (activeTab.value === 'department') {
-        // Update area cover porter assignment
-        result = await shiftsStore.updateShiftAreaCoverPorter(props.editingAssignment.id, {
-          start_time: departmentStartTime.value + ':00',
-          end_time: departmentEndTime.value + ':00'
-        });
+        // Check if department has changed
+        const currentAreaCover = shiftsStore.shiftAreaCoverAssignments.find(
+          a => a.id === props.editingAssignment.shift_area_cover_assignment_id
+        );
+        const departmentChanged = currentAreaCover && currentAreaCover.department_id !== departmentId.value;
+        
+        if (departmentChanged) {
+          // Department changed - need to delete old assignment and create new one
+          await shiftsStore.removeShiftAreaCoverPorter(props.editingAssignment.id);
+          
+          // Get the new area cover assignment for the selected department
+          const newAreaAssignment = shiftsStore.shiftAreaCoverAssignments.find(
+            a => a.department_id === departmentId.value
+          );
+          
+          if (!newAreaAssignment) {
+            throw new Error('New department assignment not found');
+          }
+          
+          // Create new assignment
+          result = await shiftsStore.assignPorterToShiftAreaCover({
+            shift_id: props.shiftId,
+            porter_id: props.porter.id,
+            shift_area_cover_assignment_id: newAreaAssignment.id,
+            start_time: departmentStartTime.value + ':00',
+            end_time: departmentEndTime.value + ':00'
+          });
+        } else {
+          // Only times changed - update existing assignment
+          result = await shiftsStore.updateShiftAreaCoverPorter(props.editingAssignment.id, {
+            start_time: departmentStartTime.value + ':00',
+            end_time: departmentEndTime.value + ':00'
+          });
+        }
         
         emits('allocated', {
           type: 'department',
-          assignment_id: props.editingAssignment.id,
+          assignment_id: departmentChanged ? result?.id : props.editingAssignment.id,
           porter_id: props.porter.id,
+          department_id: departmentId.value,
           start_time: departmentStartTime.value,
           end_time: departmentEndTime.value,
-          isEdit: true
+          isEdit: true,
+          departmentChanged
         });
         
       } else if (activeTab.value === 'service') {
-        // Update service porter assignment
-        result = await shiftsStore.updateShiftSupportServicePorter(props.editingAssignment.id, {
-          start_time: serviceStartTime.value + ':00',
-          end_time: serviceEndTime.value + ':00'
-        });
+        // Check if service has changed
+        const currentServiceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+          s => s.id === props.editingAssignment.shift_support_service_assignment_id
+        );
+        const serviceChanged = currentServiceAssignment && currentServiceAssignment.service_id !== serviceId.value;
+        
+        if (serviceChanged) {
+          // Service changed - need to delete old assignment and create new one
+          await shiftsStore.removeShiftSupportServicePorter(props.editingAssignment.id);
+          
+          // Get the new service assignment for the selected service
+          const newServiceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
+            a => a.service_id === serviceId.value
+          );
+          
+          if (!newServiceAssignment) {
+            throw new Error('New service assignment not found');
+          }
+          
+          // Create new assignment
+          result = await shiftsStore.assignPorterToShiftSupportService({
+            shift_id: props.shiftId,
+            porter_id: props.porter.id,
+            shift_support_service_assignment_id: newServiceAssignment.id,
+            start_time: serviceStartTime.value + ':00',
+            end_time: serviceEndTime.value + ':00'
+          });
+        } else {
+          // Only times changed - update existing assignment
+          result = await shiftsStore.updateShiftSupportServicePorter(props.editingAssignment.id, {
+            start_time: serviceStartTime.value + ':00',
+            end_time: serviceEndTime.value + ':00'
+          });
+        }
         
         emits('allocated', {
           type: 'service',
-          assignment_id: props.editingAssignment.id,
+          assignment_id: serviceChanged ? result?.id : props.editingAssignment.id,
           porter_id: props.porter.id,
+          service_id: serviceId.value,
           start_time: serviceStartTime.value,
           end_time: serviceEndTime.value,
-          isEdit: true
+          isEdit: true,
+          serviceChanged
         });
         
       } else if (activeTab.value === 'absence') {
@@ -860,6 +971,30 @@ onMounted(() => {
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
+    
+    /* Time inputs should keep their native appearance */
+    &[type="time"] {
+      appearance: auto;
+      -webkit-appearance: auto;
+      -moz-appearance: auto;
+      background-color: white;
+      cursor: pointer;
+    }
+    
+    /* Make sure select elements don't get overridden */
+    &:not(input) {
+      appearance: auto;
+      -webkit-appearance: auto;
+      -moz-appearance: auto;
+    }
+  }
+  
+  select.form-control {
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+    background-color: white;
+    cursor: pointer;
   }
 }
 

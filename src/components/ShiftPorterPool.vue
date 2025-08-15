@@ -279,6 +279,7 @@ import { useStaffStore } from '../stores/staffStore';
 import { useAreaCoverStore } from '../stores/areaCoverStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocationsStore } from '../stores/locationsStore';
+import { useSupportServicesStore } from '../stores/supportServicesStore';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 import EditIcon from './icons/EditIcon.vue';
 import TrashIcon from './icons/TrashIcon.vue';
@@ -298,6 +299,7 @@ const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
 const settingsStore = useSettingsStore();
 const locationsStore = useLocationsStore();
+const supportServicesStore = useSupportServicesStore();
 
 const showPorterSelector = ref(false);
 const showAllocationModal = ref(false);
@@ -746,15 +748,52 @@ const getAssignmentName = (assignment) => {
   
   // Check if this is an area cover assignment
   if (assignment.shift_area_cover_assignment_id) {
-    // Area cover assignment - return department name
-    return assignment.shift_area_cover_assignment?.department?.name || 'Unknown Department';
+    // First try to get from the direct relationship
+    if (assignment.shift_area_cover_assignment?.department?.name) {
+      return assignment.shift_area_cover_assignment.department.name;
+    }
+    
+    // Fallback: find the area cover assignment in the store
+    const areaAssignment = shiftsStore.shiftAreaCoverAssignments.find(
+      a => a.id === assignment.shift_area_cover_assignment_id
+    );
+    
+    if (areaAssignment?.department?.name) {
+      return areaAssignment.department.name;
+    }
+    
+    // Last fallback: try to get department from locations store
+    if (areaAssignment?.department_id) {
+      const department = locationsStore.departments.find(
+        d => d.id === areaAssignment.department_id
+      );
+      if (department?.name) {
+        return department.name;
+      }
+    }
+    
+    return 'Unknown Department';
   } else if (assignment.shift_support_service_assignment_id) {
     // Service assignment - find the service assignment
     const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
       s => s.id === assignment.shift_support_service_assignment_id
     );
-    // Return the service name
-    return serviceAssignment?.service?.name || 'Unknown Service';
+    
+    if (serviceAssignment?.service?.name) {
+      return serviceAssignment.service.name;
+    }
+    
+    // Fallback: try to get service from support services store
+    if (serviceAssignment?.service_id) {
+      const service = supportServicesStore.services.find(
+        s => s.id === serviceAssignment.service_id
+      );
+      if (service?.name) {
+        return service.name;
+      }
+    }
+    
+    return 'Unknown Service';
   }
   
   // Default
@@ -764,12 +803,46 @@ const getAssignmentName = (assignment) => {
 const formatTime = (timeStr) => {
   if (!timeStr) return '';
   
-  // Convert "HH:MM:SS" to "HH:MM" in 24-hour format
-  const [hours, minutes] = timeStr.split(':');
-  const hoursNum = parseInt(hours, 10);
-  
-  // Format with leading zeros for consistency
-  return `${String(hoursNum).padStart(2, '0')}:${minutes}`;
+  try {
+    // Handle Date objects (from MySQL/Prisma)
+    if (timeStr instanceof Date) {
+      const hours = timeStr.getHours();
+      const minutes = timeStr.getMinutes();
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+    
+    // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+    if (typeof timeStr === 'string' && timeStr.includes('T')) {
+      const date = new Date(timeStr);
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+    
+    // Handle simple time strings (e.g., "08:00:00" or "08:00")
+    if (typeof timeStr === 'string') {
+      const timeParts = timeStr.split(':');
+      if (timeParts.length >= 2) {
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1], 10);
+        
+        // Validate the parsed values
+        if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+      }
+    }
+    
+    // Fallback: return original string if it looks like a time
+    if (typeof timeStr === 'string' && timeStr.match(/^\d{1,2}:\d{2}/)) {
+      return timeStr.substring(0, 5); // Extract HH:MM part
+    }
+    
+    return '';
+  } catch (error) {
+    console.warn('Error formatting time:', timeStr, error);
+    return '';
+  }
 };
 
 // Porter-building assignment functions
@@ -793,32 +866,46 @@ onMounted(async () => {
   isLoading.value = true;
   
   try {
-    // Load data in sequence
-    await shiftsStore.fetchShiftPorterPool(props.shiftId);
-    // This will also fetch porter absences automatically
-    
-    // Load porter-building assignments for this shift
-    await shiftsStore.fetchShiftPorterBuildingAssignments(props.shiftId);
-    
+    // Load core data first
     if (!staffStore.porters.length) {
       await staffStore.fetchPorters();
     }
     
-    // Initialize area cover store if needed
+    // Initialize area cover store to ensure department data is available
     await areaCoverStore.initialize();
     
-    // Ensure area cover assignments load last
+    // Load locations data to ensure departments are available
+    if (!locationsStore.departments.length) {
+      await locationsStore.fetchDepartments();
+    }
+    
+    // Load support services data
+    if (!supportServicesStore.services.length) {
+      await supportServicesStore.fetchServices();
+    }
+    
+    // Load shift-specific data in sequence
+    await shiftsStore.fetchShiftPorterPool(props.shiftId);
+    
+    // Load shift area cover assignments with full relationships
     await shiftsStore.fetchShiftAreaCover(props.shiftId);
     
-    // Make sure we have support service assignments too
+    // Load shift support service assignments with full relationships
     await shiftsStore.fetchShiftSupportServices(props.shiftId);
+    
+    // Load porter absences for this shift
+    await shiftsStore.fetchShiftPorterAbsences(props.shiftId);
+    
+    // Load porter-building assignments for this shift
+    await shiftsStore.fetchShiftPorterBuildingAssignments(props.shiftId);
+    
   } catch (error) {
-    // Error handling without console logging
+    console.error('Error loading shift porter pool data:', error);
   } finally {
-    // Delay slightly to ensure computed values update
+    // Delay slightly to ensure computed values update and relationships are resolved
     setTimeout(() => {
       isLoading.value = false;
-    }, 300);
+    }, 500);
   }
 });
 </script>
