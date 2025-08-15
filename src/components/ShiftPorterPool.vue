@@ -53,7 +53,10 @@
                   <span class="assignment-text">
                     {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
                   </span>
-                  <EditIcon :size="12" class="edit-icon" />
+                  <div class="assignment-actions">
+                    <EditIcon :size="12" class="edit-icon" />
+                    <TrashIcon :size="12" class="remove-icon" @click.stop="removeAssignment(entry.porter, assignment)" />
+                  </div>
                 </div>
               </div>
               <div v-else class="assignments-list">
@@ -150,7 +153,10 @@
                 <span class="assignment-text">
                   {{ getAssignmentName(assignment) }}: {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
                 </span>
-                <EditIcon :size="12" class="edit-icon" />
+                <div class="assignment-actions">
+                  <EditIcon :size="12" class="edit-icon" />
+                  <TrashIcon :size="12" class="remove-icon" @click.stop="removeAssignment(entry.porter, assignment)" />
+                </div>
               </div>
             </div>
             <div v-else class="assignments-list">
@@ -275,6 +281,7 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 import EditIcon from './icons/EditIcon.vue';
+import TrashIcon from './icons/TrashIcon.vue';
 
 // Event for opening allocation modal
 const emits = defineEmits(['openAllocationModal']);
@@ -526,6 +533,29 @@ const toggleSelectAll = () => {
 const removePorter = async (porterPoolId) => {
   if (confirm('Are you sure you want to remove this porter from the shift?')) {
     await shiftsStore.removePorterFromShift(porterPoolId);
+  }
+};
+
+// Remove an assignment
+const removeAssignment = async (porter, assignment) => {
+  const assignmentName = getAssignmentName(assignment);
+  const confirmMessage = `Are you sure you want to remove the ${assignmentName} assignment?`;
+  
+  if (!confirm(confirmMessage)) return;
+  
+  try {
+    if (assignment.shift_area_cover_assignment_id) {
+      // Area cover assignment
+      await shiftsStore.removeShiftAreaCoverPorter(assignment.id);
+    } else if (assignment.shift_support_service_assignment_id) {
+      // Service assignment
+      await shiftsStore.removeShiftSupportServicePorter(assignment.id);
+    } else if (assignment.isAbsence) {
+      // Absence assignment
+      await shiftsStore.removePorterAbsence(assignment.id);
+    }
+  } catch (error) {
+    console.error('Error removing assignment:', error);
   }
 };
 
@@ -1110,11 +1140,30 @@ onMounted(async () => {
           flex: 1;
         }
         
+        .assignment-actions {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        
         .edit-icon {
           opacity: 0.6;
           color: rgba(0, 0, 0, 0.5);
           transition: opacity 0.2s ease;
           flex-shrink: 0;
+        }
+        
+        .remove-icon {
+          opacity: 0.6;
+          color: #EA4335;
+          transition: opacity 0.2s ease;
+          flex-shrink: 0;
+          cursor: pointer;
+          
+          &:hover {
+            opacity: 1;
+          }
         }
       }
     }
