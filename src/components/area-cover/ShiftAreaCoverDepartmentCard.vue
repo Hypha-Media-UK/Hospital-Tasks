@@ -30,7 +30,7 @@
                      'porter-absent': getPorterAbsence(assignment.porter_id),
                      'porter-illness': getPorterAbsence(assignment.porter_id)?.absence_type === 'illness',
                      'porter-annual-leave': getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave',
-                     'porter-scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id),
+                     'porter-scheduled-absence': staffStore.isPorterOnScheduledAbsence(assignment.porter_id),
                      'pool-porter': isPoolPorter(assignment.porter_id),
                      'porter-outside-hours': shiftsStore.isShiftInSetupMode(shiftsStore.currentShift) && isPorterOutsideContractedHours(assignment.porter_id)
                    }">
@@ -48,7 +48,7 @@
                       class="absence-badge illness">ILL</span>
                 <span v-else-if="getPorterAbsence(assignment.porter_id)?.absence_type === 'annual_leave'" 
                       class="absence-badge annual-leave">AL</span>
-                <span v-else-if="shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id)"
+                <span v-else-if="staffStore.isPorterOnScheduledAbsence(assignment.porter_id)"
                       class="absence-badge scheduled">ABS</span>
               </div>
             </div>
@@ -156,7 +156,7 @@ const availablePorters = computed(() => {
       }
       
       // Check if porter has a scheduled absence
-      if (shiftsStore.isPorterOnScheduledAbsence(assignment.porter_id)) {
+      if (staffStore.isPorterOnScheduledAbsence(assignment.porter_id)) {
         return false;
       }
       

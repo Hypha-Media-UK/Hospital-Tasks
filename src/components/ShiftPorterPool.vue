@@ -24,7 +24,7 @@
         <div v-for="entry in supervisors" :key="entry.id" class="porter-card supervisor-card" 
              :class="{ 
                'assigned': hasActiveAssignments(entry.porter_id),
-               'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id),
+               'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
                'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
                'off-duty': getPorterDutyStatus(entry.porter_id) === 'off-duty'
              }"
@@ -35,12 +35,12 @@
                    'porter-absent': isPorterAbsent(entry.porter_id),
                    'porter-illness': getPorterAbsenceType(entry.porter_id) === 'illness',
                    'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave',
-                   'porter-scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
+                   'porter-scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id)
                  }">
               {{ entry.porter.first_name }} {{ entry.porter.last_name }}
               <span v-if="getPorterAbsenceType(entry.porter_id) === 'illness'" class="absence-badge illness">ILL</span>
               <span v-if="getPorterAbsenceType(entry.porter_id) === 'annual_leave'" class="absence-badge annual-leave">AL</span>
-              <span v-if="shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
+              <span v-if="staffStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
             </div>
             
             <div class="porter-card__assignments">
@@ -116,7 +116,7 @@
       <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
            :class="{ 
              'assigned': hasActiveAssignments(entry.porter_id),
-             'scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id),
+             'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
              'not-yet-on-duty': getPorterDutyStatus(entry.porter_id) === 'not-yet-on-duty',
              'off-duty': getPorterDutyStatus(entry.porter_id) === 'off-duty'
            }"
@@ -127,12 +127,12 @@
                  'porter-absent': isPorterAbsent(entry.porter_id),
                  'porter-illness': getPorterAbsenceType(entry.porter_id) === 'illness',
                  'porter-annual-leave': getPorterAbsenceType(entry.porter_id) === 'annual_leave',
-                 'porter-scheduled-absence': shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)
+                 'porter-scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id)
                }">
             {{ entry.porter.first_name }} {{ entry.porter.last_name }}
             <span v-if="getPorterAbsenceType(entry.porter_id) === 'illness'" class="absence-badge illness">ILL</span>
             <span v-if="getPorterAbsenceType(entry.porter_id) === 'annual_leave'" class="absence-badge annual-leave">AL</span>
-            <span v-if="shiftsStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
+            <span v-if="staffStore.isPorterOnScheduledAbsence(entry.porter_id)" class="absence-badge scheduled">ABSENCE</span>
           </div>
           
           <div class="porter-card__assignments">
