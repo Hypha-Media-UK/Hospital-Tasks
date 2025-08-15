@@ -1000,11 +1000,11 @@ watch(() => taskForm.value.taskTypeId, (newTaskTypeId) => {
 });
 
 // Watch for task item changes to auto-populate department fields
-watch(() => taskForm.value.taskItemId, (newTaskItemId) => {
+watch(() => taskForm.value.taskItemId, async (newTaskItemId) => {
   if (newTaskItemId && taskTypeFieldTouched.value && !departmentFieldTouched.value) {
     // Only auto-populate departments if task type/item was selected first
     // and department hasn't been touched yet
-    checkTaskItemDepartmentAssignments(newTaskItemId);
+    await checkTaskItemDepartmentAssignments(newTaskItemId);
   }
 });
 
@@ -1423,35 +1423,57 @@ function checkTaskTypeDepartmentAssignments(taskTypeId) {
 }
 
 // Check for department assignments for a task item and auto-populate form fields
-function checkTaskItemDepartmentAssignments(taskItemId) {
+// This implements the hierarchy: Task Item assignments override Task Type assignments
+async function checkTaskItemDepartmentAssignments(taskItemId) {
   if (!taskItemId) return;
   
   // Only auto-populate departments if they haven't been touched yet
   if (!departmentFieldTouched.value) {
-    const assignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
-    
-    // Look for origin department
-    const originAssignment = assignments.find(a => a.is_origin);
-    
-    if (originAssignment) {
-      taskForm.value.originDepartmentId = originAssignment.department_id;
-      originFieldAutoPopulated.value = true;
-      // Reset the flag after animation completes
-      setTimeout(() => {
-        originFieldAutoPopulated.value = false;
-      }, 1500);
-    }
-    
-    // Look for destination department
-    const destinationAssignment = assignments.find(a => a.is_destination);
-    
-    if (destinationAssignment) {
-      taskForm.value.destinationDepartmentId = destinationAssignment.department_id;
-      destinationFieldAutoPopulated.value = true;
-      // Reset the flag after animation completes
-      setTimeout(() => {
-        destinationFieldAutoPopulated.value = false;
-      }, 1500);
+    try {
+      // First, fetch the task item assignments to ensure we have the latest data
+      await taskTypesStore.fetchItemAssignments(taskItemId);
+      
+      // Get the task item assignments
+      const itemAssignments = taskTypesStore.getItemAssignmentsByItemId(taskItemId);
+      
+      // Check if task item has its own assignments
+      if (itemAssignments.length > 0) {
+        // Task item has assignments - use these (they override task type assignments)
+        
+        // Look for origin department in task item assignments
+        const itemOriginAssignment = itemAssignments.find(a => a.is_origin);
+        if (itemOriginAssignment) {
+          taskForm.value.originDepartmentId = itemOriginAssignment.department_id;
+          originFieldAutoPopulated.value = true;
+          setTimeout(() => {
+            originFieldAutoPopulated.value = false;
+          }, 1500);
+        }
+        
+        // Look for destination department in task item assignments
+        const itemDestinationAssignment = itemAssignments.find(a => a.is_destination);
+        if (itemDestinationAssignment) {
+          taskForm.value.destinationDepartmentId = itemDestinationAssignment.department_id;
+          destinationFieldAutoPopulated.value = true;
+          setTimeout(() => {
+            destinationFieldAutoPopulated.value = false;
+          }, 1500);
+        }
+        
+        // If task item assignments exist, we don't fall back to task type assignments
+        // This ensures the override behavior works correctly
+      } else {
+        // No task item assignments found - fall back to task type assignments
+        // This maintains backward compatibility and provides defaults when no item-specific assignments exist
+        if (taskForm.value.taskTypeId) {
+          checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+        }
+      }
+    } catch (error) {
+      // If there's an error fetching task item assignments, fall back to task type assignments
+      if (taskForm.value.taskTypeId) {
+        checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
+      }
     }
   }
 }
