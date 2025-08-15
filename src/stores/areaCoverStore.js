@@ -125,14 +125,16 @@ export const useAreaCoverStore = defineStore('areaCover', {
     },
 
     // Calculate coverage gaps for an area assignment
-    getCoverageGaps: (state, getters) => (areaCoverId) => {
+    getCoverageGaps: (state) => (areaCoverId) => {
       try {
         const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
         if (!assignment) {
           return { hasGap: false, gaps: [] };
         }
 
-        const porterAssignments = getters.getUniquePorterAssignmentsByAreaId(areaCoverId);
+        // Access the getter method directly from the store instance
+        const store = useAreaCoverStore();
+        const porterAssignments = store.getUniquePorterAssignmentsByAreaId(areaCoverId);
         if (porterAssignments.length === 0) {
           // No porters assigned - entire period is a gap
           return {
@@ -181,13 +183,14 @@ export const useAreaCoverStore = defineStore('areaCover', {
     },
 
     // Check for staffing shortages (when we have porters but not enough)
-    getStaffingShortages: (state, getters) => (areaCoverId) => {
+    getStaffingShortages: (state) => (areaCoverId) => {
       const assignment = state.areaAssignments.find(a => a.id === areaCoverId);
       if (!assignment) {
         return { hasShortage: false, shortages: [] };
       }
 
-      const porterAssignments = getters.getUniquePorterAssignmentsByAreaId(areaCoverId);
+      const store = useAreaCoverStore();
+      const porterAssignments = store.getUniquePorterAssignmentsByAreaId(areaCoverId);
       const minimumPorters = assignment.minimum_porters || 1;
       
       // For now, simple check: if we have fewer porters than minimum required
@@ -209,27 +212,31 @@ export const useAreaCoverStore = defineStore('areaCover', {
     },
     
     // Legacy method for compatibility
-    hasStaffingShortage: (state, getters) => (areaCoverId) => {
-      const shortages = getters.getStaffingShortages(areaCoverId);
+    hasStaffingShortage: (state) => (areaCoverId) => {
+      const store = useAreaCoverStore();
+      const shortages = store.getStaffingShortages(areaCoverId);
       return shortages.hasShortage;
     },
     
     // Legacy method for compatibility
-    hasCoverageGap: (state, getters) => (areaCoverId) => {
-      const gaps = getters.getCoverageGaps(areaCoverId);
+    hasCoverageGap: (state) => (areaCoverId) => {
+      const store = useAreaCoverStore();
+      const gaps = store.getCoverageGaps(areaCoverId);
       return gaps.hasGap;
     },
     
     // Alias for hasAreaCoverageGap (used by components)
-    hasAreaCoverageGap: (state, getters) => (areaCoverId) => {
-      const gaps = getters.getCoverageGaps(areaCoverId);
+    hasAreaCoverageGap: (state) => (areaCoverId) => {
+      const store = useAreaCoverStore();
+      const gaps = store.getCoverageGaps(areaCoverId);
       return gaps.hasGap;
     },
     
     // Get all coverage issues (both gaps and staffing shortages)
-    getCoverageIssues: (state, getters) => (areaCoverId) => {
-      const gaps = getters.getCoverageGaps(areaCoverId);
-      const shortages = getters.getStaffingShortages(areaCoverId);
+    getCoverageIssues: (state) => (areaCoverId) => {
+      const store = useAreaCoverStore();
+      const gaps = store.getCoverageGaps(areaCoverId);
+      const shortages = store.getStaffingShortages(areaCoverId);
       
       const issues = [];
       if (gaps.hasGap) {
@@ -404,20 +411,86 @@ export const useAreaCoverStore = defineStore('areaCover', {
       }
     },
     
-    // Simplified porter assignment methods
+    // Porter assignment methods - now fully implemented
     async addPorterAssignment(areaCoverId, porterId, startTime, endTime) {
-      console.log('Porter assignment creation not yet implemented');
-      return null;
+      this.loading.save = true;
+      this.error = null;
+      
+      try {
+        const assignmentData = {
+          porter_id: porterId,
+          start_time: startTime,
+          end_time: endTime
+        };
+        
+        const data = await apiRequest(`/area-cover/assignments/${areaCoverId}/porter-assignments`, {
+          method: 'POST',
+          body: JSON.stringify(assignmentData)
+        });
+        
+        if (data) {
+          // Add to local state
+          this.porterAssignments.push(data);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error adding porter assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to add porter assignment';
+        return null;
+      } finally {
+        this.loading.save = false;
+      }
     },
     
     async updatePorterAssignment(porterAssignmentId, updates) {
-      console.log('Porter assignment update not yet implemented');
-      return null;
+      this.loading.save = true;
+      this.error = null;
+      
+      try {
+        const data = await apiRequest(`/area-cover/porter-assignments/${porterAssignmentId}`, {
+          method: 'PUT',
+          body: JSON.stringify(updates)
+        });
+        
+        if (data) {
+          // Update local state
+          const index = this.porterAssignments.findIndex(pa => pa.id === porterAssignmentId);
+          if (index !== -1) {
+            this.porterAssignments[index] = data;
+          }
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Error updating porter assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to update porter assignment';
+        return null;
+      } finally {
+        this.loading.save = false;
+      }
     },
     
     async removePorterAssignment(porterAssignmentId) {
-      console.log('Porter assignment removal not yet implemented');
-      return true;
+      this.loading.save = true;
+      this.error = null;
+      
+      try {
+        await apiRequest(`/area-cover/porter-assignments/${porterAssignmentId}`, {
+          method: 'DELETE'
+        });
+        
+        // Remove from local state
+        this.porterAssignments = this.porterAssignments.filter(pa => pa.id !== porterAssignmentId);
+        
+        return true;
+      } catch (error) {
+        console.error('Error removing porter assignment:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to remove porter assignment';
+        return false;
+      } finally {
+        this.loading.save = false;
+      }
     },
     
     // Initialize store

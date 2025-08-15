@@ -143,8 +143,8 @@ router.put('/assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = start_time;
-    if (end_time !== undefined) updateData.end_time = end_time;
+    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}`);
+    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}`);
     if (color !== undefined) updateData.color = color;
     if (minimum_porters !== undefined) {
       updateData.minimum_porters = minimum_porters;
