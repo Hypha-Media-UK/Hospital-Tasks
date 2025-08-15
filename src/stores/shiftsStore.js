@@ -1111,6 +1111,58 @@ export const useShiftsStore = defineStore('shifts', {
       }
     },
 
+    // Quick allocation method for porter to support service (used by AllocatePorterModal)
+    async assignPorterToShiftSupportService(allocationData) {
+      try {
+        const { shift_id, porter_id, shift_support_service_assignment_id, start_time, end_time } = allocationData;
+
+        const data = await shiftsApi.addSupportServicePorter(shift_id, shift_support_service_assignment_id, {
+          porter_id,
+          start_time,
+          end_time
+        });
+
+        if (data) {
+          // Add to local state
+          this.shiftSupportServicePorterAssignments.push(data);
+          console.log('Quick allocated porter to support service:', data);
+          return data;
+        }
+
+        return null;
+      } catch (error) {
+        console.error('Error allocating porter to support service:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to allocate porter to support service';
+        throw error; // Re-throw so AllocatePorterModal can handle it
+      }
+    },
+
+    // Quick allocation method for porter to area cover (used by AllocatePorterModal)
+    async assignPorterToShiftAreaCover(allocationData) {
+      try {
+        const { shift_id, porter_id, shift_area_cover_assignment_id, start_time, end_time } = allocationData;
+
+        const data = await shiftsApi.addAreaCoverPorter(shift_id, shift_area_cover_assignment_id, {
+          porter_id,
+          start_time,
+          end_time
+        });
+
+        if (data) {
+          // Add to local state
+          this.shiftAreaCoverPorterAssignments.push(data);
+          console.log('Quick allocated porter to area cover:', data);
+          return data;
+        }
+
+        return null;
+      } catch (error) {
+        console.error('Error allocating porter to area cover:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to allocate porter to area cover';
+        throw error; // Re-throw so AllocatePorterModal can handle it
+      }
+    },
+
     // Duplicate a shift to a new date
     async duplicateShift(shiftId, newDate) {
       try {

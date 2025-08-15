@@ -844,7 +844,16 @@ router.post('/:id/area-cover/:areaCoverId/porter-assignments', async (req: Reque
         end_time: endDateTime
       },
       include: {
-        staff: true
+        staff: true,
+        shift_area_cover_assignments: {
+          include: {
+            departments: {
+              include: {
+                buildings: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -864,6 +873,28 @@ router.post('/:id/area-cover/:areaCoverId/porter-assignments', async (req: Reque
         first_name: porterAssignment.staff.first_name,
         last_name: porterAssignment.staff.last_name,
         role: porterAssignment.staff.role
+      },
+      shift_area_cover_assignment: {
+        id: porterAssignment.shift_area_cover_assignments.id,
+        department_id: porterAssignment.shift_area_cover_assignments.department_id,
+        start_time: porterAssignment.shift_area_cover_assignments.start_time 
+          ? porterAssignment.shift_area_cover_assignments.start_time.toISOString().substring(11, 16) 
+          : null,
+        end_time: porterAssignment.shift_area_cover_assignments.end_time 
+          ? porterAssignment.shift_area_cover_assignments.end_time.toISOString().substring(11, 16) 
+          : null,
+        color: porterAssignment.shift_area_cover_assignments.color,
+        minimum_porters: porterAssignment.shift_area_cover_assignments.minimum_porters,
+        department: {
+          id: porterAssignment.shift_area_cover_assignments.departments.id,
+          name: porterAssignment.shift_area_cover_assignments.departments.name,
+          building_id: porterAssignment.shift_area_cover_assignments.departments.building_id,
+          color: porterAssignment.shift_area_cover_assignments.departments.color,
+          building: {
+            id: porterAssignment.shift_area_cover_assignments.departments.buildings.id,
+            name: porterAssignment.shift_area_cover_assignments.departments.buildings.name
+          }
+        }
       }
     };
 
@@ -1064,7 +1095,12 @@ router.post('/:id/support-services/:serviceId/porter-assignments', async (req: R
         end_time: endDateTime
       },
       include: {
-        staff: true
+        staff: true,
+        shift_support_service_assignments: {
+          include: {
+            support_services: true
+          }
+        }
       }
     });
 
@@ -1084,6 +1120,24 @@ router.post('/:id/support-services/:serviceId/porter-assignments', async (req: R
         first_name: porterAssignment.staff.first_name,
         last_name: porterAssignment.staff.last_name,
         role: porterAssignment.staff.role
+      },
+      shift_support_service_assignment: {
+        id: porterAssignment.shift_support_service_assignments.id,
+        service_id: porterAssignment.shift_support_service_assignments.service_id,
+        start_time: porterAssignment.shift_support_service_assignments.start_time 
+          ? porterAssignment.shift_support_service_assignments.start_time.toISOString().substring(11, 16) 
+          : null,
+        end_time: porterAssignment.shift_support_service_assignments.end_time 
+          ? porterAssignment.shift_support_service_assignments.end_time.toISOString().substring(11, 16) 
+          : null,
+        color: porterAssignment.shift_support_service_assignments.color,
+        minimum_porters: porterAssignment.shift_support_service_assignments.minimum_porters,
+        service: {
+          id: porterAssignment.shift_support_service_assignments.support_services.id,
+          name: porterAssignment.shift_support_service_assignments.support_services.name,
+          description: porterAssignment.shift_support_service_assignments.support_services.description,
+          is_active: porterAssignment.shift_support_service_assignments.support_services.is_active
+        }
       }
     };
 
