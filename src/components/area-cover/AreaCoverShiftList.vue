@@ -79,7 +79,7 @@ const props = defineProps({
   shiftType: {
     type: String,
     required: true,
-    validator: (value) => ['week_day', 'week_night', 'weekend_day', 'weekend_night', 'day', 'night'].includes(value)
+    validator: (value) => ['week_day', 'week_night', 'weekend_day', 'weekend_night'].includes(value)
   }
 });
 
@@ -96,8 +96,6 @@ const shiftTypeLabel = computed(() => {
     case 'week_night': return 'Week Night';
     case 'weekend_day': return 'Weekend Day';
     case 'weekend_night': return 'Weekend Night';
-    case 'day': return 'Day'; // Legacy support
-    case 'night': return 'Night'; // Legacy support
     default: return '';
   }
 });
@@ -165,29 +163,21 @@ const addDepartment = async (departmentId) => {
   // Get default times from settings store based on shift type
   let startTime, endTime;
   
-  // Map legacy types to current types if needed
-  const shiftTypeToUse = props.shiftType === 'day' ? 'week_day' : 
-                          props.shiftType === 'night' ? 'week_night' : 
-                          props.shiftType;
-  
   // Get shift defaults from settings store
-  if (settingsStore.shiftDefaults[shiftTypeToUse]) {
+  if (settingsStore.shiftDefaults[props.shiftType]) {
     // Convert HH:MM to HH:MM:SS format
-    const shiftSettings = settingsStore.shiftDefaults[shiftTypeToUse];
+    const shiftSettings = settingsStore.shiftDefaults[props.shiftType];
     startTime = (shiftSettings.start_time?.slice(0, 5) || '08:00') + ':00';
     endTime = (shiftSettings.end_time?.slice(0, 5) || '16:00') + ':00';
-    
-    console.log(`Using shift defaults for ${shiftTypeToUse}: ${startTime} - ${endTime}`);
   } else {
     // Fallback defaults if settings aren't available
-    if (shiftTypeToUse.includes('day')) {
+    if (props.shiftType.includes('day')) {
       startTime = '08:00:00';
       endTime = '20:00:00';
     } else {
       startTime = '20:00:00';
       endTime = '08:00:00';
     }
-    console.log(`Using fallback defaults: ${startTime} - ${endTime}`);
   }
   
   await areaCoverStore.addDepartment(

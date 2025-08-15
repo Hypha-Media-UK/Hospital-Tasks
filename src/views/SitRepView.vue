@@ -116,6 +116,7 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useStaffStore } from '../stores/staffStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocationsStore } from '../stores/locationsStore';
+import { absencesApi } from '../services/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -745,9 +746,22 @@ const historicalAbsences = ref([]);
 // Fetch all historical absences for this shift (including expired ones)
 const fetchHistoricalAbsences = async () => {
   try {
-    // TODO: Implement absences API endpoint
-    historicalAbsences.value = [];
+    if (!shift.value) return;
+    
+    // Get the shift date to filter absences
+    const shiftDate = new Date(shift.value.start_time);
+    const startDate = shiftDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const endDate = startDate; // Same day
+    
+    const response = await absencesApi.getAll({
+      start_date: startDate,
+      end_date: endDate
+    });
+    
+    historicalAbsences.value = response.data || response || [];
   } catch (error) {
+    console.error('Error fetching historical absences:', error);
+    historicalAbsences.value = [];
   }
 };
 

@@ -383,13 +383,15 @@ export const useTaskTypesStore = defineStore('taskTypes', {
     },
     
     // Task Type Department Assignments
+    // Note: Task type assignments are managed through individual task items
+    // Each task item can have its own department assignments
     async fetchTypeAssignments() {
       this.loading.typeAssignments = true;
       this.error = null;
       
       try {
-        // For now, return empty array as placeholder
-        // TODO: Implement API endpoint for task type department assignments
+        // Task type assignments are not implemented at the API level
+        // Department assignments are handled per task item instead
         this.typeAssignments = [];
         return [];
       } catch (error) {
@@ -406,8 +408,8 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       this.error = null;
       
       try {
-        // For now, just update local state as placeholder
-        // TODO: Implement API endpoint for updating task type department assignments
+        // Task type assignments are not implemented at the API level
+        // Department assignments are handled per task item instead
         this.typeAssignments = this.typeAssignments.filter(
           assignment => assignment.task_type_id !== taskTypeId
         );

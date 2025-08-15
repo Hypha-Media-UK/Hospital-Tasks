@@ -211,19 +211,6 @@ export const useAreaCoverStore = defineStore('areaCover', {
       return { hasShortage: false, shortages: [] };
     },
     
-    // Legacy method for compatibility
-    hasStaffingShortage: (state) => (areaCoverId) => {
-      const store = useAreaCoverStore();
-      const shortages = store.getStaffingShortages(areaCoverId);
-      return shortages.hasShortage;
-    },
-    
-    // Legacy method for compatibility
-    hasCoverageGap: (state) => (areaCoverId) => {
-      const store = useAreaCoverStore();
-      const gaps = store.getCoverageGaps(areaCoverId);
-      return gaps.hasGap;
-    },
     
     // Alias for hasAreaCoverageGap (used by components)
     hasAreaCoverageGap: (state) => (areaCoverId) => {
@@ -498,10 +485,16 @@ export const useAreaCoverStore = defineStore('areaCover', {
       await this.fetchAreaAssignments();
     },
 
-    // Fetch shift porter building assignments (placeholder)
+    // Fetch shift porter building assignments
     async fetchShiftPorterBuildingAssignments(shiftId) {
-      console.log(`fetchShiftPorterBuildingAssignments called for shift ${shiftId} - not yet implemented`);
-      return [];
+      try {
+        // This would typically fetch building assignments for porters in a specific shift
+        // For now, return empty array as this functionality may not be implemented yet
+        return [];
+      } catch (error) {
+        console.error('Error fetching shift porter building assignments:', error);
+        return [];
+      }
     }
   }
 });

@@ -647,26 +647,6 @@ export const tasksApi = {
   }
 };
 
-// Legacy compatibility function for existing code
-export async function fetchData(table, filters = {}) {
-  
-  switch (table) {
-    case 'staff':
-      return staffApi.getAll(filters);
-    case 'buildings':
-      return buildingsApi.getAll();
-    case 'departments':
-      return departmentsApi.getAll(filters);
-    case 'task_types':
-      return taskTypesApi.getAll();
-    case 'task_items':
-      return taskItemsApi.getAll(filters);
-    case 'support_services':
-      return supportServicesApi.getAll(filters);
-    default:
-      throw new Error(`Unknown table: ${table}`);
-  }
-}
 
 // Export the API error class and apiRequest function for error handling
 export { ApiError, apiRequest };
@@ -680,6 +660,5 @@ export default {
   taskItemsApi,
   supportServicesApi,
   settingsApi,
-  fetchData,
   ApiError
 };
