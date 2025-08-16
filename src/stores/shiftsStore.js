@@ -597,17 +597,25 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
+        console.log('Store updateTask called with:', { taskId, taskData });
         const data = await tasksApi.update(taskId, taskData);
+        console.log('API response:', data);
         
         if (data) {
           // Update the task in shiftTasks array
           const index = this.shiftTasks.findIndex(task => task.id === taskId);
+          console.log('Found task at index:', index, 'in array of', this.shiftTasks.length, 'tasks');
           if (index !== -1) {
+            console.log('Updating task in local state. Old task:', this.shiftTasks[index]);
             this.shiftTasks[index] = data;
+            console.log('Updated task in local state. New task:', this.shiftTasks[index]);
+          } else {
+            console.warn('Task not found in local shiftTasks array for update');
           }
           return data;
         }
         
+        console.warn('API returned null/undefined data');
         return null;
       } catch (error) {
         console.error('Error updating task:', error);

@@ -218,6 +218,21 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Verify task item exists if provided
+    if (task_item_id) {
+      const taskItem = await prisma.taskItem.findUnique({
+        where: { id: task_item_id },
+        select: { id: true }
+      });
+
+      if (!taskItem) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'Task item not found'
+        });
+      }
+    }
+
     // Verify departments exist if provided
     if (origin_department_id) {
       const originDept = await prisma.department.findUnique({
@@ -315,6 +330,7 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const {
+      task_item_id,
       porter_id,
       origin_department_id,
       destination_department_id,
@@ -324,10 +340,21 @@ router.put('/:id', async (req, res) => {
       time_completed
     } = req.body;
 
+    console.log('=== TASK UPDATE DEBUG ===');
+    console.log('Task ID:', id);
+    console.log('Request body:', req.body);
+
     // Check if task exists
     const existingTask = await prisma.shift_tasks.findUnique({
       where: { id },
-      select: { id: true, shift_id: true }
+      select: { 
+        id: true, 
+        shift_id: true,
+        origin_department_id: true,
+        destination_department_id: true,
+        porter_id: true,
+        status: true
+      }
     });
 
     if (!existingTask) {
@@ -336,6 +363,8 @@ router.put('/:id', async (req, res) => {
         message: 'Task not found'
       });
     }
+
+    console.log('Existing task before update:', existingTask);
 
     // Verify shift is still active if updating
     const shift = await prisma.shifts.findUnique({
@@ -401,11 +430,27 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Verify task item exists if provided
+    if (task_item_id) {
+      const taskItem = await prisma.taskItem.findUnique({
+        where: { id: task_item_id },
+        select: { id: true }
+      });
+
+      if (!taskItem) {
+        return res.status(404).json({
+          error: 'Not Found',
+          message: 'Task item not found'
+        });
+      }
+    }
+
     // Build update data
     const updateData: any = {
       updated_at: new Date()
     };
 
+    if (task_item_id !== undefined) updateData.task_item_id = task_item_id;
     if (porter_id !== undefined) updateData.porter_id = porter_id;
     if (origin_department_id !== undefined) updateData.origin_department_id = origin_department_id;
     if (destination_department_id !== undefined) updateData.destination_department_id = destination_department_id;
@@ -413,6 +458,8 @@ router.put('/:id', async (req, res) => {
     if (time_received !== undefined) updateData.time_received = time_received;
     if (time_allocated !== undefined) updateData.time_allocated = time_allocated;
     if (time_completed !== undefined) updateData.time_completed = time_completed;
+
+    console.log('Update data to be applied:', updateData);
 
     const updatedTask = await prisma.shift_tasks.update({
       where: { id },
@@ -451,6 +498,31 @@ router.put('/:id', async (req, res) => {
         }
       }
     });
+
+    console.log('Updated task returned from Prisma:', {
+      id: updatedTask.id,
+      origin_department_id: updatedTask.origin_department_id,
+      destination_department_id: updatedTask.destination_department_id,
+      porter_id: updatedTask.porter_id,
+      status: updatedTask.status,
+      updated_at: updatedTask.updated_at
+    });
+
+    // Let's also verify the task was actually updated in the database
+    const verifyTask = await prisma.shift_tasks.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        origin_department_id: true,
+        destination_department_id: true,
+        porter_id: true,
+        status: true,
+        updated_at: true
+      }
+    });
+
+    console.log('Verification query result:', verifyTask);
+    console.log('=== END TASK UPDATE DEBUG ===');
 
     return res.json(updatedTask);
   } catch (error) {

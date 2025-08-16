@@ -1263,7 +1263,7 @@ function editTask(task) {
   
   // Set up the form with the current task data
   taskForm.value = {
-    taskTypeId: task.task_item.task_type_id,
+    taskTypeId: task.task_items.task_types.id,
     taskItemId: task.task_item_id,
     originDepartmentId: task.origin_department_id || '',
     destinationDepartmentId: task.destination_department_id || '',
@@ -1369,17 +1369,60 @@ async function loadTaskItems() {
       checkTaskTypeDepartmentAssignments(taskForm.value.taskTypeId);
     }
     
-    // Check for regular task item and auto-select it
-    const regularItem = taskItems.value.find(item => item.is_regular);
-    if (regularItem) {
-      taskForm.value.taskItemId = regularItem.id;
+    // When editing a task, check if the current task item belongs to the new task type
+    if (isEditingTask.value && taskForm.value.taskItemId) {
+      const currentItemExists = taskItems.value.some(item => item.id === taskForm.value.taskItemId);
       
-      // Set the animation flag for visual feedback
-      taskItemAutoPopulated.value = true;
-      // Reset the flag after animation completes
-      setTimeout(() => {
-        taskItemAutoPopulated.value = false;
-      }, 1500);
+      if (!currentItemExists) {
+        // Current task item doesn't belong to the new task type, so clear it and auto-select
+        taskForm.value.taskItemId = '';
+        
+        // Auto-select regular item if available, otherwise select the first item
+        const regularItem = taskItems.value.find(item => item.is_regular);
+        if (regularItem) {
+          taskForm.value.taskItemId = regularItem.id;
+          
+          // Set the animation flag for visual feedback
+          taskItemAutoPopulated.value = true;
+          // Reset the flag after animation completes
+          setTimeout(() => {
+            taskItemAutoPopulated.value = false;
+          }, 1500);
+        } else if (taskItems.value.length > 0) {
+          // If no regular item, select the first available item
+          taskForm.value.taskItemId = taskItems.value[0].id;
+          
+          // Set the animation flag for visual feedback
+          taskItemAutoPopulated.value = true;
+          // Reset the flag after animation completes
+          setTimeout(() => {
+            taskItemAutoPopulated.value = false;
+          }, 1500);
+        }
+      }
+    } else if (!isEditingTask.value) {
+      // For new tasks, auto-select regular item, otherwise select the first item
+      const regularItem = taskItems.value.find(item => item.is_regular);
+      if (regularItem) {
+        taskForm.value.taskItemId = regularItem.id;
+        
+        // Set the animation flag for visual feedback
+        taskItemAutoPopulated.value = true;
+        // Reset the flag after animation completes
+        setTimeout(() => {
+          taskItemAutoPopulated.value = false;
+        }, 1500);
+      } else if (taskItems.value.length > 0) {
+        // If no regular item, select the first available item
+        taskForm.value.taskItemId = taskItems.value[0].id;
+        
+        // Set the animation flag for visual feedback
+        taskItemAutoPopulated.value = true;
+        // Reset the flag after animation completes
+        setTimeout(() => {
+          taskItemAutoPopulated.value = false;
+        }, 1500);
+      }
     }
   } catch (error) {
     // Error handling without console logging
@@ -1586,29 +1629,49 @@ async function saveTask() {
       taskData.time_completed = completedDateTime;
     }
     
+    console.log('Saving task:', {
+      isEditing: isEditingTask.value,
+      taskId: editingTaskId.value,
+      taskData: taskData
+    });
+    
     let result;
     
     if (isEditingTask.value) {
       // Update existing task
+      console.log('Updating task with ID:', editingTaskId.value);
       result = await shiftsStore.updateTask(editingTaskId.value, taskData);
+      console.log('Update result:', result);
     } else {
       // Add new task
+      console.log('Adding new task to shift:', shift.value.id);
       result = await shiftsStore.addTaskToShift(shift.value.id, taskData);
+      console.log('Add result:', result);
     }
     
     if (result) {
+      console.log('Task saved successfully, closing modal');
+      
+      // If we're editing a task, refresh the task list to ensure UI updates
+      if (isEditingTask.value) {
+        console.log('Refreshing task list after update');
+        await shiftsStore.fetchShiftTasks(shift.value.id);
+      }
+      
       // Reset form and close modal
       resetTaskForm();
       showTaskModal.value = false;
     } else {
+      console.error('Task save failed:', shiftsStore.error);
       taskFormError.value = shiftsStore.error || `Failed to ${isEditingTask.value ? 'update' : 'add'} task`;
     }
   } catch (error) {
+    console.error('Error in saveTask:', error);
     // Provide more helpful error messages for time-related errors
     if (error instanceof RangeError && error.message.includes('Invalid time value')) {
       taskFormError.value = 'Invalid time format. Please check all time fields.';
     } else {
-      taskFormError.value = 'An unexpected error occurred';
+      taskFormError.value = error.message || 'An unexpected error occurred';
     }
   } finally {
     processingTask.value = false;
