@@ -8,8 +8,8 @@
     <!-- Empty state -->
     <div v-else-if="serviceAssignments.length === 0" class="empty-state">
       <p>No support services have been assigned to this shift type.</p>
-      <button v-if="showHeader" @click="showAddServiceModal = true" class="btn-add-service">
-        <span class="icon">+</span> Add Service
+      <button v-if="showHeader" @click="showAddServiceModal = true" class="btn btn--primary">
+        Add Service
       </button>
     </div>
     
@@ -17,8 +17,8 @@
     <div v-else>
       <div class="services-list-header" v-if="showHeader">
         <h4>{{ shiftTypeLabel }} Coverage</h4>
-        <button @click="showAddServiceModal = true" class="btn-add-service">
-          <span class="icon">+</span> Add Service
+        <button @click="showAddServiceModal = true" class="btn btn--primary">
+          Add Service
         </button>
       </div>
       
@@ -498,28 +498,6 @@ async function confirmRemove(assignmentId) {
     }
   }
   
-  .btn-add-service {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: none;
-    background-color: mix.color('primary');
-    color: white;
-    border-radius: mix.radius('md');
-    font-weight: 500;
-    cursor: pointer;
-    font-size: mix.font-size('sm');
-    
-    &:hover {
-      background-color: color.scale(mix.color('primary'), $lightness: -10%);
-    }
-    
-    .icon {
-      font-size: 16px;
-      font-weight: bold;
-    }
-  }
   
   .services-grid {
     display: grid;
@@ -639,6 +617,20 @@ async function confirmRemove(assignmentId) {
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
+  
+  &--primary {
+    background-color: mix.color('primary');
+    color: white;
+    
+    &:hover:not(:disabled) {
+      background-color: rgba(66, 133, 244, 0.8);
+    }
+    
+    .icon {
+      font-size: 16px;
+      font-weight: bold;
+    }
+  }
   
   &-primary {
     background-color: mix.color('primary');

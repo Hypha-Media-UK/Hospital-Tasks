@@ -24,7 +24,7 @@
                 class="task-item pending"
               >
                 <div class="task-details">
-                  <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
+                  <h3 class="task-name">{{ task.task_items.task_types?.name || 'Unknown' }}</h3>
                   
                   <div class="task-meta">
                     <div class="meta-group">
@@ -35,7 +35,7 @@
                         <strong>To:</strong> {{ task.destination_department.name }}
                       </div>
                       <div class="meta-item">
-                        <strong>Type:</strong> {{ task.task_item.name }}
+                        <strong>Type:</strong> {{ task.task_items.name }}
                       </div>
                     </div>
                     
@@ -82,7 +82,7 @@
                 class="task-item completed"
               >
                 <div class="task-details">
-                  <h3 class="task-name">{{ task.task_item.task_type?.name || 'Unknown' }}</h3>
+                  <h3 class="task-name">{{ task.task_items.task_types?.name || 'Unknown' }}</h3>
                   
                   <div class="task-meta">
                     <div class="meta-group">
@@ -93,7 +93,7 @@
                         <strong>To:</strong> {{ task.destination_department.name }}
                       </div>
                       <div class="meta-item">
-                        <strong>Type:</strong> {{ task.task_item.name }}
+                        <strong>Type:</strong> {{ task.task_items.name }}
                       </div>
                     </div>
                     
@@ -106,8 +106,8 @@
                       </div>
                       <div class="meta-item">
                         <strong>Porter:</strong> 
-                        <span v-if="task.porter">
-                          {{ task.porter.first_name }} {{ task.porter.last_name }}
+                        <span v-if="task.staff">
+                          {{ task.staff.first_name }} {{ task.staff.last_name }}
                         </span>
                         <span v-else class="not-assigned">Not assigned</span>
                       </div>

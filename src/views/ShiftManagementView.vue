@@ -1517,10 +1517,10 @@ async function saveTask() {
   try {
     // Transform form data to match the API requirements
     const taskData = {
-      taskItemId: taskForm.value.taskItemId,
-      porterId: taskForm.value.porterId || null,
-      originDepartmentId: taskForm.value.originDepartmentId || null,
-      destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
+      task_item_id: taskForm.value.taskItemId,
+      porter_id: taskForm.value.porterId || null,
+      origin_department_id: taskForm.value.originDepartmentId || null,
+      destination_department_id: taskForm.value.destinationDepartmentId || null,
       status: taskForm.value.status
     };
     
@@ -1657,10 +1657,10 @@ async function saveTaskWithStatus(status) {
   try {
     // Transform form data to match the API requirements
     const taskData = {
-      taskItemId: taskForm.value.taskItemId,
-      porterId: taskForm.value.porterId || null,
-      originDepartmentId: taskForm.value.originDepartmentId || null,
-      destinationDepartmentId: taskForm.value.destinationDepartmentId || null,
+      task_item_id: taskForm.value.taskItemId,
+      porter_id: taskForm.value.porterId || null,
+      origin_department_id: taskForm.value.originDepartmentId || null,
+      destination_department_id: taskForm.value.destinationDepartmentId || null,
       status: taskForm.value.status
     };
     
