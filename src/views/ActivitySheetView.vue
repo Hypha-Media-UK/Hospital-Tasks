@@ -46,24 +46,18 @@
                 <th>Time</th>
                 <th>From</th>
                 <th>To</th>
-                <th>Task</th>
                 <th>Task Info</th>
-                <th>Allocated</th>
                 <th>Porter</th>
-                <th>Completed</th>
                 <th>Duration</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="task in pendingTasks" :key="task.id">
                 <td>{{ formatTime(task.time_received) }}</td>
-                <td>{{ task.origin_department?.name || '-' }}</td>
-                <td>{{ task.destination_department?.name || '-' }}</td>
-                <td>{{ task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown' }}</td>
-                <td>{{ task.task_item?.name || '-' }}</td>
-                <td>{{ formatTime(task.time_allocated) }}</td>
-                <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
-                <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
+                <td>{{ task.departments_shift_tasks_origin_department_idTodepartments?.name || '-' }}</td>
+                <td>{{ task.departments_shift_tasks_destination_department_idTodepartments?.name || '-' }}</td>
+                <td>{{ task.task_items?.name || '-' }}</td>
+                <td>{{ task.staff ? `${task.staff.first_name} ${task.staff.last_name}` : '-' }}</td>
                 <td>{{ calculateDuration(task) }}</td>
               </tr>
             </tbody>
@@ -79,24 +73,18 @@
                 <th>Time</th>
                 <th>From</th>
                 <th>To</th>
-                <th>Task</th>
                 <th>Task Info</th>
-                <th>Allocated</th>
                 <th>Porter</th>
-                <th>Completed</th>
                 <th>Duration</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="task in completedTasks" :key="task.id">
                 <td>{{ formatTime(task.time_received) }}</td>
-                <td>{{ task.origin_department?.name || '-' }}</td>
-                <td>{{ task.destination_department?.name || '-' }}</td>
-                <td>{{ task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown' }}</td>
-                <td>{{ task.task_item?.name || '-' }}</td>
-                <td>{{ formatTime(task.time_allocated) }}</td>
-                <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
-                <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
+                <td>{{ task.departments_shift_tasks_origin_department_idTodepartments?.name || '-' }}</td>
+                <td>{{ task.departments_shift_tasks_destination_department_idTodepartments?.name || '-' }}</td>
+                <td>{{ task.task_items?.name || '-' }}</td>
+                <td>{{ task.staff ? `${task.staff.first_name} ${task.staff.last_name}` : '-' }}</td>
                 <td>{{ calculateDuration(task) }}</td>
               </tr>
             </tbody>
@@ -234,10 +222,10 @@ const departmentSummaries = computed(() => {
   
   // First, let's get all origin departments with their tasks
   tasks.value.forEach(task => {
-    if (!task.origin_department) return;
+    if (!task.departments_shift_tasks_origin_department_idTodepartments) return;
     
-    const deptId = task.origin_department.id;
-    const deptName = task.origin_department.name;
+    const deptId = task.departments_shift_tasks_origin_department_idTodepartments.id;
+    const deptName = task.departments_shift_tasks_origin_department_idTodepartments.name;
     
     if (!departmentMap.has(deptId)) {
       departmentMap.set(deptId, {
@@ -248,7 +236,7 @@ const departmentSummaries = computed(() => {
     }
     
     const summary = departmentMap.get(deptId);
-    const taskTypeName = task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown';
+    const taskTypeName = task.task_items?.task_types?.name || 'Unknown';
     
     // Increment count for this task type
     summary.taskTypes[taskTypeName] = (summary.taskTypes[taskTypeName] || 0) + 1;
@@ -270,7 +258,7 @@ const uniqueTaskTypes = computed(() => {
   
   // Collect all task types from tasks
   tasks.value.forEach(task => {
-    const typeName = task.task_item.task_type?.name || 'Unknown';
+    const typeName = task.task_items?.task_types?.name || 'Unknown';
     taskTypes.add(typeName);
   });
   
@@ -297,9 +285,9 @@ const porterActivity = computed(() => {
     
     // Count tasks assigned to each porter
     tasks.value.forEach(task => {
-      if (task.porter && task.porter.id) {
-        const porterId = task.porter.id;
-        const porterName = `${task.porter.first_name} ${task.porter.last_name}`;
+      if (task.staff && task.staff.id) {
+        const porterId = task.staff.id;
+        const porterName = `${task.staff.first_name} ${task.staff.last_name}`;
         
         if (!porterData.has(porterId)) {
           porterData.set(porterId, {
@@ -395,7 +383,7 @@ const hasPoolPorters = computed(() => {
 // Get total count for a specific task type across all departments
 function getTaskTypeTotal(taskType) {
   return tasks.value.filter(task => 
-    (task.task_item.task_type?.name || 'Unknown') === taskType
+    (task.task_items?.task_types?.name || 'Unknown') === taskType
   ).length;
 }
 
@@ -415,13 +403,10 @@ function exportToExcel() {
     // Function to create a task data row
     const createTaskRow = (task) => ({
       'Time': formatTime(task.time_received),
-      'From': task.origin_department?.name || '-',
-      'To': task.destination_department?.name || '-',
-      'Task': task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown',
-      'Task Info': task.task_item?.name || '-',
-      'Allocated': formatTime(task.time_allocated),
-      'Porter': task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-',
-      'Completed': task.status === 'completed' ? formatTime(task.time_completed) : '-',
+      'From': task.departments_shift_tasks_origin_department_idTodepartments?.name || '-',
+      'To': task.departments_shift_tasks_destination_department_idTodepartments?.name || '-',
+      'Task Info': task.task_items?.name || '-',
+      'Porter': task.staff ? `${task.staff.first_name} ${task.staff.last_name}` : '-',
       'Duration': calculateDuration(task)
     });
     
@@ -430,11 +415,8 @@ function exportToExcel() {
       { wch: 10 }, // Time
       { wch: 20 }, // From
       { wch: 20 }, // To
-      { wch: 15 }, // Task
       { wch: 25 }, // Task Info
-      { wch: 10 }, // Allocated
-      { wch: 20 }, // Porter
-      { wch: 10 }, // Completed
+      { wch: 15 }, // Porter
       { wch: 10 }  // Duration
     ];
     
@@ -760,15 +742,12 @@ function getShiftTypeDisplayName() {
     }
     
     /* Set specific column widths */
-    th:nth-child(1) { width: 5.5%; }  /* Time */
-    th:nth-child(2) { width: 14%; }   /* From */
-    th:nth-child(3) { width: 14%; }   /* To */
-    th:nth-child(4) { width: 13%; }   /* Task */
-    th:nth-child(5) { width: 16%; }   /* Task Info */
-    th:nth-child(6) { width: 6.5%; }  /* Allocated */
-    th:nth-child(7) { width: 14.5%; } /* Porter */
-    th:nth-child(8) { width: 6.5%; }  /* Completed */
-    th:nth-child(9) { width: 10%; }   /* Duration */
+    th:nth-child(1) { width: 10%; }   /* Time */
+    th:nth-child(2) { width: 20%; }   /* From */
+    th:nth-child(3) { width: 20%; }   /* To */
+    th:nth-child(4) { width: 25%; }   /* Task Info */
+    th:nth-child(5) { width: 15%; }   /* Porter */
+    th:nth-child(6) { width: 10%; }   /* Duration */
   }
   
   .department-summary, .porter-summary {
@@ -911,15 +890,12 @@ function getShiftTypeDisplayName() {
   }
   
   /* Column widths for better display */
-  th:nth-child(1) { width: 5.5%; }  /* Time */
-  th:nth-child(2) { width: 14%; }   /* From */
-  th:nth-child(3) { width: 14%; }   /* To */
-  th:nth-child(4) { width: 13%; }   /* Task */
-  th:nth-child(5) { width: 16%; }   /* Task Info */
-  th:nth-child(6) { width: 6.5%; }  /* Allocated */
-  th:nth-child(7) { width: 14.5%; } /* Porter */
-  th:nth-child(8) { width: 6.5%; }  /* Completed */
-  th:nth-child(9) { width: 10%; }   /* Duration */
+  th:nth-child(1) { width: 10%; }   /* Time */
+  th:nth-child(2) { width: 20%; }   /* From */
+  th:nth-child(3) { width: 20%; }   /* To */
+  th:nth-child(4) { width: 25%; }   /* Task Info */
+  th:nth-child(5) { width: 15%; }   /* Porter */
+  th:nth-child(6) { width: 10%; }   /* Duration */
 }
 
 .department-summary, .porter-summary {
