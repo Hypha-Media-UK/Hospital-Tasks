@@ -285,24 +285,29 @@ const porterActivity = computed(() => {
     
     // Count tasks assigned to each porter
     tasks.value.forEach(task => {
-      if (task.staff && task.staff.id) {
-        const porterId = task.staff.id;
-        const porterName = `${task.staff.first_name} ${task.staff.last_name}`;
-        
-        if (!porterData.has(porterId)) {
-          porterData.set(porterId, {
-            id: porterId,
-            name: porterName,
-            taskCount: 0,
-            inPool: true, // Default assumption
-            movedTo: null // Will be set if the porter was moved to a department
-          });
+      // Get all porters assigned to this task (both legacy and new multiple porter assignments)
+      const taskPorters = getTaskPorters(task);
+      
+      taskPorters.forEach(porter => {
+        if (porter && porter.id) {
+          const porterId = porter.id;
+          const porterName = `${porter.first_name} ${porter.last_name}`;
+          
+          if (!porterData.has(porterId)) {
+            porterData.set(porterId, {
+              id: porterId,
+              name: porterName,
+              taskCount: 0,
+              inPool: true, // Default assumption
+              movedTo: null // Will be set if the porter was moved to a department
+            });
+          }
+          
+          // Increment task count
+          const data = porterData.get(porterId);
+          data.taskCount++;
         }
-        
-        // Increment task count
-        const data = porterData.get(porterId);
-        data.taskCount++;
-      }
+      });
     });
     
     // Check pool assignments
