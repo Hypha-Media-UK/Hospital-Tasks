@@ -50,18 +50,6 @@
             </button>
           </div>
           
-          <!-- End Shift Confirmation -->
-          <div v-if="showEndShiftConfirm" class="confirmation-box">
-            <p>Are you sure you want to end this shift? This will archive the shift and all its tasks.</p>
-            <div class="confirmation-actions">
-              <button @click="endShift" class="btn btn-danger" :disabled="endingShift">
-                {{ endingShift ? 'Ending...' : 'Yes, End Shift' }}
-              </button>
-              <button @click="cancelEndShift" class="btn btn-secondary" :disabled="endingShift">
-                Cancel
-              </button>
-            </div>
-          </div>
         </div>
         
         <!-- Removed the old action bar and moved Add Task button to floating action button -->
@@ -465,6 +453,61 @@
               :disabled="!selectedSupervisor || changingSupervisor"
             >
               {{ changingSupervisor ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+          </motion.div>
+        </div>
+      </Transition>
+
+      <!-- End Shift Confirmation Modal -->
+      <Transition
+        @before-leave="onBeforeLeave"
+        @after-leave="onAfterLeave"
+      >
+        <div v-if="showEndShiftConfirm" class="modal">
+          <motion.div class="modal-backdrop"
+            :initial="{ opacity: 0 }"
+            :animate="isClosing ? { opacity: 0 } : { opacity: 1 }"
+            :transition="{ 
+              duration: 0.45,
+              ease: 'easeInOut'
+            }"
+          ></motion.div>
+          <motion.div class="tray end-shift-modal-content"
+            :initial="{ y: '100%' }"
+            :animate="isClosing ? { y: '100%' } : { y: 0 }"
+            :transition="{ 
+              type: 'spring',
+              stiffness: 300,
+              damping: 25,
+              mass: 1
+            }"
+          >
+          <div class="modal-header">
+            <h2>End Shift</h2>
+            <button @click="cancelEndShift" class="close-button">&times;</button>
+          </div>
+          
+          <div class="modal-body">
+            <p class="confirmation-message">
+              Are you sure you want to end this shift? This will archive the shift and all its tasks.
+            </p>
+          </div>
+          
+          <div class="modal-footer">
+            <button 
+              @click="cancelEndShift" 
+              class="btn btn-secondary" 
+              :disabled="endingShift"
+            >
+              Cancel
+            </button>
+            <button 
+              @click="endShift" 
+              class="btn btn-danger" 
+              :disabled="endingShift"
+            >
+              {{ endingShift ? 'Ending...' : 'Yes, End Shift' }}
             </button>
           </div>
           </motion.div>
@@ -2829,6 +2872,18 @@ function isWeekend(date) {
 
 .supervisor-modal-content {
   max-width: 400px;
+}
+
+.end-shift-modal-content {
+  max-width: 400px;
+}
+
+.confirmation-message {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  text-align: center;
+  color: #333;
 }
 
 /* Time fields animation and styling */
