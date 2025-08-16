@@ -24,25 +24,19 @@
                 class="task-item pending"
               >
                 <div class="task-details">
-                  <h3 class="task-name">{{ task.task_items.task_types?.name || 'Unknown' }}</h3>
+                  <!-- <h3 class="task-name">{{ task.task_items.task_types?.name || 'Unknown' }}</h3> -->
                   
                   <div class="task-meta">
-                    <div class="meta-group">
-                      <div v-if="task.origin_department" class="meta-item">
-                        <strong>From:</strong> {{ task.origin_department.name }}
-                      </div>
-                      <div v-if="task.destination_department" class="meta-item">
-                        <strong>To:</strong> {{ task.destination_department.name }}
-                      </div>
-                      <div class="meta-item">
-                        <strong>Type:</strong> {{ task.task_items.name }}
-                      </div>
+                    <div class="meta-line">
+                      <span v-if="task.departments_shift_tasks_origin_department_idTodepartments">{{ task.departments_shift_tasks_origin_department_idTodepartments.name }}</span>
+                      <span v-if="task.departments_shift_tasks_destination_department_idTodepartments"> - {{ task.departments_shift_tasks_destination_department_idTodepartments.name }}</span>
+                      <span> || {{ task.task_items.name }}</span>
+                      <span> || Porter: <span class="not-assigned">Not assigned</span></span>
                     </div>
                     
-                    <div class="meta-group">
-                      <div class="meta-item">
-                        <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                      </div>
+                    <div class="meta-line">
+                      <span>Received: {{ formatTime(task.time_received) }}</span>
+                      <span> - Completed: <span class="not-completed">Not completed</span></span>
                     </div>
                   </div>
                 </div>
@@ -82,35 +76,22 @@
                 class="task-item completed"
               >
                 <div class="task-details">
-                  <h3 class="task-name">{{ task.task_items.task_types?.name || 'Unknown' }}</h3>
+                  <!-- <h3 class="task-name">{{ task.task_items.task_types?.name || 'Unknown' }}</h3> -->
                   
                   <div class="task-meta">
-                    <div class="meta-group">
-                      <div v-if="task.origin_department" class="meta-item">
-                        <strong>From:</strong> {{ task.origin_department.name }}
-                      </div>
-                      <div v-if="task.destination_department" class="meta-item">
-                        <strong>To:</strong> {{ task.destination_department.name }}
-                      </div>
-                      <div class="meta-item">
-                        <strong>Type:</strong> {{ task.task_items.name }}
-                      </div>
+                    <div class="meta-line">
+                      <strong><span>{{ task.task_items.name }}</span></strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+                      <span v-if="task.departments_shift_tasks_origin_department_idTodepartments">{{ task.departments_shift_tasks_origin_department_idTodepartments.name }}</span>
+                      <span v-if="task.departments_shift_tasks_destination_department_idTodepartments"> - {{ task.departments_shift_tasks_destination_department_idTodepartments.name }}</span>
                     </div>
                     
-                    <div class="meta-group">
-                      <div class="meta-item">
-                        <strong>Received:</strong> {{ formatTime(task.time_received) }}
-                      </div>
-                      <div class="meta-item">
-                        <strong>Completed:</strong> {{ formatTime(task.time_completed) }}
-                      </div>
-                      <div class="meta-item">
-                        <strong>Porter:</strong> 
-                        <span v-if="task.staff">
-                          {{ task.staff.first_name }} {{ task.staff.last_name }}
-                        </span>
+                    <div class="meta-line">
+                      <span>Received: {{ formatTime(task.time_received) }}</span>
+                      <span> - Completed: {{ formatTime(task.time_completed) }}</span>
+                      <span>&nbsp;&nbsp;|&nbsp;&nbsp;Porter:&nbsp;
+                        <span v-if="task.staff">{{ task.staff.first_name }} {{ task.staff.last_name }}</span>
                         <span v-else class="not-assigned">Not assigned</span>
-                      </div>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -435,20 +416,15 @@ nextTick(() => {
   .task-meta {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.25rem;
     margin-top: 0.25rem;
     
-    .meta-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-    }
-    
-    .meta-item {
+    .meta-line {
       font-size: 0.9rem;
+      line-height: 1.4;
     }
     
-    .not-assigned {
+    .not-assigned, .not-completed {
       color: #888;
       font-style: italic;
     }
