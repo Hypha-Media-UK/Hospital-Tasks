@@ -59,8 +59,8 @@
                 <td>{{ formatTime(task.time_received) }}</td>
                 <td>{{ task.origin_department?.name || '-' }}</td>
                 <td>{{ task.destination_department?.name || '-' }}</td>
-                <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
-                <td>{{ task.task_item.name }}</td>
+                <td>{{ task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown' }}</td>
+                <td>{{ task.task_item?.name || '-' }}</td>
                 <td>{{ formatTime(task.time_allocated) }}</td>
                 <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
                 <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
@@ -92,8 +92,8 @@
                 <td>{{ formatTime(task.time_received) }}</td>
                 <td>{{ task.origin_department?.name || '-' }}</td>
                 <td>{{ task.destination_department?.name || '-' }}</td>
-                <td>{{ task.task_item.task_type?.name || 'Unknown' }}</td>
-                <td>{{ task.task_item.name }}</td>
+                <td>{{ task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown' }}</td>
+                <td>{{ task.task_item?.name || '-' }}</td>
                 <td>{{ formatTime(task.time_allocated) }}</td>
                 <td>{{ task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-' }}</td>
                 <td>{{ task.status === 'completed' ? formatTime(task.time_completed) : '-' }}</td>
@@ -248,7 +248,7 @@ const departmentSummaries = computed(() => {
     }
     
     const summary = departmentMap.get(deptId);
-    const taskTypeName = task.task_item.task_type?.name || 'Unknown';
+    const taskTypeName = task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown';
     
     // Increment count for this task type
     summary.taskTypes[taskTypeName] = (summary.taskTypes[taskTypeName] || 0) + 1;
@@ -417,8 +417,8 @@ function exportToExcel() {
       'Time': formatTime(task.time_received),
       'From': task.origin_department?.name || '-',
       'To': task.destination_department?.name || '-',
-      'Task': task.task_item.task_type?.name || 'Unknown',
-      'Task Info': task.task_item.name,
+      'Task': task.task_item?.task_type?.name || task.task_items?.task_types?.name || 'Unknown',
+      'Task Info': task.task_item?.name || '-',
       'Allocated': formatTime(task.time_allocated),
       'Porter': task.porter ? `${task.porter.first_name} ${task.porter.last_name}` : '-',
       'Completed': task.status === 'completed' ? formatTime(task.time_completed) : '-',

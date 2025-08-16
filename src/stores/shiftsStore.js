@@ -360,6 +360,12 @@ export const useShiftsStore = defineStore('shifts', {
       return false;
     },
 
+    // Get porter building assignments (placeholder method for SitRep compatibility)
+    getPorterBuildingAssignments: () => (porterId) => {
+      // For now, return empty array as a placeholder since building assignments aren't fully implemented
+      return [];
+    },
+
     // Check if a shift is in setup mode (before actual shift start time)
     isShiftInSetupMode: () => (shift) => {
       if (!shift) return false;
