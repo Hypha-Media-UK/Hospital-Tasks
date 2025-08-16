@@ -537,7 +537,7 @@ function formatTime(timeString) {
     const [hours, minutes] = timeString.split(':').map(Number);
     
     // Use 24h or 12h format based on settings
-    if (settingsStore.appSettings?.timeFormat === '24h') {
+    if (settingsStore.appSettings?.time_format === '24h') {
       return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     } else {
       // Convert to 12h format
@@ -551,7 +551,7 @@ function formatTime(timeString) {
       const date = new Date(timeString);
       
       // Use 24h or 12h format based on settings
-      if (settingsStore.appSettings?.timeFormat === '24h') {
+      if (settingsStore.appSettings?.time_format === '24h') {
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;

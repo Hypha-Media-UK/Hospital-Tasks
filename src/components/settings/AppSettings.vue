@@ -92,9 +92,9 @@ const timezone = computed({
 });
 
 const timeFormat = computed({
-  get: () => settingsStore.appSettings.timeFormat,
+  get: () => settingsStore.appSettings.time_format,
   set: (value) => {
-    settingsStore.updateAppSettings({ timeFormat: value });
+    settingsStore.updateAppSettings({ time_format: value });
   }
 });
 
