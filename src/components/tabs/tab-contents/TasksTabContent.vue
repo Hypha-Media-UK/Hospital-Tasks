@@ -31,7 +31,10 @@
                       <span v-if="task.departments_shift_tasks_origin_department_idTodepartments">{{ task.departments_shift_tasks_origin_department_idTodepartments.name }}</span>
                       <span v-if="task.departments_shift_tasks_destination_department_idTodepartments"> - {{ task.departments_shift_tasks_destination_department_idTodepartments.name }}</span>
                       <span> || {{ task.task_items.name }}</span>
-                      <span> || Porter: <span class="not-assigned">Not assigned</span></span>
+                      <span> || Porter{{ getTaskPorters(task).length > 1 ? 's' : '' }}: 
+                        <span v-if="getTaskPorters(task).length === 0" class="not-assigned">Not assigned</span>
+                        <span v-else>{{ formatPorterNames(getTaskPorters(task)) }}</span>
+                      </span>
                     </div>
                     
                     <div class="meta-line">
@@ -88,9 +91,9 @@
                     <div class="meta-line">
                       <span>Received: {{ formatTime(task.time_received) }}</span>
                       <span> - Completed: {{ formatTime(task.time_completed) }}</span>
-                      <span>&nbsp;&nbsp;|&nbsp;&nbsp;Porter:&nbsp;
-                        <span v-if="task.staff">{{ task.staff.first_name }} {{ task.staff.last_name }}</span>
-                        <span v-else class="not-assigned">Not assigned</span>
+                      <span>&nbsp;&nbsp;|&nbsp;&nbsp;Porter{{ getTaskPorters(task).length > 1 ? 's' : '' }}:&nbsp;
+                        <span v-if="getTaskPorters(task).length === 0" class="not-assigned">Not assigned</span>
+                        <span v-else>{{ formatPorterNames(getTaskPorters(task)) }}</span>
                       </span>
                     </div>
                   </div>
@@ -271,6 +274,47 @@ function updateIndicatorPosition() {
   // Calculate position relative to the container
   indicatorPosition.value = tabRect.left - containerRect.left;
   indicatorWidth.value = tabRect.width;
+}
+
+// Get all porters assigned to a task (both legacy single porter and new multiple porter assignments)
+function getTaskPorters(task) {
+  const porters = [];
+  
+  // Add legacy single porter assignment if it exists
+  if (task.staff) {
+    porters.push(task.staff);
+  }
+  
+  // Add multiple porter assignments if they exist
+  if (task.shift_task_porter_assignments && task.shift_task_porter_assignments.length > 0) {
+    task.shift_task_porter_assignments.forEach(assignment => {
+      if (assignment.staff) {
+        // Check if this porter is already in the list (to avoid duplicates)
+        const exists = porters.some(porter => porter.id === assignment.staff.id);
+        if (!exists) {
+          porters.push(assignment.staff);
+        }
+      }
+    });
+  }
+  
+  return porters;
+}
+
+// Format porter names for display
+function formatPorterNames(porters) {
+  if (!porters || porters.length === 0) return '';
+  
+  if (porters.length === 1) {
+    return `${porters[0].first_name} ${porters[0].last_name}`;
+  }
+  
+  if (porters.length === 2) {
+    return `${porters[0].first_name} ${porters[0].last_name} & ${porters[1].first_name} ${porters[1].last_name}`;
+  }
+  
+  // For 3 or more porters, show first two and count
+  return `${porters[0].first_name} ${porters[0].last_name}, ${porters[1].first_name} ${porters[1].last_name} & ${porters.length - 2} more`;
 }
 
 // Format time (e.g., "9:30 AM" or "09:30") without the date based on app settings

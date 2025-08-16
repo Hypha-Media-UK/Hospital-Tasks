@@ -55,6 +55,18 @@ router.get('/', async (req, res) => {
             shift_date: true,
             is_active: true
           }
+        },
+        shift_task_porter_assignments: {
+          include: {
+            staff: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                role: true
+              }
+            }
+          }
         }
       },
       orderBy: {
@@ -112,6 +124,18 @@ router.get('/:id', async (req, res) => {
             shift_date: true,
             is_active: true
           }
+        },
+        shift_task_porter_assignments: {
+          include: {
+            staff: {
+              select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                role: true
+              }
+            }
+          }
         }
       }
     });
@@ -140,6 +164,7 @@ router.post('/', async (req, res) => {
       shift_id,
       task_item_id,
       porter_id,
+      porter_assignments = [], // Array of porter IDs for multiple porter assignments
       origin_department_id,
       destination_department_id,
       status = 'pending',
@@ -262,6 +287,32 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Verify porter assignments if provided
+    if (porter_assignments && porter_assignments.length > 0) {
+      for (const porterId of porter_assignments) {
+        if (porterId) { // Skip empty porter assignments
+          const porter = await prisma.staff.findUnique({
+            where: { id: porterId },
+            select: { id: true, role: true }
+          });
+
+          if (!porter) {
+            return res.status(404).json({
+              error: 'Not Found',
+              message: `Porter with ID ${porterId} not found`
+            });
+          }
+
+          if (porter.role !== 'porter' && porter.role !== 'supervisor') {
+            return res.status(400).json({
+              error: 'Bad Request',
+              message: `Staff member ${porterId} must be a porter or supervisor`
+            });
+          }
+        }
+      }
+    }
+
     // Create the task
     const taskData: any = {
       shift_id,
@@ -314,6 +365,23 @@ router.post('/', async (req, res) => {
         }
       }
     });
+
+    // Create porter assignments if provided
+    if (porter_assignments && porter_assignments.length > 0) {
+      const porterAssignmentPromises = porter_assignments
+        .filter((porterId: string) => porterId) // Filter out empty assignments
+        .map((porterId: string) => 
+          prisma.shift_task_porter_assignments.create({
+            data: {
+              shift_task_id: newTask.id,
+              porter_id: porterId,
+              created_at: new Date()
+            }
+          })
+        );
+
+      await Promise.all(porterAssignmentPromises);
+    }
 
     return res.status(201).json(newTask);
   } catch (error) {

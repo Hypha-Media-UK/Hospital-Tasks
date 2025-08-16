@@ -250,6 +250,27 @@
                 </select>
               </div>
               
+              <!-- Additional Porter Fields (only if more than 1 porter required) -->
+              <template v-if="selectedTaskItemPortersRequired > 1">
+                <div 
+                  v-for="(porterId, index) in taskForm.additionalPorters" 
+                  :key="`additional-porter-${index}`"
+                  class="form-group"
+                >
+                  <label :for="`additional-porter-${index}`">Porter {{ index + 2 }}</label>
+                  <select 
+                    :id="`additional-porter-${index}`"
+                    v-model="taskForm.additionalPorters[index]" 
+                    class="form-control"
+                  >
+                    <option value="">Select porter (optional)</option>
+                    <option v-for="porter in porters" :key="porter.id" :value="porter.id">
+                      {{ porter.first_name }} {{ porter.last_name }}
+                    </option>
+                  </select>
+                </div>
+              </template>
+              
               <!-- Status buttons removed from here and moved to footer -->
             </div>
             
@@ -709,6 +730,7 @@ const taskForm = ref({
   originDepartmentId: '',
   destinationDepartmentId: '',
   porterId: '',
+  additionalPorters: [], // Array for additional porter assignments
   status: 'pending',
   timeReceived: '',
   timeAllocated: '',
@@ -938,6 +960,14 @@ const canSaveTask = computed(() => {
   return true;
 });
 
+// Get the porters required for the selected task item
+const selectedTaskItemPortersRequired = computed(() => {
+  if (!taskForm.value.taskItemId) return 1;
+  
+  const selectedItem = taskItems.value.find(item => item.id === taskForm.value.taskItemId);
+  return selectedItem?.porters_required || 1;
+});
+
 // Load data on component mount
 // Function to check and clean up all expired allocations
 const checkAndCleanupExpiredAllocations = async () => {
@@ -1087,6 +1117,25 @@ watch(() => taskForm.value.timeReceived, (newReceivedTime, oldReceivedTime) => {
     }, 1500);
   } catch (error) {
     // Don't update fields if there's an error parsing the time
+  }
+});
+
+// Watch for changes in porters required to manage additionalPorters array size
+watch(() => selectedTaskItemPortersRequired.value, (newPortersRequired) => {
+  const additionalPortersNeeded = Math.max(0, newPortersRequired - 1);
+  
+  // Resize the additionalPorters array to match the required size
+  if (taskForm.value.additionalPorters.length !== additionalPortersNeeded) {
+    // If we need more slots, add empty strings
+    if (taskForm.value.additionalPorters.length < additionalPortersNeeded) {
+      while (taskForm.value.additionalPorters.length < additionalPortersNeeded) {
+        taskForm.value.additionalPorters.push('');
+      }
+    } 
+    // If we need fewer slots, trim the array
+    else {
+      taskForm.value.additionalPorters = taskForm.value.additionalPorters.slice(0, additionalPortersNeeded);
+    }
   }
 });
 
@@ -1311,11 +1360,22 @@ function editTask(task) {
     originDepartmentId: task.origin_department_id || '',
     destinationDepartmentId: task.destination_department_id || '',
     porterId: task.porter_id || '',
+    additionalPorters: [], // Will be populated after loading task items
     status: task.status,
     timeReceived: task.time_received ? formatDateTimeForInput(task.time_received) : '',
     timeAllocated: task.time_allocated ? formatDateTimeForInput(task.time_allocated) : '',
     timeCompleted: task.time_completed ? formatDateTimeForInput(task.time_completed) : ''
   };
+  
+  // Load task items for this task type first, then populate additional porters
+  loadTaskItems().then(() => {
+    // After task items are loaded, populate additional porters from existing task data
+    if (task.porter_assignments && task.porter_assignments.length > 1) {
+      // Skip the first porter (main porter) and populate additional porters
+      const additionalPorterIds = task.porter_assignments.slice(1).map(assignment => assignment.porter_id);
+      taskForm.value.additionalPorters = additionalPorterIds;
+    }
+  });
   
   // Note: We no longer automatically show the time fields section
   // This keeps the UI consistent between adding and editing tasks
@@ -1373,6 +1433,7 @@ function resetTaskForm() {
     originDepartmentId: '',
     destinationDepartmentId: '',
     porterId: '',
+    additionalPorters: [], // Reset additional porters array
     status: 'pending',
     timeReceived: formatDateTimeForInput(now),
     timeAllocated: formatDateTimeForInput(timeAllocated),
@@ -1609,6 +1670,26 @@ async function saveTask() {
       destination_department_id: taskForm.value.destinationDepartmentId || null,
       status: taskForm.value.status
     };
+    
+    // Add porter assignments if there are additional porters
+    if (taskForm.value.additionalPorters && taskForm.value.additionalPorters.length > 0) {
+      // Create array with main porter (if selected) plus additional porters
+      const allPorterIds = [];
+      
+      // Add main porter if selected
+      if (taskForm.value.porterId) {
+        allPorterIds.push(taskForm.value.porterId);
+      }
+      
+      // Add additional porters (filter out empty values)
+      const additionalPorterIds = taskForm.value.additionalPorters.filter(id => id && id.trim() !== '');
+      allPorterIds.push(...additionalPorterIds);
+      
+      // Only add porter_assignments if we have porters to assign
+      if (allPorterIds.length > 0) {
+        taskData.porter_assignments = allPorterIds;
+      }
+    }
     
     // Get base dates for each time field if we're editing
     let receivedBaseDate, allocatedBaseDate, completedBaseDate;

@@ -29,6 +29,7 @@ model Staff {
   shift_porter_pool                        shift_porter_pool[]
   shift_support_service_porter_assignments shift_support_service_porter_assignments[]
   shift_tasks                              shift_tasks[]
+  shift_task_porter_assignments            shift_task_porter_assignments[]
   shifts                                   shifts[]
   departments                              Department?                                @relation(fields: [department_id], references: [id], onUpdate: NoAction, map: "staff_ibfk_1")
   staff_department_assignments             staff_department_assignments[]
@@ -101,6 +102,7 @@ model TaskItem {
   created_at                       DateTime?                          @default(now()) @db.Timestamp(0)
   updated_at                       DateTime?                          @default(now()) @updatedAt @db.Timestamp(0)
   is_regular                       Boolean?                           @default(false)
+  porters_required                 Int?                               @default(1)
   department_task_assignments      department_task_assignments[]
   shift_tasks                      shift_tasks[]
   task_item_department_assignments task_item_department_assignments[]
@@ -382,23 +384,24 @@ model shift_support_service_porter_assignments {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model shift_tasks {
-  id                                                             String      @id @default(dbgenerated("(uuid())")) @db.Char(36)
-  shift_id                                                       String      @db.Char(36)
-  task_item_id                                                   String      @db.Char(36)
-  porter_id                                                      String?     @db.Char(36)
-  origin_department_id                                           String?     @db.Char(36)
-  destination_department_id                                      String?     @db.Char(36)
-  status                                                         String?     @default("pending") @db.VarChar(20)
-  created_at                                                     DateTime?   @default(now()) @db.Timestamp(0)
-  updated_at                                                     DateTime?   @default(now()) @db.Timestamp(0)
-  time_received                                                  String?     @default("00:00") @db.VarChar(50)
-  time_allocated                                                 String?     @default("00:01") @db.VarChar(50)
-  time_completed                                                 String?     @default("00:20") @db.VarChar(50)
-  shifts                                                         shifts      @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_tasks_ibfk_1")
-  task_items                                                     TaskItem    @relation(fields: [task_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_tasks_ibfk_2")
-  staff                                                          Staff?      @relation(fields: [porter_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_3")
-  departments_shift_tasks_origin_department_idTodepartments      Department? @relation("shift_tasks_origin_department_idTodepartments", fields: [origin_department_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_4")
-  departments_shift_tasks_destination_department_idTodepartments Department? @relation("shift_tasks_destination_department_idTodepartments", fields: [destination_department_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_5")
+  id                                                             String                           @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_id                                                       String                           @db.Char(36)
+  task_item_id                                                   String                           @db.Char(36)
+  porter_id                                                      String?                          @db.Char(36)
+  origin_department_id                                           String?                          @db.Char(36)
+  destination_department_id                                      String?                          @db.Char(36)
+  status                                                         String?                          @default("pending") @db.VarChar(20)
+  created_at                                                     DateTime?                        @default(now()) @db.Timestamp(0)
+  updated_at                                                     DateTime?                        @default(now()) @db.Timestamp(0)
+  time_received                                                  String?                          @default("00:00") @db.VarChar(50)
+  time_allocated                                                 String?                          @default("00:01") @db.VarChar(50)
+  time_completed                                                 String?                          @default("00:20") @db.VarChar(50)
+  shifts                                                         shifts                           @relation(fields: [shift_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_tasks_ibfk_1")
+  task_items                                                     TaskItem                         @relation(fields: [task_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_tasks_ibfk_2")
+  staff                                                          Staff?                           @relation(fields: [porter_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_3")
+  departments_shift_tasks_origin_department_idTodepartments      Department?                      @relation("shift_tasks_origin_department_idTodepartments", fields: [origin_department_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_4")
+  departments_shift_tasks_destination_department_idTodepartments Department?                      @relation("shift_tasks_destination_department_idTodepartments", fields: [destination_department_id], references: [id], onUpdate: NoAction, map: "shift_tasks_ibfk_5")
+  shift_task_porter_assignments                                 shift_task_porter_assignments[]
 
   @@index([destination_department_id], map: "idx_shift_tasks_dest_dept")
   @@index([origin_department_id], map: "idx_shift_tasks_origin_dept")
@@ -406,6 +409,21 @@ model shift_tasks {
   @@index([shift_id], map: "idx_shift_tasks_shift_id")
   @@index([status], map: "idx_shift_tasks_status")
   @@index([task_item_id], map: "task_item_id")
+}
+
+model shift_task_porter_assignments {
+  id           String      @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  shift_task_id String     @db.Char(36)
+  porter_id    String      @db.Char(36)
+  created_at   DateTime?   @default(now()) @db.Timestamp(0)
+  updated_at   DateTime?   @default(now()) @db.Timestamp(0)
+  shift_tasks  shift_tasks @relation(fields: [shift_task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_task_porter_assignments_ibfk_1")
+  staff        Staff       @relation(fields: [porter_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shift_task_porter_assignments_ibfk_2")
+
+  @@unique([shift_task_id, porter_id], map: "unique_task_porter")
+  @@index([shift_task_id], map: "idx_shift_task_porter_task_id")
+  @@index([porter_id], map: "idx_shift_task_porter_porter_id")
+  @@map("shift_task_porter_assignments")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

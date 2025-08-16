@@ -66,6 +66,14 @@
                 class="form-control"
                 @keyup.enter="addTaskItem"
               />
+              <input 
+                v-model.number="newTaskItemPortersRequired" 
+                type="number"
+                min="1"
+                placeholder="Porters Required"
+                class="form-control porters-input"
+                @keyup.enter="addTaskItem"
+              />
               <button 
                 class="btn btn-primary"
                 @click="addTaskItem"
@@ -118,6 +126,9 @@
               <div v-else class="task-item-content">
                 <div class="task-item-details">
                   <div class="task-item-name">{{ item.name }}</div>
+                  <div v-if="item.porters_required && item.porters_required > 1" class="task-item-porters">
+                    ({{ item.porters_required }} porters)
+                  </div>
                 </div>
                 
                 <div class="task-item-actions">
@@ -219,8 +230,10 @@ const taskTypeNameInput = ref(null);
 
 // Task Item state
 const newTaskItemName = ref('');
+const newTaskItemPortersRequired = ref(1);
 const editingTaskItem = ref(null);
 const editTaskItemName = ref('');
+const editTaskItemPortersRequired = ref(1);
 
 // Department assignment modal state
 const showTaskTypeAssignmentModal = ref(false);
@@ -296,10 +309,12 @@ const addTaskItem = async () => {
   
   await taskTypesStore.addTaskItem({
     task_type_id: props.taskType.id,
-    name: newTaskItemName.value.trim()
+    name: newTaskItemName.value.trim(),
+    porters_required: newTaskItemPortersRequired.value || 1
   });
   
   newTaskItemName.value = '';
+  newTaskItemPortersRequired.value = 1;
 };
 
 // Edit task item
@@ -511,6 +526,11 @@ const confirmDeleteTaskType = async () => {
         border-color: mix.color('primary');
         box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.1);
       }
+      
+      &.porters-input {
+        flex: 0 0 120px; // Fixed width for porters input
+        text-align: center;
+      }
     }
   }
 }
@@ -566,6 +586,12 @@ const confirmDeleteTaskType = async () => {
   
   .task-item-name {
     font-weight: 500;
+  }
+  
+  .task-item-porters {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
   }
   
   .task-item-actions {

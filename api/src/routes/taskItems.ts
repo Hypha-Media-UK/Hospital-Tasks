@@ -80,7 +80,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       task_type_id,
       name,
       description,
-      is_regular = false
+      is_regular = false,
+      porters_required = 1
     } = req.body;
 
     // Validate required fields
@@ -88,6 +89,15 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       res.status(400).json({
         error: 'Bad Request',
         message: 'task_type_id and name are required'
+      });
+      return;
+    }
+
+    // Validate porters_required
+    if (porters_required && (typeof porters_required !== 'number' || porters_required < 1)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'porters_required must be a number greater than 0'
       });
       return;
     }
@@ -110,7 +120,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
         task_type_id,
         name,
         description: description || null,
-        is_regular
+        is_regular,
+        porters_required
       },
       include: {
         task_types: true
@@ -135,6 +146,16 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
 
     // Remove id from update data if present
     delete updateData.id;
+
+    // Validate porters_required if provided
+    if (updateData.porters_required !== undefined && 
+        (typeof updateData.porters_required !== 'number' || updateData.porters_required < 1)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'porters_required must be a number greater than 0'
+      });
+      return;
+    }
 
     // If task_type_id is being updated, verify it exists
     if (updateData.task_type_id) {

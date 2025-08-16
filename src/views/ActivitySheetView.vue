@@ -57,7 +57,7 @@
                 <td>{{ task.departments_shift_tasks_origin_department_idTodepartments?.name || '-' }}</td>
                 <td>{{ task.departments_shift_tasks_destination_department_idTodepartments?.name || '-' }}</td>
                 <td>{{ task.task_items?.name || '-' }}</td>
-                <td>{{ task.staff ? `${task.staff.first_name} ${task.staff.last_name}` : '-' }}</td>
+                <td>{{ formatTaskPorters(task) }}</td>
                 <td>{{ calculateDuration(task) }}</td>
               </tr>
             </tbody>
@@ -84,7 +84,7 @@
                 <td>{{ task.departments_shift_tasks_origin_department_idTodepartments?.name || '-' }}</td>
                 <td>{{ task.departments_shift_tasks_destination_department_idTodepartments?.name || '-' }}</td>
                 <td>{{ task.task_items?.name || '-' }}</td>
-                <td>{{ task.staff ? `${task.staff.first_name} ${task.staff.last_name}` : '-' }}</td>
+                <td>{{ formatTaskPorters(task) }}</td>
                 <td>{{ calculateDuration(task) }}</td>
               </tr>
             </tbody>
@@ -406,7 +406,7 @@ function exportToExcel() {
       'From': task.departments_shift_tasks_origin_department_idTodepartments?.name || '-',
       'To': task.departments_shift_tasks_destination_department_idTodepartments?.name || '-',
       'Task Info': task.task_items?.name || '-',
-      'Porter': task.staff ? `${task.staff.first_name} ${task.staff.last_name}` : '-',
+      'Porter': formatTaskPorters(task),
       'Duration': calculateDuration(task)
     });
     
@@ -651,6 +651,51 @@ function getDayOrdinalSuffix(day) {
     case 3: return 'rd';
     default: return 'th';
   }
+}
+
+// Get all porters assigned to a task (both legacy single porter and new multiple porter assignments)
+function getTaskPorters(task) {
+  const porters = [];
+  
+  // Add legacy single porter assignment if it exists
+  if (task.staff) {
+    porters.push(task.staff);
+  }
+  
+  // Add multiple porter assignments if they exist
+  if (task.shift_task_porter_assignments && task.shift_task_porter_assignments.length > 0) {
+    task.shift_task_porter_assignments.forEach(assignment => {
+      if (assignment.staff) {
+        // Check if this porter is already in the list (to avoid duplicates)
+        const exists = porters.some(porter => porter.id === assignment.staff.id);
+        if (!exists) {
+          porters.push(assignment.staff);
+        }
+      }
+    });
+  }
+  
+  return porters;
+}
+
+// Format porter names for display in the activity sheet
+function formatTaskPorters(task) {
+  const porters = getTaskPorters(task);
+  
+  if (porters.length === 0) {
+    return '-';
+  }
+  
+  if (porters.length === 1) {
+    return `${porters[0].first_name} ${porters[0].last_name}`;
+  }
+  
+  if (porters.length === 2) {
+    return `${porters[0].first_name} ${porters[0].last_name} & ${porters[1].first_name} ${porters[1].last_name}`;
+  }
+  
+  // For 3 or more porters, show first two and count
+  return `${porters[0].first_name} ${porters[0].last_name}, ${porters[1].first_name} ${porters[1].last_name} & ${porters.length - 2} more`;
 }
 
 // Get display name for shift type
