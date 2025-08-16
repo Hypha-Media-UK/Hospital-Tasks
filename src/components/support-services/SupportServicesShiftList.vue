@@ -225,17 +225,26 @@ const shiftTypeLabel = computed(() => {
 });
 
 const availableServices = computed(() => {
-  // Get all services
+  // Get all services with null check
   const allServices = supportServicesStore.services || [];
   
-  // Get ids of services already assigned
-  const assignedServiceIds = serviceAssignments.value.map(a => 
-    isShiftMode.value ? a.service_id : a.service.id
-  );
+  // Get ids of services already assigned with proper null checks
+  const assignedServiceIds = serviceAssignments.value
+    .map(a => {
+      if (isShiftMode.value) {
+        return a?.service_id;
+      } else {
+        return a?.service?.id || a?.support_services?.id;
+      }
+    })
+    .filter(id => id !== undefined && id !== null);
   
-  // Return only services not already assigned
+  // Return only services not already assigned with proper null checks
   return allServices.filter(service => 
-    !assignedServiceIds.includes(service.id) && service.is_active !== false
+    service && 
+    service.id && 
+    !assignedServiceIds.includes(service.id) && 
+    service.is_active !== false
   );
 });
 
@@ -297,26 +306,72 @@ onMounted(async () => {
 });
 
 // Methods
+function extractTimeString(timeValue) {
+  if (!timeValue) return null;
+  
+  // If it's already a simple time string (HH:MM), return it
+  if (typeof timeValue === 'string' && timeValue.match(/^\d{2}:\d{2}$/)) {
+    return timeValue;
+  }
+  
+  // If it's a Date object, extract time
+  if (timeValue instanceof Date) {
+    return timeValue.toTimeString().substring(0, 5);
+  }
+  
+  // If it's an ISO string (e.g., "1970-01-01T08:00:00.000Z"), extract time
+  if (typeof timeValue === 'string' && timeValue.includes('T')) {
+    const date = new Date(timeValue);
+    return date.toTimeString().substring(0, 5);
+  }
+  
+  // If it's a time string with seconds (HH:MM:SS), extract HH:MM
+  if (typeof timeValue === 'string' && timeValue.match(/^\d{2}:\d{2}:\d{2}/)) {
+    return timeValue.substring(0, 5);
+  }
+  
+  // If it's a string that starts with "1970-" (our backend format), extract time
+  if (typeof timeValue === 'string' && timeValue.startsWith('1970-')) {
+    try {
+      const date = new Date(timeValue);
+      return date.toTimeString().substring(0, 5);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  // Fallback: try to extract using slice if it's a string
+  if (typeof timeValue === 'string' && timeValue.length >= 5) {
+    const extracted = timeValue.slice(0, 5);
+    // Validate it's a proper time format
+    if (extracted.match(/^\d{2}:\d{2}$/)) {
+      return extracted;
+    }
+  }
+  
+  return null;
+}
+
 function initializeFormDefaults() {
   // Set default times based on the specific shift type
   const shiftDefaults = settingsStore.shiftDefaultsByType;
   
   if (props.shiftType === 'week_day') {
     const weekDay = shiftDefaults.week_day;
-    addServiceForm.value.startTime = weekDay?.start_time?.slice(0, 5) || '08:00';
-    addServiceForm.value.endTime = weekDay?.end_time?.slice(0, 5) || '16:00';
+    addServiceForm.value.startTime = extractTimeString(weekDay?.start_time) || '08:00';
+    addServiceForm.value.endTime = extractTimeString(weekDay?.end_time) || '16:00';
   } else if (props.shiftType === 'week_night') {
     const weekNight = shiftDefaults.week_night;
-    addServiceForm.value.startTime = weekNight?.start_time?.slice(0, 5) || '20:00';
-    addServiceForm.value.endTime = weekNight?.end_time?.slice(0, 5) || '08:00';
+    addServiceForm.value.startTime = extractTimeString(weekNight?.start_time) || '20:00';
+    addServiceForm.value.endTime = extractTimeString(weekNight?.end_time) || '08:00';
   } else if (props.shiftType === 'weekend_day') {
     const weekendDay = shiftDefaults.weekend_day;
-    addServiceForm.value.startTime = weekendDay?.start_time?.slice(0, 5) || '08:00';
-    addServiceForm.value.endTime = weekendDay?.end_time?.slice(0, 5) || '16:00';
+    addServiceForm.value.startTime = extractTimeString(weekendDay?.start_time) || '08:00';
+    addServiceForm.value.endTime = extractTimeString(weekendDay?.end_time) || '16:00';
   } else if (props.shiftType === 'weekend_night') {
     const weekendNight = shiftDefaults.weekend_night;
-    addServiceForm.value.startTime = weekendNight?.start_time?.slice(0, 5) || '20:00';
-    addServiceForm.value.endTime = weekendNight?.end_time?.slice(0, 5) || '08:00';
+    addServiceForm.value.startTime = extractTimeString(weekendNight?.start_time) || '20:00';
+    addServiceForm.value.endTime = extractTimeString(weekendNight?.end_time) || '08:00';
   }
 }
 

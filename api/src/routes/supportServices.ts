@@ -368,6 +368,27 @@ router.post('/default-assignments', async (req: Request, res: Response): Promise
       return;
     }
 
+    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
+    const parseTimeString = (timeStr: string | Date | null): Date | null => {
+      if (!timeStr) return null;
+      
+      // If it's already a Date object, return it
+      if (timeStr instanceof Date) return timeStr;
+      
+      // Handle HH:MM:SS format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}`);
+      }
+      
+      // Handle HH:MM format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}:00`);
+      }
+      
+      // Fallback - try to parse as is
+      return new Date(`1970-01-01T${timeStr}`);
+    };
+
     // Verify support service exists
     const supportService = await prisma.supportService.findUnique({
       where: { id: service_id }
@@ -381,12 +402,15 @@ router.post('/default-assignments', async (req: Request, res: Response): Promise
       return;
     }
 
+    const parsedStartTime = parseTimeString(start_time);
+    const parsedEndTime = parseTimeString(end_time);
+
     const assignment = await prisma.default_service_cover_assignments.create({
       data: {
         service_id,
         shift_type,
-        start_time: new Date(`1970-01-01T${start_time}`),
-        end_time: new Date(`1970-01-01T${end_time}`),
+        start_time: parsedStartTime,
+        end_time: parsedEndTime,
         color,
         minimum_porters,
         minimum_porters_mon,
@@ -435,12 +459,33 @@ router.put('/default-assignments/:id', async (req: Request, res: Response): Prom
     // Remove id from update data if present
     delete updateData.id;
 
+    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
+    const parseTimeString = (timeStr: string | Date | null): Date | null => {
+      if (!timeStr) return null;
+      
+      // If it's already a Date object, return it
+      if (timeStr instanceof Date) return timeStr;
+      
+      // Handle HH:MM:SS format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}`);
+      }
+      
+      // Handle HH:MM format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}:00`);
+      }
+      
+      // Fallback - try to parse as is
+      return new Date(`1970-01-01T${timeStr}`);
+    };
+
     // Convert time strings to Date objects if provided
-    if (updateData.start_time && typeof updateData.start_time === 'string') {
-      updateData.start_time = new Date(`1970-01-01T${updateData.start_time}`);
+    if (updateData.start_time) {
+      updateData.start_time = parseTimeString(updateData.start_time);
     }
-    if (updateData.end_time && typeof updateData.end_time === 'string') {
-      updateData.end_time = new Date(`1970-01-01T${updateData.end_time}`);
+    if (updateData.end_time) {
+      updateData.end_time = parseTimeString(updateData.end_time);
     }
 
     const assignment = await prisma.default_service_cover_assignments.update({

@@ -76,12 +76,36 @@ router.post('/assignments', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
+    const parseTimeString = (timeStr: string | Date | null): Date | null => {
+      if (!timeStr) return null;
+      
+      // If it's already a Date object, return it
+      if (timeStr instanceof Date) return timeStr;
+      
+      // Handle HH:MM:SS format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}`);
+      }
+      
+      // Handle HH:MM format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}:00`);
+      }
+      
+      // Fallback - try to parse as is
+      return new Date(`1970-01-01T${timeStr}`);
+    };
+
+    const parsedStartTime = parseTimeString(start_time);
+    const parsedEndTime = parseTimeString(end_time);
+
     const assignment = await prisma.default_area_cover_assignments.create({
       data: {
         department_id,
         shift_type,
-        start_time,
-        end_time,
+        start_time: parsedStartTime,
+        end_time: parsedEndTime,
         color,
         minimum_porters,
         minimum_porters_mon: minimum_porters,
@@ -142,9 +166,30 @@ router.put('/assignments/:id', async (req, res) => {
       minimum_porters
     } = req.body;
 
+    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
+    const parseTimeString = (timeStr: string | Date | null): Date | null => {
+      if (!timeStr) return null;
+      
+      // If it's already a Date object, return it
+      if (timeStr instanceof Date) return timeStr;
+      
+      // Handle HH:MM:SS format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}`);
+      }
+      
+      // Handle HH:MM format
+      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
+        return new Date(`1970-01-01T${timeStr}:00`);
+      }
+      
+      // Fallback - try to parse as is
+      return new Date(`1970-01-01T${timeStr}`);
+    };
+
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}`);
-    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}`);
+    if (start_time !== undefined) updateData.start_time = parseTimeString(start_time);
+    if (end_time !== undefined) updateData.end_time = parseTimeString(end_time);
     if (color !== undefined) updateData.color = color;
     if (minimum_porters !== undefined) {
       updateData.minimum_porters = minimum_porters;
