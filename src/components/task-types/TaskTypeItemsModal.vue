@@ -101,12 +101,25 @@
               :class="{ 'task-item--regular': isRegular(item.id) }"
             >
               <div v-if="editingTaskItem === item.id" class="task-item-edit">
-                <input 
-                  v-model="editTaskItemName" 
-                  class="form-control"
-                  @keyup.enter="saveTaskItem(item)"
-                  @keyup.esc="cancelEditTaskItem"
-                />
+                <div class="edit-form-group">
+                  <input 
+                    v-model="editTaskItemName" 
+                    class="form-control"
+                    placeholder="Task item name"
+                    @keyup.enter="saveTaskItem(item)"
+                    @keyup.esc="cancelEditTaskItem"
+                  />
+                  <input 
+                    v-model.number="editTaskItemPortersRequired" 
+                    type="number"
+                    min="1"
+                    max="10"
+                    placeholder="Porters Required"
+                    class="form-control porters-input"
+                    @keyup.enter="saveTaskItem(item)"
+                    @keyup.esc="cancelEditTaskItem"
+                  />
+                </div>
                 <div class="edit-actions">
                   <button 
                     class="btn btn-small btn-primary" 
@@ -321,6 +334,7 @@ const addTaskItem = async () => {
 const editTaskItem = (item) => {
   editingTaskItem.value = item.id;
   editTaskItemName.value = item.name;
+  editTaskItemPortersRequired.value = item.porters_required || 1;
 };
 
 // Save task item changes
@@ -330,10 +344,19 @@ const saveTaskItem = async (item) => {
     return;
   }
   
-  if (editTaskItemName.value !== item.name) {
-    await taskTypesStore.updateTaskItem(item.id, {
-      name: editTaskItemName.value.trim()
-    });
+  const hasNameChange = editTaskItemName.value !== item.name;
+  const hasPortersChange = editTaskItemPortersRequired.value !== (item.porters_required || 1);
+  
+  if (hasNameChange || hasPortersChange) {
+    const updateData = {};
+    if (hasNameChange) {
+      updateData.name = editTaskItemName.value.trim();
+    }
+    if (hasPortersChange) {
+      updateData.porters_required = editTaskItemPortersRequired.value || 1;
+    }
+    
+    await taskTypesStore.updateTaskItem(item.id, updateData);
   }
   
   cancelEditTaskItem();
@@ -602,17 +625,27 @@ const confirmDeleteTaskType = async () => {
   .task-item-edit {
     padding: 10px 16px;
     
+    .edit-form-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
     .form-control {
-      width: 100%;
+      flex: 1;
       padding: 8px 12px;
       border: 1px solid mix.color('primary');
       border-radius: mix.radius('md');
       font-size: mix.font-size('md');
-      margin-bottom: 8px;
       
       &:focus {
         outline: none;
         box-shadow: 0 0 0 2px rgba(mix.color('primary'), 0.1);
+      }
+      
+      &.porters-input {
+        flex: 0 0 120px; // Fixed width for porters input
+        text-align: center;
       }
     }
     
