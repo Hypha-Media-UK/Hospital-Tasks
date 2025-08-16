@@ -1665,30 +1665,32 @@ async function saveTask() {
     // Transform form data to match the API requirements
     const taskData = {
       task_item_id: taskForm.value.taskItemId,
-      porter_id: taskForm.value.porterId || null,
       origin_department_id: taskForm.value.originDepartmentId || null,
       destination_department_id: taskForm.value.destinationDepartmentId || null,
       status: taskForm.value.status
     };
     
-    // Add porter assignments if there are additional porters
+    // Handle porter assignments - create array with all selected porters
+    const allPorterIds = [];
+    
+    // Add main porter if selected
+    if (taskForm.value.porterId) {
+      allPorterIds.push(taskForm.value.porterId);
+    }
+    
+    // Add additional porters (filter out empty values)
     if (taskForm.value.additionalPorters && taskForm.value.additionalPorters.length > 0) {
-      // Create array with main porter (if selected) plus additional porters
-      const allPorterIds = [];
-      
-      // Add main porter if selected
-      if (taskForm.value.porterId) {
-        allPorterIds.push(taskForm.value.porterId);
-      }
-      
-      // Add additional porters (filter out empty values)
       const additionalPorterIds = taskForm.value.additionalPorters.filter(id => id && id.trim() !== '');
       allPorterIds.push(...additionalPorterIds);
-      
-      // Only add porter_assignments if we have porters to assign
-      if (allPorterIds.length > 0) {
-        taskData.porter_assignments = allPorterIds;
-      }
+    }
+    
+    // Set porter assignments and legacy porter_id
+    if (allPorterIds.length > 0) {
+      taskData.porter_assignments = allPorterIds;
+      // Set legacy porter_id to first porter for backward compatibility
+      taskData.porter_id = allPorterIds[0];
+    } else {
+      taskData.porter_id = null;
     }
     
     // Get base dates for each time field if we're editing
@@ -1845,11 +1847,33 @@ async function saveTaskWithStatus(status) {
     // Transform form data to match the API requirements
     const taskData = {
       task_item_id: taskForm.value.taskItemId,
-      porter_id: taskForm.value.porterId || null,
       origin_department_id: taskForm.value.originDepartmentId || null,
       destination_department_id: taskForm.value.destinationDepartmentId || null,
       status: taskForm.value.status
     };
+    
+    // Handle porter assignments - create array with all selected porters
+    const allPorterIds = [];
+    
+    // Add main porter if selected
+    if (taskForm.value.porterId) {
+      allPorterIds.push(taskForm.value.porterId);
+    }
+    
+    // Add additional porters (filter out empty values)
+    if (taskForm.value.additionalPorters && taskForm.value.additionalPorters.length > 0) {
+      const additionalPorterIds = taskForm.value.additionalPorters.filter(id => id && id.trim() !== '');
+      allPorterIds.push(...additionalPorterIds);
+    }
+    
+    // Set porter assignments and legacy porter_id
+    if (allPorterIds.length > 0) {
+      taskData.porter_assignments = allPorterIds;
+      // Set legacy porter_id to first porter for backward compatibility
+      taskData.porter_id = allPorterIds[0];
+    } else {
+      taskData.porter_id = null;
+    }
     
     // Only include time fields if they are provided and valid
     const receivedDateTime = createValidDateTimeString(null, taskForm.value.timeReceived);
