@@ -1,6 +1,6 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { formatObjectTimeFields, formatTimeForDB, asyncHandler, ApiError, validateRequired } from '../middleware/errorHandler';
+import { formatObjectTimeFields, formatTimeForDB, asyncHandler, ApiError, validateRequired, sendCreated } from '../middleware/errorHandler';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -62,7 +62,7 @@ router.get('/assignments', async (req, res) => {
 });
 
 // POST /api/area-cover/assignments - Create a new default area cover assignment
-router.post('/assignments', asyncHandler(async (req, res) => {
+router.post('/assignments', asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const {
     department_id,
     shift_type,
@@ -142,12 +142,8 @@ router.post('/assignments', asyncHandler(async (req, res) => {
       }
     }, ['start_time', 'end_time']);
 
-    return res.status(201).json(transformedAssignment);
-  } catch (error) {
-    console.error('Error creating area cover assignment:', error);
-    return res.status(500).json({ error: 'Failed to create area cover assignment' });
-  }
-});
+    sendCreated(res, transformedAssignment, 'Area cover assignment created successfully');
+}));
 
 // PUT /api/area-cover/assignments/:id - Update a default area cover assignment
 router.put('/assignments/:id', async (req, res) => {
@@ -275,18 +271,35 @@ router.get('/assignments/:id/porter-assignments', async (req, res) => {
 });
 
 // POST /api/area-cover/assignments/:id/porter-assignments - Create a porter assignment for an area cover assignment
-router.post('/assignments/:id/porter-assignments', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      porter_id,
-      start_time,
-      end_time
-    } = req.body;
+router.post('/assignments/:id/porter-assignments', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { porter_id, start_time, end_time } = req.body;
 
-    if (!porter_id || !start_time || !end_time) {
-      return res.status(400).json({ error: 'Missing required fields: porter_id, start_time, end_time' });
-    }
+  // Validate required fields
+  validateRequired(['porter_id', 'start_time', 'end_time'], req.body);
+
+  // Verify area cover assignment exists
+  const areaCoverAssignment = await prisma.default_area_cover_assignments.findUnique({
+    where: { id }
+  });
+
+  if (!areaCoverAssignment) {
+    throw ApiError.notFound('Area cover assignment not found');
+  }
+
+  // Verify porter exists and is valid
+  const porter = await prisma.staff.findUnique({
+    where: { id: porter_id },
+    select: { id: true, role: true, first_name: true, last_name: true }
+  });
+
+  if (!porter) {
+    throw ApiError.notFound('Porter not found');
+  }
+
+  if (porter.role !== 'porter' && porter.role !== 'supervisor') {
+    throw ApiError.badRequest('Assigned staff member must be a porter or supervisor');
+  }
 
     const porterAssignment = await prisma.default_area_cover_porter_assignments.create({
       data: {
@@ -317,12 +330,8 @@ router.post('/assignments/:id/porter-assignments', async (req, res) => {
       }
     }, ['start_time', 'end_time']);
 
-    return res.status(201).json(transformedAssignment);
-  } catch (error) {
-    console.error('Error creating area cover porter assignment:', error);
-    return res.status(500).json({ error: 'Failed to create porter assignment' });
-  }
-});
+    sendCreated(res, transformedAssignment, 'Porter assignment created successfully');
+}));
 
 // PUT /api/area-cover/porter-assignments/:id - Update a porter assignment
 router.put('/porter-assignments/:id', async (req, res) => {
