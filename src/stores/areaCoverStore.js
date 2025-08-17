@@ -1,41 +1,7 @@
 import { defineStore } from 'pinia';
 import { areaCoverApi, ApiError } from '../services/api';
 import { apiRequest } from '../services/api';
-
-// Helper function to convert time string (HH:MM:SS) to minutes
-function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  
-  // Handle Date objects (from MySQL/Prisma)
-  if (timeStr instanceof Date) {
-    const timeString = timeStr.toTimeString().substring(0, 8); // Extract HH:MM:SS from time string
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return (hours * 60) + minutes;
-  }
-  
-  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
-  if (typeof timeStr === 'string' && timeStr.includes('T')) {
-    const date = new Date(timeStr);
-    const timeString = date.toTimeString().substring(0, 8); // Extract HH:MM:SS from time string
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return (hours * 60) + minutes;
-  }
-  
-  // Handle simple time strings (e.g., "08:00:00" or "08:00")
-  if (typeof timeStr === 'string') {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    return (hours * 60) + minutes;
-  }
-  
-  return 0;
-}
-
-// Helper function to convert minutes back to time string (HH:MM:SS)
-function minutesToTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
-}
+import { timeToMinutes, minutesToTime } from '../utils/timeUtils';
 
 export const useAreaCoverStore = defineStore('areaCover', {
   state: () => ({

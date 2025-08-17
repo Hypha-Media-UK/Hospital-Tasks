@@ -1,18 +1,13 @@
 import { defineStore } from 'pinia';
+import { ref } from 'vue';
 import { shiftsApi, tasksApi, ApiError } from '../services/api';
+import { timeToMinutes } from '../utils/timeUtils';
+import { useLoadingState, LOADING_STATES } from '../composables/useLoadingState';
 
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {
   const day = date.getDay();
   return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
-}
-
-// Helper function to convert time string (HH:MM:SS) to minutes
-function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
 }
 
 export const useShiftsStore = defineStore('shifts', {

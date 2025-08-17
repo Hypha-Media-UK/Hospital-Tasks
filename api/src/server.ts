@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // Import routes
 import staffRoutes from './routes/staff';
@@ -72,22 +73,10 @@ app.use('/api/settings', settingRoutes);
 app.use('/api/area-cover', areaCoverRoutes);
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `Route ${req.originalUrl} not found`,
-  });
-});
+app.use('*', notFoundHandler);
 
 // Global error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Global error handler:', err);
-  
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
-});
+app.use(errorHandler);
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

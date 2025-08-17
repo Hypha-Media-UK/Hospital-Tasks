@@ -1,14 +1,16 @@
 // API Service Layer - Replaces Supabase client
+import { buildQueryString, makeApiRequest, ApiError as UtilApiError, COMMON_FILTERS, DEFAULT_PAGINATION } from '../utils/apiUtils';
+
 // Smart environment detection with fallback
 const getApiBaseUrl = () => {
   // First priority: Environment variable (for production)
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  
+
   // Second priority: Smart detection based on current URL
   const currentOrigin = window.location.origin;
-  
+
   if (currentOrigin.includes('ddev.site')) {
     // DDEV environment - API should be on same origin with /api path
     return `${currentOrigin}/api`;
@@ -23,69 +25,23 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-class ApiError extends Error {
-  constructor(message, status, data) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.data = data;
-  }
-}
+// Use the enhanced ApiError from utils
+class ApiError extends UtilApiError {}
 
-// Generic API request handler
+// Generic API request handler (using enhanced utility)
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
-  
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    },
-    ...options
-  };
-
-  try {
-    const response = await fetch(url, config);
-    
-    // Handle non-JSON responses (like 204 No Content)
-    if (response.status === 204) {
-      return null;
-    }
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new ApiError(
-        data.message || 'API request failed',
-        response.status,
-        data
-      );
-    }
-    
-    return data;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    
-    // Network or other errors
-    throw new ApiError('Network error or server unavailable', 0, null);
-  }
+  return makeApiRequest(url, options);
 }
 
 // Staff API
 export const staffApi = {
   // Get all staff with optional filtering
   async getAll(filters = {}) {
-    const params = new URLSearchParams();
-    
-    if (filters.role) params.append('role', filters.role);
-    if (filters.department_id) params.append('department_id', filters.department_id);
-    if (filters.porter_type) params.append('porter_type', filters.porter_type);
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
+    const query = buildQueryString(filters, {
+      allowedParams: COMMON_FILTERS.STAFF,
+      defaults: DEFAULT_PAGINATION
+    });
     return apiRequest(`/staff${query}`);
   },
 
@@ -152,14 +108,10 @@ export const buildingsApi = {
 // Departments API
 export const departmentsApi = {
   async getAll(filters = {}) {
-    const params = new URLSearchParams();
-    
-    if (filters.building_id) params.append('building_id', filters.building_id);
-    if (filters.is_frequent !== undefined) params.append('is_frequent', filters.is_frequent);
-    if (filters.limit) params.append('limit', filters.limit);
-    if (filters.offset) params.append('offset', filters.offset);
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
+    const query = buildQueryString(filters, {
+      allowedParams: COMMON_FILTERS.DEPARTMENTS,
+      defaults: DEFAULT_PAGINATION
+    });
     return apiRequest(`/departments${query}`);
   },
 
@@ -197,7 +149,11 @@ export const departmentsApi = {
 // Task Types API
 export const taskTypesApi = {
   async getAll(includeItems = false) {
-    const query = includeItems ? '?include_items=true' : '';
+    const filters = includeItems ? { include_items: 'true' } : {};
+    const query = buildQueryString(filters, {
+      allowedParams: COMMON_FILTERS.TASK_TYPES,
+      defaults: DEFAULT_PAGINATION
+    });
     return apiRequest(`/task-types${query}`);
   },
 

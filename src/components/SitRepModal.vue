@@ -253,17 +253,17 @@ const getPorterUnavailableTime = (porterId) => {
   if (!porter) return 0;
   
   // Get shift timeline bounds
-  const shiftStartMinutes = timeToMinutes(`${timelineHours.value[0]?.hour || 0}:00`);
-  const shiftEndMinutes = timeToMinutes(`${timelineHours.value[timelineHours.value.length - 1]?.hour || 23}:00`);
-  
+  const shiftStartMinutes = timeToMinutesWithNightShift(`${timelineHours.value[0]?.hour || 0}:00`);
+  const shiftEndMinutes = timeToMinutesWithNightShift(`${timelineHours.value[timelineHours.value.length - 1]?.hour || 23}:00`);
+
   // Get porter's contracted end time
-  const contractedEndMinutes = porter.contracted_hours_end ? 
-    timeToMinutes(porter.contracted_hours_end) : shiftEndMinutes;
-  
+  const contractedEndMinutes = porter.contracted_hours_end ?
+    timeToMinutesWithNightShift(porter.contracted_hours_end) : shiftEndMinutes;
+
   // Get porter's first allocation start time
   const allocations = getPorterAllocations(porterId);
-  const firstAllocationMinutes = allocations.length > 0 ? 
-    Math.min(...allocations.map(a => timeToMinutes(a.start_time))) : Infinity;
+  const firstAllocationMinutes = allocations.length > 0 ?
+    Math.min(...allocations.map(a => timeToMinutesWithNightShift(a.start_time))) : Infinity;
   
   // Return the earliest time they become unavailable
   // If no allocations, they become unavailable at contracted end time
@@ -283,19 +283,12 @@ const getPorterAllocations = (porterId) => {
   return [...departmentAssignments, ...serviceAssignments];
 };
 
+import { timeToMinutes } from '../utils/timeUtils';
+
 // Helper functions
-const timeToMinutes = (timeStr) => {
-  if (!timeStr) return 0;
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  let totalMinutes = (hours * 60) + minutes;
-  
-  // For night shifts, adjust times after midnight to ensure consistent calculation
-  // This ensures that times like 02:00 (2 AM) are treated as being after 20:00 (8 PM) from the previous day
-  if (props.shift && props.shift.shift_type.includes('night') && hours < 12) {
-    totalMinutes += 24 * 60; // Add 24 hours worth of minutes
-  }
-  
-  return totalMinutes;
+const timeToMinutesWithNightShift = (timeStr) => {
+  const isNightShift = props.shift && props.shift.shift_type.includes('night');
+  return timeToMinutes(timeStr, { handleNightShift: isNightShift });
 };
 
 // Format date as "29th May 2025"
