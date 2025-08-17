@@ -221,6 +221,7 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSupportServicesStore } from '../stores/supportServicesStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { formatTimeForUser, formatTimeForInput, getCurrentTimeString } from '../utils/timezoneHelpers';
 
 const props = defineProps({
   porter: {
@@ -311,18 +312,14 @@ const canAllocate = computed(() => {
   return false;
 });
 
-// Initialize time fields with current time as default
+// Initialize time fields with current time as default using timezone helpers
 const initializeTimeFields = () => {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const currentTime = `${hours}:${minutes}`;
+  const currentTime = getCurrentTimeString();
   
   // Add one hour to get a default end time
+  const now = new Date();
   const endDate = new Date(now.getTime() + 60 * 60 * 1000);
-  const endHours = String(endDate.getHours()).padStart(2, '0');
-  const endMinutes = String(endDate.getMinutes()).padStart(2, '0');
-  const endTime = `${endHours}:${endMinutes}`;
+  const endTime = formatTimeForInput(endDate);
   
   // Department times
   departmentStartTime.value = currentTime;
@@ -726,25 +723,10 @@ const allocatePorter = async () => {
   }
 };
 
-// Format time (HH:MM)
+// Format time using centralized timezone helper
 const formatTime = (timeString) => {
   if (!timeString) return '';
-  
-  // If it's already just HH:MM
-  if (timeString.length === 5) return timeString;
-  
-  // If it has seconds (HH:MM:SS), remove seconds
-  if (timeString.length === 8) return timeString.substring(0, 5);
-  
-  // For any other format, try to parse as date
-  try {
-    const date = new Date(timeString);
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-  } catch (e) {
-    return timeString; // Return original if parsing fails
-  }
+  return formatTimeForInput(timeString);
 };
 
 // Clear conflict error when time fields change

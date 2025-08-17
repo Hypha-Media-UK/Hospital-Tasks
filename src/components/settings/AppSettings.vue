@@ -16,8 +16,8 @@
           @change="updateSettings"
         >
           <option value="UTC">UTC (Coordinated Universal Time)</option>
-          <option value="GMT">GMT (Greenwich Mean Time)</option>
-          <option value="Europe/London">Europe/London (BST/GMT)</option>
+          <option value="GMT">UK Time (GMT/BST Auto-switching)</option>
+          <option value="Europe/London">Europe/London (BST/GMT Auto-switching)</option>
           <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
           <option value="America/New_York">America/New_York (EST/EDT)</option>
           <option value="America/Chicago">America/Chicago (CST/CDT)</option>
@@ -105,7 +105,7 @@ const saveSuccess = ref(false);
 // Load settings when component mounts
 onMounted(async () => {
   // Ensure settings are loaded from database
-  await settingsStore.loadAppSettings();
+  await settingsStore.fetchAppSettings();
 });
 
 // Update store when settings change
@@ -125,9 +125,11 @@ async function saveSettings() {
   saveSuccess.value = false;
   
   try {
-    // The computed setters already handle store updates
-    // Just save to backend
-    const result = await settingsStore.saveAppSettings();
+    // Save the current settings to backend
+    const result = await settingsStore.updateAppSettings({
+      timezone: timezone.value,
+      time_format: timeFormat.value
+    });
     
     if (result) {
       saveSuccess.value = true;

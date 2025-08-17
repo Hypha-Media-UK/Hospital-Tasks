@@ -116,6 +116,7 @@ import { useShiftsStore } from '../../stores/shiftsStore';
 import { useSupportServicesStore } from '../../stores/supportServicesStore';
 import { useStaffStore } from '../../stores/staffStore';
 import { getCurrentDateTime, getCurrentTimeInMinutes, isSameDay } from '../../utils/timezone';
+import { getCurrentTimeInMinutes as getTimeInMinutes } from '../../utils/timezone';
 import EditServiceModal from './EditServiceModal.vue';
 import ShiftEditServiceModal from './ShiftEditServiceModal.vue';
 
@@ -182,9 +183,7 @@ const availablePorters = computed(() => {
   } else {
     // In active mode or for default settings: apply existing time-based filtering
     const today = new Date();
-    const currentHours = today.getHours();
-    const currentMinutes = today.getMinutes();
-    const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+    const currentTimeInMinutes = getTimeInMinutes();
     
     return porterAssignments.value.filter(assignment => {
       // First check if porter is absent

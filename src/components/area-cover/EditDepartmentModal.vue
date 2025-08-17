@@ -240,6 +240,8 @@
 import { ref, computed, onMounted, reactive } from 'vue';
 import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import { useStaffStore } from '../../stores/staffStore';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { formatTimeForDisplay, timeToMinutes, minutesToTime } from '../../utils/timezone';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
 
 const props = defineProps({
@@ -253,6 +255,7 @@ const emit = defineEmits(['close', 'update', 'remove']);
 
 const areaCoverStore = useAreaCoverStore();
 const staffStore = useStaffStore();
+const settingsStore = useSettingsStore();
 
 // Local state for all editable properties
 const localStartTime = ref('');
@@ -570,27 +573,27 @@ const initializeState = () => {
   removedPorterIds.value = [];
 };
 
-// Helper function to convert time string (HH:MM:SS) to minutes
-function timeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  return (hours * 60) + minutes;
-}
 
-// Helper function to format time for input fields (handles Date objects and strings)
+// Helper function to format time for input fields - timezone aware
 function formatTimeForInput(timeValue) {
   if (!timeValue) return '';
   
-  // Handle Date objects (from MySQL/Prisma)
+  // Handle Date objects (from MySQL/Prisma) - these are TIME fields stored as Date objects
   if (timeValue instanceof Date) {
-    return timeValue.toTimeString().substring(0, 5); // Extract HH:MM from time string
+    // For TIME fields from database, we want to extract just the time part
+    // The date part is irrelevant (usually 1970-01-01)
+    const hours = String(timeValue.getUTCHours()).padStart(2, '0');
+    const minutes = String(timeValue.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
   
   // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
   if (typeof timeValue === 'string' && timeValue.includes('T')) {
     const date = new Date(timeValue);
-    return date.toTimeString().substring(0, 5); // Extract HH:MM from time string
+    // For TIME fields, use UTC to avoid timezone conversion issues
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
   
   // Handle simple time strings (e.g., "08:00:00" or "08:00")

@@ -133,6 +133,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { motion } from 'motion-v';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import { formatTimeForUser } from '../../../utils/timezoneHelpers';
 import EditIcon from '../../icons/EditIcon.vue';
 import CheckIcon from '../../icons/CheckIcon.vue';
 import ClockIcon from '../../icons/ClockIcon.vue';
@@ -317,46 +318,10 @@ function formatPorterNames(porters) {
   return `${porters[0].first_name} ${porters[0].last_name}, ${porters[1].first_name} ${porters[1].last_name} & ${porters.length - 2} more`;
 }
 
-// Format time (e.g., "9:30 AM" or "09:30") without the date based on app settings
+// Format time using centralized timezone helper
 function formatTime(timeString) {
   if (!timeString) return '';
-  
-  // Check if the input is already in HH:MM format
-  if (typeof timeString === 'string' && /^\d{1,2}:\d{2}$/.test(timeString)) {
-    // Already in the right format, just format according to settings
-    const [hours, minutes] = timeString.split(':').map(Number);
-    
-    // Use 24h or 12h format based on settings
-    if (settingsStore.appSettings.time_format === '24h') {
-      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    } else {
-      // Convert to 12h format
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const hours12 = hours % 12 || 12;
-      return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
-    }
-  } else {
-    // For backward compatibility - if it's still a date string
-    try {
-      const date = new Date(timeString);
-      
-      // Use 24h or 12h format based on settings
-      if (settingsStore.appSettings.time_format === '24h') {
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${hours}:${minutes}`;
-      } else {
-        return date.toLocaleTimeString('en-US', { 
-          hour: 'numeric', 
-          minute: '2-digit', 
-          hour12: true 
-        });
-      }
-    } catch (e) {
-      console.error('Error formatting time:', e);
-      return timeString || '';
-    }
-  }
+  return formatTimeForUser(timeString, false); // false indicates the time is already in user's timezone
 }
 
 // Initialize the indicator position

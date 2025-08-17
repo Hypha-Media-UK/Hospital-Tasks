@@ -282,6 +282,8 @@ import { useAreaCoverStore } from '../stores/areaCoverStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSupportServicesStore } from '../stores/supportServicesStore';
+import { formatTimeForUser } from '../utils/timezoneHelpers';
+import { getCurrentTimeInMinutes as getTimeInMinutes } from '../utils/timezone';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 import EditIcon from './icons/EditIcon.vue';
 import TrashIcon from './icons/TrashIcon.vue';
@@ -605,7 +607,7 @@ const isTimeInRange = (currentTimeMinutes, startTimeMinutes, endTimeMinutes) => 
   }
 };
 
-// Get the duty status of a porter based on contracted hours
+// Get the duty status of a porter based on contracted hours using timezone helpers
 const getPorterDutyStatus = (porterId) => {
   // Get the porter from the store
   const porter = staffStore.porters.find(p => p.id === porterId);
@@ -618,11 +620,8 @@ const getPorterDutyStatus = (porterId) => {
     return 'on-duty';
   }
   
-  // Get current time in minutes
-  const now = new Date();
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  // Get current time in minutes using timezone helper
+  const currentTimeInMinutes = getTimeInMinutes();
   
   // Convert contracted hours to minutes
   const startTimeMinutes = timeToMinutes(porter.contracted_hours_start);
@@ -722,10 +721,8 @@ const isPorterAvailable = (porterId) => {
 
 // Check if a porter has any active assignments at the current time
 const hasActiveAssignments = (porterId) => {
-  const now = new Date();
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+  // Use timezone helper to get current time in minutes
+  const currentTimeInMinutes = getTimeInMinutes();
   
   // Get all assignments for this porter
   const assignments = getPorterAssignments(porterId);
@@ -829,48 +826,8 @@ const getAssignmentName = (assignment) => {
 };
 
 const formatTime = (timeStr) => {
-  if (!timeStr) return '';
-  
-  try {
-    // Handle Date objects (from MySQL/Prisma)
-    if (timeStr instanceof Date) {
-      const hours = timeStr.getHours();
-      const minutes = timeStr.getMinutes();
-      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    }
-    
-    // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
-    if (typeof timeStr === 'string' && timeStr.includes('T')) {
-      const date = new Date(timeStr);
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    }
-    
-    // Handle simple time strings (e.g., "08:00:00" or "08:00")
-    if (typeof timeStr === 'string') {
-      const timeParts = timeStr.split(':');
-      if (timeParts.length >= 2) {
-        const hours = parseInt(timeParts[0], 10);
-        const minutes = parseInt(timeParts[1], 10);
-        
-        // Validate the parsed values
-        if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
-      }
-    }
-    
-    // Fallback: return original string if it looks like a time
-    if (typeof timeStr === 'string' && timeStr.match(/^\d{1,2}:\d{2}/)) {
-      return timeStr.substring(0, 5); // Extract HH:MM part
-    }
-    
-    return '';
-  } catch (error) {
-    console.warn('Error formatting time:', timeStr, error);
-    return '';
-  }
+  // Use centralized timezone helper for consistent time formatting
+  return formatTimeForUser(timeStr);
 };
 
 // Porter-building assignment functions

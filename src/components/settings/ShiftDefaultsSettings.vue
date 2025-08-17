@@ -112,7 +112,7 @@ const loading = computed(() => settingsStore.loading.updating);
 const error = computed(() => settingsStore.error);
 const saveSuccess = ref(false);
 
-// Helper function to convert datetime string to HH:MM format
+// Helper function to convert datetime string to HH:MM format - timezone aware
 const formatTimeForInput = (timeString) => {
   if (!timeString) return '';
   
@@ -121,16 +121,30 @@ const formatTimeForInput = (timeString) => {
     return timeString;
   }
   
-  // If it's a full datetime string, extract just the time part
-  try {
+  // Handle Date objects (from MySQL/Prisma) - these are TIME fields stored as Date objects
+  if (timeString instanceof Date) {
+    // For TIME fields from database, we want to extract just the time part using UTC
+    const hours = String(timeString.getUTCHours()).padStart(2, '0');
+    const minutes = String(timeString.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+  
+  // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
+  if (typeof timeString === 'string' && timeString.includes('T')) {
     const date = new Date(timeString);
     if (isNaN(date.getTime())) return '';
-    
-    return date.toTimeString().slice(0, 5); // Get HH:MM part
-  } catch (error) {
-    console.warn('Invalid time format:', timeString);
-    return '';
+    // For TIME fields, use UTC to avoid timezone conversion issues
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
+  
+  // Handle simple time strings (e.g., "08:00:00" or "08:00")
+  if (typeof timeString === 'string') {
+    return timeString.substring(0, 5); // Extract HH:MM part
+  }
+  
+  return '';
 };
 
 // Initialize form values from store

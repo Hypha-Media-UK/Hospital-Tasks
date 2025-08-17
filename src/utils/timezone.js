@@ -24,8 +24,10 @@ export function getCurrentTimeInMinutes() {
   const now = new Date();
   
   // Get current time in the user's timezone
+  // Map GMT to Europe/London for proper BST/GMT handling
+  const actualTimezone = timezone === 'GMT' ? 'Europe/London' : timezone;
   const timeInTimezone = now.toLocaleString('en-CA', {
-    timeZone: timezone === 'GMT' ? 'UTC' : timezone,
+    timeZone: actualTimezone,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
@@ -138,8 +140,10 @@ export function getCurrentTimeString() {
   const now = new Date();
   
   // Get current time in the user's timezone
+  // Map GMT to Europe/London for proper BST/GMT handling
+  const actualTimezone = timezone === 'GMT' ? 'Europe/London' : timezone;
   const timeInTimezone = now.toLocaleString('en-CA', {
-    timeZone: timezone === 'GMT' ? 'UTC' : timezone,
+    timeZone: actualTimezone,
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
@@ -158,8 +162,10 @@ export function getCurrentTimeStringWithSeconds() {
   const now = new Date();
   
   // Get current time in the user's timezone
+  // Map GMT to Europe/London for proper BST/GMT handling
+  const actualTimezone = timezone === 'GMT' ? 'Europe/London' : timezone;
   const timeInTimezone = now.toLocaleString('en-CA', {
-    timeZone: timezone === 'GMT' ? 'UTC' : timezone,
+    timeZone: actualTimezone,
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',

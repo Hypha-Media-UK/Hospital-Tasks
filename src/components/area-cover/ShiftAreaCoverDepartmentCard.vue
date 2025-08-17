@@ -103,6 +103,7 @@ import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
 import { getCurrentDateTime, getCurrentTimeInMinutes, isSameDay } from '../../utils/timezone';
+import { getCurrentTimeInMinutes as getTimeInMinutes } from '../../utils/timezone';
 import ShiftEditDepartmentModal from './ShiftEditDepartmentModal.vue';
 
 const props = defineProps({
@@ -144,9 +145,7 @@ const availablePorters = computed(() => {
   } else {
     // In active mode: apply time-based filtering and absence filtering
     const today = new Date();
-    const currentHours = today.getHours();
-    const currentMinutes = today.getMinutes();
-    const currentTimeInMinutes = (currentHours * 60) + currentMinutes;
+    const currentTimeInMinutes = getTimeInMinutes();
     
     return porterAssignments.value.filter(assignment => {
       // First check if porter is absent

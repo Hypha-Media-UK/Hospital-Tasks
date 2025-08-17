@@ -131,6 +131,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useShiftsStore } from '../stores/shiftsStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
+import { formatTimeForUser } from '../utils/timezoneHelpers';
 import * as XLSX from 'xlsx';
 
 const route = useRoute();
@@ -514,45 +515,10 @@ function exportToExcel() {
   }
 }
 
-// Format time (e.g., "9:30 AM" or "09:30") without the date based on app settings
+// Format time using centralized timezone helper
 function formatTime(timeString) {
   if (!timeString) return '-';
-  
-  // Check if the input is already in HH:MM format
-  if (typeof timeString === 'string' && /^\d{1,2}:\d{2}$/.test(timeString)) {
-    // Already in the right format, just format according to settings
-    const [hours, minutes] = timeString.split(':').map(Number);
-    
-    // Use 24h or 12h format based on settings
-    if (settingsStore.appSettings?.time_format === '24h') {
-      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-    } else {
-      // Convert to 12h format
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const hours12 = hours % 12 || 12;
-      return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
-    }
-  } else {
-    // For backward compatibility - if it's still a date string
-    try {
-      const date = new Date(timeString);
-      
-      // Use 24h or 12h format based on settings
-      if (settingsStore.appSettings?.time_format === '24h') {
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${hours}:${minutes}`;
-      } else {
-        return date.toLocaleTimeString('en-US', { 
-          hour: 'numeric', 
-          minute: '2-digit', 
-          hour12: true 
-        });
-      }
-    } catch (e) {
-      return timeString || '-';
-    }
-  }
+  return formatTimeForUser(timeString, true); // true indicates the time is stored in UTC
 }
 
 // Helper to validate time format

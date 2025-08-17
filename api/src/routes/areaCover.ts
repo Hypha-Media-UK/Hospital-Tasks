@@ -77,6 +77,7 @@ router.post('/assignments', async (req, res) => {
     }
 
     // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
+    // Use UTC to avoid timezone conversion issues for TIME fields
     const parseTimeString = (timeStr: string | Date | null): Date | null => {
       if (!timeStr) return null;
       
@@ -85,16 +86,16 @@ router.post('/assignments', async (req, res) => {
       
       // Handle HH:MM:SS format
       if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}`);
+        return new Date(`1970-01-01T${timeStr}Z`);
       }
       
       // Handle HH:MM format
       if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}:00`);
+        return new Date(`1970-01-01T${timeStr}:00Z`);
       }
       
-      // Fallback - try to parse as is
-      return new Date(`1970-01-01T${timeStr}`);
+      // Fallback - try to parse as is with UTC
+      return new Date(`1970-01-01T${timeStr}Z`);
     };
 
     const parsedStartTime = parseTimeString(start_time);
@@ -167,6 +168,7 @@ router.put('/assignments/:id', async (req, res) => {
     } = req.body;
 
     // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
+    // Use UTC to avoid timezone conversion issues for TIME fields
     const parseTimeString = (timeStr: string | Date | null): Date | null => {
       if (!timeStr) return null;
       
@@ -175,16 +177,16 @@ router.put('/assignments/:id', async (req, res) => {
       
       // Handle HH:MM:SS format
       if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}`);
+        return new Date(`1970-01-01T${timeStr}Z`);
       }
       
       // Handle HH:MM format
       if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}:00`);
+        return new Date(`1970-01-01T${timeStr}:00Z`);
       }
       
-      // Fallback - try to parse as is
-      return new Date(`1970-01-01T${timeStr}`);
+      // Fallback - try to parse as is with UTC
+      return new Date(`1970-01-01T${timeStr}Z`);
     };
 
     const updateData: any = {};
@@ -319,8 +321,8 @@ router.post('/assignments/:id/porter-assignments', async (req, res) => {
       data: {
         default_area_cover_assignment_id: id,
         porter_id,
-        start_time: new Date(`1970-01-01T${start_time}`),
-        end_time: new Date(`1970-01-01T${end_time}`)
+        start_time: new Date(`1970-01-01T${start_time}Z`),
+        end_time: new Date(`1970-01-01T${end_time}Z`)
       },
       include: {
         staff: true
@@ -361,8 +363,8 @@ router.put('/porter-assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}`);
-    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}`);
+    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}Z`);
+    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}Z`);
 
     const porterAssignment = await prisma.default_area_cover_porter_assignments.update({
       where: { id },
