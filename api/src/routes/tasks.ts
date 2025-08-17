@@ -184,16 +184,8 @@ router.get('/', async (req, res) => {
       skip: parseInt(offset as string)
     });
 
-    // Convert UTC times back to user timezone for display
-    const userTimezone = await getUserTimezone();
-    const tasksWithConvertedTimes = tasks.map(task => ({
-      ...task,
-      time_received: task.time_received ? convertTimeFromUTC(task.time_received, userTimezone) : task.time_received,
-      time_allocated: task.time_allocated ? convertTimeFromUTC(task.time_allocated, userTimezone) : task.time_allocated,
-      time_completed: task.time_completed ? convertTimeFromUTC(task.time_completed, userTimezone) : task.time_completed
-    }));
-
-    return res.json(tasksWithConvertedTimes);
+    // Return tasks with times as stored (in local timezone where events occurred)
+    return res.json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return res.status(500).json({
@@ -264,16 +256,8 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Convert UTC times back to user timezone for display
-    const userTimezone = await getUserTimezone();
-    const taskWithConvertedTimes = {
-      ...task,
-      time_received: task.time_received ? convertTimeFromUTC(task.time_received, userTimezone) : task.time_received,
-      time_allocated: task.time_allocated ? convertTimeFromUTC(task.time_allocated, userTimezone) : task.time_allocated,
-      time_completed: task.time_completed ? convertTimeFromUTC(task.time_completed, userTimezone) : task.time_completed
-    };
-
-    return res.json(taskWithConvertedTimes);
+    // Return task with times as stored (in local timezone where events occurred)
+    return res.json(task);
   } catch (error) {
     console.error('Error fetching task:', error);
     return res.status(500).json({
@@ -439,9 +423,6 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Get user's timezone for conversion
-    const userTimezone = await getUserTimezone();
-
     // Create the task
     const taskData: any = {
       shift_id,
@@ -455,10 +436,10 @@ router.post('/', async (req, res) => {
     if (origin_department_id) taskData.origin_department_id = origin_department_id;
     if (destination_department_id) taskData.destination_department_id = destination_department_id;
     
-    // Convert times from user timezone to UTC for storage
-    if (time_received) taskData.time_received = convertTimeToUTC(time_received, userTimezone);
-    if (time_allocated) taskData.time_allocated = convertTimeToUTC(time_allocated, userTimezone);
-    if (time_completed) taskData.time_completed = convertTimeToUTC(time_completed, userTimezone);
+    // Store times exactly as received (in local timezone where event occurred)
+    if (time_received) taskData.time_received = time_received;
+    if (time_allocated) taskData.time_allocated = time_allocated;
+    if (time_completed) taskData.time_completed = time_completed;
 
     const newTask = await prisma.shift_tasks.create({
       data: taskData,
@@ -644,9 +625,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Get user's timezone for conversion
-    const userTimezone = await getUserTimezone();
-
     // Build update data
     const updateData: any = {
       updated_at: new Date()
@@ -658,10 +636,10 @@ router.put('/:id', async (req, res) => {
     if (destination_department_id !== undefined) updateData.destination_department_id = destination_department_id;
     if (status !== undefined) updateData.status = status;
     
-    // Convert times from user timezone to UTC for storage
-    if (time_received !== undefined) updateData.time_received = convertTimeToUTC(time_received, userTimezone);
-    if (time_allocated !== undefined) updateData.time_allocated = convertTimeToUTC(time_allocated, userTimezone);
-    if (time_completed !== undefined) updateData.time_completed = convertTimeToUTC(time_completed, userTimezone);
+    // Store times exactly as received (in local timezone where event occurred)
+    if (time_received !== undefined) updateData.time_received = time_received;
+    if (time_allocated !== undefined) updateData.time_allocated = time_allocated;
+    if (time_completed !== undefined) updateData.time_completed = time_completed;
 
     console.log('Update data to be applied:', updateData);
 
