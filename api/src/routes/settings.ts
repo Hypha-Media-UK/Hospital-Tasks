@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
-import { formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
+import { formatObjectTimeFields } from '../middleware/errorHandler';
+import { parseTimePair, parseTimeString } from '../utils/timeUtils';
 
 const router = Router();
 
@@ -35,10 +36,26 @@ router.put('/shift-defaults/:id', async (req: Request, res: Response): Promise<v
 
     // Convert time strings to Date objects if provided
     if (updateData.start_time && typeof updateData.start_time === 'string') {
-      updateData.start_time = formatTimeForDB(updateData.start_time) || new Date(`1970-01-01T${updateData.start_time}`);
+      const startResult = parseTimeString(updateData.start_time);
+      if (!startResult.isValid) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: `Invalid start_time: ${startResult.error}`
+        });
+        return;
+      }
+      updateData.start_time = startResult.dateTime;
     }
     if (updateData.end_time && typeof updateData.end_time === 'string') {
-      updateData.end_time = formatTimeForDB(updateData.end_time) || new Date(`1970-01-01T${updateData.end_time}`);
+      const endResult = parseTimeString(updateData.end_time);
+      if (!endResult.isValid) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: `Invalid end_time: ${endResult.error}`
+        });
+        return;
+      }
+      updateData.end_time = endResult.dateTime;
     }
 
     const shiftDefault = await prisma.shift_defaults.update({
@@ -85,11 +102,21 @@ router.post('/shift-defaults', async (req: Request, res: Response): Promise<void
       return;
     }
 
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
+    }
+
     const shiftDefault = await prisma.shift_defaults.create({
       data: {
         shift_type,
-        start_time: formatTimeForDB(start_time) || new Date(`1970-01-01T${start_time}`),
-        end_time: formatTimeForDB(end_time) || new Date(`1970-01-01T${end_time}`),
+        start_time: timeResult.startDateTime!,
+        end_time: timeResult.endDateTime!,
         color
       }
     });

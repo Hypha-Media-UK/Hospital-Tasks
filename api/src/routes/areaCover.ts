@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { formatObjectTimeFields, formatTimeForDB, asyncHandler, ApiError, validateRequired, sendCreated } from '../middleware/errorHandler';
+import { formatObjectTimeFields, asyncHandler, ApiError, validateRequired, sendCreated } from '../middleware/errorHandler';
+import { parseTimePair, parseTimeString } from '../utils/timeUtils';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -90,9 +91,13 @@ router.post('/assignments', asyncHandler(async (req: Request, res: Response): Pr
     throw ApiError.badRequest(`Invalid shift_type. Must be one of: ${validShiftTypes.join(', ')}`);
   }
 
-  // Parse time fields
-  const parsedStartTime = formatTimeForDB(start_time);
-  const parsedEndTime = formatTimeForDB(end_time);
+  // Parse and validate time fields
+  const timeResult = parseTimePair(start_time, end_time);
+  if (!timeResult.isValid) {
+    throw ApiError.badRequest(timeResult.error || 'Invalid time format');
+  }
+
+  const { startDateTime: parsedStartTime, endDateTime: parsedEndTime } = timeResult;
 
   const assignment = await prisma.default_area_cover_assignments.create({
       data: {
@@ -157,8 +162,20 @@ router.put('/assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = formatTimeForDB(start_time);
-    if (end_time !== undefined) updateData.end_time = formatTimeForDB(end_time);
+    if (start_time !== undefined) {
+      const startResult = parseTimeString(start_time);
+      if (!startResult.isValid) {
+        throw ApiError.badRequest(`Invalid start_time: ${startResult.error}`);
+      }
+      updateData.start_time = startResult.dateTime;
+    }
+    if (end_time !== undefined) {
+      const endResult = parseTimeString(end_time);
+      if (!endResult.isValid) {
+        throw ApiError.badRequest(`Invalid end_time: ${endResult.error}`);
+      }
+      updateData.end_time = endResult.dateTime;
+    }
     if (color !== undefined) updateData.color = color;
     if (minimum_porters !== undefined) {
       updateData.minimum_porters = minimum_porters;
@@ -301,12 +318,18 @@ router.post('/assignments/:id/porter-assignments', asyncHandler(async (req: Requ
     throw ApiError.badRequest('Assigned staff member must be a porter or supervisor');
   }
 
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      throw ApiError.badRequest(timeResult.error || 'Invalid time format');
+    }
+
     const porterAssignment = await prisma.default_area_cover_porter_assignments.create({
       data: {
         default_area_cover_assignment_id: id,
         porter_id,
-        start_time: formatTimeForDB(start_time),
-        end_time: formatTimeForDB(end_time)
+        start_time: timeResult.startDateTime,
+        end_time: timeResult.endDateTime
       },
       include: {
         staff: true
@@ -343,8 +366,20 @@ router.put('/porter-assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = formatTimeForDB(start_time);
-    if (end_time !== undefined) updateData.end_time = formatTimeForDB(end_time);
+    if (start_time !== undefined) {
+      const startResult = parseTimeString(start_time);
+      if (!startResult.isValid) {
+        throw ApiError.badRequest(`Invalid start_time: ${startResult.error}`);
+      }
+      updateData.start_time = startResult.dateTime;
+    }
+    if (end_time !== undefined) {
+      const endResult = parseTimeString(end_time);
+      if (!endResult.isValid) {
+        throw ApiError.badRequest(`Invalid end_time: ${endResult.error}`);
+      }
+      updateData.end_time = endResult.dateTime;
+    }
 
     const porterAssignment = await prisma.default_area_cover_porter_assignments.update({
       where: { id },

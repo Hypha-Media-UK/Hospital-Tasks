@@ -21,8 +21,8 @@
     <div v-if="supervisors.length > 0" class="supervisors-section">
       <h4 class="section-title">Supervisors</h4>
       <div class="porter-grid">
-      <div v-for="entry in supervisors" :key="entry.id" class="porter-card supervisor-card" 
-           :class="{ 
+      <div v-for="entry in supervisors" :key="entry.id" class="porter-card supervisor-card"
+           :class="{
              'available': isPorterAvailable(entry.porter_id),
              'assigned': hasActiveAssignments(entry.porter_id),
              'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
@@ -122,8 +122,8 @@
       </div>
     
     <div v-if="sortedPorterPool.length > 0" class="porter-grid">
-      <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card" 
-           :class="{ 
+      <div v-for="entry in sortedPorterPool" :key="entry.id" class="porter-card"
+           :class="{
              'available': isPorterAvailable(entry.porter_id),
              'assigned': hasActiveAssignments(entry.porter_id),
              'scheduled-absence': staffStore.isPorterOnScheduledAbsence(entry.porter_id),
@@ -693,49 +693,53 @@ const isPorterOnDuty = (porterId) => {
 };
 
 // Check if a porter is available (on duty, not absent, no active assignments)
-const isPorterAvailable = (porterId) => {
-  // Check if porter is absent
-  if (isPorterAbsent(porterId)) {
-    return false;
-  }
-  
-  // Check if porter has scheduled absence
-  if (staffStore.isPorterOnScheduledAbsence(porterId)) {
-    return false;
-  }
-  
-  // Check if porter is on duty
-  if (getPorterDutyStatus(porterId) !== 'on-duty') {
-    return false;
-  }
-  
-  // Check if porter has active assignments
-  if (hasActiveAssignments(porterId)) {
-    return false;
-  }
-  
-  // If all checks pass, porter is available
-  return true;
-};
+const isPorterAvailable = computed(() => {
+  return (porterId) => {
+    // Check if porter is absent
+    if (isPorterAbsent(porterId)) {
+      return false;
+    }
+
+    // Check if porter has scheduled absence
+    if (staffStore.isPorterOnScheduledAbsence(porterId)) {
+      return false;
+    }
+
+    // Check if porter is on duty
+    if (getPorterDutyStatus(porterId) !== 'on-duty') {
+      return false;
+    }
+
+    // Check if porter has active assignments
+    if (hasActiveAssignments.value(porterId)) {
+      return false;
+    }
+
+    // If all checks pass, porter is available
+    return true;
+  };
+});
 
 // Check if a porter has any active assignments at the current time
-const hasActiveAssignments = (porterId) => {
-  // Use browser time to get current time in minutes
-  const now = new Date();
-  const currentTimeInMinutes = (now.getHours() * 60) + now.getMinutes();
-  
-  // Get all assignments for this porter
-  const assignments = getPorterAssignments(porterId);
-  
-  // Check if any assignment is currently active
-  return assignments.some(assignment => {
-    const startTimeMinutes = timeToMinutes(assignment.start_time);
-    const endTimeMinutes = timeToMinutes(assignment.end_time);
-    
-    // Assignment is active if current time is between start and end times
-    return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
-  });
-};
+const hasActiveAssignments = computed(() => {
+  return (porterId) => {
+    // Use browser time to get current time in minutes
+    const now = new Date();
+    const currentTimeInMinutes = (now.getHours() * 60) + now.getMinutes();
+
+    // Get all assignments for this porter
+    const assignments = getPorterAssignments(porterId);
+
+    // Check if any assignment is currently active
+    return assignments.some(assignment => {
+      const startTimeMinutes = timeToMinutes(assignment.start_time);
+      const endTimeMinutes = timeToMinutes(assignment.end_time);
+
+      // Assignment is active if current time is between start and end times
+      return isTimeInRange(currentTimeInMinutes, startTimeMinutes, endTimeMinutes);
+    });
+  };
+});
 
 // Get the background color for an assignment item
 const getAssignmentBackgroundColor = (assignment) => {

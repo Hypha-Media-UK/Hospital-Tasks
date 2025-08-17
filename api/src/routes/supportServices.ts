@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
-import { formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
+import { formatObjectTimeFields } from '../middleware/errorHandler';
+import { parseTimePair, parseTimeString } from '../utils/timeUtils';
 
 const router = Router();
 
@@ -318,12 +319,22 @@ router.post('/:id/assignments', async (req: Request, res: Response): Promise<voi
       return;
     }
 
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
+    }
+
     const assignment = await prisma.support_service_assignments.create({
       data: {
         service_id,
         shift_type,
-        start_time: formatTimeForDB(start_time),
-        end_time: formatTimeForDB(end_time),
+        start_time: timeResult.startDateTime!,
+        end_time: timeResult.endDateTime!,
         color
       },
       include: {
@@ -385,12 +396,22 @@ router.post('/default-assignments', async (req: Request, res: Response): Promise
       return;
     }
 
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
+    }
+
     const assignment = await prisma.default_service_cover_assignments.create({
       data: {
         service_id,
         shift_type,
-        start_time: formatTimeForDB(start_time),
-        end_time: formatTimeForDB(end_time),
+        start_time: timeResult.startDateTime!,
+        end_time: timeResult.endDateTime!,
         color,
         minimum_porters,
         minimum_porters_mon,
@@ -444,10 +465,26 @@ router.put('/default-assignments/:id', async (req: Request, res: Response): Prom
 
     // Convert time strings to Date objects if provided
     if (updateData.start_time) {
-      updateData.start_time = formatTimeForDB(updateData.start_time);
+      const startResult = parseTimeString(updateData.start_time);
+      if (!startResult.isValid) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: `Invalid start_time: ${startResult.error}`
+        });
+        return;
+      }
+      updateData.start_time = startResult.dateTime;
     }
     if (updateData.end_time) {
-      updateData.end_time = formatTimeForDB(updateData.end_time);
+      const endResult = parseTimeString(updateData.end_time);
+      if (!endResult.isValid) {
+        res.status(400).json({
+          error: 'Bad Request',
+          message: `Invalid end_time: ${endResult.error}`
+        });
+        return;
+      }
+      updateData.end_time = endResult.dateTime;
     }
 
     const assignment = await prisma.default_service_cover_assignments.update({

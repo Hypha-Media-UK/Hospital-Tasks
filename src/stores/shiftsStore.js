@@ -880,6 +880,9 @@ export const useShiftsStore = defineStore('shifts', {
           a => a.id !== assignmentId
         );
 
+        // Refresh porter pool to reflect any cascading additions (porter added back to pool)
+        await this.fetchShiftPorterPool(this.currentShift.id);
+
         return true;
       } catch (error) {
         console.error('Error removing porter from area cover:', error);
@@ -956,6 +959,12 @@ export const useShiftsStore = defineStore('shifts', {
 
         // Remove from local state
         this.shiftPorterPool = this.shiftPorterPool.filter(entry => entry.id !== porterPoolId);
+
+        // Refresh area cover and support service assignments to reflect cascading deletions
+        await Promise.all([
+          this.fetchShiftAreaCover(this.currentShift.id),
+          this.fetchShiftSupportServices(this.currentShift.id)
+        ]);
 
         return true;
       } catch (error) {
@@ -1048,6 +1057,9 @@ export const useShiftsStore = defineStore('shifts', {
         this.shiftSupportServicePorterAssignments = this.shiftSupportServicePorterAssignments.filter(
           a => a.id !== assignmentId
         );
+
+        // Refresh porter pool to reflect any cascading additions (porter added back to pool)
+        await this.fetchShiftPorterPool(this.currentShift.id);
 
         return true;
       } catch (error) {

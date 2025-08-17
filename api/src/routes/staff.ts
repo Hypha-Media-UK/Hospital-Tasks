@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
-import { asyncHandler, ApiError, validateRequired, getPaginationParams, sendSuccess, sendCreated, formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
+import { asyncHandler, ApiError, validateRequired, getPaginationParams, sendSuccess, sendCreated, formatObjectTimeFields } from '../middleware/errorHandler';
+import { parseTimeString } from '../utils/timeUtils';
 
 // Helper function to format staff time fields for response
 const formatStaffTimeFields = (staff: any) => formatObjectTimeFields(staff, ['contracted_hours_start', 'contracted_hours_end']);
@@ -96,8 +97,8 @@ router.post('/', asyncHandler(async (req: Request, res: Response): Promise<void>
       department_id: department_id || null,
       porter_type: porter_type || 'shift',
       availability_pattern: availability_pattern || null,
-      contracted_hours_start: formatTimeForDB(contracted_hours_start),
-      contracted_hours_end: formatTimeForDB(contracted_hours_end)
+      contracted_hours_start: contracted_hours_start ? parseTimeString(contracted_hours_start).dateTime : null,
+      contracted_hours_end: contracted_hours_end ? parseTimeString(contracted_hours_end).dateTime : null
     },
     include: {
       departments: {
@@ -123,10 +124,18 @@ router.put('/:id', asyncHandler(async (req: Request, res: Response): Promise<voi
 
   // Format time fields if they exist
   if (updateData.contracted_hours_start) {
-    updateData.contracted_hours_start = formatTimeForDB(updateData.contracted_hours_start);
+    const startResult = parseTimeString(updateData.contracted_hours_start);
+    if (!startResult.isValid) {
+      throw ApiError.badRequest(`Invalid contracted_hours_start: ${startResult.error}`);
+    }
+    updateData.contracted_hours_start = startResult.dateTime;
   }
   if (updateData.contracted_hours_end) {
-    updateData.contracted_hours_end = formatTimeForDB(updateData.contracted_hours_end);
+    const endResult = parseTimeString(updateData.contracted_hours_end);
+    if (!endResult.isValid) {
+      throw ApiError.badRequest(`Invalid contracted_hours_end: ${endResult.error}`);
+    }
+    updateData.contracted_hours_end = endResult.dateTime;
   }
 
   const staff = await prisma.staff.update({

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
-import { formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
+import { parseTimePair } from '../utils/timeUtils';
 
 const router = Router();
 
@@ -763,17 +763,68 @@ router.delete('/:id/porter-pool/:porterId', async (req: Request, res: Response):
   try {
     const { id: shiftId, porterId } = req.params;
 
-    await prisma.shift_porter_pool.deleteMany({
-      where: {
-        shift_id: shiftId,
-        porter_id: porterId
-      }
+    // Use a transaction to ensure all related assignments are removed atomically
+    await prisma.$transaction(async (tx) => {
+      // 1. Remove porter from area cover assignments
+      await tx.shift_area_cover_porter_assignments.deleteMany({
+        where: {
+          porter_id: porterId,
+          shift_area_cover_assignments: {
+            shift_id: shiftId
+          }
+        }
+      });
+
+      // 2. Remove porter from support service assignments
+      await tx.shift_support_service_porter_assignments.deleteMany({
+        where: {
+          porter_id: porterId,
+          shift_support_service_assignments: {
+            shift_id: shiftId
+          }
+        }
+      });
+
+      // 3. Remove porter from task assignments
+      await tx.shift_task_porter_assignments.deleteMany({
+        where: {
+          porter_id: porterId,
+          shift_tasks: {
+            shift_id: shiftId
+          }
+        }
+      });
+
+      // 4. Remove porter from building assignments
+      await tx.shift_porter_building_assignments.deleteMany({
+        where: {
+          shift_id: shiftId,
+          porter_id: porterId
+        }
+      });
+
+      // 5. Remove porter from shift-specific absences
+      await tx.shift_porter_absences.deleteMany({
+        where: {
+          shift_id: shiftId,
+          porter_id: porterId
+        }
+      });
+
+      // 6. Finally, remove porter from the shift pool
+      await tx.shift_porter_pool.deleteMany({
+        where: {
+          shift_id: shiftId,
+          porter_id: porterId
+        }
+      });
     });
 
+    console.log(`Successfully removed porter ${porterId} from shift ${shiftId} and all related assignments`);
     res.status(204).send();
   } catch (error) {
     console.error('Error removing porter from shift pool:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to remove porter from shift pool'
     });
@@ -823,35 +874,23 @@ router.post('/:id/area-cover/:areaCoverId/porter-assignments', async (req: Reque
       return;
     }
 
-    // Parse time strings to create proper datetime objects
-    let startDateTime: Date | null = null;
-    let endDateTime: Date | null = null;
-
-    if (start_time) {
-      // Handle both HH:MM and HH:MM:SS formats
-      if (start_time.match(/^\d{2}:\d{2}$/)) {
-        startDateTime = new Date(`1970-01-01T${start_time}:00.000Z`);
-      } else if (start_time.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        startDateTime = new Date(`1970-01-01T${start_time}.000Z`);
-      }
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
     }
 
-    if (end_time) {
-      // Handle both HH:MM and HH:MM:SS formats
-      if (end_time.match(/^\d{2}:\d{2}$/)) {
-        endDateTime = new Date(`1970-01-01T${end_time}:00.000Z`);
-      } else if (end_time.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        endDateTime = new Date(`1970-01-01T${end_time}.000Z`);
-      }
-    }
+    const { startDateTime, endDateTime } = timeResult;
 
     console.log('Creating porter assignment with times:', {
       start_time,
       end_time,
       startDateTime,
-      endDateTime,
-      startDateTimeType: typeof startDateTime,
-      endDateTimeType: typeof endDateTime
+      endDateTime
     });
 
     const porterAssignment = await prisma.shift_area_cover_porter_assignments.create({
@@ -973,10 +1012,22 @@ router.put('/:id/area-cover/porter-assignments/:assignmentId', async (req: Reque
       }
     }
 
-    // Parse time strings to create proper datetime objects
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
+    }
+
+    const { startDateTime, endDateTime } = timeResult;
+
+    // Prepare update data
     const updateData: any = {
-      start_time: formatTimeForDB(start_time),
-      end_time: formatTimeForDB(end_time)
+      start_time: startDateTime,
+      end_time: endDateTime
     };
 
     if (porter_id) {
@@ -1024,25 +1075,383 @@ router.delete('/:id/area-cover/porter-assignments/:assignmentId', async (req: Re
   try {
     const { id: shiftId, assignmentId } = req.params;
 
-    await prisma.shift_area_cover_porter_assignments.delete({
-      where: { id: assignmentId }
+    // Use a transaction to ensure porter is added back to pool and assignment is removed atomically
+    await prisma.$transaction(async (tx) => {
+      // First, get the porter assignment to find the porter_id
+      const assignment = await tx.shift_area_cover_porter_assignments.findUnique({
+        where: { id: assignmentId },
+        include: {
+          shift_area_cover_assignments: true
+        }
+      });
+
+      if (!assignment) {
+        throw new Error('Porter assignment not found');
+      }
+
+      // Verify the assignment belongs to the correct shift
+      if (assignment.shift_area_cover_assignments.shift_id !== shiftId) {
+        throw new Error('Assignment does not belong to this shift');
+      }
+
+      const porterId = assignment.porter_id;
+
+      // Check if porter is already in the porter pool for this shift
+      const existingPoolEntry = await tx.shift_porter_pool.findFirst({
+        where: {
+          shift_id: shiftId,
+          porter_id: porterId
+        }
+      });
+
+      // If porter is not in the pool, add them back
+      if (!existingPoolEntry) {
+        await tx.shift_porter_pool.create({
+          data: {
+            shift_id: shiftId,
+            porter_id: porterId,
+            is_supervisor: false
+          }
+        });
+        console.log(`Added porter ${porterId} back to pool for shift ${shiftId}`);
+      }
+
+      // Remove the assignment
+      await tx.shift_area_cover_porter_assignments.delete({
+        where: { id: assignmentId }
+      });
     });
 
+    console.log(`Successfully removed area cover porter assignment ${assignmentId} and added porter back to pool`);
     res.status(204).send();
   } catch (error: any) {
     console.error('Error removing porter from area cover assignment:', error);
-    
-    if (error.code === 'P2025') {
-      res.status(404).json({ 
+
+    if (error.message === 'Porter assignment not found' || error.code === 'P2025') {
+      res.status(404).json({
         error: 'Not Found',
         message: 'Porter assignment not found'
       });
       return;
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to remove porter from area cover assignment'
+    });
+  }
+});
+
+// POST /api/shifts/:id/support-services/:serviceId/porter-assignments - Add porter to support service assignment
+router.post('/:id/support-services/:serviceId/porter-assignments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId, serviceId } = req.params;
+    const { porter_id, start_time, end_time } = req.body;
+
+    if (!porter_id || !start_time || !end_time) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'porter_id, start_time, and end_time are required'
+      });
+      return;
+    }
+
+    // Verify the support service assignment exists and belongs to this shift
+    const supportServiceAssignment = await prisma.shift_support_service_assignments.findFirst({
+      where: {
+        id: serviceId,
+        shift_id: shiftId
+      }
+    });
+
+    if (!supportServiceAssignment) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Support service assignment not found for this shift'
+      });
+      return;
+    }
+
+    // Verify porter exists
+    const porter = await prisma.staff.findUnique({
+      where: { id: porter_id }
+    });
+
+    if (!porter) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Porter not found'
+      });
+      return;
+    }
+
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
+    }
+
+    const { startDateTime, endDateTime } = timeResult;
+
+    console.log('Creating porter assignment with times:', {
+      start_time,
+      end_time,
+      startDateTime,
+      endDateTime
+    });
+
+    // Create the porter assignment
+    const assignment = await prisma.shift_support_service_porter_assignments.create({
+      data: {
+        shift_support_service_assignment_id: serviceId,
+        porter_id,
+        start_time: startDateTime,
+        end_time: endDateTime
+      },
+      include: {
+        staff: true,
+        shift_support_service_assignments: {
+          include: {
+            support_services: true
+          }
+        }
+      }
+    });
+
+    // Format the response to match expected frontend structure
+    const formattedAssignment = {
+      id: assignment.id,
+      shift_support_service_assignment_id: assignment.shift_support_service_assignment_id,
+      porter_id: assignment.porter_id,
+      start_time: start_time,
+      end_time: end_time,
+      created_at: assignment.created_at,
+      updated_at: assignment.updated_at,
+      porter: {
+        id: assignment.staff.id,
+        first_name: assignment.staff.first_name,
+        last_name: assignment.staff.last_name,
+        role: assignment.staff.role
+      }
+    };
+
+    res.status(201).json(formattedAssignment);
+  } catch (error: any) {
+    console.error('Error creating support service porter assignment:', error);
+
+    if (error.code === 'P2002') {
+      res.status(409).json({
+        error: 'Conflict',
+        message: 'Porter is already assigned to this support service'
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to create support service porter assignment'
+    });
+  }
+});
+
+// PUT /api/shifts/:id/support-services/porter-assignments/:assignmentId - Update support service porter assignment
+router.put('/:id/support-services/porter-assignments/:assignmentId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId, assignmentId } = req.params;
+    const { porter_id, start_time, end_time } = req.body;
+
+    if (!start_time || !end_time) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'start_time and end_time are required'
+      });
+      return;
+    }
+
+    // Verify the assignment exists and belongs to this shift
+    const existingAssignment = await prisma.shift_support_service_porter_assignments.findFirst({
+      where: {
+        id: assignmentId,
+        shift_support_service_assignments: {
+          shift_id: shiftId
+        }
+      }
+    });
+
+    if (!existingAssignment) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Support service porter assignment not found for this shift'
+      });
+      return;
+    }
+
+    // If porter_id is provided, verify the porter exists
+    if (porter_id) {
+      const porter = await prisma.staff.findUnique({
+        where: { id: porter_id }
+      });
+
+      if (!porter) {
+        res.status(404).json({
+          error: 'Not Found',
+          message: 'Porter not found'
+        });
+        return;
+      }
+    }
+
+    // Parse and validate time strings
+    const timeResult = parseTimePair(start_time, end_time);
+    if (!timeResult.isValid) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: timeResult.error
+      });
+      return;
+    }
+
+    const { startDateTime, endDateTime } = timeResult;
+
+    // Update the assignment
+    const updateData: any = {
+      start_time: startDateTime,
+      end_time: endDateTime
+    };
+
+    if (porter_id) {
+      updateData.porter_id = porter_id;
+    }
+
+    const assignment = await prisma.shift_support_service_porter_assignments.update({
+      where: { id: assignmentId },
+      data: updateData,
+      include: {
+        staff: true,
+        shift_support_service_assignments: {
+          include: {
+            support_services: true
+          }
+        }
+      }
+    });
+
+    // Format the response to match expected frontend structure
+    const formattedAssignment = {
+      id: assignment.id,
+      shift_support_service_assignment_id: assignment.shift_support_service_assignment_id,
+      porter_id: assignment.porter_id,
+      start_time: start_time,
+      end_time: end_time,
+      created_at: assignment.created_at,
+      updated_at: assignment.updated_at,
+      porter: {
+        id: assignment.staff.id,
+        first_name: assignment.staff.first_name,
+        last_name: assignment.staff.last_name,
+        role: assignment.staff.role
+      }
+    };
+
+    res.json(formattedAssignment);
+  } catch (error: any) {
+    console.error('Error updating support service porter assignment:', error);
+
+    if (error.code === 'P2025') {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Support service porter assignment not found'
+      });
+      return;
+    }
+
+    if (error.code === 'P2002') {
+      res.status(409).json({
+        error: 'Conflict',
+        message: 'Porter is already assigned to this support service'
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to update support service porter assignment'
+    });
+  }
+});
+
+// DELETE /api/shifts/:id/support-services/porter-assignments/:assignmentId - Remove porter from support service assignment
+router.delete('/:id/support-services/porter-assignments/:assignmentId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId, assignmentId } = req.params;
+
+    // Use a transaction to ensure porter is added back to pool and assignment is removed atomically
+    await prisma.$transaction(async (tx) => {
+      // First, get the porter assignment to find the porter_id
+      const assignment = await tx.shift_support_service_porter_assignments.findUnique({
+        where: { id: assignmentId },
+        include: {
+          shift_support_service_assignments: true
+        }
+      });
+
+      if (!assignment) {
+        throw new Error('Porter assignment not found');
+      }
+
+      // Verify the assignment belongs to the correct shift
+      if (assignment.shift_support_service_assignments.shift_id !== shiftId) {
+        throw new Error('Assignment does not belong to this shift');
+      }
+
+      const porterId = assignment.porter_id;
+
+      // Check if porter is already in the porter pool for this shift
+      const existingPoolEntry = await tx.shift_porter_pool.findFirst({
+        where: {
+          shift_id: shiftId,
+          porter_id: porterId
+        }
+      });
+
+      // If porter is not in the pool, add them back
+      if (!existingPoolEntry) {
+        await tx.shift_porter_pool.create({
+          data: {
+            shift_id: shiftId,
+            porter_id: porterId,
+            is_supervisor: false
+          }
+        });
+        console.log(`Added porter ${porterId} back to pool for shift ${shiftId}`);
+      }
+
+      // Remove the assignment
+      await tx.shift_support_service_porter_assignments.delete({
+        where: { id: assignmentId }
+      });
+    });
+
+    console.log(`Successfully removed support service porter assignment ${assignmentId} and added porter back to pool`);
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('Error removing porter from support service assignment:', error);
+
+    if (error.message === 'Porter assignment not found' || error.code === 'P2025') {
+      res.status(404).json({
+        error: 'Not Found',
+        message: 'Porter assignment not found'
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to remove porter from support service assignment'
     });
   }
 });
