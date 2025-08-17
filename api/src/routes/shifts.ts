@@ -824,8 +824,35 @@ router.post('/:id/area-cover/:areaCoverId/porter-assignments', async (req: Reque
     }
 
     // Parse time strings to create proper datetime objects
-    const startDateTime = formatTimeForDB(start_time);
-    const endDateTime = formatTimeForDB(end_time);
+    let startDateTime: Date | null = null;
+    let endDateTime: Date | null = null;
+
+    if (start_time) {
+      // Handle both HH:MM and HH:MM:SS formats
+      if (start_time.match(/^\d{2}:\d{2}$/)) {
+        startDateTime = new Date(`1970-01-01T${start_time}:00.000Z`);
+      } else if (start_time.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        startDateTime = new Date(`1970-01-01T${start_time}.000Z`);
+      }
+    }
+
+    if (end_time) {
+      // Handle both HH:MM and HH:MM:SS formats
+      if (end_time.match(/^\d{2}:\d{2}$/)) {
+        endDateTime = new Date(`1970-01-01T${end_time}:00.000Z`);
+      } else if (end_time.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        endDateTime = new Date(`1970-01-01T${end_time}.000Z`);
+      }
+    }
+
+    console.log('Creating porter assignment with times:', {
+      start_time,
+      end_time,
+      startDateTime,
+      endDateTime,
+      startDateTimeType: typeof startDateTime,
+      endDateTimeType: typeof endDateTime
+    });
 
     const porterAssignment = await prisma.shift_area_cover_porter_assignments.create({
       data: {

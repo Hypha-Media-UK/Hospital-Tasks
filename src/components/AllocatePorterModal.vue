@@ -62,18 +62,10 @@
           <div class="tab-content">
             <!-- Department Tab -->
             <div v-if="activeTab === 'department'" class="tab-pane">
-              <!-- Debug Info -->
-              <div style="background: #f0f0f0; padding: 8px; margin-bottom: 16px; font-size: 12px;">
-                <div><strong>Debug Info:</strong></div>
-                <div>departmentId: {{ departmentId }}</div>
-                <div>availableDepartments.length: {{ availableDepartments.length }}</div>
-                <div>availableDepartments: {{ availableDepartments.map(d => d.name).join(', ') }}</div>
-              </div>
-              
               <div class="form-group">
                 <label for="departmentSelect">Department</label>
-                <select 
-                  id="departmentSelect" 
+                <select
+                  id="departmentSelect"
                   v-model="departmentId"
                   class="form-control"
                   :disabled="processing"
@@ -83,12 +75,6 @@
                     {{ dept.name }}
                   </option>
                 </select>
-                <!-- Additional debug to see what's happening -->
-                <div style="font-size: 10px; color: #666; margin-top: 4px;">
-                  Current departmentId: {{ departmentId }}<br>
-                  Available options: {{ availableDepartments.length }}<br>
-                  Selected dept: {{ availableDepartments.find(d => d.id === departmentId)?.name || 'None' }}
-                </div>
               </div>
               
               <div class="time-fields">
@@ -283,12 +269,9 @@ const submitButtonText = computed(() => {
 const availableDepartments = computed(() => {
   // Get all departments with area cover assignments for this shift
   const deptIds = shiftsStore.shiftAreaCoverAssignments.map(a => a.department_id);
-  console.log('Available department IDs from shift area cover assignments:', JSON.stringify(deptIds));
-  console.log('All departments from locations store:', JSON.stringify(locationsStore.departments));
-  
+
   // Return only departments that have area cover assignments in this shift
   const filtered = locationsStore.departments.filter(dept => deptIds.includes(dept.id));
-  console.log('Filtered available departments:', JSON.stringify(filtered));
   return filtered;
 });
 
@@ -423,31 +406,25 @@ const checkTimeConflicts = (startTime, endTime) => {
 // Initialize form for edit mode
 const initializeEditMode = () => {
   if (!isEditMode.value || !props.editingAssignment) return;
-  
+
   const assignment = props.editingAssignment;
-  console.log('Initializing edit mode for assignment:', assignment);
-  
+
   // Determine assignment type and set active tab
   if (assignment.shift_area_cover_assignment_id) {
     // Department assignment
     activeTab.value = 'department';
-    
+
     // Find the department ID from the area cover assignment
     const areaCover = shiftsStore.shiftAreaCoverAssignments.find(
       a => a.id === assignment.shift_area_cover_assignment_id
     );
-    console.log('Found area cover assignment:', areaCover);
-    console.log('Available area cover assignments:', shiftsStore.shiftAreaCoverAssignments);
-    
+
     if (areaCover && areaCover.department_id) {
       departmentId.value = areaCover.department_id;
-      console.log('Set departmentId to:', areaCover.department_id);
     } else {
-      console.warn('Could not find department_id for area cover assignment');
       // Fallback: try to get department_id from the assignment itself if it exists
       if (assignment.department_id) {
         departmentId.value = assignment.department_id;
-        console.log('Using fallback departmentId from assignment:', assignment.department_id);
       }
     }
     
@@ -463,18 +440,13 @@ const initializeEditMode = () => {
     const serviceAssignment = shiftsStore.shiftSupportServiceAssignments.find(
       s => s.id === assignment.shift_support_service_assignment_id
     );
-    console.log('Found service assignment:', serviceAssignment);
-    console.log('Available service assignments:', shiftsStore.shiftSupportServiceAssignments);
-    
+
     if (serviceAssignment && serviceAssignment.service_id) {
       serviceId.value = serviceAssignment.service_id;
-      console.log('Set serviceId to:', serviceAssignment.service_id);
     } else {
-      console.warn('Could not find service_id for service assignment');
       // Fallback: try to get service_id from the assignment itself if it exists
       if (assignment.service_id) {
         serviceId.value = assignment.service_id;
-        console.log('Using fallback serviceId from assignment:', assignment.service_id);
       }
     }
     
@@ -491,8 +463,6 @@ const initializeEditMode = () => {
     absenceStartTime.value = formatTime(assignment.start_time);
     absenceEndTime.value = formatTime(assignment.end_time);
   }
-  
-  console.log('Edit mode initialized - departmentId:', departmentId.value, 'serviceId:', serviceId.value);
 };
 
 const allocatePorter = async () => {

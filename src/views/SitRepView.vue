@@ -522,9 +522,7 @@ const getPorterGanttBlocks = (porterId) => {
   if (!porter || !timelineHours.value.length) {
     return blocks;
   }
-  
-  // DEBUG: Log porter assignment processing
-  
+
   const totalHours = timelineHours.value.length;
   const shiftStartHour = timelineHours.value[0].hour;
   const shiftEndHour = timelineHours.value[timelineHours.value.length - 1].hour;
@@ -810,14 +808,10 @@ onMounted(async () => {
   
   if (!shiftsStore.shiftAreaCoverAssignments.length) {
     await shiftsStore.fetchShiftAreaCover(shiftId.value);
-    
-    // DEBUG: Log the area cover assignments data
   }
-  
+
   if (!shiftsStore.shiftSupportServiceAssignments.length) {
     await shiftsStore.fetchShiftSupportServices(shiftId.value);
-    
-    // DEBUG: Log the support service assignments data
   }
   
   // Fetch historical absences specifically for SitRep
@@ -828,9 +822,6 @@ onMounted(async () => {
   
   // Set CSS custom property for hour width based on timeline length
   updateHourWidth();
-  
-  
-  // DEBUG: Final data state check
 });
 
 // Watch for timeline changes and update hour width

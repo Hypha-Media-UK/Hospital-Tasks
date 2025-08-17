@@ -1754,33 +1754,20 @@ async function saveTask() {
     if (completedDateTime) {
       taskData.time_completed = completedDateTime;
     }
-    
-    console.log('Saving task:', {
-      isEditing: isEditingTask.value,
-      taskId: editingTaskId.value,
-      taskData: taskData
-    });
-    
+
     let result;
-    
+
     if (isEditingTask.value) {
       // Update existing task
-      console.log('Updating task with ID:', editingTaskId.value);
       result = await shiftsStore.updateTask(editingTaskId.value, taskData);
-      console.log('Update result:', result);
     } else {
       // Add new task
-      console.log('Adding new task to shift:', shift.value.id);
       result = await shiftsStore.addTaskToShift(shift.value.id, taskData);
-      console.log('Add result:', result);
     }
-    
+
     if (result) {
-      console.log('Task saved successfully, closing modal');
-      
       // If we're editing a task, refresh the task list to ensure UI updates
       if (isEditingTask.value) {
-        console.log('Refreshing task list after update');
         await shiftsStore.fetchShiftTasks(shift.value.id);
       }
       

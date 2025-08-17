@@ -266,10 +266,7 @@ const uniqueTaskTypes = computed(() => {
   return Array.from(taskTypes).sort();
 });
 
-// Debug log to track when porterActivity is recalculated
-const debug = (msg, data) => {
-  // Debug logging removed for production
-};
+
 
 // Porter activity summary - tracks porters and their task counts
 const porterActivity = computed(() => {

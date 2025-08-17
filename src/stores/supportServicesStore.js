@@ -461,11 +461,9 @@ export const useSupportServicesStore = defineStore('supportServices', {
       this.error = null;
       
       try {
-        console.log(`Setting up support services from defaults for shift ${shiftId}, type ${shiftType}`);
         const result = await shiftsApi.initializeSupportServices(shiftId);
-        
+
         if (result && result.assignments) {
-          console.log(`Successfully initialized ${result.assignments.length} support service assignments`);
           return true;
         }
         

@@ -190,13 +190,46 @@ export const formatTimeField = (timeValue: any): string | null => {
   return timeValue;
 };
 
-export const formatTimeForDB = (timeStr: string | null): Date | null => {
-  if (!timeStr) return null;
-  // If it's already in HH:MM format, convert to full datetime
-  if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-    return new Date(`1970-01-01T${timeStr}:00.000Z`);
+export const formatTimeForDB = (timeStr: string | Date | null): Date | null => {
+  console.log(`formatTimeForDB called with:`, timeStr, typeof timeStr);
+
+  if (!timeStr) {
+    console.log(`formatTimeForDB: timeStr is falsy, returning null`);
+    return null;
   }
-  return timeStr as any;
+
+  // If it's already a Date object, return it
+  if (typeof timeStr === 'object' && timeStr instanceof Date) {
+    console.log(`formatTimeForDB: timeStr is already a Date, returning:`, timeStr);
+    return timeStr;
+  }
+
+  // If it's a string, convert it to a Date
+  if (typeof timeStr === 'string') {
+    // If it's in HH:MM format, convert to full datetime
+    if (timeStr.match(/^\d{2}:\d{2}$/)) {
+      const date = new Date(`1970-01-01T${timeStr}:00.000Z`);
+      console.log(`formatTimeForDB: Converting HH:MM ${timeStr} to Date:`, date);
+      return date;
+    }
+
+    // If it's in HH:MM:SS format, convert to full datetime
+    if (timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+      const date = new Date(`1970-01-01T${timeStr}.000Z`);
+      console.log(`formatTimeForDB: Converting HH:MM:SS ${timeStr} to Date:`, date);
+      return date;
+    }
+
+    // Try to parse as Date if it's a string
+    const parsed = new Date(timeStr);
+    if (!isNaN(parsed.getTime())) {
+      console.log(`formatTimeForDB: Parsed ${timeStr} to Date:`, parsed);
+      return parsed;
+    }
+  }
+
+  console.log(`formatTimeForDB: Could not convert ${timeStr} to Date, returning null`);
+  return null;
 };
 
 export const formatObjectTimeFields = (obj: any, timeFields: string[]): any => {

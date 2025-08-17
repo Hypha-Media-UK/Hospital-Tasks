@@ -61,8 +61,6 @@
 import { ref, computed, onMounted } from 'vue';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
 import { useLocationsStore } from '../../stores/locationsStore';
-// For logging
-const isDevelopment = process.env.NODE_ENV === 'development';
 
 const props = defineProps({
   department: {
@@ -105,11 +103,6 @@ onMounted(async () => {
   const typeAssignments = taskTypesStore.typeAssignments.filter(
     a => a.department_id === props.department.id && a.is_origin
   );
-  
-  if (isDevelopment) {
-    console.log("Department task assignment:", assignment);
-    console.log("Task type assignments:", typeAssignments);
-  }
   
   if (assignment) {
     // If we have a department task assignment, use it
@@ -205,10 +198,6 @@ async function saveAssignment() {
     const typeResult = await taskTypesStore.updateTypeAssignments(selectedTaskTypeId.value, newAssignments);
     
     if (locationResult && typeResult) {
-      if (isDevelopment) {
-        console.log("Updated department task assignment in locations store");
-        console.log("Updated task type department assignments in task types store");
-      }
       emit('saved');
       emit('close');
     }
@@ -253,10 +242,6 @@ async function clearAssignment() {
     }
     
     if (locationResult && typeResult) {
-      if (isDevelopment) {
-        console.log("Removed department task assignment from locations store");
-        console.log("Removed department from task type department assignments");
-      }
       emit('saved');
       emit('close');
     }

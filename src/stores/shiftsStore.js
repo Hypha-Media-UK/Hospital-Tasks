@@ -454,10 +454,7 @@ export const useShiftsStore = defineStore('shifts', {
         
         // Format the shift date as YYYY-MM-DD
         const shiftDateString = targetShiftDate.toISOString().split('T')[0];
-        
-        console.log(`Creating new shift: type=${shiftType}`);
-        console.log(`Creating new shift with supervisor: ${supervisorId}, type: ${shiftType}`);
-        
+
         const shiftData = {
           supervisor_id: supervisorId,
           shift_type: shiftType,
@@ -469,29 +466,18 @@ export const useShiftsStore = defineStore('shifts', {
         const data = await shiftsApi.create(shiftData);
         
         if (data) {
-          console.log(`Created new shift with ID: ${data.id}, type: ${data.shift_type}`);
-          
           // Add the new shift to activeShifts array
           this.activeShifts.unshift(data);
-          
+
           // Initialize area cover and support services from defaults
           try {
-            console.log(`Initializing default assignments for new shift ${data.id}`);
-            
             // Initialize area cover assignments
-            const areaCoverResult = await shiftsApi.initializeAreaCover(data.id);
-            if (areaCoverResult && areaCoverResult.assignments) {
-              console.log(`Initialized ${areaCoverResult.assignments.length} area cover assignments`);
-            }
-            
+            await shiftsApi.initializeAreaCover(data.id);
+
             // Initialize support service assignments
-            const supportServicesResult = await shiftsApi.initializeSupportServices(data.id);
-            if (supportServicesResult && supportServicesResult.assignments) {
-              console.log(`Initialized ${supportServicesResult.assignments.length} support service assignments`);
-            }
-            
+            await shiftsApi.initializeSupportServices(data.id);
+
           } catch (initError) {
-            console.warn('Error initializing default assignments for new shift:', initError);
             // Don't fail the shift creation if initialization fails
           }
           
@@ -600,20 +586,13 @@ export const useShiftsStore = defineStore('shifts', {
       this.error = null;
       
       try {
-        console.log('Store updateTask called with:', { taskId, taskData });
         const data = await tasksApi.update(taskId, taskData);
-        console.log('API response:', data);
-        
+
         if (data) {
           // Update the task in shiftTasks array
           const index = this.shiftTasks.findIndex(task => task.id === taskId);
-          console.log('Found task at index:', index, 'in array of', this.shiftTasks.length, 'tasks');
           if (index !== -1) {
-            console.log('Updating task in local state. Old task:', this.shiftTasks[index]);
             this.shiftTasks[index] = data;
-            console.log('Updated task in local state. New task:', this.shiftTasks[index]);
-          } else {
-            console.warn('Task not found in local shiftTasks array for update');
           }
           return data;
         }
@@ -775,7 +754,6 @@ export const useShiftsStore = defineStore('shifts', {
     async fetchShiftPorterAbsences(shiftId) {
       // Note: Porter absences are handled by the staff store for global absences
       // Shift-specific absences would need a separate API endpoint if implemented
-      console.log(`fetchShiftPorterAbsences called for shift ${shiftId} - using global absences from staff store`);
       this.shiftPorterAbsences = [];
       return [];
     },
@@ -789,11 +767,9 @@ export const useShiftsStore = defineStore('shifts', {
     async setupShiftAreaCoverFromDefaults(shiftId, shiftType) {
       this.loading.areaCover = true;
       try {
-        console.log(`Setting up area cover from defaults for shift ${shiftId}, type ${shiftType}`);
         const result = await shiftsApi.initializeAreaCover(shiftId);
 
         if (result && result.assignments) {
-          console.log(`Successfully initialized ${result.assignments.length} area cover assignments`);
           // Refresh the area cover assignments after initialization
           await this.fetchShiftAreaCover(shiftId);
           return true;
@@ -813,11 +789,9 @@ export const useShiftsStore = defineStore('shifts', {
     async setupShiftSupportServicesFromDefaults(shiftId, shiftType) {
       this.loading.supportServices = true;
       try {
-        console.log(`Setting up support services from defaults for shift ${shiftId}, type ${shiftType}`);
         const result = await shiftsApi.initializeSupportServices(shiftId);
 
         if (result && result.assignments) {
-          console.log(`Successfully initialized ${result.assignments.length} support service assignments`);
           // Refresh the support service assignments after initialization
           await this.fetchShiftSupportServices(shiftId);
           return true;
@@ -855,7 +829,6 @@ export const useShiftsStore = defineStore('shifts', {
         if (data) {
           // Add to local state
           this.shiftAreaCoverPorterAssignments.push(data);
-          console.log('Added porter to area cover:', data);
           return data;
         }
 
@@ -882,7 +855,6 @@ export const useShiftsStore = defineStore('shifts', {
           if (index !== -1) {
             this.shiftAreaCoverPorterAssignments[index] = data;
           }
-          console.log('Updated area cover porter assignment:', data);
           return data;
         }
 
@@ -908,7 +880,6 @@ export const useShiftsStore = defineStore('shifts', {
           a => a.id !== assignmentId
         );
 
-        console.log('Removed porter from area cover:', assignmentId);
         return true;
       } catch (error) {
         console.error('Error removing porter from area cover:', error);
@@ -941,7 +912,6 @@ export const useShiftsStore = defineStore('shifts', {
         // For now, just remove from local state since this is shift-specific absences
         // In a real implementation, this would call an API endpoint
         this.shiftPorterAbsences = this.shiftPorterAbsences.filter(absence => absence.id !== absenceId);
-        console.log(`Removed porter absence ${absenceId} from shift`);
         return true;
       } catch (error) {
         console.error('Error removing porter absence:', error);
@@ -971,9 +941,22 @@ export const useShiftsStore = defineStore('shifts', {
     // Remove a porter from the shift
     async removePorterFromShift(porterPoolId) {
       try {
-        // For now, create a placeholder implementation since the API endpoint doesn't exist yet
+        if (!this.currentShift) {
+          throw new Error('No current shift selected');
+        }
+
+        // Find the porter pool entry to get the porter_id
+        const poolEntry = this.shiftPorterPool.find(entry => entry.id === porterPoolId);
+        if (!poolEntry) {
+          throw new Error('Porter pool entry not found');
+        }
+
+        // Call the API to remove the porter from the shift pool
+        await shiftsApi.removePorterFromPool(this.currentShift.id, poolEntry.porter_id);
+
+        // Remove from local state
         this.shiftPorterPool = this.shiftPorterPool.filter(entry => entry.id !== porterPoolId);
-        console.log('Removed porter from shift (placeholder):', porterPoolId);
+
         return true;
       } catch (error) {
         console.error('Error removing porter from shift:', error);
@@ -992,7 +975,6 @@ export const useShiftsStore = defineStore('shifts', {
           ...absenceData
         };
         this.shiftPorterAbsences.push(newAbsence);
-        console.log('Added porter absence to shift:', newAbsence);
         return newAbsence;
       } catch (error) {
         console.error('Error adding porter absence to shift:', error);
@@ -1016,7 +998,6 @@ export const useShiftsStore = defineStore('shifts', {
         if (data) {
           // Add to local state
           this.shiftSupportServicePorterAssignments.push(data);
-          console.log('Added porter to support service:', data);
           return data;
         }
 
@@ -1043,7 +1024,6 @@ export const useShiftsStore = defineStore('shifts', {
           if (index !== -1) {
             this.shiftSupportServicePorterAssignments[index] = data;
           }
-          console.log('Updated support service porter assignment:', data);
           return data;
         }
 
@@ -1069,7 +1049,6 @@ export const useShiftsStore = defineStore('shifts', {
           a => a.id !== assignmentId
         );
 
-        console.log('Removed porter from support service:', assignmentId);
         return true;
       } catch (error) {
         console.error('Error removing porter from support service:', error);
@@ -1088,7 +1067,6 @@ export const useShiftsStore = defineStore('shifts', {
             ...this.shiftSupportServiceAssignments[index],
             ...updates
           };
-          console.log('Updated support service assignment (placeholder):', this.shiftSupportServiceAssignments[index]);
           return this.shiftSupportServiceAssignments[index];
         }
 
@@ -1113,7 +1091,6 @@ export const useShiftsStore = defineStore('shifts', {
           a => a.shift_support_service_assignment_id !== assignmentId
         );
 
-        console.log('Removed support service assignment (placeholder):', assignmentId);
         return true;
       } catch (error) {
         console.error('Error removing support service assignment:', error);
@@ -1136,7 +1113,6 @@ export const useShiftsStore = defineStore('shifts', {
         if (data) {
           // Add to local state
           this.shiftSupportServicePorterAssignments.push(data);
-          console.log('Quick allocated porter to support service:', data);
           return data;
         }
 
@@ -1162,7 +1138,6 @@ export const useShiftsStore = defineStore('shifts', {
         if (data) {
           // Add to local state
           this.shiftAreaCoverPorterAssignments.push(data);
-          console.log('Quick allocated porter to area cover:', data);
           return data;
         }
 
@@ -1178,7 +1153,6 @@ export const useShiftsStore = defineStore('shifts', {
     async duplicateShift(shiftId, newDate) {
       try {
         // For now, create a placeholder implementation since the API endpoint doesn't exist yet
-        console.log(`Duplicating shift ${shiftId} to ${newDate} - not yet implemented`);
 
         // Return a mock result for now
         return {
@@ -1207,7 +1181,6 @@ export const useShiftsStore = defineStore('shifts', {
         };
 
         this.shiftAreaCoverAssignments.push(newAssignment);
-        console.log('Added area cover assignment (placeholder):', newAssignment);
 
         return newAssignment;
       } catch (error) {
@@ -1232,7 +1205,6 @@ export const useShiftsStore = defineStore('shifts', {
         };
 
         this.shiftSupportServiceAssignments.push(newAssignment);
-        console.log('Added support service assignment (placeholder):', newAssignment);
 
         return newAssignment;
       } catch (error) {
@@ -1252,7 +1224,6 @@ export const useShiftsStore = defineStore('shifts', {
             ...this.shiftAreaCoverAssignments[index],
             ...updates
           };
-          console.log('Updated area cover assignment (placeholder):', this.shiftAreaCoverAssignments[index]);
           return this.shiftAreaCoverAssignments[index];
         }
 
@@ -1277,7 +1248,6 @@ export const useShiftsStore = defineStore('shifts', {
           a => a.shift_area_cover_assignment_id !== assignmentId
         );
 
-        console.log('Removed area cover assignment (placeholder):', assignmentId);
         return true;
       } catch (error) {
         console.error('Error removing area cover assignment:', error);
@@ -1290,7 +1260,6 @@ export const useShiftsStore = defineStore('shifts', {
     async togglePorterBuildingAssignment(porterId, buildingId, shiftId) {
       try {
         // For now, create a placeholder implementation since building assignments aren't fully implemented
-        console.log(`Toggling porter ${porterId} assignment to building ${buildingId} for shift ${shiftId} - not yet implemented`);
         return true;
       } catch (error) {
         console.error('Error toggling porter building assignment:', error);
@@ -1302,9 +1271,7 @@ export const useShiftsStore = defineStore('shifts', {
     // Fetch task counts for archived shifts
     async fetchArchivedShiftTaskCounts() {
       try {
-        console.log('Loading archived shifts...');
         await this.fetchArchivedShifts();
-        console.log(`Loaded ${this.archivedShifts.length} archived shifts`);
         
         // For now, return empty task counts since the tasks API is not fully implemented
         // This prevents the error while maintaining functionality

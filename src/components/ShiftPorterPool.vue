@@ -183,8 +183,8 @@
               </div>
               
               <div class="porter-card__actions">
-                <button 
-                  @click="removePorter(entry.id)" 
+                <button
+                  @click.stop="removePorter(entry.id)"
                   class="btn btn--icon btn--danger"
                   title="Remove porter from shift"
                 >
