@@ -76,30 +76,9 @@ router.post('/assignments', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
-    // Use UTC to avoid timezone conversion issues for TIME fields
-    const parseTimeString = (timeStr: string | Date | null): Date | null => {
-      if (!timeStr) return null;
-      
-      // If it's already a Date object, return it
-      if (timeStr instanceof Date) return timeStr;
-      
-      // Handle HH:MM:SS format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}Z`);
-      }
-      
-      // Handle HH:MM format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}:00Z`);
-      }
-      
-      // Fallback - try to parse as is with UTC
-      return new Date(`1970-01-01T${timeStr}Z`);
-    };
-
-    const parsedStartTime = parseTimeString(start_time);
-    const parsedEndTime = parseTimeString(end_time);
+    // Simple time parsing - create Date objects for time fields
+    const parsedStartTime = start_time ? new Date(`1970-01-01T${start_time}:00Z`) : null;
+    const parsedEndTime = end_time ? new Date(`1970-01-01T${end_time}:00Z`) : null;
 
     const assignment = await prisma.default_area_cover_assignments.create({
       data: {
@@ -167,31 +146,9 @@ router.put('/assignments/:id', async (req, res) => {
       minimum_porters
     } = req.body;
 
-    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
-    // Use UTC to avoid timezone conversion issues for TIME fields
-    const parseTimeString = (timeStr: string | Date | null): Date | null => {
-      if (!timeStr) return null;
-      
-      // If it's already a Date object, return it
-      if (timeStr instanceof Date) return timeStr;
-      
-      // Handle HH:MM:SS format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}Z`);
-      }
-      
-      // Handle HH:MM format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}:00Z`);
-      }
-      
-      // Fallback - try to parse as is with UTC
-      return new Date(`1970-01-01T${timeStr}Z`);
-    };
-
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = parseTimeString(start_time);
-    if (end_time !== undefined) updateData.end_time = parseTimeString(end_time);
+    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}:00Z`);
+    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}:00Z`);
     if (color !== undefined) updateData.color = color;
     if (minimum_porters !== undefined) {
       updateData.minimum_porters = minimum_porters;
@@ -321,8 +278,8 @@ router.post('/assignments/:id/porter-assignments', async (req, res) => {
       data: {
         default_area_cover_assignment_id: id,
         porter_id,
-        start_time: new Date(`1970-01-01T${start_time}Z`),
-        end_time: new Date(`1970-01-01T${end_time}Z`)
+        start_time: new Date(`1970-01-01T${start_time}:00Z`),
+        end_time: new Date(`1970-01-01T${end_time}:00Z`)
       },
       include: {
         staff: true
@@ -363,8 +320,8 @@ router.put('/porter-assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}Z`);
-    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}Z`);
+    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}:00Z`);
+    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}:00Z`);
 
     const porterAssignment = await prisma.default_area_cover_porter_assignments.update({
       where: { id },

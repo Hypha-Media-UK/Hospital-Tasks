@@ -33,16 +33,15 @@ router.put('/shift-defaults/:id', async (req: Request, res: Response): Promise<v
     delete updateData.id;
 
     // Convert time strings to Date objects if provided
-    // Use UTC to avoid timezone conversion issues for TIME fields
     if (updateData.start_time && typeof updateData.start_time === 'string') {
       // Ensure the time string is in HH:MM:SS format
       const timeStr = updateData.start_time.includes(':') ? updateData.start_time : `${updateData.start_time}:00`;
-      updateData.start_time = new Date(`1970-01-01T${timeStr}Z`);
+      updateData.start_time = new Date(`1970-01-01T${timeStr}`);
     }
     if (updateData.end_time && typeof updateData.end_time === 'string') {
       // Ensure the time string is in HH:MM:SS format
       const timeStr = updateData.end_time.includes(':') ? updateData.end_time : `${updateData.end_time}:00`;
-      updateData.end_time = new Date(`1970-01-01T${timeStr}Z`);
+      updateData.end_time = new Date(`1970-01-01T${timeStr}`);
     }
 
     const shiftDefault = await prisma.shift_defaults.update({

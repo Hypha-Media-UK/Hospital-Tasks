@@ -3,114 +3,6 @@ import { prisma } from '../server';
 
 const router = Router();
 
-// Helper function to convert time from user timezone to UTC
-function convertTimeToUTC(timeString: string, timezone: string = 'UTC'): string {
-  if (!timeString || timezone === 'UTC') {
-    return timeString;
-  }
-  
-  try {
-    // Parse the time string
-    const [hours, minutes] = timeString.split(':').map(Number);
-    
-    // Validate the parsed values
-    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-      console.error('Invalid time string:', timeString);
-      return timeString; // Return original if invalid
-    }
-    
-    // Create a date object for today with the given time
-    const today = new Date();
-    const dateString = today.toISOString().split('T')[0]; // Get YYYY-MM-DD
-    
-    // Map GMT to Europe/London for proper BST/GMT handling
-    const actualTimezone = timezone === 'GMT' ? 'Europe/London' : timezone;
-    
-    // Create a date in the user's timezone
-    const userDateTime = new Date(`${dateString}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`);
-    
-    // Convert to UTC using proper timezone handling
-    const utcDateTime = new Date(userDateTime.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const localDateTime = new Date(userDateTime.toLocaleString('en-US', { timeZone: actualTimezone }));
-    
-    // Calculate the offset
-    const offsetMs = localDateTime.getTime() - utcDateTime.getTime();
-    const utcResult = new Date(userDateTime.getTime() - offsetMs);
-    
-    // Validate the result
-    const utcHours = utcResult.getUTCHours();
-    const utcMinutes = utcResult.getUTCMinutes();
-    
-    if (isNaN(utcHours) || isNaN(utcMinutes)) {
-      console.error('Timezone conversion failed for:', timeString, 'timezone:', timezone);
-      return timeString; // Return original if conversion fails
-    }
-    
-    return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`;
-  } catch (error) {
-    console.error('Error in convertTimeToUTC:', error, 'timeString:', timeString, 'timezone:', timezone);
-    return timeString; // Return original on error
-  }
-}
-
-// Helper function to convert time from UTC to user timezone
-function convertTimeFromUTC(utcTimeString: string, timezone: string = 'UTC'): string {
-  if (!utcTimeString || timezone === 'UTC') {
-    return utcTimeString;
-  }
-  
-  try {
-    // Parse the UTC time string
-    const [hours, minutes] = utcTimeString.split(':').map(Number);
-    
-    // Validate the parsed values
-    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-      console.error('Invalid UTC time string:', utcTimeString);
-      return utcTimeString; // Return original if invalid
-    }
-    
-    // Create a date object for today with the given UTC time
-    const today = new Date();
-    const dateString = today.toISOString().split('T')[0]; // Get YYYY-MM-DD
-    
-    // Create a UTC date
-    const utcDate = new Date(`${dateString}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00Z`);
-    
-    // Map GMT to Europe/London for proper BST/GMT handling
-    const actualTimezone = timezone === 'GMT' ? 'Europe/London' : timezone;
-    
-    // Convert to user's timezone
-    const userTime = utcDate.toLocaleString('en-CA', {
-      timeZone: actualTimezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    
-    // Validate the result
-    if (!userTime || userTime.includes('Invalid')) {
-      console.error('Timezone conversion failed for UTC time:', utcTimeString, 'timezone:', timezone);
-      return utcTimeString; // Return original if conversion fails
-    }
-    
-    return userTime;
-  } catch (error) {
-    console.error('Error in convertTimeFromUTC:', error, 'utcTimeString:', utcTimeString, 'timezone:', timezone);
-    return utcTimeString; // Return original on error
-  }
-}
-
-// Helper function to get user's timezone from app settings
-async function getUserTimezone(): Promise<string> {
-  try {
-    const settings = await prisma.app_settings.findFirst();
-    return settings?.timezone || 'UTC';
-  } catch (error) {
-    console.error('Error fetching timezone settings:', error);
-    return 'UTC';
-  }
-}
-
 // Get all tasks with optional filtering
 router.get('/', async (req, res) => {
   try {
@@ -184,7 +76,6 @@ router.get('/', async (req, res) => {
       skip: parseInt(offset as string)
     });
 
-    // Return tasks with times as stored (in local timezone where events occurred)
     return res.json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
@@ -256,7 +147,6 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Return task with times as stored (in local timezone where events occurred)
     return res.json(task);
   } catch (error) {
     console.error('Error fetching task:', error);
@@ -274,7 +164,7 @@ router.post('/', async (req, res) => {
       shift_id,
       task_item_id,
       porter_id,
-      porter_assignments = [], // Array of porter IDs for multiple porter assignments
+      porter_assignments = [],
       origin_department_id,
       destination_department_id,
       status = 'pending',
@@ -353,21 +243,6 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Verify task item exists if provided
-    if (task_item_id) {
-      const taskItem = await prisma.taskItem.findUnique({
-        where: { id: task_item_id },
-        select: { id: true }
-      });
-
-      if (!taskItem) {
-        return res.status(404).json({
-          error: 'Not Found',
-          message: 'Task item not found'
-        });
-      }
-    }
-
     // Verify departments exist if provided
     if (origin_department_id) {
       const originDept = await prisma.department.findUnique({
@@ -400,7 +275,7 @@ router.post('/', async (req, res) => {
     // Verify porter assignments if provided
     if (porter_assignments && porter_assignments.length > 0) {
       for (const porterId of porter_assignments) {
-        if (porterId) { // Skip empty porter assignments
+        if (porterId) {
           const porter = await prisma.staff.findUnique({
             where: { id: porterId },
             select: { id: true, role: true }
@@ -435,8 +310,6 @@ router.post('/', async (req, res) => {
     if (porter_id) taskData.porter_id = porter_id;
     if (origin_department_id) taskData.origin_department_id = origin_department_id;
     if (destination_department_id) taskData.destination_department_id = destination_department_id;
-    
-    // Store times exactly as received (in local timezone where event occurred)
     if (time_received) taskData.time_received = time_received;
     if (time_allocated) taskData.time_allocated = time_allocated;
     if (time_completed) taskData.time_completed = time_completed;
@@ -481,7 +354,7 @@ router.post('/', async (req, res) => {
     // Create porter assignments if provided
     if (porter_assignments && porter_assignments.length > 0) {
       const porterAssignmentPromises = porter_assignments
-        .filter((porterId: string) => porterId) // Filter out empty assignments
+        .filter((porterId: string) => porterId)
         .map((porterId: string) => 
           prisma.shift_task_porter_assignments.create({
             data: {
@@ -520,10 +393,6 @@ router.put('/:id', async (req, res) => {
       time_completed
     } = req.body;
 
-    console.log('=== TASK UPDATE DEBUG ===');
-    console.log('Task ID:', id);
-    console.log('Request body:', req.body);
-
     // Check if task exists
     const existingTask = await prisma.shift_tasks.findUnique({
       where: { id },
@@ -543,8 +412,6 @@ router.put('/:id', async (req, res) => {
         message: 'Task not found'
       });
     }
-
-    console.log('Existing task before update:', existingTask);
 
     // Verify shift is still active if updating
     const shift = await prisma.shifts.findUnique({
@@ -635,13 +502,9 @@ router.put('/:id', async (req, res) => {
     if (origin_department_id !== undefined) updateData.origin_department_id = origin_department_id;
     if (destination_department_id !== undefined) updateData.destination_department_id = destination_department_id;
     if (status !== undefined) updateData.status = status;
-    
-    // Store times exactly as received (in local timezone where event occurred)
     if (time_received !== undefined) updateData.time_received = time_received;
     if (time_allocated !== undefined) updateData.time_allocated = time_allocated;
     if (time_completed !== undefined) updateData.time_completed = time_completed;
-
-    console.log('Update data to be applied:', updateData);
 
     const updatedTask = await prisma.shift_tasks.update({
       where: { id },
@@ -680,31 +543,6 @@ router.put('/:id', async (req, res) => {
         }
       }
     });
-
-    console.log('Updated task returned from Prisma:', {
-      id: updatedTask.id,
-      origin_department_id: updatedTask.origin_department_id,
-      destination_department_id: updatedTask.destination_department_id,
-      porter_id: updatedTask.porter_id,
-      status: updatedTask.status,
-      updated_at: updatedTask.updated_at
-    });
-
-    // Let's also verify the task was actually updated in the database
-    const verifyTask = await prisma.shift_tasks.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        origin_department_id: true,
-        destination_department_id: true,
-        porter_id: true,
-        status: true,
-        updated_at: true
-      }
-    });
-
-    console.log('Verification query result:', verifyTask);
-    console.log('=== END TASK UPDATE DEBUG ===');
 
     return res.json(updatedTask);
   } catch (error) {

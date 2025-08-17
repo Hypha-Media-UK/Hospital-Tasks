@@ -580,25 +580,23 @@ const initializeState = () => {
 };
 
 
-// Helper function to format time for input fields - timezone aware
+// Helper function to format time for input fields
 function formatTimeForInput(timeValue) {
   if (!timeValue) return '';
   
   // Handle Date objects (from MySQL/Prisma) - these are TIME fields stored as Date objects
   if (timeValue instanceof Date) {
-    // For TIME fields from database, we want to extract just the time part
-    // The date part is irrelevant (usually 1970-01-01)
-    const hours = String(timeValue.getUTCHours()).padStart(2, '0');
-    const minutes = String(timeValue.getUTCMinutes()).padStart(2, '0');
+    // Extract just the time part (date part is irrelevant, usually 1970-01-01)
+    const hours = String(timeValue.getHours()).padStart(2, '0');
+    const minutes = String(timeValue.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   }
   
   // Handle ISO datetime strings (e.g., "1970-01-01T08:00:00.000Z")
   if (typeof timeValue === 'string' && timeValue.includes('T')) {
     const date = new Date(timeValue);
-    // For TIME fields, use UTC to avoid timezone conversion issues
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   }
   
