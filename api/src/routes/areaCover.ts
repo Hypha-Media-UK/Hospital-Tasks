@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { formatObjectTimeFields, formatTimeForDB, asyncHandler, ApiError, validateRequired } from '../middleware/errorHandler';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -61,26 +62,39 @@ router.get('/assignments', async (req, res) => {
 });
 
 // POST /api/area-cover/assignments - Create a new default area cover assignment
-router.post('/assignments', async (req, res) => {
-  try {
-    const {
-      department_id,
-      shift_type,
-      start_time,
-      end_time,
-      color = '#4285F4',
-      minimum_porters = 1
-    } = req.body;
+router.post('/assignments', asyncHandler(async (req, res) => {
+  const {
+    department_id,
+    shift_type,
+    start_time,
+    end_time,
+    color = '#4285F4',
+    minimum_porters = 1
+  } = req.body;
 
-    if (!department_id || !shift_type || !start_time || !end_time) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+  // Validate required fields
+  validateRequired(['department_id', 'shift_type', 'start_time', 'end_time'], req.body);
 
-    // Simple time parsing - create Date objects for time fields
-    const parsedStartTime = start_time ? new Date(`1970-01-01T${start_time}:00Z`) : null;
-    const parsedEndTime = end_time ? new Date(`1970-01-01T${end_time}:00Z`) : null;
+  // Verify department exists
+  const department = await prisma.department.findUnique({
+    where: { id: department_id }
+  });
 
-    const assignment = await prisma.default_area_cover_assignments.create({
+  if (!department) {
+    throw ApiError.notFound('Department not found');
+  }
+
+  // Validate shift_type
+  const validShiftTypes = ['day', 'night', 'evening'];
+  if (!validShiftTypes.includes(shift_type)) {
+    throw ApiError.badRequest(`Invalid shift_type. Must be one of: ${validShiftTypes.join(', ')}`);
+  }
+
+  // Parse time fields
+  const parsedStartTime = formatTimeForDB(start_time);
+  const parsedEndTime = formatTimeForDB(end_time);
+
+  const assignment = await prisma.default_area_cover_assignments.create({
       data: {
         department_id,
         shift_type,
@@ -105,8 +119,8 @@ router.post('/assignments', async (req, res) => {
       }
     });
 
-    // Transform the response
-    const transformedAssignment = {
+    // Transform the response and format time fields
+    const transformedAssignment = formatObjectTimeFields({
       id: assignment.id,
       department_id: assignment.department_id,
       shift_type: assignment.shift_type,
@@ -126,7 +140,7 @@ router.post('/assignments', async (req, res) => {
           name: assignment.departments.buildings.name
         }
       }
-    };
+    }, ['start_time', 'end_time']);
 
     return res.status(201).json(transformedAssignment);
   } catch (error) {
@@ -147,8 +161,8 @@ router.put('/assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}:00Z`);
-    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}:00Z`);
+    if (start_time !== undefined) updateData.start_time = formatTimeForDB(start_time);
+    if (end_time !== undefined) updateData.end_time = formatTimeForDB(end_time);
     if (color !== undefined) updateData.color = color;
     if (minimum_porters !== undefined) {
       updateData.minimum_porters = minimum_porters;
@@ -173,8 +187,8 @@ router.put('/assignments/:id', async (req, res) => {
       }
     });
 
-    // Transform the response
-    const transformedAssignment = {
+    // Transform the response and format time fields
+    const transformedAssignment = formatObjectTimeFields({
       id: assignment.id,
       department_id: assignment.department_id,
       shift_type: assignment.shift_type,
@@ -194,7 +208,7 @@ router.put('/assignments/:id', async (req, res) => {
           name: assignment.departments.buildings.name
         }
       }
-    };
+    }, ['start_time', 'end_time']);
 
     return res.json(transformedAssignment);
   } catch (error) {
@@ -278,16 +292,16 @@ router.post('/assignments/:id/porter-assignments', async (req, res) => {
       data: {
         default_area_cover_assignment_id: id,
         porter_id,
-        start_time: new Date(`1970-01-01T${start_time}:00Z`),
-        end_time: new Date(`1970-01-01T${end_time}:00Z`)
+        start_time: formatTimeForDB(start_time),
+        end_time: formatTimeForDB(end_time)
       },
       include: {
         staff: true
       }
     });
 
-    // Transform the response
-    const transformedAssignment = {
+    // Transform the response and format time fields
+    const transformedAssignment = formatObjectTimeFields({
       id: porterAssignment.id,
       default_area_cover_assignment_id: porterAssignment.default_area_cover_assignment_id,
       porter_id: porterAssignment.porter_id,
@@ -301,7 +315,7 @@ router.post('/assignments/:id/porter-assignments', async (req, res) => {
         last_name: porterAssignment.staff.last_name,
         role: porterAssignment.staff.role
       }
-    };
+    }, ['start_time', 'end_time']);
 
     return res.status(201).json(transformedAssignment);
   } catch (error) {
@@ -320,8 +334,8 @@ router.put('/porter-assignments/:id', async (req, res) => {
     } = req.body;
 
     const updateData: any = {};
-    if (start_time !== undefined) updateData.start_time = new Date(`1970-01-01T${start_time}:00Z`);
-    if (end_time !== undefined) updateData.end_time = new Date(`1970-01-01T${end_time}:00Z`);
+    if (start_time !== undefined) updateData.start_time = formatTimeForDB(start_time);
+    if (end_time !== undefined) updateData.end_time = formatTimeForDB(end_time);
 
     const porterAssignment = await prisma.default_area_cover_porter_assignments.update({
       where: { id },
@@ -331,8 +345,8 @@ router.put('/porter-assignments/:id', async (req, res) => {
       }
     });
 
-    // Transform the response
-    const transformedAssignment = {
+    // Transform the response and format time fields
+    const transformedAssignment = formatObjectTimeFields({
       id: porterAssignment.id,
       default_area_cover_assignment_id: porterAssignment.default_area_cover_assignment_id,
       porter_id: porterAssignment.porter_id,
@@ -346,7 +360,7 @@ router.put('/porter-assignments/:id', async (req, res) => {
         last_name: porterAssignment.staff.last_name,
         role: porterAssignment.staff.role
       }
-    };
+    }, ['start_time', 'end_time']);
 
     return res.json(transformedAssignment);
   } catch (error) {

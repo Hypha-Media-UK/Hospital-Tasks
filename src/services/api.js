@@ -31,7 +31,15 @@ class ApiError extends UtilApiError {}
 // Generic API request handler (using enhanced utility)
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
-  return makeApiRequest(url, options);
+  const response = await makeApiRequest(url, options);
+
+  // Handle new structured API responses
+  if (response && typeof response === 'object' && response.success && response.data) {
+    return response.data;
+  }
+
+  // Return response as-is for backward compatibility
+  return response;
 }
 
 // Staff API

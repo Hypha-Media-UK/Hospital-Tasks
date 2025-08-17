@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
+import { formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
 
 const router = Router();
 
@@ -321,8 +322,8 @@ router.post('/:id/assignments', async (req: Request, res: Response): Promise<voi
       data: {
         service_id,
         shift_type,
-        start_time: new Date(`1970-01-01T${start_time}`),
-        end_time: new Date(`1970-01-01T${end_time}`),
+        start_time: formatTimeForDB(start_time),
+        end_time: formatTimeForDB(end_time),
         color
       },
       include: {
@@ -330,7 +331,8 @@ router.post('/:id/assignments', async (req: Request, res: Response): Promise<voi
       }
     });
 
-    res.status(201).json(assignment);
+    const formattedAssignment = formatObjectTimeFields(assignment, ['start_time', 'end_time']);
+    res.status(201).json(formattedAssignment);
   } catch (error) {
     console.error('Error creating service assignment:', error);
     res.status(500).json({ 
@@ -368,26 +370,7 @@ router.post('/default-assignments', async (req: Request, res: Response): Promise
       return;
     }
 
-    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
-    const parseTimeString = (timeStr: string | Date | null): Date | null => {
-      if (!timeStr) return null;
-      
-      // If it's already a Date object, return it
-      if (timeStr instanceof Date) return timeStr;
-      
-      // Handle HH:MM:SS format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}`);
-      }
-      
-      // Handle HH:MM format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}:00`);
-      }
-      
-      // Fallback - try to parse as is
-      return new Date(`1970-01-01T${timeStr}`);
-    };
+
 
     // Verify support service exists
     const supportService = await prisma.supportService.findUnique({
@@ -402,15 +385,12 @@ router.post('/default-assignments', async (req: Request, res: Response): Promise
       return;
     }
 
-    const parsedStartTime = parseTimeString(start_time);
-    const parsedEndTime = parseTimeString(end_time);
-
     const assignment = await prisma.default_service_cover_assignments.create({
       data: {
         service_id,
         shift_type,
-        start_time: parsedStartTime,
-        end_time: parsedEndTime,
+        start_time: formatTimeForDB(start_time),
+        end_time: formatTimeForDB(end_time),
         color,
         minimum_porters,
         minimum_porters_mon,
@@ -431,7 +411,8 @@ router.post('/default-assignments', async (req: Request, res: Response): Promise
       }
     });
 
-    res.status(201).json(assignment);
+    const formattedAssignment = formatObjectTimeFields(assignment, ['start_time', 'end_time']);
+    res.status(201).json(formattedAssignment);
   } catch (error: any) {
     console.error('Error creating default service cover assignment:', error);
     
@@ -459,33 +440,14 @@ router.put('/default-assignments/:id', async (req: Request, res: Response): Prom
     // Remove id from update data if present
     delete updateData.id;
 
-    // Parse time strings properly - handle both HH:MM and HH:MM:SS formats
-    const parseTimeString = (timeStr: string | Date | null): Date | null => {
-      if (!timeStr) return null;
-      
-      // If it's already a Date object, return it
-      if (timeStr instanceof Date) return timeStr;
-      
-      // Handle HH:MM:SS format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}`);
-      }
-      
-      // Handle HH:MM format
-      if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
-        return new Date(`1970-01-01T${timeStr}:00`);
-      }
-      
-      // Fallback - try to parse as is
-      return new Date(`1970-01-01T${timeStr}`);
-    };
+
 
     // Convert time strings to Date objects if provided
     if (updateData.start_time) {
-      updateData.start_time = parseTimeString(updateData.start_time);
+      updateData.start_time = formatTimeForDB(updateData.start_time);
     }
     if (updateData.end_time) {
-      updateData.end_time = parseTimeString(updateData.end_time);
+      updateData.end_time = formatTimeForDB(updateData.end_time);
     }
 
     const assignment = await prisma.default_service_cover_assignments.update({
@@ -501,7 +463,8 @@ router.put('/default-assignments/:id', async (req: Request, res: Response): Prom
       }
     });
 
-    res.json(assignment);
+    const formattedAssignment = formatObjectTimeFields(assignment, ['start_time', 'end_time']);
+    res.json(formattedAssignment);
   } catch (error: any) {
     console.error('Error updating default service cover assignment:', error);
     

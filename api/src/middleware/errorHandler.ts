@@ -178,3 +178,34 @@ export const sendCreated = (res: Response, data: any, message?: string) => {
 export const sendNoContent = (res: Response) => {
   res.status(204).send();
 };
+
+/**
+ * Time formatting utilities for consistent API responses
+ */
+export const formatTimeField = (timeValue: any): string | null => {
+  if (!timeValue) return null;
+  if (timeValue instanceof Date) {
+    return timeValue.toISOString().substring(11, 16); // Extract HH:MM
+  }
+  return timeValue;
+};
+
+export const formatTimeForDB = (timeStr: string | null): Date | null => {
+  if (!timeStr) return null;
+  // If it's already in HH:MM format, convert to full datetime
+  if (typeof timeStr === 'string' && timeStr.match(/^\d{2}:\d{2}$/)) {
+    return new Date(`1970-01-01T${timeStr}:00.000Z`);
+  }
+  return timeStr as any;
+};
+
+export const formatObjectTimeFields = (obj: any, timeFields: string[]): any => {
+  if (!obj) return obj;
+  const formatted = { ...obj };
+  timeFields.forEach(field => {
+    if (formatted[field]) {
+      formatted[field] = formatTimeField(formatted[field]);
+    }
+  });
+  return formatted;
+};

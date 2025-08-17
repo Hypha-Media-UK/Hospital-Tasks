@@ -1,215 +1,158 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
-import { asyncHandler, ApiError, validateRequired, getPaginationParams, sendSuccess, sendCreated } from '../middleware/errorHandler';
+import { asyncHandler, ApiError, validateRequired, getPaginationParams, sendSuccess, sendCreated, formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
+
+// Helper function to format staff time fields for response
+const formatStaffTimeFields = (staff: any) => formatObjectTimeFields(staff, ['contracted_hours_start', 'contracted_hours_end']);
 
 const router = Router();
 
 // GET /api/staff - Get all staff with optional filtering
-router.get('/', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { 
-      role, 
-      department_id,
-      porter_type,
-      limit = '100',
-      offset = '0' 
-    } = req.query;
+router.get('/', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { role, department_id, porter_type } = req.query;
+  const { limit, offset } = getPaginationParams(req.query);
 
-    const where: any = {};
-    
-    if (role) {
-      where.role = role as string;
-    }
-    
-    if (department_id) {
-      where.department_id = department_id as string;
-    }
-    
-    if (porter_type) {
-      where.porter_type = porter_type as string;
-    }
+  const where: any = {};
 
-    const staff = await prisma.staff.findMany({
-      where,
-      include: {
-        departments: {
-          include: {
-            buildings: true
-          }
+  if (role) where.role = role as string;
+  if (department_id) where.department_id = department_id as string;
+  if (porter_type) where.porter_type = porter_type as string;
+
+  const staff = await prisma.staff.findMany({
+    where,
+    include: {
+      departments: {
+        include: {
+          buildings: true
         }
-      },
-      orderBy: [
-        { last_name: 'asc' },
-        { first_name: 'asc' }
-      ],
-      take: parseInt(limit as string),
-      skip: parseInt(offset as string)
-    });
-    
-    // Format time fields properly
-    const formattedStaff = staff.map(member => ({
-      ...member,
-      contracted_hours_start: member.contracted_hours_start 
-        ? member.contracted_hours_start.toISOString().substring(11, 16) // Extract HH:MM
-        : null,
-      contracted_hours_end: member.contracted_hours_end 
-        ? member.contracted_hours_end.toISOString().substring(11, 16) // Extract HH:MM
-        : null
-    }));
-    
-    res.json(formattedStaff);
-  } catch (error) {
-    console.error('Error fetching staff:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to fetch staff'
-    });
-  }
-});
+      }
+    },
+    orderBy: [
+      { last_name: 'asc' },
+      { first_name: 'asc' }
+    ],
+    take: limit,
+    skip: offset
+  });
+
+  // Format time fields properly
+  const formattedStaff = staff.map(formatStaffTimeFields);
+
+  sendSuccess(res, formattedStaff);
+}));
 
 // GET /api/staff/:id - Get specific staff member
-router.get('/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
+router.get('/:id', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
 
-    const staff = await prisma.staff.findUnique({
-      where: { id }
-    });
-
-    if (!staff) {
-      res.status(404).json({ 
-        error: 'Not Found',
-        message: 'Staff member not found'
-      });
-      return;
+  const staff = await prisma.staff.findUnique({
+    where: { id },
+    include: {
+      departments: {
+        include: {
+          buildings: true
+        }
+      }
     }
+  });
 
-    res.json(staff);
-  } catch (error) {
-    console.error('Error fetching staff member:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to fetch staff member'
-    });
+  if (!staff) {
+    throw ApiError.notFound('Staff member not found');
   }
-});
+
+  sendSuccess(res, formatStaffTimeFields(staff));
+}));
 
 // POST /api/staff - Create new staff member
-router.post('/', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const {
+router.post('/', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const {
+    first_name,
+    last_name,
+    role,
+    department_id,
+    porter_type,
+    availability_pattern,
+    contracted_hours_start,
+    contracted_hours_end
+  } = req.body;
+
+  // Validate required fields
+  validateRequired(['first_name', 'last_name', 'role'], req.body);
+
+  // Validate role
+  const validRoles = ['supervisor', 'porter'];
+  if (!validRoles.includes(role)) {
+    throw ApiError.badRequest(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+  }
+
+
+
+  // Create staff member
+  const staff = await prisma.staff.create({
+    data: {
       first_name,
       last_name,
       role,
-      department_id,
-      porter_type,
-      availability_pattern,
-      contracted_hours_start,
-      contracted_hours_end
-    } = req.body;
-
-    // Validate required fields
-    if (!first_name || !last_name || !role) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: 'first_name, last_name, and role are required'
-      });
-      return;
-    }
-
-    // Validate role
-    const validRoles = ['supervisor', 'porter'];
-    if (!validRoles.includes(role)) {
-      res.status(400).json({
-        error: 'Bad Request',
-        message: 'Invalid role. Must be one of: ' + validRoles.join(', ')
-      });
-      return;
-    }
-
-    // Create staff member
-    const staff = await prisma.staff.create({
-      data: {
-        first_name,
-        last_name,
-        role,
-        department_id: department_id || null,
-        porter_type: porter_type || 'shift',
-        availability_pattern: availability_pattern || null,
-        contracted_hours_start: contracted_hours_start || null,
-        contracted_hours_end: contracted_hours_end || null
+      department_id: department_id || null,
+      porter_type: porter_type || 'shift',
+      availability_pattern: availability_pattern || null,
+      contracted_hours_start: formatTimeForDB(contracted_hours_start),
+      contracted_hours_end: formatTimeForDB(contracted_hours_end)
+    },
+    include: {
+      departments: {
+        include: {
+          buildings: true
+        }
       }
-    });
+    }
+  });
 
-    res.status(201).json(staff);
-  } catch (error) {
-    console.error('Error creating staff member:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to create staff member'
-    });
-  }
-});
+  sendCreated(res, formatStaffTimeFields(staff), 'Staff member created successfully');
+}));
 
 // PUT /api/staff/:id - Update staff member
-router.put('/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const updateData = { ...req.body };
+router.put('/:id', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const updateData = { ...req.body };
 
-    // Remove id from update data if present
-    delete updateData.id;
+  // Remove id from update data if present
+  delete updateData.id;
 
-    const staff = await prisma.staff.update({
-      where: { id },
-      data: updateData
-    });
 
-    res.json(staff);
-  } catch (error: any) {
-    console.error('Error updating staff member:', error);
-    
-    if (error.code === 'P2025') {
-      res.status(404).json({ 
-        error: 'Not Found',
-        message: 'Staff member not found'
-      });
-      return;
-    }
-    
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to update staff member'
-    });
+
+  // Format time fields if they exist
+  if (updateData.contracted_hours_start) {
+    updateData.contracted_hours_start = formatTimeForDB(updateData.contracted_hours_start);
   }
-});
+  if (updateData.contracted_hours_end) {
+    updateData.contracted_hours_end = formatTimeForDB(updateData.contracted_hours_end);
+  }
+
+  const staff = await prisma.staff.update({
+    where: { id },
+    data: updateData,
+    include: {
+      departments: {
+        include: {
+          buildings: true
+        }
+      }
+    }
+  });
+
+  sendSuccess(res, formatStaffTimeFields(staff), 'Staff member updated successfully');
+}));
 
 // DELETE /api/staff/:id - Delete staff member
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
+router.delete('/:id', asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
 
-    await prisma.staff.delete({
-      where: { id }
-    });
+  await prisma.staff.delete({
+    where: { id }
+  });
 
-    res.status(204).send();
-  } catch (error: any) {
-    console.error('Error deleting staff member:', error);
-    
-    if (error.code === 'P2025') {
-      res.status(404).json({ 
-        error: 'Not Found',
-        message: 'Staff member not found'
-      });
-      return;
-    }
-    
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to delete staff member'
-    });
-  }
-});
+  res.status(204).send();
+}));
 
 export default router;

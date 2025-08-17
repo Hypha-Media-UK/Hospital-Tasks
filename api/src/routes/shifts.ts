@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
+import { formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
 
 const router = Router();
 
@@ -823,11 +824,8 @@ router.post('/:id/area-cover/:areaCoverId/porter-assignments', async (req: Reque
     }
 
     // Parse time strings to create proper datetime objects
-    const [startHours, startMinutes] = start_time.split(':').map(Number);
-    const [endHours, endMinutes] = end_time.split(':').map(Number);
-    
-    const startDateTime = new Date(`1970-01-01T${start_time}:00`);
-    const endDateTime = new Date(`1970-01-01T${end_time}:00`);
+    const startDateTime = formatTimeForDB(start_time);
+    const endDateTime = formatTimeForDB(end_time);
 
     const porterAssignment = await prisma.shift_area_cover_porter_assignments.create({
       data: {
@@ -949,12 +947,9 @@ router.put('/:id/area-cover/porter-assignments/:assignmentId', async (req: Reque
     }
 
     // Parse time strings to create proper datetime objects
-    const startDateTime = new Date(`1970-01-01T${start_time}:00`);
-    const endDateTime = new Date(`1970-01-01T${end_time}:00`);
-
     const updateData: any = {
-      start_time: startDateTime,
-      end_time: endDateTime
+      start_time: formatTimeForDB(start_time),
+      end_time: formatTimeForDB(end_time)
     };
 
     if (porter_id) {

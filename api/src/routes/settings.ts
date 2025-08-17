@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
+import { formatObjectTimeFields, formatTimeForDB } from '../middleware/errorHandler';
 
 const router = Router();
 
@@ -34,14 +35,10 @@ router.put('/shift-defaults/:id', async (req: Request, res: Response): Promise<v
 
     // Convert time strings to Date objects if provided
     if (updateData.start_time && typeof updateData.start_time === 'string') {
-      // Ensure the time string is in HH:MM:SS format
-      const timeStr = updateData.start_time.includes(':') ? updateData.start_time : `${updateData.start_time}:00`;
-      updateData.start_time = new Date(`1970-01-01T${timeStr}`);
+      updateData.start_time = formatTimeForDB(updateData.start_time) || new Date(`1970-01-01T${updateData.start_time}`);
     }
     if (updateData.end_time && typeof updateData.end_time === 'string') {
-      // Ensure the time string is in HH:MM:SS format
-      const timeStr = updateData.end_time.includes(':') ? updateData.end_time : `${updateData.end_time}:00`;
-      updateData.end_time = new Date(`1970-01-01T${timeStr}`);
+      updateData.end_time = formatTimeForDB(updateData.end_time) || new Date(`1970-01-01T${updateData.end_time}`);
     }
 
     const shiftDefault = await prisma.shift_defaults.update({
@@ -49,7 +46,8 @@ router.put('/shift-defaults/:id', async (req: Request, res: Response): Promise<v
       data: updateData
     });
 
-    res.json(shiftDefault);
+    const formattedShiftDefault = formatObjectTimeFields(shiftDefault, ['start_time', 'end_time']);
+    res.json(formattedShiftDefault);
   } catch (error: any) {
     console.error('Error updating shift default:', error);
     
@@ -90,13 +88,14 @@ router.post('/shift-defaults', async (req: Request, res: Response): Promise<void
     const shiftDefault = await prisma.shift_defaults.create({
       data: {
         shift_type,
-        start_time: new Date(`1970-01-01T${start_time}`),
-        end_time: new Date(`1970-01-01T${end_time}`),
+        start_time: formatTimeForDB(start_time) || new Date(`1970-01-01T${start_time}`),
+        end_time: formatTimeForDB(end_time) || new Date(`1970-01-01T${end_time}`),
         color
       }
     });
 
-    res.status(201).json(shiftDefault);
+    const formattedShiftDefault = formatObjectTimeFields(shiftDefault, ['start_time', 'end_time']);
+    res.status(201).json(formattedShiftDefault);
   } catch (error) {
     console.error('Error creating shift default:', error);
     res.status(500).json({ 
