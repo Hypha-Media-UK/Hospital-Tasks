@@ -1,6 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../server';
 import { parseTimePair } from '../utils/timeUtils';
+import {
+  createPorterAssignmentHandler,
+  AREA_COVER_CONFIG,
+  SUPPORT_SERVICE_CONFIG
+} from '../utils/porterAssignmentUtils';
 
 const router = Router();
 
