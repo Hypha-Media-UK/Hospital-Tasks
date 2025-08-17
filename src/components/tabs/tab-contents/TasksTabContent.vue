@@ -133,7 +133,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { motion } from 'motion-v';
 import { useShiftsStore } from '../../../stores/shiftsStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
-import { formatTimeForUser } from '../../../utils/timezoneHelpers';
 import EditIcon from '../../icons/EditIcon.vue';
 import CheckIcon from '../../icons/CheckIcon.vue';
 import ClockIcon from '../../icons/ClockIcon.vue';
@@ -318,10 +317,34 @@ function formatPorterNames(porters) {
   return `${porters[0].first_name} ${porters[0].last_name}, ${porters[1].first_name} ${porters[1].last_name} & ${porters.length - 2} more`;
 }
 
-// Format time using centralized timezone helper
+// Format time for display in 24-hour format
 function formatTime(timeString) {
   if (!timeString) return '';
-  return formatTimeForUser(timeString, false); // false indicates the time is already in user's timezone
+  
+  // Use browser's built-in formatting for 24-hour time
+  try {
+    // Handle both time-only strings (HH:MM:SS) and full datetime strings
+    let date;
+    if (timeString.includes('T')) {
+      // Full datetime string
+      date = new Date(timeString);
+    } else {
+      // Time-only string - create a date with today's date
+      date = new Date(`2025-01-01T${timeString}`);
+    }
+    
+    if (isNaN(date.getTime())) {
+      return timeString; // Return original if parsing fails
+    }
+    
+    return date.toLocaleTimeString('en-GB', { 
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return timeString; // Return original if error occurs
+  }
 }
 
 // Initialize the indicator position

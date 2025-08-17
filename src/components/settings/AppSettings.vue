@@ -2,152 +2,51 @@
   <div class="app-settings">
     <h4>Display Settings</h4>
     <p class="section-description">
-      Configure how dates and times are displayed throughout the application.
+      Times are automatically displayed in your browser's timezone using 24-hour format.
     </p>
     
-    <div class="settings-form">
-      <!-- Timezone Selection -->
-      <div class="form-group">
-        <label for="timezone">Timezone</label>
-        <select 
-          id="timezone" 
-          v-model="timezone" 
-          class="form-control"
-          @change="updateSettings"
-        >
-          <option value="UTC">UTC (Coordinated Universal Time)</option>
-          <option value="GMT">UK Time (GMT/BST Auto-switching)</option>
-          <option value="Europe/London">Europe/London (BST/GMT Auto-switching)</option>
-          <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
-          <option value="America/New_York">America/New_York (EST/EDT)</option>
-          <option value="America/Chicago">America/Chicago (CST/CDT)</option>
-          <option value="America/Denver">America/Denver (MST/MDT)</option>
-          <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
-          <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-          <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
-          <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
-        </select>
+    <div class="settings-info">
+      <div class="info-item">
+        <strong>Timezone:</strong> Automatically detected from your browser
       </div>
-      
-      <!-- Time Format Selection -->
-      <div class="form-group">
-        <label>Time Format</label>
-        <div class="time-format-options">
-          <div class="format-option">
-            <input 
-              type="radio" 
-              id="format24h" 
-              value="24h" 
-              v-model="timeFormat"
-              @change="updateSettings"
-            />
-            <label for="format24h">24-hour (14:30)</label>
-          </div>
-          <div class="format-option">
-            <input 
-              type="radio" 
-              id="format12h" 
-              value="12h" 
-              v-model="timeFormat"
-              @change="updateSettings"
-            />
-            <label for="format12h">12-hour (2:30 PM)</label>
-          </div>
-        </div>
+      <div class="info-item">
+        <strong>Time Format:</strong> 24-hour format (14:30)
       </div>
-      
-      <!-- Save Button -->
-      <div class="form-actions">
-        <button 
-          @click="saveSettings" 
-          class="btn btn-primary" 
-          :disabled="isSaving"
-        >
-          {{ isSaving ? 'Saving...' : 'Save Settings' }}
-        </button>
-      </div>
-      
-      <div v-if="saveError" class="error-message">
-        {{ saveError }}
-      </div>
-      <div v-if="saveSuccess" class="success-message">
-        Settings saved successfully!
+      <div class="info-item">
+        <strong>Current Time:</strong> {{ currentTime }}
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { ref, onMounted, onUnmounted } from 'vue';
 
-const settingsStore = useSettingsStore();
+const currentTime = ref('');
 
-// Reactive computed properties that stay in sync with store
-const timezone = computed({
-  get: () => settingsStore.appSettings.timezone,
-  set: (value) => {
-    settingsStore.updateAppSettings({ timezone: value });
-  }
-});
-
-const timeFormat = computed({
-  get: () => settingsStore.appSettings.time_format,
-  set: (value) => {
-    settingsStore.updateAppSettings({ time_format: value });
-  }
-});
-
-const isSaving = ref(false);
-const saveError = ref('');
-const saveSuccess = ref(false);
-
-// Load settings when component mounts
-onMounted(async () => {
-  // Ensure settings are loaded from database
-  await settingsStore.fetchAppSettings();
-});
-
-// Update store when settings change
-function updateSettings() {
-  // The computed setters already handle store updates
-  // Just clear any previous messages
-  saveError.value = '';
-  saveSuccess.value = false;
+// Update current time display
+function updateCurrentTime() {
+  currentTime.value = new Date().toLocaleTimeString('en-GB', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 }
 
-// Save settings to backend
-async function saveSettings() {
-  if (isSaving.value) return;
-  
-  isSaving.value = true;
-  saveError.value = '';
-  saveSuccess.value = false;
-  
-  try {
-    // Save the current settings to backend
-    const result = await settingsStore.updateAppSettings({
-      timezone: timezone.value,
-      time_format: timeFormat.value
-    });
-    
-    if (result) {
-      saveSuccess.value = true;
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        saveSuccess.value = false;
-      }, 3000);
-    } else {
-      saveError.value = settingsStore.error || 'Failed to save settings';
-    }
-  } catch (error) {
-    console.error('Error saving app settings:', error);
-    saveError.value = 'An unexpected error occurred';
-  } finally {
-    isSaving.value = false;
+let timeInterval;
+
+onMounted(() => {
+  updateCurrentTime();
+  // Update time every second
+  timeInterval = setInterval(updateCurrentTime, 1000);
+});
+
+onUnmounted(() => {
+  if (timeInterval) {
+    clearInterval(timeInterval);
   }
-}
+});
 </script>
 
 <style lang="scss" scoped>
@@ -158,6 +57,22 @@ async function saveSettings() {
   .section-description {
     color: rgba(0, 0, 0, 0.6);
     margin-bottom: 16px;
+  }
+  
+  .settings-info {
+    max-width: 500px;
+    
+    .info-item {
+      margin-bottom: 12px;
+      padding: 12px;
+      background-color: rgba(66, 133, 244, 0.05);
+      border: 1px solid rgba(66, 133, 244, 0.2);
+      border-radius: 4px;
+      
+      strong {
+        color: #4285F4;
+      }
+    }
   }
   
   .settings-form {

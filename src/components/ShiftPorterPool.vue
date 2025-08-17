@@ -282,8 +282,6 @@ import { useAreaCoverStore } from '../stores/areaCoverStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSupportServicesStore } from '../stores/supportServicesStore';
-import { formatTimeForUser } from '../utils/timezoneHelpers';
-import { getCurrentTimeInMinutes as getTimeInMinutes } from '../utils/timezone';
 import AllocatePorterModal from './AllocatePorterModal.vue';
 import EditIcon from './icons/EditIcon.vue';
 import TrashIcon from './icons/TrashIcon.vue';
@@ -620,8 +618,9 @@ const getPorterDutyStatus = (porterId) => {
     return 'on-duty';
   }
   
-  // Get current time in minutes using timezone helper
-  const currentTimeInMinutes = getTimeInMinutes();
+  // Get current time in minutes using browser time
+  const now = new Date();
+  const currentTimeInMinutes = (now.getHours() * 60) + now.getMinutes();
   
   // Convert contracted hours to minutes
   const startTimeMinutes = timeToMinutes(porter.contracted_hours_start);
@@ -721,8 +720,9 @@ const isPorterAvailable = (porterId) => {
 
 // Check if a porter has any active assignments at the current time
 const hasActiveAssignments = (porterId) => {
-  // Use timezone helper to get current time in minutes
-  const currentTimeInMinutes = getTimeInMinutes();
+  // Use browser time to get current time in minutes
+  const now = new Date();
+  const currentTimeInMinutes = (now.getHours() * 60) + now.getMinutes();
   
   // Get all assignments for this porter
   const assignments = getPorterAssignments(porterId);
@@ -826,8 +826,30 @@ const getAssignmentName = (assignment) => {
 };
 
 const formatTime = (timeStr) => {
-  // Use centralized timezone helper for consistent time formatting
-  return formatTimeForUser(timeStr);
+  // Use browser's built-in formatting for 24-hour time
+  try {
+    // Handle both time-only strings (HH:MM:SS) and full datetime strings
+    let date;
+    if (timeStr.includes('T')) {
+      // Full datetime string
+      date = new Date(timeStr);
+    } else {
+      // Time-only string - create a date with today's date
+      date = new Date(`2025-01-01T${timeStr}`);
+    }
+    
+    if (isNaN(date.getTime())) {
+      return timeStr; // Return original if parsing fails
+    }
+    
+    return date.toLocaleTimeString('en-GB', { 
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return timeStr; // Return original if error occurs
+  }
 };
 
 // Porter-building assignment functions

@@ -3,68 +3,8 @@ import { prisma } from '../server';
 
 const router = Router();
 
-// GET /api/settings - Get app settings
-router.get('/', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const settings = await prisma.app_settings.findFirst();
-    
-    if (!settings) {
-      // Return default settings if none exist
-      const defaultSettings = {
-        timezone: 'UTC',
-        time_format: '24h'
-      };
-      res.json(defaultSettings);
-      return;
-    }
-
-    res.json(settings);
-  } catch (error) {
-    console.error('Error fetching settings:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to fetch settings'
-    });
-  }
-});
-
-// PUT /api/settings - Update app settings
-router.put('/', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { timezone, time_format } = req.body;
-
-    // Check if settings exist
-    const existingSettings = await prisma.app_settings.findFirst();
-
-    let settings;
-    if (existingSettings) {
-      // Update existing settings
-      settings = await prisma.app_settings.update({
-        where: { id: existingSettings.id },
-        data: {
-          timezone: timezone || existingSettings.timezone,
-          time_format: time_format || existingSettings.time_format
-        }
-      });
-    } else {
-      // Create new settings
-      settings = await prisma.app_settings.create({
-        data: {
-          timezone: timezone || 'UTC',
-          time_format: time_format || '24h'
-        }
-      });
-    }
-
-    res.json(settings);
-  } catch (error) {
-    console.error('Error updating settings:', error);
-    res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: 'Failed to update settings'
-    });
-  }
-});
+// Note: General app settings endpoints removed as timezone functionality has been eliminated
+// Times are now automatically handled by browser timezone detection
 
 // GET /api/settings/shift-defaults - Get shift defaults
 router.get('/shift-defaults', async (req: Request, res: Response): Promise<void> => {

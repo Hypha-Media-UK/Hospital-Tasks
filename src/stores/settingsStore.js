@@ -3,10 +3,7 @@ import { settingsApi, ApiError } from '../services/api';
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
-    appSettings: {
-      timezone: 'UTC',
-      time_format: '24h'
-    },
+    appSettings: {},
     shiftDefaults: [],
     loading: {
       appSettings: false,
@@ -50,95 +47,22 @@ export const useSettingsStore = defineStore('settings', {
       return state.shiftDefaults.find(sd => sd.shift_type === shiftType);
     },
     
-    // Get current timezone
-    currentTimezone: (state) => {
-      return state.appSettings.timezone || 'UTC';
-    },
-    
-    // Get current time format
-    currentTimeFormat: (state) => {
-      return state.appSettings.time_format || '24h';
-    },
-    
-    // Check if using 12-hour format
-    is12HourFormat: (state) => {
-      return state.appSettings.time_format === '12h';
-    },
-    
-    // Get available timezones (static list)
-    availableTimezones: () => [
-      'UTC',
-      'GMT',
-      'Europe/London',
-      'Europe/Paris',
-      'Europe/Berlin',
-      'America/New_York',
-      'America/Chicago',
-      'America/Denver',
-      'America/Los_Angeles',
-      'Asia/Tokyo',
-      'Asia/Shanghai',
-      'Australia/Sydney'
-    ],
-    
-    // Get available time formats
-    availableTimeFormats: () => [
-      { value: '24h', label: '24 Hour (14:30)' },
-      { value: '12h', label: '12 Hour (2:30 PM)' }
-    ]
   },
   
   actions: {
-    // App Settings operations
+    // App Settings operations (simplified - no longer needed for timezone)
     async fetchAppSettings() {
       this.loading.appSettings = true;
       this.error = null;
       
       try {
-        const data = await settingsApi.get();
-        this.appSettings = data || {
-          timezone: 'UTC',
-          time_format: '24h'
-        };
+        // App settings no longer needed for timezone, but keep for compatibility
+        this.appSettings = {};
       } catch (error) {
-        this.error = error instanceof ApiError ? error.message : 'Failed to load app settings';
+        this.error = 'Failed to load app settings';
       } finally {
         this.loading.appSettings = false;
       }
-    },
-    
-    async updateAppSettings(settings) {
-      this.loading.updating = true;
-      this.error = null;
-      
-      try {
-        const data = await settingsApi.update(settings);
-        
-        if (data) {
-          this.appSettings = data;
-        }
-        
-        return true;
-      } catch (error) {
-        this.error = error instanceof ApiError ? error.message : 'Failed to update app settings';
-        return false;
-      } finally {
-        this.loading.updating = false;
-      }
-    },
-    
-    async updateTimezone(timezone) {
-      return this.updateAppSettings({ 
-        ...this.appSettings, 
-        timezone 
-      });
-    },
-    
-    async updateTimeFormat(timeFormat) {
-      return this.updateAppSettings({ 
-        ...this.appSettings, 
-        time_format: timeFormat 
-      });
     },
     
     // Shift Defaults operations
@@ -218,59 +142,16 @@ export const useSettingsStore = defineStore('settings', {
       }
     },
     
-    // Utility methods
-    formatTime(timeString, use12Hour = null) {
+    // Utility methods (simplified for browser timezone)
+    formatTime(timeString) {
       if (!timeString) return '00:00';
       
-      const use12HourFormat = use12Hour !== null ? use12Hour : this.is12HourFormat;
       const date = new Date(timeString);
       
       return date.toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: use12HourFormat
-      });
-    },
-    
-    formatDate(dateString) {
-      if (!dateString) return '';
-      
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-GB', {
-        timeZone: this.currentTimezone
-      });
-    },
-    
-    formatDateTime(dateTimeString) {
-      if (!dateTimeString) return '';
-      
-      const date = new Date(dateTimeString);
-      return date.toLocaleString('en-GB', {
-        timeZone: this.currentTimezone,
-        hour12: this.is12HourFormat
-      });
-    },
-    
-    // Get current date/time in the configured timezone
-    getCurrentDateTime() {
-      return new Date().toLocaleString('en-GB', {
-        timeZone: this.currentTimezone,
-        hour12: this.is12HourFormat
-      });
-    },
-    
-    getCurrentDate() {
-      return new Date().toLocaleDateString('en-GB', {
-        timeZone: this.currentTimezone
-      });
-    },
-    
-    getCurrentTime() {
-      return new Date().toLocaleTimeString('en-GB', {
-        timeZone: this.currentTimezone,
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: this.is12HourFormat
+        hour12: false // Always 24-hour format
       });
     },
     

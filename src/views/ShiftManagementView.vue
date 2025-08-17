@@ -577,7 +577,6 @@ import { useStaffStore } from '../stores/staffStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import { isShiftAccessible, isShiftObjectAccessible } from '../utils/timezone';
 import AnimatedTabs from '../components/shared/AnimatedTabs.vue';
 import ShiftSetupTabContent from '../components/tabs/tab-contents/ShiftSetupTabContent.vue';
 import TasksTabContent from '../components/tabs/tab-contents/TasksTabContent.vue';
@@ -747,7 +746,8 @@ const totalTasksCount = computed(() => pendingTasks.value.length + completedTask
 const isShiftAccessibleComputed = computed(() => {
   if (!shift.value) return false;
   
-  return isShiftObjectAccessible(shift.value);
+  // Simplified - always allow task creation for active shifts
+  return shift.value.is_active;
 });
 const porters = computed(() => {
   // Get current time for absence checking

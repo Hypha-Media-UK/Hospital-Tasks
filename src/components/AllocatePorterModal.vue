@@ -221,7 +221,6 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSupportServicesStore } from '../stores/supportServicesStore';
 import { useSettingsStore } from '../stores/settingsStore';
-import { formatTimeForUser, formatTimeForInput, getCurrentTimeString } from '../utils/timezoneHelpers';
 
 const props = defineProps({
   porter: {
@@ -314,12 +313,20 @@ const canAllocate = computed(() => {
 
 // Initialize time fields with current time as default using timezone helpers
 const initializeTimeFields = () => {
-  const currentTime = getCurrentTimeString();
+  const now = new Date();
+  const currentTime = now.toLocaleTimeString('en-GB', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: false 
+  });
   
   // Add one hour to get a default end time
-  const now = new Date();
   const endDate = new Date(now.getTime() + 60 * 60 * 1000);
-  const endTime = formatTimeForInput(endDate);
+  const endTime = endDate.toLocaleTimeString('en-GB', { 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    hour12: false 
+  });
   
   // Department times
   departmentStartTime.value = currentTime;
@@ -723,10 +730,32 @@ const allocatePorter = async () => {
   }
 };
 
-// Format time using centralized timezone helper
+// Format time for display in time inputs (HH:MM format)
 const formatTime = (timeString) => {
   if (!timeString) return '';
-  return formatTimeForInput(timeString);
+  
+  // If it's already in HH:MM format, return as is
+  if (timeString.match(/^\d{2}:\d{2}$/)) {
+    return timeString;
+  }
+  
+  // If it's in HH:MM:SS format, extract HH:MM
+  if (timeString.match(/^\d{2}:\d{2}:\d{2}$/)) {
+    return timeString.substring(0, 5);
+  }
+  
+  // If it's a Date object or timestamp, format it
+  try {
+    const date = new Date(timeString);
+    return date.toLocaleTimeString('en-GB', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: false 
+    });
+  } catch (error) {
+    console.warn('Could not format time:', timeString);
+    return '';
+  }
 };
 
 // Clear conflict error when time fields change

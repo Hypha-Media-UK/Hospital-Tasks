@@ -241,7 +241,6 @@ import { ref, computed, onMounted, reactive } from 'vue';
 import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import { useStaffStore } from '../../stores/staffStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { formatTimeForDisplay, timeToMinutes, minutesToTime } from '../../utils/timezone';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
 
 const props = defineProps({
@@ -329,6 +328,13 @@ const availablePorters = computed(() => {
     return true;
   });
 });
+
+// Helper function to convert time string to minutes
+const timeToMinutes = (timeStr) => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60) + minutes;
+};
 
 // Check for coverage gaps with local data
 const hasLocalCoverageGap = computed(() => {

@@ -110,7 +110,6 @@
 import { ref, computed, onMounted } from 'vue';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useTaskTypesStore } from '../stores/taskTypesStore';
-import { formatTimeForUser } from '../utils/timezoneHelpers';
 
 const props = defineProps({
   shift: {
@@ -210,7 +209,31 @@ function printSheet() {
 // Format time using centralized timezone helper
 function formatTime(timeString) {
   if (!timeString) return '-';
-  return formatTimeForUser(timeString, true); // true indicates the time is stored in UTC
+  
+  // Use browser's built-in formatting for 24-hour time
+  try {
+    // Handle both time-only strings (HH:MM:SS) and full datetime strings
+    let date;
+    if (timeString.includes('T')) {
+      // Full datetime string
+      date = new Date(timeString);
+    } else {
+      // Time-only string - create a date with today's date
+      date = new Date(`2025-01-01T${timeString}`);
+    }
+    
+    if (isNaN(date.getTime())) {
+      return timeString; // Return original if parsing fails
+    }
+    
+    return date.toLocaleTimeString('en-GB', { 
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return timeString; // Return original if error occurs
+  }
 }
 
 // Calculate duration for a task

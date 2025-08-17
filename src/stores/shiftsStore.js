@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { shiftsApi, tasksApi, ApiError } from '../services/api';
-import { isShiftInSetupMode as checkShiftSetupMode } from '../utils/timezone';
 
 // Helper function to determine if a date is on a weekend
 function isWeekend(date) {
@@ -371,7 +370,10 @@ export const useShiftsStore = defineStore('shifts', {
       if (!shift) return false;
 
       try {
-        return checkShiftSetupMode(shift.start_time, shift.shift_type);
+        // Simple browser-based check - shift is in setup mode if it's in the future
+        const shiftStart = new Date(shift.start_time);
+        const now = new Date();
+        return shiftStart > now;
       } catch (error) {
         return false;
       }

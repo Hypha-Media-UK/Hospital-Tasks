@@ -102,8 +102,6 @@
 import { ref, computed } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
-import { getCurrentDateTime, getCurrentTimeInMinutes, isSameDay } from '../../utils/timezone';
-import { getCurrentTimeInMinutes as getTimeInMinutes } from '../../utils/timezone';
 import ShiftEditDepartmentModal from './ShiftEditDepartmentModal.vue';
 
 const props = defineProps({
@@ -145,7 +143,7 @@ const availablePorters = computed(() => {
   } else {
     // In active mode: apply time-based filtering and absence filtering
     const today = new Date();
-    const currentTimeInMinutes = getTimeInMinutes();
+    const currentTimeInMinutes = (today.getHours() * 60) + today.getMinutes();
     
     return porterAssignments.value.filter(assignment => {
       // First check if porter is absent
@@ -184,14 +182,14 @@ const isPorterOutsideContractedHours = (porterId) => {
   if (!shift) return false;
   
   // Get the shift date and current date for comparison
-  const now = getCurrentDateTime();
+  const now = new Date();
   
   // Only check contracted hours if we're on the actual shift date
   if (!isSameDay(shift.start_time, now)) {
     return false; // Different date, don't apply contracted hours check
   }
   
-  const currentTimeInMinutes = getCurrentTimeInMinutes();
+  const currentTimeInMinutes = (now.getHours() * 60) + now.getMinutes();
   
   // Convert contracted hours to minutes
   const [startHours, startMinutes] = porter.contracted_hours_start.split(':').map(Number);
@@ -340,6 +338,15 @@ function formatTimeRange(startTime, endTime) {
   
   return `${startFormatted} - ${endFormatted}`;
 }
+
+// Helper function to check if two dates are on the same day
+const isSameDay = (date1, date2) => {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+};
 
 // Forward events from modal to parent
 const handleUpdate = (assignmentId, updates) => {
