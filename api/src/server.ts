@@ -11,7 +11,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import staffRoutes from './routes/staff';
 import buildingRoutes from './routes/buildings';
 import departmentRoutes from './routes/departments';
-import taskTypeRoutes from './routes/taskTypes-new'; // Using DRY CRUD factory
+import taskTypeRoutes from './routes/taskTypes'; // Using DRY CRUD factory
 import taskItemRoutes from './routes/taskItems';
 import taskRoutes from './routes/tasks';
 import shiftRoutes from './routes/shifts';
