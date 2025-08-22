@@ -11,7 +11,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import staffRoutes from './routes/staff';
 import buildingRoutes from './routes/buildings';
 import departmentRoutes from './routes/departments';
-import taskTypeRoutes from './routes/taskTypes';
+import taskTypeRoutes from './routes/taskTypes-new'; // Using DRY CRUD factory
 import taskItemRoutes from './routes/taskItems';
 import taskRoutes from './routes/tasks';
 import shiftRoutes from './routes/shifts';
@@ -63,7 +63,7 @@ app.get('/health', (req, res) => {
 app.use('/api/staff', staffRoutes);
 app.use('/api/buildings', buildingRoutes);
 app.use('/api/departments', departmentRoutes);
-app.use('/api/task-types', taskTypeRoutes);
+app.use('/api/task-types', taskTypeRoutes); // Now using DRY CRUD factory
 app.use('/api/task-items', taskItemRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/shifts', shiftRoutes);
