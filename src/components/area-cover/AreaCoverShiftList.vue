@@ -26,45 +26,65 @@
     </div>
     
     <!-- Department Selector Modal -->
-    <div v-if="showDepartmentSelector" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Add Department to {{ shiftTypeLabel }} Coverage</h3>
-          <button class="modal-close" @click="showDepartmentSelector = false">&times;</button>
+    <BaseModal
+      v-if="showDepartmentSelector"
+      :title="`Add Department to ${shiftTypeLabel} Coverage`"
+      subtitle="Select departments to include in this shift type's coverage"
+      size="medium"
+      @close="showDepartmentSelector = false"
+    >
+      <div v-if="availableDepartments.length === 0" class="empty-state">
+        <h4>No Departments Available</h4>
+        <p>All departments have already been assigned or no departments exist in the system.</p>
+      </div>
+      
+      <div v-else class="department-selector">
+        <div class="department-selector__info">
+          <p class="info-text">
+            Choose departments that require porter coverage during {{ shiftTypeLabel.toLowerCase() }} shifts. 
+            Default times will be set based on your shift configuration.
+          </p>
         </div>
         
-        <div class="modal-body">
-          <div v-if="availableDepartments.length === 0" class="empty-state">
-            No departments available to add. All departments have already been assigned or no departments exist.
-          </div>
-          
-          <div v-else class="department-selector">
-            <div v-for="building in buildingsWithAvailableDepartments" :key="building.id" class="building-item">
-              <div class="building-name">{{ building.name }}</div>
-              
-              <div v-for="department in building.departments" :key="department.id" class="department-item">
-                <div class="department-name">{{ department.name }}</div>
+        <div class="buildings-list">
+          <div 
+            v-for="building in buildingsWithAvailableDepartments" 
+            :key="building.id" 
+            class="building-section"
+          >
+            <h4 class="building-title">{{ building.name }}</h4>
+            
+            <div class="departments-grid">
+              <div 
+                v-for="department in building.departments" 
+                :key="department.id" 
+                class="department-option"
+              >
+                <div class="department-info">
+                  <span class="department-name">{{ department.name }}</span>
+                </div>
                 <button 
-                  class="btn btn--small btn--primary" 
+                  class="btn btn--primary btn--small" 
                   @click="addDepartment(department.id)"
+                  :aria-label="`Add ${department.name} to coverage`"
                 >
-                  Add
+                  <span class="btn-text">Add</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
-        
-        <div class="modal-footer">
-          <button 
-            class="btn btn--secondary" 
-            @click="showDepartmentSelector = false"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
-    </div>
+      
+      <template #footer>
+        <button 
+          class="btn btn--secondary" 
+          @click="showDepartmentSelector = false"
+        >
+          Cancel
+        </button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -74,6 +94,7 @@ import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import { useLocationsStore } from '../../stores/locationsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import AreaCoverDepartmentCard from './AreaCoverDepartmentCard.vue';
+import BaseModal from '../shared/BaseModal.vue';
 
 const props = defineProps({
   shiftType: {

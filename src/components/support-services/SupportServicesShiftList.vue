@@ -34,23 +34,40 @@
     </div>
     
     <!-- Add Service Modal -->
-    <div v-if="showAddServiceModal" class="modal-overlay" @click.self="showAddServiceModal = false">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Add Support Service</h3>
-          <button @click="showAddServiceModal = false" class="modal-close">&times;</button>
+    <BaseModal
+      v-if="showAddServiceModal"
+      title="Add Support Service"
+      :subtitle="`Configure a support service for ${shiftTypeLabel.toLowerCase()} coverage`"
+      size="medium"
+      @close="showAddServiceModal = false"
+    >
+      <div v-if="availableServices.length === 0" class="empty-state">
+        <h4>No Services Available</h4>
+        <p>No available services to add. Create new services in the support services section first.</p>
+      </div>
+      
+      <div v-else class="service-form">
+        <div class="service-form__info">
+          <p class="info-text">
+            Select a support service and configure its coverage times for {{ shiftTypeLabel.toLowerCase() }} shifts.
+            {{ isShiftMode ? 'This will apply to the current shift only.' : 'This will set the default configuration for all future shifts.' }}
+          </p>
         </div>
         
-        <div class="modal-body">
+        <div class="form-section">
           <div class="form-group">
-            <label for="service-select">Select Service</label>
+            <label for="service-select" class="form-label">
+              <span class="label-text">Support Service</span>
+              <span class="label-required">*</span>
+            </label>
             <select 
               id="service-select"
               v-model="addServiceForm.serviceId"
               class="form-control"
               required
+              :aria-describedby="availableServices.length === 0 ? 'service-help' : undefined"
             >
-              <option value="">Select a support service</option>
+              <option value="">Choose a support service...</option>
               <option 
                 v-for="service in availableServices" 
                 :key="service.id"
@@ -59,64 +76,73 @@
                 {{ service.name }}
               </option>
             </select>
-            
-            <div v-if="availableServices.length === 0" class="form-help-text">
-              No available services to add. Create new services in the support services section.
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="start-time" class="form-label">
+                <span class="label-text">Start Time</span>
+                <span class="label-required">*</span>
+              </label>
+              <input 
+                type="time"
+                id="start-time"
+                v-model="addServiceForm.startTime"
+                class="form-control"
+                required
+              />
             </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="start-time">Start Time</label>
-            <input 
-              type="time"
-              id="start-time"
-              v-model="addServiceForm.startTime"
-              class="form-control"
-              required
-            />
-          </div>
-          
-          <div class="form-group">
-            <label for="end-time">End Time</label>
-            <input 
-              type="time"
-              id="end-time"
-              v-model="addServiceForm.endTime"
-              class="form-control"
-              required
-            />
+            
+            <div class="form-group">
+              <label for="end-time" class="form-label">
+                <span class="label-text">End Time</span>
+                <span class="label-required">*</span>
+              </label>
+              <input 
+                type="time"
+                id="end-time"
+                v-model="addServiceForm.endTime"
+                class="form-control"
+                required
+              />
+            </div>
           </div>
           
           <!-- Only show color selection in settings mode, not in shift mode -->
           <div class="form-group" v-if="!isShiftMode">
-            <label for="color">Color</label>
-            <input 
-              type="color"
-              id="color"
-              v-model="addServiceForm.color"
-              class="form-control color-input"
-            />
+            <label for="color" class="form-label">
+              <span class="label-text">Display Color</span>
+            </label>
+            <div class="color-input-wrapper">
+              <input 
+                type="color"
+                id="color"
+                v-model="addServiceForm.color"
+                class="form-control color-input"
+              />
+              <span class="color-preview" :style="{ backgroundColor: addServiceForm.color }"></span>
+            </div>
           </div>
         </div>
-        
-        <div class="modal-footer">
-          <button 
-            @click="addService" 
-            class="btn btn-primary"
-            :disabled="!canAddService || isSubmitting"
-          >
-            {{ isSubmitting ? 'Adding...' : 'Add Service' }}
-          </button>
-          <button 
-            @click="showAddServiceModal = false" 
-            class="btn btn-secondary"
-            :disabled="isSubmitting"
-          >
-            Cancel
-          </button>
-        </div>
       </div>
-    </div>
+      
+      <template #footer>
+        <button 
+          @click="addService" 
+          class="btn btn--primary"
+          :disabled="!canAddService || isSubmitting"
+        >
+          {{ isSubmitting ? 'Adding...' : 'Add Service' }}
+        </button>
+        <button 
+          @click="showAddServiceModal = false" 
+          class="btn btn--secondary"
+          :disabled="isSubmitting"
+        >
+          Cancel
+        </button>
+      </template>
+    </BaseModal>
     
     <!-- Edit Service Modal -->
     <EditServiceModal
@@ -137,6 +163,7 @@ import { useStaffStore } from '../../stores/staffStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import SupportServiceItem from './SupportServiceItem.vue';
 import EditServiceModal from './EditServiceModal.vue';
+import BaseModal from '../shared/BaseModal.vue';
 
 // Props
 const props = defineProps({

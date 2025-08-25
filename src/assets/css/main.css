@@ -4330,6 +4330,287 @@
 
   /* Enhanced Coverage Modal Styling */
 
+  /* Department Selector Modal Styling */
+  .department-selector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .department-selector__info {
+    background-color: var(--color-primary-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    border-left: 4px solid var(--color-primary);
+  }
+
+  .department-selector__info .info-text {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .buildings-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .building-section {
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    border: 1px solid var(--color-gray-200);
+  }
+
+  .building-title {
+    margin: 0 0 var(--space-md) 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+    padding-bottom: var(--space-sm);
+    border-bottom: 2px solid var(--color-primary);
+  }
+
+  .departments-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+  }
+
+  .department-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md);
+    background-color: white;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-gray-200);
+    transition: all var(--transition-fast);
+  }
+
+  .department-option:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    border-color: var(--color-primary);
+  }
+
+  .department-info {
+    flex: 1;
+  }
+
+  .department-name {
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    font-size: var(--font-size-base);
+  }
+
+  .btn--small {
+    padding: var(--space-xs) var(--space-md);
+    font-size: var(--font-size-sm);
+    border-radius: var(--radius-md);
+  }
+
+  .btn--small .btn-text {
+    font-weight: var(--font-weight-medium);
+  }
+
+  /* Service Form Modal Styling */
+  .service-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .service-form__info {
+    background-color: var(--color-secondary);
+    background-color: color-mix(in srgb, var(--color-secondary) 10%, white);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    border-left: 4px solid var(--color-secondary);
+  }
+
+  .service-form__info .info-text {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+  }
+
+  .form-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .form-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+  }
+
+  .label-text {
+    color: var(--color-text);
+  }
+
+  .label-required {
+    color: var(--color-error);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  @media (max-width: 640px) {
+    .form-row {
+      grid-template-columns: 1fr;
+      gap: var(--space-sm);
+    }
+  }
+
+  .color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    position: relative;
+  }
+
+  .color-input {
+    width: 60px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--transition-fast);
+  }
+
+  .color-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-light);
+  }
+
+  .color-preview {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px var(--color-gray-300);
+    flex-shrink: 0;
+  }
+
+  /* Enhanced Empty State in Modals */
+  .modal-body .empty-state {
+    text-align: center;
+    padding: var(--space-2xl) var(--space-lg);
+    background-color: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--color-gray-300);
+  }
+
+  .modal-body .empty-state h4 {
+    margin: 0 0 var(--space-sm) 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  .modal-body .empty-state p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+  }
+
+  /* Enhanced Button Styling */
+  .btn--primary {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    font-weight: var(--font-weight-medium);
+    transition: all var(--transition-fast);
+  }
+
+  .btn--primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn--primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn--secondary {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-gray-300);
+    font-weight: var(--font-weight-medium);
+    transition: all var(--transition-fast);
+  }
+
+  .btn--secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-gray-400);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn--secondary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Improved Modal Responsiveness */
+  @media (max-width: 768px) {
+    .departments-grid {
+      gap: var(--space-xs);
+    }
+
+    .department-option {
+      padding: var(--space-sm);
+      flex-direction: column;
+      gap: var(--space-sm);
+      align-items: stretch;
+    }
+
+    .btn--small {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .building-section {
+      padding: var(--space-md);
+    }
+
+    .building-title {
+      font-size: var(--font-size-base);
+    }
+
+    .color-input-wrapper {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-sm);
+    }
+  }
+
   /* Porter Time Display */
   .porter-pill .porter-time,
   .porter-item .porter-time {
