@@ -64,23 +64,4 @@ defineExpose({
 defineEmits(['click']);
 </script>
 
-<style lang="scss" scoped>
-.animated-tab {
-  padding: 12px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  position: relative;
-  z-index: 1;
-  transition: font-weight 0.01s; /* Quick transition for font-weight */
-  
-  &--active {
-    font-weight: 600; /* Set font-weight via CSS for active state */
-  }
-  
-  &:hover:not(.animated-tab--active) {
-    background-color: rgba(0, 0, 0, 0.03);
-  }
-}
-</style>
+<!-- Styles are now handled by the global CSS layers -->

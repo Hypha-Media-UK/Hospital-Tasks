@@ -61,9 +61,10 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       this.error = null;
       
       try {
-        const data = await taskTypesApi.getAll(includeItems);
-        this.taskTypes = data || [];
-        
+        const response = await taskTypesApi.getAll(includeItems);
+        // Handle new API response format with data and pagination
+        this.taskTypes = response?.data || response || [];
+
         // If items were included, extract them
         if (includeItems) {
           const allItems = [];
@@ -188,10 +189,11 @@ export const useTaskTypesStore = defineStore('taskTypes', {
     async fetchTaskItems(filters = {}) {
       this.loading.taskItems = true;
       this.error = null;
-      
+
       try {
-        const data = await taskItemsApi.getAll(filters);
-        this.taskItems = data || [];
+        const response = await taskItemsApi.getAll(filters);
+        // Handle new API response format with data and pagination
+        this.taskItems = response?.data || response || [];
       } catch (error) {
         console.error('Error fetching task items:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to load task items';
@@ -389,19 +391,22 @@ export const useTaskTypesStore = defineStore('taskTypes', {
       
       try {
         // Fetch all task types and their assignments
-        const taskTypes = await taskTypesApi.getAll();
+        const response = await taskTypesApi.getAll();
+        // Handle new API response format with data and pagination
+        const taskTypes = response?.data || response || [];
         const allAssignments = [];
-        
+
         // Fetch assignments for each task type
         for (const taskType of taskTypes) {
           try {
             const assignments = await taskTypesApi.getAssignments(taskType.id);
-            allAssignments.push(...assignments);
-          } catch (error) {
-            // If a task type has no assignments, that's okay, just continue
-            if (error.status !== 404) {
-              console.warn(`Error fetching assignments for task type ${taskType.id}:`, error);
+            // Handle both empty arrays and actual assignment data
+            if (assignments && Array.isArray(assignments)) {
+              allAssignments.push(...assignments);
             }
+          } catch (error) {
+            // Only log actual errors, not expected empty responses
+            console.warn(`Error fetching assignments for task type ${taskType.id}:`, error);
           }
         }
         

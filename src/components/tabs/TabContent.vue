@@ -43,14 +43,4 @@ defineProps({
 });
 </script>
 
-<style lang="scss" scoped>
-.tab-content-wrapper {
-  position: relative;
-  overflow: hidden;
-}
-
-.tab-content {
-  padding: 16px 0;
-  min-height: 200px;
-}
-</style>
+<!-- Styles are now handled by the global CSS layers -->

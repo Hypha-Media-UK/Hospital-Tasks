@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
-import './assets/scss/main.scss';
+import './assets/css/main.css';
 
 // Import stores that need initialization
 import { useShiftsStore } from './stores/shiftsStore';

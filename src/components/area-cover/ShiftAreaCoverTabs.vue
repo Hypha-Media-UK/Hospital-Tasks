@@ -93,45 +93,4 @@ function updateQueryParam(tabId) {
 }
 </script>
 
-<style lang="scss" scoped>
-@use '../../assets/scss/mixins' as mix;
-
-.area-cover-tabs {
-  background-color: white;
-  border-radius: mix.radius('lg');
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  
-  &__header {
-    display: flex;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  }
-  
-  &__tab {
-    padding: 12px 16px;
-    background: none;
-    border: none;
-    font-size: mix.font-size('md');
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.03);
-    }
-    
-    &--active {
-      color: mix.color('primary');
-      box-shadow: inset 0 -2px 0 mix.color('primary');
-    }
-  }
-  
-  &__content {
-    padding: 16px;
-  }
-  
-  &__panel {
-    // Panel styles
-  }
-}
-</style>
+<!-- Styles are now handled by the global CSS layers -->

@@ -69,6 +69,7 @@ export function createCRUDRouter(config: CRUDConfig): Router {
       limit = config.pagination?.defaultLimit || 100,
       offset = 0,
       search = '',
+      include_items = 'false',
       ...filters
     } = req.query;
 
@@ -80,7 +81,7 @@ export function createCRUDRouter(config: CRUDConfig): Router {
 
     // Build where clause
     const where: any = {};
-    
+
     // Add search functionality
     if (search && config.search?.fields) {
       where.OR = config.search.fields.map(field => ({
@@ -89,23 +90,33 @@ export function createCRUDRouter(config: CRUDConfig): Router {
         }
       }));
     }
-    
-    // Add filters
+
+    // Add filters (excluding special parameters like include_items)
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
         where[key] = value;
       }
     });
-    
+
     // Add soft delete filter
     if (config.softDelete) {
       where.deleted_at = null;
     }
 
+    // Handle include_items parameter for task types
+    let includeConfig = config.include;
+    if (include_items === 'true' && config.model === 'taskType') {
+      includeConfig = {
+        task_items: {
+          orderBy: { name: 'asc' }
+        }
+      };
+    }
+
     const [entities, total] = await Promise.all([
       model.findMany({
         where,
-        include: config.include,
+        include: includeConfig,
         orderBy: config.orderBy || { created_at: 'desc' },
         take: parsedLimit,
         skip: parsedOffset
@@ -131,15 +142,28 @@ export function createCRUDRouter(config: CRUDConfig): Router {
   // GET /:id - Get single entity
   router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    
+    const { include_items = 'true' } = req.query;
+
     const where: any = { id };
     if (config.softDelete) {
       where.deleted_at = null;
     }
 
+    // Handle include_items parameter for task types
+    let includeConfig = config.include;
+    if (include_items === 'true' && config.model === 'taskType') {
+      includeConfig = {
+        task_items: {
+          orderBy: { name: 'asc' }
+        }
+      };
+    } else if (include_items === 'false' && config.model === 'taskType') {
+      includeConfig = undefined;
+    }
+
     const entity = await model.findFirst({
       where,
-      include: config.include
+      include: includeConfig
     });
 
     if (!entity) {

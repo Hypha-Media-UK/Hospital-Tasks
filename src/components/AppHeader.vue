@@ -25,18 +25,4 @@ import ArchiveIcon from './icons/ArchiveIcon.vue';
 import SettingsIcon from './icons/SettingsIcon.vue';
 </script>
 
-<style lang="scss" scoped>
-.header__nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 1rem;
-}
-
-.header__nav-left,
-.header__nav-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-</style>
+<!-- Styles are now handled by the global CSS layers -->

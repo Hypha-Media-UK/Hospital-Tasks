@@ -8,8 +8,4 @@
 import TaskTypesCardList from '../../task-types/TaskTypesCardList.vue';
 </script>
 
-<style lang="scss" scoped>
-.task-types-tab {
-  padding: 16px 0;
-}
-</style>
+<!-- Styles are now handled by the global CSS layers -->

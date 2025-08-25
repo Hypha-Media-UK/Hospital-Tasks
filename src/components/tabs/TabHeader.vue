@@ -60,44 +60,4 @@ defineExpose({
 defineEmits(['click']);
 </script>
 
-<style lang="scss" scoped>
-@use '../../assets/scss/mixins' as mix;
-@use 'sass:color';
-
-.tab-header {
-  padding: 12px 8px;
-  position: relative;
-  background: transparent;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  color: mix.color('text');
-  transition: color 0.3s ease, font-weight 0.01s; // Quick transition for font-weight
-  
-  &--active {
-    font-weight: 600; // Set font-weight via CSS for active state
-    // Other styles are handled by motion animation
-  }
-  
-  &:hover:not(.tab-header--active) {
-    color: color.adjust(mix.color('text'), $lightness: -15%);
-  }
-  
-  &__badge {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    background-color: #EA4335;
-    color: white;
-    font-size: 0.7rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px;
-    font-weight: bold;
-  }
-}
-</style>
+<!-- Styles are now handled by the global CSS layers -->
