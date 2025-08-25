@@ -1,18 +1,18 @@
 <template>
   <div class="support-services-tab">
     <!-- Area Cover Settings Section -->
-    <div class="settings-section area-cover-section">
+    <div class="settings-section">
       <h4>Area Coverage</h4>
       <p class="section-description">
         Configure departments that require porter coverage during shifts.
         These settings will be used as defaults when creating new shifts.
       </p>
-      
+
       <AreaCoverTabs />
     </div>
-    
+
     <!-- Support Services Section -->
-    <div class="settings-section support-services-section">
+    <div class="settings-section">
       <h4>Service Coverage</h4>
       <p class="section-description">
         Configure support services that require porter coverage during shifts.

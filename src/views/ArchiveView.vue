@@ -1,13 +1,14 @@
 <template>
   <div class="view">
     <div class="view__content">
-      <div class="card">
+      <header class="card__header">
         <h2 class="card__title">Archived Shifts</h2>
-        
+      </header>
+
         <div v-if="loading" class="loading-indicator">
           <p>Loading archived shifts...</p>
         </div>
-        
+
         <div v-else-if="archivedShifts.length === 0" class="empty-state">
           <p>No archived shifts found.</p>
         </div>
@@ -152,7 +153,6 @@
                 </tr>
               </tbody>
             </table>
-          </div>
         </div>
       </div>
     </div>

@@ -6,8 +6,12 @@
     <div class="building-details">
       <h3 class="building-name">{{ building.name }}</h3>
     </div>
-    
+
     <div class="building-card-footer">
+      <div class="building-card-actions">
+        <!-- Actions can be added here in the future -->
+      </div>
+
       <div class="department-count">
         {{ departmentCount }} {{ departmentCount === 1 ? 'Department' : 'Departments' }}
       </div>

@@ -44,9 +44,9 @@
       No task types added yet. Add your first task type to get started.
     </div>
     
-    <div class="task-types-card-list__grid">
-      <TaskTypeCard 
-        v-for="taskType in taskTypes" 
+    <div class="card-grid">
+      <TaskTypeCard
+        v-for="taskType in taskTypes"
         :key="taskType.id"
         :taskType="taskType"
         @view-items="viewTaskTypeItems"

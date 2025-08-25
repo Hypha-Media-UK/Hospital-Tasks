@@ -1,9 +1,7 @@
 <template>
   <div class="view">
     <div class="view__content">
-      <div class="card">
-        <TabsComponent />
-      </div>
+      <TabsComponent />
     </div>
   </div>
 </template>

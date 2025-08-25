@@ -3,53 +3,47 @@
     <div class="modal-container" @click.stop>
       <div class="modal-header">
         <h3 class="modal-title">
-          Edit {{ props.service.name }} Coverage
+          {{ props.service.name }} Coverage
         </h3>
         <button class="modal-close" @click.stop="closeModal">&times;</button>
       </div>
-      
+
       <div class="modal-body">
-        <div class="service-info">
-          <div class="service-header">
-            <div class="service-title">
-              <div class="service-name">
-                <input 
-                  type="text"
-                  id="service-name"
-                  v-model="localName"
-                  class="name-input"
-                  required
-                  placeholder="Service Name"
-                />
-              </div>
-            </div>
-          </div>
+        <div class="form-group">
+          <label for="service-name">Service Name</label>
+          <input
+            type="text"
+            id="service-name"
+            v-model="localName"
+            required
+            placeholder="Service Name"
+          />
         </div>
-        
+
         <!-- Service Time settings -->
-        <div class="time-settings">
-          <div class="time-group">
+        <div class="modal-form-section time-settings">
+          <div class="form-group">
             <label for="startTime">Start Time</label>
-            <input 
-              type="time" 
-              id="startTime" 
-              v-model="localStartTime" 
+            <input
+              type="time"
+              id="startTime"
+              v-model="localStartTime"
             />
           </div>
-          
-          <div class="time-group">
+
+          <div class="form-group">
             <label for="endTime">End Time</label>
-            <input 
-              type="time" 
-              id="endTime" 
-              v-model="localEndTime" 
+            <input
+              type="time"
+              id="endTime"
+              v-model="localEndTime"
             />
           </div>
         </div>
         
         <!-- Minimum Porter Count by Day -->
-        <div class="min-porters-setting">
-          <label class="section-label">Minimum Porter Count by Day</label>
+        <div class="modal-form-section">
+          <h4>Minimum Porter Count by Day</h4>
           
           <div class="day-toggle">
             <label class="toggle-label">

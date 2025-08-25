@@ -46,9 +46,9 @@
                 No support services found. Add your first service using the button above.
               </div>
               
-              <div v-else class="services-grid">
-                <ServiceItem 
-                  v-for="service in supportServices" 
+              <div v-else class="card-grid">
+                <ServiceItem
+                  v-for="service in supportServices"
                   :key="service.id"
                   :service="service"
                   @update="updateService"

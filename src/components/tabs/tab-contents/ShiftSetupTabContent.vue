@@ -29,15 +29,15 @@
     </div>
         
     <!-- Support Services Section -->
-    <div class="support-services-section">
+    <div class="settings-section">
       <div class="section-header">
         <h3 class="section-title">Service Coverage</h3>
         <button class="btn btn-primary" @click="supportServicesListRef?.openAddServiceModal()">
           Add Service
         </button>
       </div>
-      <SupportServicesShiftList 
-        :shift-id="shiftId" 
+      <SupportServicesShiftList
+        :shift-id="shiftId"
         :shift-type="shiftType"
         :show-header="false"
         ref="supportServicesListRef"

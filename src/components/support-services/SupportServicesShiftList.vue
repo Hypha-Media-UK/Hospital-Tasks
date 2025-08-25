@@ -22,9 +22,9 @@
         </button>
       </div>
       
-      <div class="services-grid">
-        <SupportServiceItem 
-          v-for="assignment in serviceAssignments" 
+      <div class="card-grid">
+        <SupportServiceItem
+          v-for="assignment in serviceAssignments"
           :key="assignment.id"
           :assignment="assignment"
           @edit="openEditModal"

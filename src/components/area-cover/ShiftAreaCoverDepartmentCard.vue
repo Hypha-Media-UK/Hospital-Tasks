@@ -16,7 +16,8 @@
       
       <div class="department-card__porters">
         <!-- Gap at start if first porter starts after department start time -->
-        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line gap-line--start">
+        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line">
+          <hr class="gap-line-hr" />
           <div class="gap-line-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(sortedPorterAssignments[0].start_time) }}</div>
         </div>
         
@@ -58,13 +59,15 @@
                  v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
                  :key="`gap-${assignment.id}-${gap.startTime}`"
                  class="gap-line">
+              <hr class="gap-line-hr" />
               <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
             </div>
           </template>
         </div>
         
         <!-- Gap at end if last porter ends before department end time -->
-        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line gap-line--end">
+        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line">
+          <hr class="gap-line-hr" />
           <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
         

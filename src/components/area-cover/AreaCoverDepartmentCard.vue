@@ -1,35 +1,22 @@
 <template>
-  <div 
-    class="department-card" 
+  <div
+    class="department-card"
     :style="{ borderLeftColor: assignment.department.color || '#CCCCCC' }"
     @click="showEditModal = true"
   >
-    <div class="department-card__content">
-      <div class="department-card__header">
-        <div class="department-card__name">
-          {{ assignment.department.name }}
-        </div>
-        <div class="department-card__time">
-          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
-        </div>
+    <div class="department-card__header">
+      <div class="department-card__name">
+        {{ assignment.department.name }}
       </div>
+      <div class="department-card__time">
+        {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+      </div>
+    </div>
       
       <div class="department-card__porters">
-        <div class="porter-count-wrapper">
-          <span class="porter-count" 
-                :class="{ 
-                  'no-porters': porterAssignments.length === 0 || availablePorters.length === 0,
-                  'coverage-gap': hasCoverageGap
-                }">
-            {{ availablePorters.length }} {{ availablePorters.length === 1 ? 'Porter' : 'Porters' }}
-            <span v-if="absentPorters.length > 0" class="absent-count">
-              ({{ absentPorters.length }} absent)
-            </span>
-          </span>
-        </div>
-
         <!-- Gap at start if first porter starts after department start time -->
-        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line gap-line--start">
+        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line">
+          <hr class="gap-line-hr" />
           <div class="gap-line-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(sortedPorterAssignments[0].start_time) }}</div>
         </div>
         
@@ -41,17 +28,19 @@
             </div>
 
             <!-- Gap indicator between assignments -->
-            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])" 
+            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])"
                 class="gap-line"
                 v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
                 :key="gap.startTime">
+              <hr class="gap-line-hr" />
               <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
             </div>
           </div>
         </div>
 
         <!-- Gap at end if last porter ends before department end time -->
-        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line gap-line--end">
+        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line">
+          <hr class="gap-line-hr" />
           <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
         
@@ -73,9 +62,20 @@
         <div v-if="availablePorters.length === 0 && porterAssignments.length > 0" class="coverage-warning">
           All assigned porters are absent!
         </div>
+
+        <div class="porter-count-wrapper">
+          <span class="porter-count"
+                :class="{
+                  'no-porters': porterAssignments.length === 0 || availablePorters.length === 0,
+                  'coverage-gap': hasCoverageGap
+                }">
+            {{ availablePorters.length }} {{ availablePorters.length === 1 ? 'Porter' : 'Porters' }}
+            <span v-if="absentPorters.length > 0" class="absent-count">
+              ({{ absentPorters.length }} absent)
+            </span>
+          </span>
+        </div>
       </div>
-    </div>
-    
   </div>
 
   <!-- Edit Department Modal - Teleported to body to avoid container constraints -->

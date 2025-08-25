@@ -1,22 +1,22 @@
 <template>
-  <div 
-    class="service-card" 
+  <div
+    class="service-card"
     :style="{ borderLeftColor: serviceData.color || assignment.color || '#CCCCCC' }"
     @click="showEditModal = true"
   >
-    <div class="service-card__content">
-      <div class="service-card__header">
-        <div class="service-card__name">
-          {{ serviceData.name }}
-        </div>
-        <div class="service-card__time">
-          {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
-        </div>
+    <div class="service-card__header">
+      <div class="service-card__name">
+        {{ serviceData.name }}
       </div>
+      <div class="service-card__time">
+        {{ formatTimeRange(assignment.start_time, assignment.end_time) }}
+      </div>
+    </div>
       
       <div class="service-card__porters">
         <!-- Gap at start if first porter starts after service start time -->
-        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line gap-line--start">
+        <div v-if="sortedPorterAssignments.length > 0 && hasStartGap" class="gap-line">
+          <hr class="gap-line-hr" />
           <div class="gap-line-time">{{ formatTime(assignment.start_time) }} - {{ formatTime(sortedPorterAssignments[0].start_time) }}</div>
         </div>
         
@@ -54,27 +54,27 @@
             </div>
 
             <!-- Gap indicator between assignments (now a direct child of porter-assignments) -->
-            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])" 
+            <div v-if="index < sortedPorterAssignments.length - 1 && hasGapBetween(assignment, sortedPorterAssignments[index + 1])"
                  v-for="gap in getGapsBetweenAssignments(assignment, sortedPorterAssignments[index + 1])"
                  :key="`gap-${assignment.id}-${gap.startTime}`"
                  class="gap-line">
+              <hr class="gap-line-hr" />
               <div class="gap-line-time">{{ formatTime(gap.startTime) }} - {{ formatTime(gap.endTime) }}</div>
             </div>
           </template>
         </div>
         
         <!-- Gap at end if last porter ends before service end time -->
-        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line gap-line--end">
+        <div v-if="sortedPorterAssignments.length > 0 && hasEndGap" class="gap-line">
+          <hr class="gap-line-hr" />
           <div class="gap-line-time">{{ formatTime(sortedPorterAssignments[sortedPorterAssignments.length - 1].end_time) }} - {{ formatTime(assignment.end_time) }}</div>
         </div>
         
         <!-- Absent porters are now shown directly in the porter assignments list above -->
-        
-        <!-- Coverage warning removed as requested -->
-        
+
         <div class="porter-count-wrapper">
-          <span class="porter-count" 
-                :class="{ 
+          <span class="porter-count"
+                :class="{
                   'no-porters': porterAssignments.length === 0 || availablePorters.length === 0,
                   'coverage-gap': hasCoverageGap
                 }">
@@ -85,12 +85,14 @@
           </span>
         </div>
       </div>
-    </div>
-    
-    <!-- Edit Service Modal - Use different modal based on whether this is a shift assignment -->
+
+  </div>
+
+  <!-- Edit Service Modal - Teleported to body to avoid container constraints -->
+  <Teleport to="body">
     <template v-if="showEditModal">
       <!-- For shift assignments -->
-      <ShiftEditServiceModal 
+      <ShiftEditServiceModal
         v-if="isShiftAssignment"
         :assignment="assignment"
         @close="showEditModal = false"
@@ -98,7 +100,7 @@
         @remove="handleRemove"
       />
       <!-- For default settings assignments -->
-      <EditServiceModal 
+      <EditServiceModal
         v-else
         :service="serviceData"
         :assignment="assignment"
@@ -107,7 +109,7 @@
         @remove="handleRemove"
       />
     </template>
-  </div>
+  </Teleport>
 </template>
 
 <script setup>

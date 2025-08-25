@@ -2,44 +2,36 @@
   <div class="modal-overlay" @click.stop="closeModal">
     <div class="modal-container" @click.stop>
       <div class="modal-header">
-        <h3 class="modal-title">Edit {{ assignment.department.name }}</h3>
+        <h3 class="modal-title">{{ assignment.department.name }}</h3>
         <button class="modal-close" @click.stop="closeModal">&times;</button>
       </div>
-      
+
       <div class="modal-body">
-        <div class="department-info">
-          <div class="department-header">
-            <div class="department-title">
-              <div class="department-name">{{ assignment.department.name }}</div>
-              <div class="department-building">{{ assignment.department.building?.name || 'Unknown Building' }}</div>
-            </div>
-          </div>
-        </div>
-        
+
         <!-- Department Time settings -->
-        <div class="time-settings">
-          <div class="time-group">
+        <div class="modal-form-section time-settings">
+          <div class="form-group">
             <label for="startTime">Start Time</label>
-            <input 
-              type="time" 
-              id="startTime" 
-              v-model="localStartTime" 
+            <input
+              type="time"
+              id="startTime"
+              v-model="localStartTime"
             />
           </div>
-          
-          <div class="time-group">
+
+          <div class="form-group">
             <label for="endTime">End Time</label>
-            <input 
-              type="time" 
-              id="endTime" 
-              v-model="localEndTime" 
+            <input
+              type="time"
+              id="endTime"
+              v-model="localEndTime"
             />
           </div>
         </div>
         
         <!-- Minimum Porter Count by Day -->
-        <div class="min-porters-setting">
-          <label class="section-label">Minimum Porter Count by Day</label>
+        <div class="modal-form-section">
+          <h4>Minimum Porter Count by Day</h4>
           
           <div class="day-toggle">
             <label class="toggle-label">

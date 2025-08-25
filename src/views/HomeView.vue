@@ -1,93 +1,85 @@
 <template>
   <div class="view">
     <div class="view__content">
-      <!-- Main Tabbed Interface -->
-      <div class="card">
-        <AnimatedTabs
-          v-model="activeTabId"
-          :tabs="tabDefinitions"
-          @tab-change="handleTabChange"
-          class="home-tabs"
-        >
+      <AnimatedTabs
+        v-model="activeTabId"
+        :tabs="tabDefinitions"
+        @tab-change="handleTabChange"
+        class="home-tabs"
+      >
           <!-- Active Shifts Tab -->
           <template #active-shifts>
-            <div class="card__header">
+            <header class="card__header">
               <h2 class="card__title">Active Shifts</h2>
-              <button 
-                @click="exportSelectedShifts" 
+              <button
+                @click="exportSelectedShifts"
                 class="btn btn-export"
                 :disabled="selectedShifts.length === 0"
               >
                 Export Selected Shifts
               </button>
-            </div>
-            
+            </header>
+
             <div v-if="loading" class="loading-indicator">
               <p>Loading shifts...</p>
             </div>
-            
+
             <div v-else-if="activeShifts.length === 0" class="empty-state">
-              <div class="empty-state__icon">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-                </svg>
-              </div>
+              <svg class="empty-state__icon" width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+              </svg>
               <p>No active shifts. Create a new shift to get started.</p>
               <button @click="activeTabId = 'create-shift'" class="btn btn-primary empty-state__action">
                 Create Shift
               </button>
             </div>
-            
+
             <div v-else>
               <div class="selection-controls" v-if="activeShifts.length > 0">
                 <label class="select-all-container">
-                  <span class="checkbox-wrapper">
-                    <input 
-                      type="checkbox" 
-                      :checked="isAllSelected" 
-                      @change="toggleSelectAll" 
-                    />
-                    <span class="custom-checkbox"></span>
-                  </span>
+                  <input
+                    type="checkbox"
+                    :checked="isAllSelected"
+                    @change="toggleSelectAll"
+                  />
+                  <span class="custom-checkbox"></span>
                   <span>Select All</span>
                 </label>
               </div>
-              
+
               <div class="shifts-grid">
                 <!-- Day Shifts -->
-                <div v-if="dayShifts.length > 0" class="shift-group">
+                <section v-if="dayShifts.length > 0" class="shift-group">
                   <h3>Day Shifts</h3>
                   <div class="shift-cards">
-                    <div 
-                      v-for="shift in dayShifts" 
-                      :key="shift.id" 
+                    <article
+                      v-for="shift in dayShifts"
+                      :key="shift.id"
                       class="shift-card"
                       :style="{ borderColor: getShiftColor(shift.shift_type) }"
                       @click="viewShift(shift.id)"
                     >
                       <div class="shift-card__color-bar" :style="{ backgroundColor: getShiftColor(shift.shift_type) }"></div>
-                      <div class="shift-card__header">
+                      <header class="shift-card__header">
                         <div class="shift-card__type">
-                          <span class="shift-type">
-                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
-                            <NightShiftIcon v-else size="18" class="shift-icon" />
-                            Day Shift
-                          </span>
+                          <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
+                          <NightShiftIcon v-else size="18" class="shift-icon" />
+                          <span class="shift-type">Day Shift</span>
                         </div>
                         <div class="shift-card__right">
                           <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
-                          <span class="checkbox-wrapper">
-                            <input 
-                              type="checkbox" 
+                          <label class="checkbox-wrapper">
+                            <input
+                              type="checkbox"
                               :checked="isShiftSelected(shift)"
-                              @change="toggleShiftSelection(shift, $event)" 
+                              @change="toggleShiftSelection(shift, $event)"
                               @click.stop
                             />
                             <span class="custom-checkbox"></span>
-                          </span>
+                          </label>
                         </div>
-                      </div>
+                      </header>
                       <div class="shift-card__body">
                         <div class="detail-row">
                           <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -95,51 +87,49 @@
                             <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
                           <p class="supervisor">
-                            <span class="detail-label">Supervisor:</span> 
+                            <span class="detail-label">Supervisor:</span>
                             <span class="detail-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
                           </p>
                         </div>
-                        <div class="shift-card__footer">
+                        <footer class="shift-card__footer">
                           <button class="btn-view-shift">View Details</button>
-                        </div>
+                        </footer>
                       </div>
-                    </div>
+                    </article>
                   </div>
-                </div>
-                
+                </section>
+
                 <!-- Night Shifts -->
-                <div v-if="nightShifts.length > 0" class="shift-group">
+                <section v-if="nightShifts.length > 0" class="shift-group">
                   <h3>Night Shifts</h3>
                   <div class="shift-cards">
-                    <div 
-                      v-for="shift in nightShifts" 
-                      :key="shift.id" 
+                    <article
+                      v-for="shift in nightShifts"
+                      :key="shift.id"
                       class="shift-card"
                       :style="{ borderColor: getShiftColor(shift.shift_type) }"
                       @click="viewShift(shift.id)"
                     >
                       <div class="shift-card__color-bar" :style="{ backgroundColor: getShiftColor(shift.shift_type) }"></div>
-                      <div class="shift-card__header">
+                      <header class="shift-card__header">
                         <div class="shift-card__type">
-                          <span class="shift-type">
-                            <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
-                            <NightShiftIcon v-else size="18" class="shift-icon" />
-                            Night Shift
-                          </span>
+                          <DayShiftIcon v-if="shift.shift_type.includes('day')" size="18" class="shift-icon" />
+                          <NightShiftIcon v-else size="18" class="shift-icon" />
+                          <span class="shift-type">Night Shift</span>
                         </div>
                         <div class="shift-card__right">
                           <span class="shift-date">{{ formatDate(shift.start_time) }}</span>
-                          <span class="checkbox-wrapper">
-                            <input 
-                              type="checkbox" 
+                          <label class="checkbox-wrapper">
+                            <input
+                              type="checkbox"
                               :checked="isShiftSelected(shift)"
-                              @change="toggleShiftSelection(shift, $event)" 
+                              @change="toggleShiftSelection(shift, $event)"
                               @click.stop
                             />
                             <span class="custom-checkbox"></span>
-                          </span>
+                          </label>
                         </div>
-                      </div>
+                      </header>
                       <div class="shift-card__body">
                         <div class="detail-row">
                           <svg class="detail-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -147,17 +137,17 @@
                             <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
                           <p class="supervisor">
-                            <span class="detail-label">Supervisor:</span> 
+                            <span class="detail-label">Supervisor:</span>
                             <span class="detail-value">{{ shift.supervisor ? `${shift.supervisor.first_name} ${shift.supervisor.last_name}` : 'Not assigned' }}</span>
                           </p>
                         </div>
-                        <div class="shift-card__footer">
+                        <footer class="shift-card__footer">
                           <button class="btn-view-shift">View Details</button>
-                        </div>
+                        </footer>
                       </div>
-                    </div>
+                    </article>
                   </div>
-                </div>
+                </section>
               </div>
             </div>
           </template>
@@ -166,8 +156,7 @@
           <template #create-shift>
             <QuickShiftCreator />
           </template>
-        </AnimatedTabs>
-      </div>
+      </AnimatedTabs>
     </div>
   </div>
 </template>

@@ -50,9 +50,9 @@
       No buildings added yet. Add your first building to get started.
     </div>
     
-    <draggable 
-      v-model="sortableBuildings" 
-      class="buildings-card-list__grid"
+    <draggable
+      v-model="sortableBuildings"
+      class="card-grid"
       item-key="id"
       :animation="200"
       :disabled="locationsStore.loading.sorting"
