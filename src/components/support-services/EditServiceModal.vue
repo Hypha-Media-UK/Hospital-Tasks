@@ -188,11 +188,10 @@
 
     <template #footer>
       <button
-        class="btn btn--primary"
-        @click.stop="saveAllChanges"
-        :disabled="!localName.trim()"
+        class="btn btn--danger"
+        @click.stop="confirmDelete"
       >
-        Update
+        Delete Service
       </button>
       <button
         class="btn btn--secondary"
@@ -201,10 +200,11 @@
         Cancel
       </button>
       <button
-        class="btn btn--danger ml-auto"
-        @click.stop="confirmDelete"
+        class="btn btn--primary ml-auto"
+        @click.stop="saveAllChanges"
+        :disabled="!localName.trim()"
       >
-        Delete Service
+        Update
       </button>
     </template>
   </BaseModal>

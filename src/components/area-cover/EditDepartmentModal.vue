@@ -194,10 +194,10 @@
 
     <template #footer>
       <button
-        class="btn btn--primary"
-        @click.stop="saveAllChanges"
+        class="btn btn--danger"
+        @click.stop="confirmRemove"
       >
-        Update
+        Remove Department
       </button>
       <button
         class="btn btn--secondary"
@@ -206,10 +206,10 @@
         Cancel
       </button>
       <button
-        class="btn btn--danger ml-auto"
-        @click.stop="confirmRemove"
+        class="btn btn--primary ml-auto"
+        @click.stop="saveAllChanges"
       >
-        Remove Department
+        Update
       </button>
     </template>
   </BaseModal>

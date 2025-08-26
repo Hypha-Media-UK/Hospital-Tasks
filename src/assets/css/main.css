@@ -2743,7 +2743,7 @@
 
   .add-porter-button {
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .add-porter-form {
@@ -3999,7 +3999,7 @@
 
   /* Compact Porter Assignments Section */
   .porter-assignments {
-    margin-bottom: var(--space-md);
+    margin-bottom: 0;
   }
 
   .porter-assignments .section-title {
@@ -4367,7 +4367,6 @@
     border: 1px solid var(--color-gray-200);
     transition: background-color var(--transition-fast);
     gap: var(--space-lg);
-    margin-bottom: var(--space-md);
   }
 
   .porter-assignment-item:hover,
@@ -4420,15 +4419,7 @@
     gap: var(--space-sm);
   }
 
-  /* Add Porter Section */
-  .add-porter {
-    margin-top: var(--space-lg);
-  }
-
-  .add-porter-button {
-    display: flex;
-    justify-content: center;
-  }
+  /* Add Porter Section - Consolidated with compact form above */
 
   .add-porter-form {
     background-color: var(--color-gray-50);
