@@ -759,6 +759,80 @@
     position: relative;
   }
 
+  /* Shift Management View Layout */
+  .shift-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-lg);
+  }
+
+  .shift-header-content {
+    flex: 1;
+  }
+
+  .shift-actions {
+    flex-shrink: 0;
+  }
+
+  .tabs-container {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .tabs-container .tabs {
+    flex: 1;
+  }
+
+  .sheet-buttons {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: var(--space-sm);
+    z-index: 10;
+  }
+
+  .sheet-btn {
+    font-size: var(--font-size-sm);
+    padding: var(--space-xs) var(--space-md);
+  }
+
+  /* Responsive adjustments for shift management */
+  @media (max-width: 800px) {
+    .shift-info-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-md);
+    }
+
+    .shift-actions {
+      align-self: flex-end;
+    }
+
+    .tabs-container {
+      flex-direction: column;
+    }
+
+    .sheet-buttons {
+      position: static;
+      margin-top: var(--space-md);
+      justify-content: flex-end;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .sheet-buttons {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .sheet-btn {
+      width: 100%;
+    }
+  }
+
   /* Desktop tabs */
   .desktop-tabs {
     /* Hide tab headers on mobile but keep content visible */
@@ -2127,6 +2201,7 @@
     gap: var(--space-md);
     margin-bottom: var(--space-lg);
     align-items: center;
+    justify-content: space-between;
   }
 
   .filter-btn {
@@ -3359,9 +3434,41 @@
     text-align: center;
   }
 
-  /* Settings Section Styling */
+  /* Shift Setup Tab Section Spacing */
+  .shift-porter-section,
+  .area-coverage-section,
   .settings-section {
-    margin-bottom: 32px;
+    margin-bottom: var(--space-xl);
+  }
+
+  .shift-porter-section:last-child,
+  .area-coverage-section:last-child,
+  .settings-section:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Shift Setup Tab Section Headers */
+  .shift-porter-section .section-header,
+  .area-coverage-section .section-header,
+  .settings-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+  }
+
+  .shift-porter-section .section-title,
+  .area-coverage-section .section-title,
+  .settings-section .section-title {
+    margin: 0;
+    flex: 1;
+  }
+
+  /* Add Porter Controls Alignment */
+  .add-porter-section .add-porter-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--space-md);
   }
 
   .settings-section h4 {

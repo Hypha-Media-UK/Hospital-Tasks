@@ -12,8 +12,8 @@
       
       <template v-else>
         <!-- Simplified Shift Information Header -->
-        <div 
-          class="shift-info-header mb-4" 
+        <div
+          class="shift-info-header mb-4"
           :class="{ 'archived-shift': !shift.is_active }"
         >
           <div class="shift-header-content">
@@ -32,50 +32,29 @@
               <span v-if="!shift.is_active" class="archived-badge">Archived</span>
             </h2>
           </div>
-          
+
           <div class="shift-actions">
-            <button 
-              v-if="shift.is_active" 
-              @click="confirmEndShift" 
+            <button
+              v-if="shift.is_active"
+              @click="confirmEndShift"
               class="btn btn-danger"
             >
               End Shift
             </button>
-            <button 
-              v-else 
-              @click="navigateToHome" 
+            <button
+              v-else
+              @click="navigateToHome"
               class="btn btn-secondary"
             >
               Back to Home
             </button>
           </div>
-          
         </div>
         
         <!-- Removed the old action bar and moved Add Task button to floating action button -->
         
         <!-- Tabs Section -->
-        <div class="card">
-          <!-- Activity Sheet and SitRep Buttons -->
-          <div class="sheet-buttons">
-            <button 
-              v-if="shift && allTasks.length > 0"
-              @click="showActivitySheet" 
-              class="btn btn-primary sheet-btn"
-              title="View and print activity sheet"
-            >
-              Activity Sheet
-            </button>
-            <button 
-              v-if="shift"
-              @click="showSitRep" 
-              class="btn btn-secondary sheet-btn"
-              title="View and print situation report"
-            >
-              SitRep
-            </button>
-          </div>
-          
+        <div class="tabs-container">
           <div class="tabs">
             <AnimatedTabs
               v-model="activeTabId"
@@ -83,14 +62,14 @@
               @tab-change="handleTabChange"
             >
               <template #shiftSetup>
-                <ShiftSetupTabContent 
-                  :shift-id="shift.id" 
+                <ShiftSetupTabContent
+                  :shift-id="shift.id"
                   :shift-type="determineAreaCoverType(shift)"
                   @porter-click="openAllocatePorterModal"
                 />
               </template>
               <template #tasks>
-                <TasksTabContent 
+                <TasksTabContent
                   :shift-id="shift.id"
                   @edit-task="editTask"
                   @mark-task-completed="markTaskCompleted"
@@ -98,6 +77,26 @@
                 />
               </template>
             </AnimatedTabs>
+          </div>
+
+          <!-- Activity Sheet and SitRep Buttons - Moved to right of tabs -->
+          <div class="sheet-buttons">
+            <button
+              v-if="shift && allTasks.length > 0"
+              @click="showActivitySheet"
+              class="btn btn-primary sheet-btn"
+              title="View and print activity sheet"
+            >
+              Activity Sheet
+            </button>
+            <button
+              v-if="shift"
+              @click="showSitRep"
+              class="btn btn-secondary sheet-btn"
+              title="View and print situation report"
+            >
+              SitRep
+            </button>
           </div>
         </div>
       </template>
