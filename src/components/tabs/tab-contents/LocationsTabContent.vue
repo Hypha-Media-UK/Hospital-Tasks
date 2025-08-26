@@ -1,29 +1,18 @@
 <template>
   <div class="locations-tab">
-    <div class="locations-tabs">
-      <div class="locations-tabs__header">
-        <button 
-          class="locations-tabs__tab" 
-          :class="{ 'locations-tabs__tab--active': activeTab === 'departments' }"
-          @click="activeTab = 'departments'"
-        >
-          Departments
-        </button>
-        <button 
-          class="locations-tabs__tab" 
-          :class="{ 'locations-tabs__tab--active': activeTab === 'services' }"
-          @click="activeTab = 'services'"
-        >
-          Services
-        </button>
-      </div>
-      
-      <div class="locations-tabs__content">
-        <div v-if="activeTab === 'departments'" class="locations-tabs__panel">
+    <AnimatedTabs
+      v-model="activeTab"
+      :tabs="locationTabs"
+      @tab-change="handleTabChange"
+    >
+      <template #departments>
+        <div class="locations-tabs__panel">
           <BuildingsCardList />
         </div>
-        
-        <div v-if="activeTab === 'services'" class="locations-tabs__panel">
+      </template>
+
+      <template #services>
+        <div class="locations-tabs__panel">
           <div class="settings-section">
             <div class="error-message" v-if="supportServicesStore.error">
               {{ supportServicesStore.error }}
@@ -58,9 +47,9 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    
+      </template>
+    </AnimatedTabs>
+
     <!-- Add Service Modal -->
     <AddServiceModal
       v-if="showAddServiceModal"
@@ -72,6 +61,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watchEffect } from 'vue';
+import AnimatedTabs from '../../shared/AnimatedTabs.vue';
 import BuildingsCardList from '../../locations/BuildingsCardList.vue';
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import ServiceItem from '../../support-services/ServiceItem.vue';
@@ -79,6 +69,17 @@ import AddServiceModal from '../../support-services/AddServiceModal.vue';
 
 // Tab state
 const activeTab = ref('departments');
+
+// Location tabs configuration
+const locationTabs = [
+  { id: 'departments', label: 'Departments' },
+  { id: 'services', label: 'Services' }
+];
+
+// Handle tab change
+const handleTabChange = (tabId) => {
+  activeTab.value = tabId;
+};
 
 // Service management
 const supportServicesStore = useSupportServicesStore();

@@ -3471,6 +3471,133 @@
     margin-bottom: var(--space-md);
   }
 
+  /* Staff Tab Layout Improvements */
+  .staff-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    gap: var(--space-md);
+  }
+
+  .staff-list-header .search-container {
+    flex: 1;
+    max-width: 400px;
+  }
+
+  /* Buildings Card List Header */
+  .buildings-card-list__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+  }
+
+  .buildings-card-list__header .title-section {
+    flex: 1;
+  }
+
+  /* Modal Tabs Container */
+  .modal-tabs-container {
+    border-bottom: 1px solid var(--color-gray-200);
+    margin-bottom: var(--space-md);
+  }
+
+  /* Settings Layout Improvements */
+  .settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-xl);
+  }
+
+  .settings-info h4 {
+    margin: 0 0 var(--space-sm) 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .settings-info .section-description {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+
+  .settings-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-xl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--color-gray-200);
+  }
+
+  .action-messages {
+    flex: 1;
+  }
+
+  /* Shift Cards Layout */
+  .shifts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+  }
+
+  .shift-card {
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    border: 1px solid var(--color-gray-200);
+  }
+
+  .shift-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+  }
+
+  .shift-card__header h5 {
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .shift-color-picker {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .shift-card__times {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .time-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .time-group label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
+
+  .time-group input[type="time"] {
+    padding: var(--space-sm);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+  }
+
   .settings-section h4 {
     margin-top: 0;
     margin-bottom: 8px;

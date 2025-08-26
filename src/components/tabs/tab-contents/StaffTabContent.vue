@@ -1,25 +1,12 @@
 <template>
   <div class="staff-tab">
-    <div class="staff-tabs">
-      <div class="staff-tabs__header">
-        <button 
-          class="staff-tabs__tab" 
-          :class="{ 'staff-tabs__tab--active': activeTab === 'porters' }"
-          @click="activeTab = 'porters'"
-        >
-          Porters
-        </button>
-        <button 
-          class="staff-tabs__tab" 
-          :class="{ 'staff-tabs__tab--active': activeTab === 'supervisors' }"
-          @click="activeTab = 'supervisors'"
-        >
-          Supervisors
-        </button>
-      </div>
-      
-      <div class="staff-tabs__content">
-        <div v-if="activeTab === 'supervisors'" class="staff-tabs__panel">
+    <AnimatedTabs
+      v-model="activeTab"
+      :tabs="staffTabs"
+      @tab-change="handleTabChange"
+    >
+      <template #supervisors>
+        <div class="staff-tabs__panel">
           <div class="staff-list-header">
             <h4>Supervisors</h4>
             <button class="btn btn--primary" @click="showAddSupervisorForm = true">
@@ -83,10 +70,30 @@
             </div>
           </div>
         </div>
-        
-        <div v-if="activeTab === 'porters'" class="staff-tabs__panel">
+      </template>
+
+      <template #porters>
+        <div class="staff-tabs__panel">
           <div class="staff-list-header">
-            <h4>Porters</h4>
+            <div class="search-container">
+              <div class="search-field">
+                <span class="search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search porters..."
+                  v-model="searchQuery"
+                  class="search-input"
+                  @input="onSearchInput"
+                />
+                <button
+                  v-if="searchQuery"
+                  class="clear-search-btn"
+                  @click="clearSearch"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
             <button class="btn btn--primary" @click="showAddPorterForm = true">
               Add Porter
             </button>
@@ -161,26 +168,6 @@
                 <NightShiftIcon />
                 Night Shift
               </button>
-            </div>
-            
-            <div class="search-container">
-              <div class="search-field">
-                <span class="search-icon">🔍</span>
-                <input 
-                  type="text" 
-                  placeholder="Search porters..."
-                  v-model="searchQuery"
-                  class="search-input"
-                  @input="onSearchInput"
-                />
-                <button 
-                  v-if="searchQuery" 
-                  class="clear-search-btn"
-                  @click="clearSearch"
-                >
-                  ×
-                </button>
-              </div>
             </div>
             
           </div>
@@ -259,9 +246,9 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    
+      </template>
+    </AnimatedTabs>
+
     <!-- Staff Form Modal -->
     <div v-if="showAddSupervisorForm || showEditSupervisorForm" class="modal-overlay">
       <div class="modal-container">
@@ -301,7 +288,7 @@
               <button type="button" class="btn btn--secondary" @click="closeStaffForm">
                 Cancel
               </button>
-              <button type="submit" class="btn btn--primary">
+              <button type="submit" class="btn btn--primary ml-auto">
                 {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
               </button>
             </div>
@@ -317,25 +304,15 @@
           <button class="modal-close" @click="closeStaffForm">&times;</button>
         </div>
         
-        <div class="modal-tabs" v-if="showEditPorterForm">
-          <button 
-            class="modal-tab" 
-            :class="{ 'modal-tab--active': activeModalTab === 'details' }"
-            @click="activeModalTab = 'details'"
+        <div v-if="showEditPorterForm" class="modal-tabs-container">
+          <AnimatedTabs
+            v-model="activeModalTab"
+            :tabs="modalTabs"
+            @tab-change="handleModalTabChange"
           >
-            Details
-          </button>
-          <button 
-            class="modal-tab" 
-            :class="{ 'modal-tab--active': activeModalTab === 'absence' }"
-            @click="activeModalTab = 'absence'"
-          >
-            Absence
-          </button>
-        </div>
+            <template #details>
         
-        <div class="modal-body">
-          <form @submit.prevent="saveStaff('porter')" v-if="!showEditPorterForm || activeModalTab === 'details'">
+            <form @submit.prevent="saveStaff('porter')" v-if="!showEditPorterForm || activeModalTab === 'details'">
             <div class="form-row">
               <div class="form-group form-group--half">
                 <label for="firstName">First Name</label>
@@ -424,14 +401,16 @@
               <button type="button" class="btn btn--secondary" @click="closeStaffForm">
                 Cancel
               </button>
-              <button type="submit" class="btn btn--primary">
+              <button type="submit" class="btn btn--primary ml-auto">
                 {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
               </button>
             </div>
           </form>
-          
+            </template>
+
+            <template #absence>
           <!-- Absence Management Form -->
-          <div v-if="showEditPorterForm && activeModalTab === 'absence'" class="absence-form">
+          <div class="absence-form">
             <div v-if="staffStore.loading.porters" class="loading-state">
               Loading porter details...
             </div>
@@ -511,6 +490,8 @@
               </div>
             </form>
           </div>
+            </template>
+          </AnimatedTabs>
         </div>
       </div>
     </div>
@@ -530,6 +511,7 @@ import { useStaffStore } from '../../../stores/staffStore';
 import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import AnimatedTabs from '../../shared/AnimatedTabs.vue';
 import IconButton from '../../IconButton.vue';
 import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
@@ -545,6 +527,28 @@ const settingsStore = useSettingsStore();
 // Tab state
 const activeTab = ref('porters');
 const searchQuery = ref('');
+
+// Staff tabs configuration
+const staffTabs = [
+  { id: 'porters', label: 'Porters' },
+  { id: 'supervisors', label: 'Supervisors' }
+];
+
+// Handle tab change
+const handleTabChange = (tabId) => {
+  activeTab.value = tabId;
+};
+
+// Modal tabs configuration
+const modalTabs = [
+  { id: 'details', label: 'Details' },
+  { id: 'absence', label: 'Absence' }
+];
+
+// Handle modal tab change
+const handleModalTabChange = (tabId) => {
+  activeModalTab.value = tabId;
+};
 
 // Form state
 const showAddSupervisorForm = ref(false);

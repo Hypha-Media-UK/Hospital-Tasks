@@ -1,10 +1,14 @@
 <template>
   <div class="shift-defaults-settings">
-    <h4>Shift Defaults</h4>
-    <p class="section-description">
-      Configure default times and colors for day and night shifts. These settings will be used as defaults when creating new shifts.
-    </p>
-    
+    <div class="settings-header">
+      <div class="settings-info">
+        <h4>Shift Defaults</h4>
+        <p class="section-description">
+          Configure default times and colors for day and night shifts. These settings will be used as defaults when creating new shifts.
+        </p>
+      </div>
+    </div>
+
     <div class="shifts-container">
       <!-- Day Shift Card -->
       <div class="shift-card">
@@ -73,22 +77,24 @@
       </div>
     </div>
     
-    <div class="actions">
-      <button 
-        class="btn btn--primary" 
+    <div class="settings-actions">
+      <div class="action-messages">
+        <div v-if="error" class="error-message">
+          {{ error }}
+        </div>
+
+        <div v-if="saveSuccess" class="success-message">
+          Defaults saved successfully!
+        </div>
+      </div>
+
+      <button
+        class="btn btn--primary"
         @click="saveDefaults"
         :disabled="loading"
       >
         {{ loading ? 'Saving...' : 'Save Defaults' }}
       </button>
-      
-      <div v-if="error" class="error-message">
-        {{ error }}
-      </div>
-      
-      <div v-if="saveSuccess" class="success-message">
-        Defaults saved successfully!
-      </div>
     </div>
   </div>
 </template>

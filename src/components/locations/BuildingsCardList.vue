@@ -2,12 +2,11 @@
   <div class="buildings-card-list">
     <div class="buildings-card-list__header">
       <div class="title-section">
-        <h3>Buildings</h3>
         <p class="drag-hint" v-if="buildings.length > 1">
           <span class="drag-icon">⇅</span> Drag to reorder buildings
         </p>
       </div>
-      <button 
+      <button
         class="btn btn--primary"
         @click="showAddForm = true"
         v-if="!showAddForm"

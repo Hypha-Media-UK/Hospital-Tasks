@@ -1,57 +1,61 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <div class="modal-title-container">
-          <div v-if="isEditingTaskTypeName" class="task-type-name-edit">
-            <input 
-              v-model="editTaskTypeName" 
-              ref="taskTypeNameInput"
-              class="form-control"
-              @keyup.enter="saveTaskTypeName"
-              @keyup.esc="cancelEditTaskTypeName"
-              placeholder="Task type name"
-            />
-            <div class="edit-actions">
-              <button 
-                class="btn btn-small btn-primary" 
-                @click="saveTaskTypeName"
-                :disabled="!editTaskTypeName.trim()"
-              >
-                Save
-              </button>
-              <button 
-                class="btn btn-small btn-secondary" 
-                @click="cancelEditTaskTypeName"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-          <div v-else class="modal-title">
-            <h3>{{ taskType.name }} Items</h3>
-            <div class="task-type-actions">
-              <button 
-                @click="showTaskTypeAssignmentModal = true" 
-                class="btn-action"
-                title="Assign departments to task type"
-              >
-                <MapPinIcon size="16" :active="hasTaskTypeAssignments" />
-              </button>
-              <button 
-                @click="startEditTaskTypeName" 
-                class="btn-action edit-task-type-btn"
-                title="Edit task type name"
-              >
-                <EditIcon size="16" />
-              </button>
-            </div>
-          </div>
-        </div>
-        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
+  <BaseModal
+    :title="modalTitle"
+    size="large"
+    @close="$emit('close')"
+  >
+    <template #header-actions>
+      <div v-if="!isEditingTaskTypeName" class="task-type-actions">
+        <button
+          @click="showTaskTypeAssignmentModal = true"
+          class="btn btn--icon"
+          title="Assign departments to task type"
+        >
+          <MapPinIcon size="16" :active="hasTaskTypeAssignments" />
+        </button>
+        <button
+          @click="startEditTaskTypeName"
+          class="btn btn--icon"
+          title="Edit task type name"
+        >
+          <EditIcon size="16" />
+        </button>
       </div>
-      
-      <div class="modal-body">
+    </template>
+
+    <!-- Task Type Name Editing Section -->
+    <div v-if="isEditingTaskTypeName" class="task-type-name-edit">
+      <div class="form-group">
+        <label for="taskTypeName">Task Type Name</label>
+        <input
+          id="taskTypeName"
+          v-model="editTaskTypeName"
+          ref="taskTypeNameInput"
+          class="form-control"
+          @keyup.enter="saveTaskTypeName"
+          @keyup.esc="cancelEditTaskTypeName"
+          placeholder="Task type name"
+        />
+      </div>
+      <div class="form-actions">
+        <button
+          class="btn btn--secondary"
+          @click="cancelEditTaskTypeName"
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn--primary ml-auto"
+          @click="saveTaskTypeName"
+          :disabled="!editTaskTypeName.trim()"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+
+    <!-- Task Items Section -->
+    <div v-else>
         <!-- Add Task Item Form -->
         <div class="task-item-form">
           <div class="form-header">
@@ -180,44 +184,43 @@
           </div>
         </div>
       </div>
-      
-      <div class="modal-footer">
-        <div class="modal-footer-left">
-          <button 
-            class="btn btn-danger" 
-            @click="confirmDeleteTaskType"
-          >
-            Delete Task Type
-          </button>
-        </div>
-        <div class="modal-footer-right">
-          <button @click="$emit('close')" class="btn btn-secondary">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Department Assignment Modals -->
-    <DepartmentAssignmentModal 
-      v-if="showTaskTypeAssignmentModal"
-      :taskType="taskType"
-      @close="showTaskTypeAssignmentModal = false"
-      @saved="showTaskTypeAssignmentModal = false"
-    />
-    
-    <ItemDepartmentAssignmentModal 
-      v-if="selectedTaskItem"
-      :taskItem="selectedTaskItem"
-      @close="selectedTaskItem = null"
-      @saved="selectedTaskItem = null"
-    />
-  </div>
+
+    <template #footer>
+      <button
+        class="btn btn--danger"
+        @click="confirmDeleteTaskType"
+      >
+        Delete Task Type
+      </button>
+      <button
+        class="btn btn--secondary"
+        @click="$emit('close')"
+      >
+        Close
+      </button>
+    </template>
+  </BaseModal>
+
+  <!-- Department Assignment Modals -->
+  <DepartmentAssignmentModal
+    v-if="showTaskTypeAssignmentModal"
+    :taskType="taskType"
+    @close="showTaskTypeAssignmentModal = false"
+    @saved="showTaskTypeAssignmentModal = false"
+  />
+
+  <ItemDepartmentAssignmentModal
+    v-if="selectedTaskItem"
+    :taskItem="selectedTaskItem"
+    @close="selectedTaskItem = null"
+    @saved="selectedTaskItem = null"
+  />
 </template>
 
 <script setup>
 import { ref, computed, nextTick } from 'vue';
 import { useTaskTypesStore } from '../../stores/taskTypesStore';
+import BaseModal from '../shared/BaseModal.vue';
 import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 import MapPinIcon from '../icons/MapPinIcon.vue';
@@ -255,6 +258,11 @@ const selectedTaskItem = ref(null);
 // Check if task type has any department assignments
 const hasTaskTypeAssignments = computed(() => {
   return taskTypesStore.hasTypeAssignments(props.taskType.id);
+});
+
+// Modal title
+const modalTitle = computed(() => {
+  return isEditingTaskTypeName.value ? 'Edit Task Type' : `${props.taskType.name} Items`;
 });
 
 // Check if a task item has any department assignments
