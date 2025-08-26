@@ -1,12 +1,9 @@
 <template>
-  <div class="modal-overlay" @click.self="closeModal">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h3>{{ modalTitle }}</h3>
-        <button class="modal-close" @click="closeModal">×</button>
-      </div>
-      
-      <div class="modal-body">
+  <BaseModal
+    :title="modalTitle"
+    size="large"
+    @close="closeModal"
+  >
         <div v-if="!porter" class="empty-state">
           No porter selected
         </div>
@@ -187,18 +184,16 @@
             </div>
           </div>
         </div>
-      </div>
-      
-      <div v-if="porter" class="modal-footer">
-        <button @click="closeModal" class="btn btn-secondary" :disabled="processing">
-          Cancel
-        </button>
-        <button @click="allocatePorter" class="btn btn-primary" :disabled="!canAllocate || processing">
-          {{ submitButtonText }}
-        </button>
-      </div>
-    </div>
-  </div>
+
+    <template v-if="porter" #footer>
+      <button @click="closeModal" class="btn btn-secondary" :disabled="processing">
+        Cancel
+      </button>
+      <button @click="allocatePorter" class="btn btn-primary" :disabled="!canAllocate || processing">
+        {{ submitButtonText }}
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
@@ -207,6 +202,7 @@ import { useShiftsStore } from '../stores/shiftsStore';
 import { useLocationsStore } from '../stores/locationsStore';
 import { useSupportServicesStore } from '../stores/supportServicesStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import BaseModal from './shared/BaseModal.vue';
 
 const props = defineProps({
   porter: {

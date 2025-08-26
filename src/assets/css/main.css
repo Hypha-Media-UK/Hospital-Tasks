@@ -3819,69 +3819,7 @@
     margin-bottom: 16px;
   }
 
-  /* Complete Modal Styling for All Card Modals - Now using unified modal CSS */
-
-  .modal-header {
-    padding: 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .modal-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .modal-title {
-    margin: 0;
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-  }
-
-  .modal-close {
-    background: transparent;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    padding: var(--space-xs);
-    line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: background-color var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    color: var(--color-text-muted);
-  }
-
-  .modal-close:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    color: var(--color-text);
-  }
-
-  .modal-body {
-    padding: 16px;
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  .modal-body .empty-state {
-    text-align: center;
-    padding: 16px 0;
-    color: #666;
-  }
-
-  .modal-footer {
-    padding: 16px;
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-  }
+  /* Modal styling now handled by BaseModal component */
 
   /* Unified Modal Section Components - DRY Approach */
 
@@ -4109,34 +4047,7 @@
     font-size: var(--font-size-sm);
   }
 
-  /* Modal Footer Responsive */
-  .modal-footer {
-    padding: var(--space-lg);
-    border-top: 1px solid var(--color-gray-200);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-  }
-
-  @media screen and (min-width: 700px) {
-    .modal-footer {
-      flex-direction: row;
-      justify-content: flex-end;
-      gap: var(--space-md);
-    }
-  }
-
-  .modal-footer .btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  @media screen and (min-width: 700px) {
-    .modal-footer .btn {
-      width: auto;
-      min-width: 100px;
-    }
-  }
+  /* Modal footer styling now handled by BaseModal component */
 
   /* Section Title in Modals */
   .section-title {

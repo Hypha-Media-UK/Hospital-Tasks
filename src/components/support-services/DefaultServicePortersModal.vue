@@ -1,14 +1,9 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <h3 class="modal-title">
-          {{ editingPorterAssignment ? 'Edit Porter Assignment' : 'Add Porter' }}
-        </h3>
-        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
-      </div>
-      
-      <div class="modal-body">
+  <BaseModal
+    :title="editingPorterAssignment ? 'Edit Porter Assignment' : 'Add Porter'"
+    size="medium"
+    @close="$emit('close')"
+  >
         <div v-if="editingPorterAssignment" class="action-menu">
           <button 
             class="btn btn-sm btn-outline" 
@@ -55,26 +50,24 @@
             class="form-control"
           />
         </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button 
-          @click.stop="savePorterAssignment" 
-          class="btn btn-primary"
-          :disabled="!canSave || saving"
-        >
-          {{ saving ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
-        </button>
-        <button 
-          @click.stop="$emit('close')" 
-          class="btn btn-secondary"
-          :disabled="saving"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
+
+    <template #footer>
+      <button
+        @click.stop="savePorterAssignment"
+        class="btn btn-primary"
+        :disabled="!canSave || saving"
+      >
+        {{ saving ? 'Saving...' : (editingPorterAssignment ? 'Update' : 'Add') }}
+      </button>
+      <button
+        @click.stop="$emit('close')"
+        class="btn btn-secondary"
+        :disabled="saving"
+      >
+        Cancel
+      </button>
+    </template>
+  </BaseModal>
   
   <Teleport to="body">
     <PorterAbsenceModal
@@ -91,6 +84,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStaffStore } from '../../stores/staffStore';
 import { useSupportServicesStore } from '../../stores/supportServicesStore';
+import BaseModal from '../shared/BaseModal.vue';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
 
 // Helper function to get porter absence

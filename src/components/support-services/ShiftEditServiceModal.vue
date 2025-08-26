@@ -1,14 +1,9 @@
 <template>
-  <div class="modal-overlay" @click.stop="$emit('close')">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <h3 class="modal-title">
-          Edit {{ assignment.service.name }} Coverage
-        </h3>
-        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
-      </div>
-      
-      <div class="modal-body">
+  <BaseModal
+    :title="`Edit ${assignment.service.name} Coverage`"
+    size="large"
+    @close="$emit('close')"
+  >
         
         <div class="time-range-container">
           <div class="form-group">
@@ -122,31 +117,29 @@
           </div>
           
         </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button 
-          @click.stop="confirmDelete" 
-          class="btn btn--danger"
-        >
-          Remove Service
-        </button>
-        <button 
-          @click.stop="$emit('close')" 
-          class="btn btn--secondary"
-        >
-          Cancel
-        </button>
-        <button 
-          @click.stop="saveChanges" 
-          class="btn btn--primary ml-auto"
-          :disabled="saving || !isFormValid"
-        >
-          {{ saving ? 'Saving...' : 'Save Changes' }}
-        </button>
-      </div>
-    </div>
-  </div>
+
+    <template #footer>
+      <button
+        @click.stop="confirmDelete"
+        class="btn btn--danger"
+      >
+        Remove Service
+      </button>
+      <button
+        @click.stop="$emit('close')"
+        class="btn btn--secondary"
+      >
+        Cancel
+      </button>
+      <button
+        @click.stop="saveChanges"
+        class="btn btn--primary ml-auto"
+        :disabled="saving || !isFormValid"
+      >
+        {{ saving ? 'Saving...' : 'Save Changes' }}
+      </button>
+    </template>
+  </BaseModal>
   <Teleport to="body">
     <PorterAbsenceModal
       v-if="showAbsenceModal && selectedPorterId"
@@ -162,6 +155,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useStaffStore } from '../../stores/staffStore';
+import BaseModal from '../shared/BaseModal.vue';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 

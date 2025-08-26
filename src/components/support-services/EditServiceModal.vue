@@ -1,14 +1,9 @@
 <template>
-  <div class="modal-overlay" @click.stop="closeModal">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <h3 class="modal-title">
-          {{ props.service.name }} Coverage
-        </h3>
-        <button class="modal-close" @click.stop="closeModal">&times;</button>
-      </div>
-
-      <div class="modal-body">
+  <BaseModal
+    :title="`${service.name} Coverage`"
+    size="large"
+    @close="closeModal"
+  >
         <div class="form-group">
           <label for="service-name">Service Name</label>
           <input
@@ -190,37 +185,36 @@
             </div>
           </div>
         </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button 
-          class="btn btn--primary" 
-          @click.stop="saveAllChanges"
-          :disabled="!localName.trim()"
-        >
-          Update
-        </button>
-        <button 
-          class="btn btn--secondary" 
-          @click.stop="closeModal"
-        >
-          Cancel
-        </button>
-        <button 
-          class="btn btn--danger ml-auto" 
-          @click.stop="confirmDelete"
-        >
-          Delete Service
-        </button>
-      </div>
-    </div>
-  </div>
+
+    <template #footer>
+      <button
+        class="btn btn--primary"
+        @click.stop="saveAllChanges"
+        :disabled="!localName.trim()"
+      >
+        Update
+      </button>
+      <button
+        class="btn btn--secondary"
+        @click.stop="closeModal"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn--danger ml-auto"
+        @click.stop="confirmDelete"
+      >
+        Delete Service
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useStaffStore } from '../../stores/staffStore';
 import { useSupportServicesStore } from '../../stores/supportServicesStore';
+import BaseModal from '../shared/BaseModal.vue';
 
 const props = defineProps({
   service: {

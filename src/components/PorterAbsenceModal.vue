@@ -1,14 +1,9 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <h3 class="modal-title">
-          {{ porter ? `${porter.first_name} ${porter.last_name} Absence` : 'Porter Absence' }}
-        </h3>
-        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
-      </div>
-      
-      <div class="modal-body">
+  <BaseModal
+    :title="porter ? `${porter.first_name} ${porter.last_name} Absence` : 'Porter Absence'"
+    size="medium"
+    @close="$emit('close')"
+  >
         <div v-if="loading" class="loading-state">
           Loading porter details...
         </div>
@@ -66,42 +61,39 @@
             <p>This porter already has an absence record for the selected period. Saving will update the existing record.</p>
           </div>
         </form>
-      </div>
-      
-      <div class="modal-footer">
-        <button 
-          v-if="absence && absence.id" 
-          @click="confirmDelete" 
-          class="btn btn--danger"
-          :disabled="saving"
-        >
-          Delete Absence
-        </button>
-        
-        <div class="modal-actions">
-          <button 
-            @click="saveAbsence" 
-            class="btn btn--primary"
-            :disabled="!canSave || saving"
-          >
-            {{ saving ? 'Saving...' : 'Save' }}
-          </button>
-          <button 
-            @click.stop="$emit('close')" 
-            class="btn btn--secondary"
-            :disabled="saving"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+
+    <template #footer>
+      <button
+        v-if="absence && absence.id"
+        @click="confirmDelete"
+        class="btn btn--danger"
+        :disabled="saving"
+      >
+        Delete Absence
+      </button>
+
+      <button
+        @click="saveAbsence"
+        class="btn btn--primary"
+        :disabled="!canSave || saving"
+      >
+        {{ saving ? 'Saving...' : 'Save' }}
+      </button>
+      <button
+        @click.stop="$emit('close')"
+        class="btn btn--secondary"
+        :disabled="saving"
+      >
+        Cancel
+      </button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useStaffStore } from '../stores/staffStore';
+import BaseModal from './shared/BaseModal.vue';
 
 const props = defineProps({
   porterId: {

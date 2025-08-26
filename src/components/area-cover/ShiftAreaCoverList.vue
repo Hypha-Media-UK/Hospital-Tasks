@@ -27,14 +27,12 @@
     </div>
     
     <!-- Department Selector Modal -->
-    <div v-if="showDepartmentSelector" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">Add Department to {{ shiftTypeLabel }} Coverage</h3>
-          <button class="modal-close" @click="showDepartmentSelector = false">&times;</button>
-        </div>
-        
-        <div class="modal-body">
+    <BaseModal
+      v-if="showDepartmentSelector"
+      :title="`Add Department to ${shiftTypeLabel} Coverage`"
+      size="medium"
+      @close="showDepartmentSelector = false"
+    >
           <div v-if="availableDepartments.length === 0" class="empty-state">
             No departments available to add. All departments have already been assigned or no departments exist.
           </div>
@@ -54,18 +52,16 @@
               </div>
             </div>
           </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button 
-            class="btn btn--secondary" 
-            @click="showDepartmentSelector = false"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+
+      <template #footer>
+        <button
+          class="btn btn--secondary"
+          @click="showDepartmentSelector = false"
+        >
+          Cancel
+        </button>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -74,6 +70,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useShiftsStore } from '../../stores/shiftsStore';
 import { useLocationsStore } from '../../stores/locationsStore';
 import ShiftAreaCoverDepartmentCard from './ShiftAreaCoverDepartmentCard.vue';
+import BaseModal from '../shared/BaseModal.vue';
 
 const props = defineProps({
   shiftId: {

@@ -16,7 +16,7 @@
     <div class="area-coverage-section">
       <div class="section-header">
         <h3 class="section-title">Area Coverage</h3>
-        <button class="btn btn-primary" @click="areaCoverListRef?.openDepartmentSelector()">
+        <button class="btn btn-primary" @click="openDepartmentSelector">
           Add Department
         </button>
       </div>
@@ -32,7 +32,7 @@
     <div class="settings-section">
       <div class="section-header">
         <h3 class="section-title">Service Coverage</h3>
-        <button class="btn btn-primary" @click="supportServicesListRef?.openAddServiceModal()">
+        <button class="btn btn-primary" @click="openAddServiceModal">
           Add Service
         </button>
       </div>
@@ -168,6 +168,20 @@ function getDayOrdinalSuffix(day) {
 function handlePorterClick(porter) {
   // Emit the porter data to the parent component
   emit('porter-click', porter);
+}
+
+// Handle opening department selector
+function openDepartmentSelector() {
+  if (areaCoverListRef.value) {
+    areaCoverListRef.value.openDepartmentSelector();
+  }
+}
+
+// Handle opening add service modal
+function openAddServiceModal() {
+  if (supportServicesListRef.value) {
+    supportServicesListRef.value.openAddServiceModal();
+  }
 }
 
 // Duplicate the current shift to a new date

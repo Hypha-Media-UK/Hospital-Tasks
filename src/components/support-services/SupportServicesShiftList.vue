@@ -27,7 +27,6 @@
           v-for="assignment in serviceAssignments"
           :key="assignment.id"
           :assignment="assignment"
-          @edit="openEditModal"
           @remove="confirmRemove"
         />
       </div>
@@ -143,15 +142,7 @@
         </button>
       </template>
     </BaseModal>
-    
-    <!-- Edit Service Modal -->
-    <EditServiceModal
-      v-if="showEditModal && selectedAssignment"
-      :assignment="selectedAssignment"
-      @close="showEditModal = false"
-      @update="updateAssignment"
-      @remove="confirmRemove"
-    />
+
   </div>
 </template>
 
@@ -162,7 +153,6 @@ import { useSupportServicesStore } from '../../stores/supportServicesStore';
 import { useStaffStore } from '../../stores/staffStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import SupportServiceItem from './SupportServiceItem.vue';
-import EditServiceModal from './EditServiceModal.vue';
 import BaseModal from '../shared/BaseModal.vue';
 
 // Props
@@ -194,8 +184,6 @@ const isShiftMode = computed(() => !!props.shiftId);
 
 // Local state
 const showAddServiceModal = ref(false);
-const showEditModal = ref(false);
-const selectedAssignment = ref(null);
 const isSubmitting = ref(false);
 
 // Expose method to open modal
@@ -457,32 +445,7 @@ async function addService() {
   }
 }
 
-function openEditModal(assignment) {
-  selectedAssignment.value = assignment;
-  showEditModal.value = true;
-}
 
-async function updateAssignment(assignmentId, updates) {
-  try {
-    if (isShiftMode.value) {
-      // In shift mode, update the specific shift assignment
-      await shiftsStore.updateShiftSupportService(assignmentId, updates);
-      
-      // Reload assignments
-      await shiftsStore.fetchShiftSupportServices(props.shiftId);
-    } else {
-      // In settings mode, update the default assignment
-      await supportServicesStore.updateServiceAssignment(assignmentId, updates);
-      
-      // Reload default assignments
-      await supportServicesStore.fetchServiceAssignments();
-    }
-    
-    showEditModal.value = false;
-    selectedAssignment.value = null;
-  } catch (error) {
-  }
-}
 
 async function confirmRemove(assignmentId) {
   if (confirm('Are you sure you want to remove this service assignment?')) {
@@ -497,9 +460,6 @@ async function confirmRemove(assignmentId) {
         // Refresh service assignments
         await supportServicesStore.fetchServiceAssignments();
       }
-      
-      showEditModal.value = false;
-      selectedAssignment.value = null;
     } catch (error) {
     }
   }
