@@ -1,221 +1,218 @@
 <template>
-  <div class="modal-overlay" @click.stop="closeModal">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <h3 class="modal-title">{{ assignment.department.name }}</h3>
-        <button class="modal-close" @click.stop="closeModal">&times;</button>
+  <BaseModal
+    :title="`${assignment.department.name} Coverage`"
+    size="large"
+    @close="closeModal"
+  >
+
+    <!-- Department Time settings -->
+    <div class="modal-form-section time-settings">
+      <div class="form-group">
+        <label for="startTime">Start Time</label>
+        <input
+          type="time"
+          id="startTime"
+          v-model="localStartTime"
+          class="form-control"
+        />
       </div>
 
-      <div class="modal-body">
+      <div class="form-group">
+        <label for="endTime">End Time</label>
+        <input
+          type="time"
+          id="endTime"
+          v-model="localEndTime"
+          class="form-control"
+        />
+      </div>
+    </div>
 
-        <!-- Department Time settings -->
-        <div class="modal-form-section time-settings">
-          <div class="form-group">
-            <label for="startTime">Start Time</label>
-            <input
-              type="time"
-              id="startTime"
-              v-model="localStartTime"
-            />
-          </div>
+    <!-- Minimum Porter Count by Day -->
+    <div class="modal-form-section">
+      <h4>Minimum Porter Count by Day</h4>
 
-          <div class="form-group">
-            <label for="endTime">End Time</label>
-            <input
-              type="time"
-              id="endTime"
-              v-model="localEndTime"
-            />
-          </div>
-        </div>
-        
-        <!-- Minimum Porter Count by Day -->
-        <div class="modal-form-section">
-          <h4>Minimum Porter Count by Day</h4>
-          
-          <div class="day-toggle">
-            <label class="toggle-label">
-              <input type="checkbox" v-model="useSameForAllDays" @change="handleSameForAllDaysChange">
-              <span class="toggle-text">Same for all days</span>
-            </label>
-          </div>
-          
-          <div v-if="useSameForAllDays" class="single-input-wrapper">
-            <div class="min-porters-input">
-              <input 
-                type="number" 
-                v-model="sameForAllDaysValue"
-                min="0"
-                class="number-input"
-                @change="applySameValueToAllDays"
-              />
-              <div class="min-porters-description">
-                Minimum number of porters required for all days
-              </div>
-            </div>
-          </div>
-          
-          <div v-else class="days-grid">
-            <div v-for="(day, index) in days" :key="day.code" class="day-input">
-              <label :for="'min-porters-' + day.code">{{ day.code }}</label>
-              <input 
-                type="number" 
-                :id="'min-porters-' + day.code"
-                v-model="dayMinPorters[index]"
-                min="0"
-                class="number-input day-input"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <!-- Multiple Porter assignments -->
-        <div class="porter-assignments">
-          <div class="section-title">
-            Porters
-            <span v-if="hasLocalCoverageGap" class="coverage-gap-indicator">
-              Coverage Gap Detected
-            </span>
-          </div>
-          
-          <div v-if="localPorterAssignments.length === 0" class="empty-state">
-            No porters assigned. Add a porter to provide coverage.
-          </div>
-          
-          <div v-else class="porter-list">
-            <div 
-              v-for="(porterAssignment, index) in localPorterAssignments" 
-              :key="porterAssignment.id || `new-${index}`"
-              class="porter-assignment-item"
-            >
-              <div class="porter-pill">
-                <span 
-                  class="porter-name" 
-                  :class="{
-                    'porter-absent': getPorterAbsence(porterAssignment.porter_id),
-                    'porter-illness': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness',
-                    'porter-annual-leave': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'
-                  }"
-                  @click="openAbsenceModalForPorter(porterAssignment.porter_id)"
-                >
-                  {{ porterAssignment.porter.first_name }} {{ porterAssignment.porter.last_name }}
-                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
-                  <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
-                </span>
-              </div>
-              
-              <div class="porter-times">
-                <div class="time-group">
-                  <input 
-                    type="time" 
-                    v-model="porterAssignment.start_time_display" 
-                  />
-                </div>
-                <span class="time-separator">to</span>
-                <div class="time-group">
-                  <input 
-                    type="time" 
-                    v-model="porterAssignment.end_time_display" 
-                  />
-                </div>
-              </div>
-              
-              <button 
-                class="btn btn--icon" 
-                title="Remove porter assignment"
-                @click.stop="removeLocalPorterAssignment(index)"
-              >
-                &times;
-              </button>
-            </div>
-          </div>
-          
-          <div class="add-porter">
-            <div v-if="!showAddPorter" class="add-porter-button">
-              <button 
-                class="btn btn--primary" 
-                @click.stop="showAddPorter = true"
-              >
-                Add Porter
-              </button>
-            </div>
-            
-            <div v-else class="add-porter-form">
-              <div class="form-row">
-                <select v-model="newPorterAssignment.porter_id">
-                  <option value="">-- Select Porter --</option>
-                  <option 
-                    v-for="porter in availablePorters" 
-                    :key="porter.id" 
-                    :value="porter.id"
-                  >
-                    {{ porter.first_name }} {{ porter.last_name }}
-                  </option>
-                </select>
-                
-                <div class="time-group">
-                  <input 
-                    type="time" 
-                    v-model="newPorterAssignment.start_time"
-                    placeholder="Start Time"
-                  />
-                </div>
-                
-                <div class="time-group">
-                  <input 
-                    type="time" 
-                    v-model="newPorterAssignment.end_time"
-                    placeholder="End Time"
-                  />
-                </div>
-                
-                <div class="action-buttons">
-                  <button 
-                    class="btn btn--small btn--primary" 
-                    @click.stop="addLocalPorterAssignment"
-                    :disabled="!newPorterAssignment.porter_id || !newPorterAssignment.start_time || !newPorterAssignment.end_time"
-                  >
-                    Add
-                  </button>
-                  <button 
-                    class="btn btn--small btn--secondary" 
-                    @click.stop="showAddPorter = false"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
+      <div class="day-toggle">
+        <label class="toggle-label">
+          <input type="checkbox" v-model="useSameForAllDays" @change="handleSameForAllDaysChange">
+          <span class="toggle-text">Same for all days</span>
+        </label>
+      </div>
+
+      <div v-if="useSameForAllDays" class="single-input-wrapper">
+        <div class="min-porters-input">
+          <input
+            type="number"
+            v-model="sameForAllDaysValue"
+            min="0"
+            class="form-control"
+            @change="applySameValueToAllDays"
+          />
+          <div class="min-porters-description">
+            Minimum number of porters required for all days
           </div>
         </div>
       </div>
-      
-      <div class="modal-footer">
-        <div class="modal-footer-left">
-          <button 
-            class="btn btn--danger" 
-            @click.stop="confirmRemove"
-          >
-            Remove
-          </button>
-        </div>
-        <div class="modal-footer-right">
-          <button 
-            class="btn btn--secondary" 
-            @click.stop="closeModal"
-          >
-            Cancel
-          </button>
-          <button 
-            class="btn btn--primary" 
-            @click.stop="saveAllChanges"
-          >
-            Update
-          </button>
+
+      <div v-else class="days-grid">
+        <div v-for="(day, index) in days" :key="day.code" class="day-input">
+          <label :for="'min-porters-' + day.code">{{ day.code }}</label>
+          <input
+            type="number"
+            :id="'min-porters-' + day.code"
+            v-model="dayMinPorters[index]"
+            min="0"
+            class="form-control"
+          />
         </div>
       </div>
     </div>
-  </div>
+
+    <!-- Porter Assignments -->
+    <div class="porter-assignments">
+      <div class="section-title">
+        Porters
+        <span v-if="hasLocalCoverageGap" class="coverage-gap-indicator">
+          Coverage Gap Detected
+        </span>
+      </div>
+
+      <div v-if="localPorterAssignments.length === 0" class="empty-state">
+        No porters assigned. Add a porter to provide coverage.
+      </div>
+
+      <div v-else class="porter-list">
+        <div
+          v-for="(porterAssignment, index) in localPorterAssignments"
+          :key="porterAssignment.id || `new-${index}`"
+          class="porter-assignment-item"
+        >
+          <div class="porter-pill">
+            <span
+              class="porter-name"
+              :class="{
+                'porter-absent': getPorterAbsence(porterAssignment.porter_id),
+                'porter-illness': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness',
+                'porter-annual-leave': getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'
+              }"
+              @click="openAbsenceModalForPorter(porterAssignment.porter_id)"
+            >
+              {{ porterAssignment.porter.first_name }} {{ porterAssignment.porter.last_name }}
+              <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'illness'" class="absence-badge illness">ILL</span>
+              <span v-if="getPorterAbsence(porterAssignment.porter_id)?.absence_type === 'annual_leave'" class="absence-badge annual-leave">AL</span>
+            </span>
+          </div>
+
+          <div class="porter-times">
+            <div class="time-group">
+              <input
+                type="time"
+                v-model="porterAssignment.start_time_display"
+                class="form-control"
+              />
+            </div>
+            <span class="time-separator">to</span>
+            <div class="time-group">
+              <input
+                type="time"
+                v-model="porterAssignment.end_time_display"
+                class="form-control"
+              />
+            </div>
+          </div>
+
+          <button
+            class="btn btn--icon"
+            title="Remove porter assignment"
+            @click.stop="removeLocalPorterAssignment(index)"
+          >
+            <TrashIcon :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <div class="add-porter">
+        <div v-if="!showAddPorter" class="add-porter-button">
+          <button
+            class="btn btn--primary"
+            @click.stop="showAddPorter = true"
+          >
+            Add Porter
+          </button>
+        </div>
+
+        <div v-else class="add-porter-form">
+          <div class="form-row">
+            <select v-model="newPorterAssignment.porter_id" class="form-control">
+              <option value="">-- Select Porter --</option>
+              <option
+                v-for="porter in availablePorters"
+                :key="porter.id"
+                :value="porter.id"
+              >
+                {{ porter.first_name }} {{ porter.last_name }}
+              </option>
+            </select>
+
+            <div class="time-group">
+              <input
+                type="time"
+                v-model="newPorterAssignment.start_time"
+                placeholder="Start Time"
+                class="form-control"
+              />
+            </div>
+
+            <div class="time-group">
+              <input
+                type="time"
+                v-model="newPorterAssignment.end_time"
+                placeholder="End Time"
+                class="form-control"
+              />
+            </div>
+
+            <div class="action-buttons">
+              <button
+                class="btn btn--small btn--primary"
+                @click.stop="addLocalPorterAssignment"
+                :disabled="!newPorterAssignment.porter_id || !newPorterAssignment.start_time || !newPorterAssignment.end_time"
+              >
+                Add
+              </button>
+              <button
+                class="btn btn--small btn--secondary"
+                @click.stop="showAddPorter = false"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <button
+        class="btn btn--primary"
+        @click.stop="saveAllChanges"
+      >
+        Update
+      </button>
+      <button
+        class="btn btn--secondary"
+        @click.stop="closeModal"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn--danger ml-auto"
+        @click.stop="confirmRemove"
+      >
+        Remove Department
+      </button>
+    </template>
+  </BaseModal>
   
   <Teleport to="body">
     <PorterAbsenceModal
@@ -233,7 +230,9 @@ import { ref, computed, onMounted, reactive } from 'vue';
 import { useAreaCoverStore } from '../../stores/areaCoverStore';
 import { useStaffStore } from '../../stores/staffStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import BaseModal from '../shared/BaseModal.vue';
 import PorterAbsenceModal from '../PorterAbsenceModal.vue';
+import TrashIcon from '../icons/TrashIcon.vue';
 
 const props = defineProps({
   assignment: {

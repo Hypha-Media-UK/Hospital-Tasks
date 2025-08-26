@@ -2736,28 +2736,60 @@
 
   /* Modal Footer - Now using unified modal CSS */
 
-  /* Add Porter Form */
+  /* Compact Add Porter Form - Clean Design */
   .add-porter {
-    margin-top: 8px;
+    margin-top: var(--space-sm);
   }
 
   .add-porter-button {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 
   .add-porter-form {
-    padding: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: var(--radius-md);
-    background-color: rgba(0, 0, 0, 0.02);
+    padding: var(--space-sm);
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-xs);
   }
 
   .add-porter-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: var(--space-sm);
+    align-items: end;
+  }
+
+  .add-porter-form .form-row select,
+  .add-porter-form .form-row input {
+    padding: var(--space-xs);
+    font-size: var(--font-size-sm);
+  }
+
+  .add-porter-form .time-group {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .add-porter-form .time-group input {
+    width: 80px;
+  }
+
+  .add-porter-form .action-buttons {
+    display: flex;
+    gap: var(--space-xs);
+  }
+
+  @container (max-width: 600px) {
+    .add-porter-form .form-row {
+      grid-template-columns: 1fr;
+      gap: var(--space-sm);
+    }
+
+    .add-porter-form .action-buttons {
+      justify-content: flex-end;
+    }
   }
 
   .add-porter-form .form-row select {
@@ -3821,15 +3853,28 @@
 
   /* Modal styling now handled by BaseModal component */
 
+  /* Modal Body Content Spacing */
+  .modal-body > *:first-child {
+    margin-top: 0;
+  }
+
+  .modal-body > *:last-child {
+    margin-bottom: 0;
+  }
+
   /* Unified Modal Section Components - DRY Approach */
 
-  /* Modal Form Sections - Unified styling */
+  /* Compact Modal Form Sections - Improved Spacing */
   .modal-form-section {
-    margin-bottom: var(--space-lg);
+    margin-bottom: var(--space-md);
+  }
+
+  .modal-form-section:last-child {
+    margin-bottom: 0;
   }
 
   .modal-form-section h4 {
-    margin: 0 0 var(--space-md) 0;
+    margin: 0 0 var(--space-sm) 0;
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text);
@@ -3840,6 +3885,7 @@
     grid-template-columns: 1fr 1fr;
     gap: var(--space-md);
     align-items: start;
+    margin-bottom: var(--space-md);
   }
 
   .form-group {
@@ -3872,30 +3918,261 @@
     box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
   }
 
-  @media (max-width: 480px) {
+  /* Compact Porter Count Section */
+  .modal-form-section .day-toggle {
+    margin-bottom: var(--space-sm);
+  }
+
+  .modal-form-section .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+  }
+
+  .modal-form-section .single-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .modal-form-section .min-porters-input {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .modal-form-section .min-porters-input input {
+    width: 80px;
+  }
+
+  .modal-form-section .min-porters-description {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .modal-form-section .days-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: var(--space-sm);
+  }
+
+  .modal-form-section .day-input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    text-align: center;
+  }
+
+  .modal-form-section .day-input label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .modal-form-section .day-input input {
+    width: 100%;
+    text-align: center;
+  }
+
+  @container (max-width: 480px) {
     .modal-form-section.time-settings {
       grid-template-columns: 1fr;
     }
+
+    .modal-form-section .days-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* Stack porter assignments on mobile */
+    .porter-assignments .porter-assignment-item,
+    .porter-assignments .porter-item {
+      grid-template-columns: 1fr;
+      gap: var(--space-xs);
+    }
+
+    .porter-assignments .porter-time {
+      text-align: left;
+      font-size: var(--font-size-xs);
+    }
   }
 
-  /* Porter Info in Modal */
-  .porter-info {
-    margin-bottom: 16px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  /* Compact Porter Assignments Section */
+  .porter-assignments {
+    margin-bottom: var(--space-md);
   }
 
-  .porter-info .porter-name {
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin-bottom: 4px;
-    background: none;
+  .porter-assignments .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  .porter-assignments .coverage-gap-indicator {
+    font-size: var(--font-size-xs);
+    color: var(--color-danger);
+    font-weight: var(--font-weight-normal);
+  }
+
+  .porter-assignments .empty-state {
+    padding: var(--space-sm);
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-sm);
+  }
+
+  .porter-assignments .porter-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .porter-assignments .porter-assignment-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: var(--space-md);
+    align-items: center;
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
+  }
+
+  .porter-assignments .porter-assignment-item:hover {
+    background-color: var(--color-gray-100);
+  }
+
+  .porter-assignments .porter-pill {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .porter-assignments .porter-name {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
+    min-width: 0; /* Allow text truncation if needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .porter-assignments .porter-name:hover {
+    background-color: var(--color-gray-200);
+  }
+
+  .porter-assignments .porter-times {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-sm);
+  }
+
+  .porter-assignments .time-group input {
+    width: 80px;
+    padding: var(--space-xs);
+    font-size: var(--font-size-sm);
+  }
+
+  .porter-assignments .time-separator {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+  }
+
+  .porter-assignments .btn--icon {
+    width: 24px;
+    height: 24px;
     padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
   }
 
-  .porter-info .porter-availability {
-    font-size: 0.9rem;
-    color: #666;
+  .porter-assignments .btn--icon:hover {
+    background-color: var(--color-danger);
+    color: white;
+  }
+
+  /* Porter Absence Badges */
+  .porter-assignments .absence-badge {
+    font-size: var(--font-size-xs);
+    padding: 2px 4px;
+    border-radius: var(--radius-xs);
+    font-weight: var(--font-weight-medium);
+    margin-left: var(--space-xs);
+  }
+
+  .porter-assignments .absence-badge.illness {
+    background-color: var(--color-danger);
+    color: white;
+  }
+
+  .porter-assignments .absence-badge.annual-leave {
+    background-color: var(--color-warning);
+    color: white;
+  }
+
+  .porter-assignments .porter-absent {
+    opacity: 0.7;
+    text-decoration: line-through;
+  }
+
+  .porter-assignments .porter-illness {
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+
+  .porter-assignments .porter-annual-leave {
+    background-color: rgba(255, 193, 7, 0.1);
+  }
+
+  /* Porter Item Layout for Shift Management Modals */
+  .porter-assignments .porter-item {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: var(--space-md);
+    align-items: center;
+    padding: var(--space-xs) var(--space-sm);
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
+  }
+
+  .porter-assignments .porter-item:hover {
+    background-color: var(--color-gray-100);
+  }
+
+  .porter-assignments .porter-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0; /* Allow text truncation if needed */
+  }
+
+  .porter-assignments .porter-time {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    text-align: left;
+  }
+
+  .porter-assignments .porter-actions {
+    display: flex;
+    align-items: center;
   }
 
   /* Allocation Tabs */
@@ -4053,8 +4330,8 @@
   .section-title {
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-semibold);
-    margin: var(--space-lg) 0 var(--space-md);
-    padding-bottom: var(--space-sm);
+    margin: var(--space-md) 0 var(--space-sm);
+    padding-bottom: var(--space-xs);
     border-bottom: 1px solid var(--color-gray-200);
     display: flex;
     align-items: center;
@@ -4084,12 +4361,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-md) var(--space-lg);
     background-color: var(--color-gray-50);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--color-gray-200);
     transition: background-color var(--transition-fast);
-    gap: var(--space-md);
+    gap: var(--space-lg);
+    margin-bottom: var(--space-md);
   }
 
   .porter-assignment-item:hover,
@@ -4115,6 +4393,61 @@
     margin-bottom: 0;
     flex: 1;
     min-width: 0;
+  }
+
+  .porter-time-display {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+  }
+
+  /* Empty state styling */
+  .empty-state {
+    text-align: center;
+    padding: var(--space-xl);
+    color: var(--color-text-secondary);
+    font-style: italic;
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-gray-300);
+  }
+
+  /* Porter list spacing */
+  .porter-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  /* Add Porter Section */
+  .add-porter {
+    margin-top: var(--space-lg);
+  }
+
+  .add-porter-button {
+    display: flex;
+    justify-content: center;
+  }
+
+  .add-porter-form {
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    border: 1px solid var(--color-gray-200);
+  }
+
+  .add-porter-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: var(--space-md);
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  .add-porter-form .action-buttons {
+    display: flex;
+    gap: var(--space-sm);
   }
 
   .porter-item .porter-info .porter-name {

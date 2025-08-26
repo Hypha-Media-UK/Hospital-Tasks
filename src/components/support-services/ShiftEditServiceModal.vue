@@ -4,11 +4,11 @@
     size="large"
     @close="$emit('close')"
   >
-        
-        <div class="time-range-container">
+        <!-- Service Time settings -->
+        <div class="modal-form-section time-settings">
           <div class="form-group">
             <label for="edit-start-time">Start Time</label>
-            <input 
+            <input
               type="time"
               id="edit-start-time"
               v-model="editForm.startTime"
@@ -16,10 +16,10 @@
               required
             />
           </div>
-          
+
           <div class="form-group">
             <label for="edit-end-time">End Time</label>
-            <input 
+            <input
               type="time"
               id="edit-end-time"
               v-model="editForm.endTime"
@@ -28,10 +28,10 @@
             />
           </div>
         </div>
-        
+
         <!-- Minimum Porter Count by Day -->
-        <div class="min-porters-setting">
-          <label class="section-label">Minimum Porter Count by Day</label>
+        <div class="modal-form-section">
+          <h4>Minimum Porter Count by Day</h4>
           
           <div class="day-toggle">
             <label class="toggle-label">
@@ -42,11 +42,11 @@
           
           <div v-if="useSameForAllDays" class="single-input-wrapper">
             <div class="min-porters-input">
-              <input 
-                type="number" 
+              <input
+                type="number"
                 v-model="sameForAllDaysValue"
                 min="0"
-                class="number-input"
+                class="form-control"
                 @change="applySameValueToAllDays"
               />
               <div class="min-porters-description">
@@ -58,12 +58,12 @@
           <div v-else class="days-grid">
             <div v-for="(day, index) in days" :key="day.code" class="day-input">
               <label :for="'min-porters-' + day.code">{{ day.code }}</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 :id="'min-porters-' + day.code"
                 v-model="dayMinPorters[index]"
                 min="0"
-                class="number-input day-input"
+                class="form-control"
               />
             </div>
           </div>
@@ -72,51 +72,49 @@
         <!-- Porter Assignments Section -->
         <div class="porter-assignments">
           <h4 class="section-title">Porter Assignments</h4>
-          
+
           <div v-if="porterAssignments.length === 0" class="empty-state">
-            <p>No porters assigned to this service yet.</p>
+            No porters assigned to this service yet.
           </div>
-          
+
           <div v-else class="porter-list">
-            <div 
-              v-for="assignment in porterAssignments" 
+            <div
+              v-for="assignment in porterAssignments"
               :key="assignment.id"
               class="porter-item"
             >
-              <div class="porter-info">
-                <div 
-                  class="porter-name" 
-                  :class="{
-                    'porter-absent': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date()),
-                    'porter-illness': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness',
-                    'porter-annual-leave': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'
-                  }"
-                  @click="openAbsenceModal(assignment.porter_id)"
-                >
-                  {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
-                  <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness'" 
-                        class="absence-badge illness">ILL</span>
-                  <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'" 
-                        class="absence-badge annual-leave">AL</span>
-                </div>
-                <div class="porter-time">
-                  {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
-                </div>
+              <div
+                class="porter-name"
+                :class="{
+                  'porter-absent': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date()),
+                  'porter-illness': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness',
+                  'porter-annual-leave': staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'
+                }"
+                @click="openAbsenceModal(assignment.porter_id)"
+              >
+                {{ assignment.porter.first_name }} {{ assignment.porter.last_name }}
+                <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'illness'"
+                      class="absence-badge illness">ILL</span>
+                <span v-if="staffStore.getPorterAbsenceDetails(assignment.porter_id, new Date())?.absence_type === 'annual_leave'"
+                      class="absence-badge annual-leave">AL</span>
               </div>
-              
-              <div class="porter-actions">
-                <button 
-                  @click.stop="removePorterAssignment(assignment.id)"
-                  class="btn btn--icon btn--danger"
-                  title="Remove porter assignment"
-                >
-                  <TrashIcon />
-                </button>
+
+              <div class="porter-time">
+                {{ formatTime(assignment.start_time) }} - {{ formatTime(assignment.end_time) }}
               </div>
+
+              <button
+                @click="removePorterAssignment(assignment.id)"
+                class="btn btn--icon"
+                title="Remove porter assignment"
+              >
+                <TrashIcon :size="16" />
+              </button>
             </div>
           </div>
-          
         </div>
+
+
 
     <template #footer>
       <button
@@ -212,6 +210,7 @@ const showAbsenceModal = ref(false);
 const selectedPorterId = ref(null);
 const currentPorterAbsence = ref(null);
 
+
 // Computed
 const isFormValid = computed(() => {
   return editForm.value.startTime && editForm.value.endTime;
@@ -231,6 +230,8 @@ const hasCoverageGap = computed(() => {
 const hasStaffingShortage = computed(() => {
   return shiftsStore.hasServiceStaffingShortage?.(props.assignment.id) || false;
 });
+
+
 
 
 // Initialize form with assignment data
@@ -317,6 +318,7 @@ function confirmDelete() {
     emit('remove', props.assignment.id);
   }
 }
+
 
 
 async function removePorterAssignment(assignmentId) {
