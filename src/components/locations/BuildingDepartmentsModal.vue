@@ -1,72 +1,80 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal-container" @click.stop>
-      <div class="modal-header">
-        <div class="modal-title-container">
-          <div v-if="isEditingBuildingName" class="building-name-edit">
-            <input 
-              v-model="editBuildingName" 
-              ref="buildingNameInput"
-              class="form-control"
-              @keyup.enter="saveBuildingName"
-              @keyup.esc="cancelEditBuildingName"
-              placeholder="Building name"
-            />
-            <div class="edit-actions">
-              <button 
-                class="btn btn-small btn-primary" 
-                @click="saveBuildingName"
-                :disabled="!editBuildingName.trim()"
-              >
-                Save
-              </button>
-              <button 
-                class="btn btn-small btn-secondary" 
-                @click="cancelEditBuildingName"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-          <div v-else class="modal-title">
-            <h3>{{ building.name }} Departments</h3>
-            <button 
-              @click="startEditBuildingName" 
-              class="btn-action edit-building-btn"
-              title="Edit building name"
-            >
-              <EditIcon size="16" />
-            </button>
-          </div>
-          
-          <!-- Porter Serviced Checkbox -->
-          <div class="porter-serviced-section">
-            <label class="porter-serviced-checkbox">
-              <input 
-                type="checkbox" 
-                :checked="building.porter_serviced || false"
-                @change="togglePorterServiced"
-              />
-              <span class="checkmark"></span>
-              <span class="checkbox-label">Porter Serviced</span>
-            </label>
-            
-            <!-- Building Abbreviation Input -->
-            <div class="abbreviation-input-container">
-              <input 
-                type="text" 
-                v-model="buildingAbbreviation"
-                :disabled="!building.porter_serviced"
-                maxlength="2"
-                placeholder="AB"
-                class="abbreviation-input"
-                @input="onAbbreviationInput"
-                @blur="saveAbbreviation"
-              />
-            </div>
-          </div>
+  <BaseModal
+    :title="modalTitle"
+    size="extra-large"
+    @close="$emit('close')"
+  >
+    <template #header-actions>
+      <div v-if="!isEditingBuildingName" class="building-actions">
+        <button
+          @click="startEditBuildingName"
+          class="btn btn--icon"
+          title="Edit building name"
+        >
+          <EditIcon size="16" />
+        </button>
+      </div>
+    </template>
+
+    <!-- Building Name Editing Section -->
+    <div v-if="isEditingBuildingName" class="building-name-edit">
+      <div class="form-group">
+        <label for="buildingName">Building Name</label>
+        <input
+          id="buildingName"
+          v-model="editBuildingName"
+          ref="buildingNameInput"
+          class="form-control"
+          @keyup.enter="saveBuildingName"
+          @keyup.esc="cancelEditBuildingName"
+          placeholder="Building name"
+        />
+      </div>
+      <div class="form-actions">
+        <button
+          class="btn btn--secondary"
+          @click="cancelEditBuildingName"
+        >
+          Cancel
+        </button>
+        <button
+          class="btn btn--primary ml-auto"
+          @click="saveBuildingName"
+          :disabled="!editBuildingName.trim()"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+
+    <!-- Building Settings Section -->
+    <div v-else class="building-settings">
+      <div class="porter-serviced-section">
+        <label class="porter-serviced-checkbox">
+          <input
+            type="checkbox"
+            :checked="building.porter_serviced || false"
+            @change="togglePorterServiced"
+          />
+          <span class="checkmark"></span>
+          <span class="checkbox-label">Porter Serviced</span>
+        </label>
+
+        <!-- Building Abbreviation Input -->
+        <div class="abbreviation-input-container">
+          <label for="abbreviation">Building Code</label>
+          <input
+            id="abbreviation"
+            type="text"
+            v-model="buildingAbbreviation"
+            :disabled="!building.porter_serviced"
+            maxlength="2"
+            placeholder="AB"
+            class="abbreviation-input"
+            @input="onAbbreviationInput"
+            @blur="saveAbbreviation"
+          />
         </div>
-        <button class="modal-close" @click.stop="$emit('close')">&times;</button>
       </div>
       
       <div class="modal-body">
@@ -269,20 +277,17 @@
           </div>
         </div>
       </div>
-      
-      <div class="modal-footer">
-        <div class="modal-footer-left">
-          <button @click="confirmDelete" class="btn btn-danger">
-            Delete Entire Building
-          </button>
-        </div>
-        <div class="modal-footer-right">
-          <button @click="$emit('close')" class="btn btn-secondary">
-            Close
-          </button>
-        </div>
-      </div>
     </div>
+
+    <template #footer>
+      <button @click="confirmDelete" class="btn btn--danger">
+        Delete Entire Building
+      </button>
+      <button @click="$emit('close')" class="btn btn--secondary">
+        Close
+      </button>
+    </template>
+  </BaseModal>
     
     <!-- Department Task Assignment Modal -->
     <DepartmentTaskAssignmentModal
@@ -291,12 +296,12 @@
       @close="showTaskAssignmentModal = false"
       @saved="onTaskAssignmentSaved"
     />
-  </div>
 </template>
 
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue';
 import { useLocationsStore } from '../../stores/locationsStore';
+import BaseModal from '../shared/BaseModal.vue';
 import EditIcon from '../icons/EditIcon.vue';
 import TrashIcon from '../icons/TrashIcon.vue';
 import StarIcon from '../icons/StarIcon.vue';
@@ -400,6 +405,11 @@ const sortableFrequentDepartments = computed({
       department.sort_order = index * 10; // Multiply by 10 to leave room for insertions later
     });
   }
+});
+
+// Modal title
+const modalTitle = computed(() => {
+  return isEditingBuildingName.value ? 'Edit Building' : `${props.building.name} Departments`;
 });
 
 // Get all departments for this building, excluding frequent departments

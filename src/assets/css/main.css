@@ -3598,6 +3598,118 @@
     font-size: var(--font-size-sm);
   }
 
+  /* Building Modal Improvements */
+  .building-name-edit {
+    background-color: var(--color-gray-50);
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-lg);
+  }
+
+  .building-settings {
+    margin-bottom: var(--space-lg);
+  }
+
+  .porter-serviced-section {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    padding: var(--space-md);
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-lg);
+  }
+
+  .porter-serviced-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    cursor: pointer;
+    font-weight: var(--font-weight-medium);
+  }
+
+  .abbreviation-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .abbreviation-input-container label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
+
+  .abbreviation-input {
+    width: 60px;
+    padding: var(--space-sm);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+  }
+
+  .abbreviation-input:disabled {
+    background-color: var(--color-gray-100);
+    color: var(--color-text-secondary);
+  }
+
+  /* Department Form Improvements */
+  .department-form {
+    background-color: var(--color-gray-50);
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-lg);
+  }
+
+  .department-form .form-header h4 {
+    margin: 0 0 var(--space-md) 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .department-form .form-group {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+  }
+
+  .department-form .form-control {
+    flex: 1;
+  }
+
+  /* Departments Section Improvements */
+  .departments-section {
+    margin-bottom: var(--space-lg);
+  }
+
+  .departments-section .section-title {
+    margin: 0 0 var(--space-md) 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  .departments-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .department-item {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    transition: all var(--transition-fast);
+  }
+
+  .department-item:hover {
+    border-color: var(--color-gray-300);
+    box-shadow: var(--shadow-sm);
+  }
+
   .settings-section h4 {
     margin-top: 0;
     margin-bottom: 8px;

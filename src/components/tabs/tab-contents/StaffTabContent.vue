@@ -249,252 +249,101 @@
       </template>
     </AnimatedTabs>
 
-    <!-- Staff Form Modal -->
-    <div v-if="showAddSupervisorForm || showEditSupervisorForm" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">{{ showEditSupervisorForm ? 'Edit' : 'Add' }} Supervisor</h3>
-          <button class="modal-close" @click="closeStaffForm">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-          <form @submit.prevent="saveStaff('supervisor')">
-            <div class="form-row">
-              <div class="form-group form-group--half">
-                <label for="firstName">First Name</label>
-                <input 
-                  id="firstName"
-                  v-model="staffForm.firstName"
-                  type="text"
-                  required
-                  class="form-control"
-                />
-              </div>
-              
-              <div class="form-group form-group--half">
-                <label for="lastName">Last Name</label>
-                <input 
-                  id="lastName"
-                  v-model="staffForm.lastName"
-                  type="text"
-                  required
-                  class="form-control"
-                />
-              </div>
-            </div>
-            
-            
-            <div class="form-actions">
-              <button type="button" class="btn btn--secondary" @click="closeStaffForm">
-                Cancel
-              </button>
-              <button type="submit" class="btn btn--primary ml-auto">
-                {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-    
-    <div v-if="showAddPorterForm || showEditPorterForm" class="modal-overlay">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h3 class="modal-title">{{ showEditPorterForm ? 'Edit' : 'Add' }} Porter</h3>
-          <button class="modal-close" @click="closeStaffForm">&times;</button>
-        </div>
-        
-        <div v-if="showEditPorterForm" class="modal-tabs-container">
-          <AnimatedTabs
-            v-model="activeModalTab"
-            :tabs="modalTabs"
-            @tab-change="handleModalTabChange"
-          >
-            <template #details>
-        
-            <form @submit.prevent="saveStaff('porter')" v-if="!showEditPorterForm || activeModalTab === 'details'">
-            <div class="form-row">
-              <div class="form-group form-group--half">
-                <label for="firstName">First Name</label>
-                <input 
-                  id="firstName"
-                  v-model="staffForm.firstName"
-                  type="text"
-                  required
-                  class="form-control"
-                />
-              </div>
-              
-              <div class="form-group form-group--half">
-                <label for="lastName">Last Name</label>
-                <input 
-                  id="lastName"
-                  v-model="staffForm.lastName"
-                  type="text"
-                  required
-                  class="form-control"
-                />
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <div class="checkbox-container">
-                <input 
-                  type="checkbox" 
-                  id="reliefPorterCheckbox" 
-                  v-model="staffForm.isRelief"
-                  @change="updatePorterType"
-                />
-                <label for="reliefPorterCheckbox">Relief Porter</label>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="availabilityPattern">Work Pattern</label>
-              <select 
-                id="availabilityPattern" 
-                v-model="staffForm.availabilityPattern"
-                class="form-control"
-                @change="checkHideContractedHours"
-              >
-                <option value="">Select a work pattern</option>
-                <option 
-                  v-for="pattern in staffStore.availabilityPatterns" 
-                  :key="pattern" 
-                  :value="pattern"
-                >
-                  {{ pattern }}
-                </option>
-              </select>
-            </div>
-            
-            <div v-if="hideContractedHours" class="form-group">
-              <div class="availability-info">
-                Assumes this porter can be moved between shifts
-              </div>
-            </div>
-            
-            <div v-else class="form-group">
-              <label for="contractedHoursStart">Contracted Hours</label>
-              <div class="form-row time-row">
-                <div class="form-group form-group--half">
-                  <input 
-                    type="time" 
-                    id="contractedHoursStart" 
-                    v-model="staffForm.contractedHoursStart"
-                    class="form-control"
-                  />
-                </div>
-                <span class="time-separator">to</span>
-                <div class="form-group form-group--half">
-                  <input 
-                    type="time" 
-                    id="contractedHoursEnd" 
-                    v-model="staffForm.contractedHoursEnd"
-                    class="form-control"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div class="form-actions">
-              <button type="button" class="btn btn--secondary" @click="closeStaffForm">
-                Cancel
-              </button>
-              <button type="submit" class="btn btn--primary ml-auto">
-                {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
-              </button>
-            </div>
-          </form>
-            </template>
-
-            <template #absence>
-          <!-- Absence Management Form -->
-          <div class="absence-form">
-            <div v-if="staffStore.loading.porters" class="loading-state">
-              Loading porter details...
-            </div>
-            
-            <form v-else @submit.prevent="saveAbsence">
-              <div class="form-group">
-                <label for="absence-type">Absence Type</label>
-                <select id="absence-type" v-model="absenceForm.absence_type" class="form-control">
-                  <option value="">No Absence</option>
-                  <option value="illness">Illness</option>
-                  <option value="annual_leave">Annual Leave</option>
-                </select>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group form-group--half">
-                  <label for="start-date">Start Date</label>
-                  <input
-                    type="date"
-                    id="start-date"
-                    v-model="absenceForm.start_date"
-                    class="form-control"
-                    required
-                    :min="today"
-                  />
-                </div>
-                
-                <div class="form-group form-group--half">
-                  <label for="end-date">End Date</label>
-                  <input
-                    type="date"
-                    id="end-date"
-                    v-model="absenceForm.end_date"
-                    class="form-control"
-                    required
-                    :min="absenceForm.start_date || today"
-                  />
-                </div>
-              </div>
-              
-              <div class="form-group">
-                <label for="notes">Notes (Optional)</label>
-                <textarea
-                  id="notes"
-                  v-model="absenceForm.notes"
-                  class="form-control textarea"
-                  placeholder="Additional details about this absence"
-                  rows="3"
-                ></textarea>
-              </div>
-              
-              <div v-if="hasExistingAbsence" class="existing-absence-warning">
-                <p>This porter already has an absence record for the selected period. Saving will update the existing record.</p>
-              </div>
-              
-              <div v-if="currentAbsence && currentAbsence.id" class="form-actions">
-                <button 
-                  type="button"
-                  @click="confirmDeleteAbsence" 
-                  class="btn btn--danger"
-                >
-                  Delete Absence
-                </button>
-              </div>
-              
-              <div class="form-actions">
-                <button type="button" class="btn btn--secondary" @click="closeStaffForm">
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  class="btn btn--primary"
-                  :disabled="absenceForm.absence_type && (!absenceForm.start_date || !absenceForm.end_date)"
-                >
-                  {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
-                </button>
-              </div>
-            </form>
+    <!-- Supervisor Form Modal -->
+    <BaseModal
+      v-if="showAddSupervisorForm || showEditSupervisorForm"
+      :title="showEditSupervisorForm ? 'Edit Supervisor' : 'Add Supervisor'"
+      size="medium"
+      @close="closeStaffForm"
+    >
+      <form @submit.prevent="saveStaff('supervisor')">
+        <div class="form-row">
+          <div class="form-group form-group--half">
+            <label for="firstName">First Name</label>
+            <input
+              id="firstName"
+              v-model="staffForm.firstName"
+              type="text"
+              required
+              class="form-control"
+            />
           </div>
-            </template>
-          </AnimatedTabs>
+
+          <div class="form-group form-group--half">
+            <label for="lastName">Last Name</label>
+            <input
+              id="lastName"
+              v-model="staffForm.lastName"
+              type="text"
+              required
+              class="form-control"
+            />
+          </div>
+        </div>
+      </form>
+
+      <template #footer>
+        <button type="button" class="btn btn--secondary" @click="closeStaffForm">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn btn--primary ml-auto"
+          @click="saveStaff('supervisor')"
+          :disabled="staffStore.loading.staff"
+        >
+          {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
+        </button>
+      </template>
+    </BaseModal>
+
+    <!-- Porter Form Modal -->
+    <BaseModal
+      v-if="showAddPorterForm || showEditPorterForm"
+      :title="showEditPorterForm ? 'Edit Porter' : 'Add Porter'"
+      size="large"
+      @close="closeStaffForm"
+    >
+      <div class="porter-form-content">
+        <div class="form-row">
+          <div class="form-group form-group--half">
+            <label for="firstName">First Name</label>
+            <input
+              id="firstName"
+              v-model="staffForm.firstName"
+              type="text"
+              required
+              class="form-control"
+            />
+          </div>
+
+          <div class="form-group form-group--half">
+            <label for="lastName">Last Name</label>
+            <input
+              id="lastName"
+              v-model="staffForm.lastName"
+              type="text"
+              required
+              class="form-control"
+            />
+          </div>
         </div>
       </div>
-    </div>
+
+      <template #footer>
+        <button type="button" class="btn btn--secondary" @click="closeStaffForm">
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="btn btn--primary ml-auto"
+          @click="saveStaff('porter')"
+          :disabled="staffStore.loading.staff"
+        >
+          {{ staffStore.loading.staff ? 'Saving...' : 'Save' }}
+        </button>
+      </template>
+    </BaseModal>
     
     <!-- Department management note -->
     <div class="info-message">
@@ -512,6 +361,7 @@ import { useAreaCoverStore } from '../../../stores/areaCoverStore';
 import { useSupportServicesStore } from '../../../stores/supportServicesStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import AnimatedTabs from '../../shared/AnimatedTabs.vue';
+import BaseModal from '../../shared/BaseModal.vue';
 import IconButton from '../../IconButton.vue';
 import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
