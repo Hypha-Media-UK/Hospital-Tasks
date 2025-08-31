@@ -3679,9 +3679,385 @@
     flex: 1;
   }
 
-  /* Departments Section Improvements */
-  .departments-section {
+  /* Enhanced Department Modal Styling - Modern Glassmorphism Design */
+
+  /* Building Settings Section */
+  .building-settings {
     margin-bottom: var(--space-lg);
+  }
+
+  .porter-serviced-section {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    padding: var(--space-md);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: var(--space-lg);
+  }
+
+  .porter-serviced-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    gap: var(--space-sm);
+  }
+
+  .porter-serviced-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+
+  .porter-serviced-checkbox .checkmark {
+    position: relative;
+    height: 20px;
+    width: 20px;
+    background-color: #fff;
+    border: 2px solid var(--color-gray-300);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+  }
+
+  .porter-serviced-checkbox .checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .porter-serviced-checkbox input:checked ~ .checkmark {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+  }
+
+  .porter-serviced-checkbox input:checked ~ .checkmark:after {
+    display: block;
+  }
+
+  .porter-serviced-checkbox:hover .checkmark {
+    border-color: var(--color-primary);
+  }
+
+  .checkbox-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+  }
+
+  .abbreviation-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .abbreviation-input-container label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .abbreviation-input {
+    width: 60px;
+    padding: var(--space-sm);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+    text-transform: uppercase;
+    transition: all var(--transition-fast);
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .abbreviation-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    background: white;
+  }
+
+  .abbreviation-input:disabled {
+    background-color: var(--color-gray-100);
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
+    border-color: var(--color-gray-200);
+  }
+
+  /* Frequent Departments Section - Enhanced Grid Layout */
+  .frequent-departments-section {
+    margin-bottom: var(--space-xl);
+  }
+
+  .frequent-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-md);
+  }
+
+  .frequent-section-header .section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  .count-badge {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    color: #92400E;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  .drag-hint {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .drag-icon {
+    font-size: 14px;
+    opacity: 0.7;
+  }
+
+  /* Enhanced Frequent List Grid */
+  .frequent-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-md);
+  }
+
+  .frequent-item {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FFEDD5 100%) !important;
+    border: 1px solid rgba(245, 158, 11, 0.2) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1) !important;
+    transition: all var(--transition-fast) !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  .frequent-item:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.2) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+
+  /* Frequent Item Content Layout */
+  .frequent-item .department-content {
+    display: flex !important;
+    align-items: center !important;
+    padding: var(--space-md) !important;
+    position: relative !important;
+    min-height: 80px !important;
+  }
+
+  .frequent-item .department-drag-handle {
+    position: absolute !important;
+    top: 8px !important;
+    left: 8px !important;
+    color: rgba(180, 83, 9, 0.4) !important;
+    font-size: 18px !important;
+    cursor: grab !important;
+    width: 20px !important;
+    height: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-radius: var(--radius-sm) !important;
+    transition: all var(--transition-fast) !important;
+  }
+
+  .frequent-item .department-drag-handle:hover {
+    color: rgba(180, 83, 9, 0.8) !important;
+    background-color: rgba(245, 158, 11, 0.2) !important;
+  }
+
+  .frequent-item .department-drag-handle:active {
+    cursor: grabbing !important;
+  }
+
+  .frequent-item .department-details {
+    flex: 1 !important;
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+    text-align: center !important;
+  }
+
+  .frequent-item .department-name {
+    font-weight: var(--font-weight-semibold) !important;
+    font-size: var(--font-size-base) !important;
+    color: #92400E !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.4 !important;
+  }
+
+  .frequent-item .department-actions {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    display: flex !important;
+    gap: 4px !important;
+  }
+
+  .frequent-item .btn-remove-frequent {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: rgba(220, 38, 38, 0.15) !important;
+    color: #B91C1C !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+    transition: all var(--transition-fast) !important;
+    border: 1px solid rgba(220, 38, 38, 0.2) !important;
+    cursor: pointer !important;
+    opacity: 0.9 !important;
+  }
+
+  .frequent-item .btn-remove-frequent:hover {
+    background-color: rgba(220, 38, 38, 0.25) !important;
+    border-color: rgba(220, 38, 38, 0.4) !important;
+    transform: scale(1.1) !important;
+    opacity: 1 !important;
+  }
+
+  /* Department Edit Form in Frequent Items */
+  .frequent-item .department-edit {
+    padding: var(--space-md) !important;
+  }
+
+  .frequent-item .edit-form-group {
+    margin-bottom: var(--space-sm) !important;
+  }
+
+  .frequent-item .form-control {
+    width: 100% !important;
+    padding: var(--space-sm) !important;
+    border: 1px solid #F59E0B !important;
+    border-radius: var(--radius-md) !important;
+    font-size: var(--font-size-sm) !important;
+    margin-bottom: var(--space-sm) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  .frequent-item .form-control:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+    background: white !important;
+  }
+
+  .frequent-item .color-picker-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    gap: var(--space-sm) !important;
+    margin-top: var(--space-sm) !important;
+  }
+
+  .frequent-item .color-picker-label {
+    font-size: var(--font-size-xs) !important;
+    font-weight: var(--font-weight-medium) !important;
+    color: rgba(0, 0, 0, 0.7) !important;
+  }
+
+  .frequent-item .color-picker {
+    width: 32px !important;
+    height: 32px !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+  }
+
+  .frequent-item .edit-actions {
+    display: flex !important;
+    gap: var(--space-sm) !important;
+    justify-content: flex-end !important;
+    margin-top: var(--space-sm) !important;
+  }
+
+  /* Clean Department Form Styling */
+  .department-form {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-xl);
+    overflow: hidden;
+  }
+
+  .department-form .form-header {
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 255, 255, 0.8);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .department-form .form-header h4 {
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  .department-form .form-content {
+    padding: var(--space-lg);
+  }
+
+  .department-form .form-group {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: stretch;
+  }
+
+  .department-form .form-control {
+    flex: 1;
+    padding: var(--space-md);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    background: rgba(255, 255, 255, 0.9);
+    transition: all var(--transition-fast);
+  }
+
+  .department-form .form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    background: white;
+  }
+
+  /* All Departments Section */
+  .departments-section {
+    margin-bottom: var(--space-xl);
   }
 
   .departments-section .section-title {
@@ -3689,25 +4065,301 @@
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--color-gray-200);
   }
 
-  .departments-list {
+  .departments-section .empty-state {
+    padding: var(--space-xl);
+    text-align: center;
+    color: var(--color-text-secondary);
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-lg);
+    font-style: italic;
+  }
+
+  .departments-section .departments-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-sm);
   }
 
-  .department-item {
-    background-color: var(--color-white);
-    border: 1px solid var(--color-gray-200);
+  /* Regular Department Items */
+  .departments-section .department-item {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: var(--radius-lg);
-    padding: var(--space-md);
+    overflow: hidden;
     transition: all var(--transition-fast);
   }
 
-  .department-item:hover {
+  .departments-section .department-item:hover {
+    background: rgba(255, 255, 255, 0.95);
     border-color: var(--color-gray-300);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .departments-section .department-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    user-select: none;
+  }
+
+  .departments-section .department-details {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    gap: var(--space-md);
+    flex: 1;
+  }
+
+  .departments-section .department-name {
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-base);
+    color: var(--color-text);
+  }
+
+  .departments-section .department-actions {
+    display: flex;
+    gap: var(--space-xs);
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  /* Department Action Buttons */
+  .btn-action {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+    line-height: 1;
+    transition: all var(--transition-fast);
+    color: var(--color-text-secondary);
+  }
+
+  .btn-action:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--color-text);
+    transform: scale(1.1);
+  }
+
+  .btn-action.btn-active {
+    color: #F59E0B;
+    background-color: rgba(245, 158, 11, 0.1);
+  }
+
+  .btn-action.btn-active:hover {
+    background-color: rgba(245, 158, 11, 0.2);
+  }
+
+  /* Enhanced Delete Button Styling */
+  .departments-section .department-actions .btn-action[title="Delete department"] {
+    color: #dc3545;
+  }
+
+  .departments-section .department-actions .btn-action[title="Delete department"]:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #c82333;
+  }
+
+  /* Department Edit Form in Regular Items */
+  .departments-section .department-edit {
+    padding: var(--space-md) var(--space-lg);
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  .departments-section .edit-form-group {
+    margin-bottom: var(--space-md);
+  }
+
+  .departments-section .form-control {
+    width: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--space-sm);
+    background: rgba(255, 255, 255, 0.9);
+    transition: all var(--transition-fast);
+  }
+
+  .departments-section .form-control:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    background: white;
+  }
+
+  .departments-section .color-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-top: var(--space-sm);
+  }
+
+  .departments-section .color-picker-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+  }
+
+  .departments-section .color-picker {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    padding: 0;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .departments-section .color-picker:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+  }
+
+  .departments-section .edit-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: flex-end;
+    margin-top: var(--space-md);
+  }
+
+  /* Enhanced Button Styling for Department Modal */
+  .btn {
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    border: none;
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-primary), #5a7cf8);
+    color: white;
+    box-shadow: 0 2px 4px rgba(66, 133, 244, 0.2);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a7cf8, var(--color-primary));
+    box-shadow: 0 4px 8px rgba(66, 133, 244, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--color-text);
+    border: 1px solid var(--color-gray-300);
+    backdrop-filter: blur(10px);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--color-gray-400);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, #c82333, #dc3545);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .btn-small {
+    padding: 6px 12px;
+    font-size: var(--font-size-xs);
+  }
+
+  .btn--icon {
+    padding: var(--space-sm);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    backdrop-filter: blur(10px);
+  }
+
+  .btn--icon:hover {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--color-text);
+    border-color: var(--color-gray-400);
+    transform: scale(1.05);
+  }
+
+  /* Building Name Edit Form */
+  .building-name-edit {
+    width: 100%;
+    margin-bottom: var(--space-md);
+  }
+
+  .building-name-edit .form-group {
+    margin-bottom: var(--space-sm);
+  }
+
+  .building-name-edit label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text);
+    margin-bottom: var(--space-xs);
+  }
+
+  .building-name-edit .form-control {
+    width: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    background: rgba(255, 255, 255, 0.9);
+    transition: all var(--transition-fast);
+  }
+
+  .building-name-edit .form-control:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    background: white;
+  }
+
+  .building-name-edit .form-actions {
+    display: flex;
+    gap: var(--space-sm);
+    justify-content: flex-end;
+  }
+
+  /* Modal Body Improvements */
+  .modal-body {
+    padding: var(--space-lg);
+    overflow-y: auto;
+    flex: 1;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
   }
 
   .settings-section h4 {

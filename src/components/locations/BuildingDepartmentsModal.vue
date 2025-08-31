@@ -103,35 +103,35 @@
               <div class="department-item frequent-item">
               <div v-if="editingDepartment === element.id" class="department-edit">
                 <div class="edit-form-group">
-                  <input 
-                    v-model="editDepartmentName" 
+                  <input
+                    v-model="editDepartmentName"
                     class="form-control"
                     @keyup.enter="saveDepartment(element)"
                     @keyup.esc="cancelEditDepartment"
                     placeholder="Department name"
                   />
                   <div class="color-picker-wrapper">
-                    <label class="color-picker-label">Color:</label>
-                    <input 
-                      type="color" 
-                      v-model="editDepartmentColor" 
+                    <label class="color-picker-label">Color</label>
+                    <input
+                      type="color"
+                      v-model="editDepartmentColor"
                       class="color-picker"
                     />
                   </div>
                 </div>
                 <div class="edit-actions">
-                    <button 
-                      class="btn btn-small btn-primary" 
+                    <button
+                      class="btn btn-small btn-secondary"
+                      @click="cancelEditDepartment"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      class="btn btn-small btn-primary"
                       @click="saveDepartment(element)"
                       :disabled="!editDepartmentName.trim()"
                     >
                       Save
-                    </button>
-                    <button 
-                      class="btn btn-small btn-secondary" 
-                      @click="cancelEditDepartment"
-                    >
-                      Cancel
                     </button>
                   </div>
                 </div>
@@ -152,12 +152,12 @@
                     >
                       <TaskIcon size="16" :filled="hasDepartmentTaskAssignment(element.id)" />
                     </button>
-                    <button 
+                    <button
                       @click="toggleFrequent(element)"
-                      class="btn-action btn-remove-frequent" 
+                      class="btn-action btn-remove-frequent"
                       title="Remove from frequent"
                     >
-                      &times;
+                      <TrashIcon size="14" />
                     </button>
                   </div>
                 </div>
@@ -166,21 +166,17 @@
           </draggable>
         </div>
         
-        <!-- Add Department Form -->
+        <!-- Add Department Form - Clean Design -->
         <div class="department-form">
-          <div class="form-header">
-            <h4>Add Department</h4>
-          </div>
-          
           <div class="form-content">
             <div class="form-group">
-              <input 
-                v-model="newDepartmentName" 
-                placeholder="Department name"
+              <input
+                v-model="newDepartmentName"
+                placeholder="Add new department..."
                 class="form-control"
                 @keyup.enter="addDepartment"
               />
-              <button 
+              <button
                 class="btn btn-primary"
                 @click="addDepartment"
                 :disabled="!newDepartmentName.trim()"
@@ -203,35 +199,35 @@
             <div v-for="department in sortedBuildingDepartments" :key="department.id" class="department-item">
               <div v-if="editingDepartment === department.id" class="department-edit">
                 <div class="edit-form-group">
-                  <input 
-                    v-model="editDepartmentName" 
+                  <input
+                    v-model="editDepartmentName"
                     class="form-control"
                     @keyup.enter="saveDepartment(department)"
                     @keyup.esc="cancelEditDepartment"
                     placeholder="Department name"
                   />
                   <div class="color-picker-wrapper">
-                    <label class="color-picker-label">Color:</label>
-                    <input 
-                      type="color" 
-                      v-model="editDepartmentColor" 
+                    <label class="color-picker-label">Color</label>
+                    <input
+                      type="color"
+                      v-model="editDepartmentColor"
                       class="color-picker"
                     />
                   </div>
                 </div>
                 <div class="edit-actions">
-                  <button 
-                    class="btn btn-small btn-primary" 
+                  <button
+                    class="btn btn-small btn-secondary"
+                    @click="cancelEditDepartment"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="btn btn-small btn-primary"
                     @click="saveDepartment(department)"
                     :disabled="!editDepartmentName.trim()"
                   >
                     Save
-                  </button>
-                  <button 
-                    class="btn btn-small btn-secondary" 
-                    @click="cancelEditDepartment"
-                  >
-                    Cancel
                   </button>
                 </div>
               </div>
