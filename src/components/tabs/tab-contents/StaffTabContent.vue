@@ -304,31 +304,142 @@
       size="large"
       @close="closeStaffForm"
     >
-      <div class="porter-form-content">
-        <div class="form-row">
-          <div class="form-group form-group--half">
-            <label for="firstName">First Name</label>
-            <input
-              id="firstName"
-              v-model="staffForm.firstName"
-              type="text"
-              required
-              class="form-control"
-            />
-          </div>
+      <AnimatedTabs
+        v-model="activeModalTab"
+        :tabs="modalTabs"
+        @tab-change="handleModalTabChange"
+      >
+        <template #details>
+          <div class="porter-form-content">
+            <div class="form-row">
+              <div class="form-group form-group--half">
+                <label for="firstName">First Name</label>
+                <input
+                  id="firstName"
+                  v-model="staffForm.firstName"
+                  type="text"
+                  required
+                  class="form-control"
+                />
+              </div>
 
-          <div class="form-group form-group--half">
-            <label for="lastName">Last Name</label>
-            <input
-              id="lastName"
-              v-model="staffForm.lastName"
-              type="text"
-              required
-              class="form-control"
-            />
+              <div class="form-group form-group--half">
+                <label for="lastName">Last Name</label>
+                <input
+                  id="lastName"
+                  v-model="staffForm.lastName"
+                  type="text"
+                  required
+                  class="form-control"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  v-model="staffForm.isRelief"
+                  @change="updatePorterType"
+                />
+                Relief Porter
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label for="availabilityPattern">Availability Pattern</label>
+              <select
+                id="availabilityPattern"
+                v-model="staffForm.availabilityPattern"
+                class="form-control"
+                @change="checkHideContractedHours"
+                required
+              >
+                <option value="">Select availability pattern</option>
+                <option value="Days Only">Days Only</option>
+                <option value="Nights Only">Nights Only</option>
+                <option value="Days and Nights">Days and Nights</option>
+              </select>
+            </div>
+
+            <div v-if="hideContractedHours" class="form-group">
+              <div class="availability-info">
+                Assumes this porter can be moved between shifts
+              </div>
+            </div>
+
+            <div v-else class="form-group">
+              <label for="contractedHoursStart">Contracted Hours</label>
+              <div class="form-row time-row">
+                <div class="form-group form-group--half">
+                  <input
+                    type="time"
+                    id="contractedHoursStart"
+                    v-model="staffForm.contractedHoursStart"
+                    class="form-control"
+                  />
+                </div>
+                <span class="time-separator">to</span>
+                <div class="form-group form-group--half">
+                  <input
+                    type="time"
+                    id="contractedHoursEnd"
+                    v-model="staffForm.contractedHoursEnd"
+                    class="form-control"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </template>
+
+        <template #absence>
+          <div class="absence-content">
+            <div v-if="showEditPorterForm && staffForm.id" class="absence-manager">
+              <div class="absence-header">
+                <h4>Manage Absences</h4>
+                <button
+                  class="btn btn--primary btn--small"
+                  @click="openAbsenceModal(null)"
+                >
+                  Add Absence
+                </button>
+              </div>
+
+              <div v-if="porterAbsences.length === 0" class="empty-state">
+                <p>No absences recorded for this porter.</p>
+              </div>
+
+              <div v-else class="absence-list">
+                <div
+                  v-for="absence in porterAbsences"
+                  :key="absence.id"
+                  class="absence-item"
+                >
+                  <div class="absence-details">
+                    <div class="absence-type">{{ absence.absence_type }}</div>
+                    <div class="absence-dates">
+                      {{ formatDate(absence.start_date) }} - {{ formatDate(absence.end_date) }}
+                    </div>
+                    <div v-if="absence.notes" class="absence-notes">{{ absence.notes }}</div>
+                  </div>
+                  <div class="absence-actions">
+                    <button
+                      class="btn btn--small btn--secondary"
+                      @click="openAbsenceModal(absence)"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="absence-placeholder">
+              <p>Save the porter first to manage absences.</p>
+            </div>
+          </div>
+        </template>
+      </AnimatedTabs>
 
       <template #footer>
         <button type="button" class="btn btn--secondary" @click="closeStaffForm">
@@ -344,13 +455,21 @@
         </button>
       </template>
     </BaseModal>
-    
+
+    <!-- Porter Absence Modal -->
+    <Teleport to="body" v-if="showAbsenceModal && staffForm.id">
+      <PorterAbsenceModal
+        :porter-id="staffForm.id"
+        :absence="currentPorterAbsence"
+        @close="closeAbsenceModal"
+        @save="handleAbsenceSave"
+      />
+    </Teleport>
+
     <!-- Department management note -->
     <div class="info-message">
       <p>Note: Porter department assignments are now managed in the Area Support tab, where you can also specify time ranges and coverage.</p>
     </div>
-    
-    <!-- Porter absence is now handled in the porter edit modal -->
   </div>
 </template>
 
@@ -367,7 +486,7 @@ import EditIcon from '../../icons/EditIcon.vue';
 import TrashIcon from '../../icons/TrashIcon.vue';
 import DayShiftIcon from '../../icons/DayShiftIcon.vue';
 import NightShiftIcon from '../../icons/NightShiftIcon.vue';
-// PorterAbsenceModal is no longer needed as we've integrated the functionality
+import PorterAbsenceModal from '../../PorterAbsenceModal.vue';
 
 const staffStore = useStaffStore();
 const areaCoverStore = useAreaCoverStore();
@@ -376,6 +495,7 @@ const settingsStore = useSettingsStore();
 
 // Tab state
 const activeTab = ref('porters');
+const activeModalTab = ref('details');
 const searchQuery = ref('');
 
 // Staff tabs configuration
@@ -406,10 +526,8 @@ const showEditSupervisorForm = ref(false);
 const showAddPorterForm = ref(false);
 const showEditPorterForm = ref(false);
 const hideContractedHours = ref(false);
-// These are now handled within the edit porter modal
-// const showAbsenceModal = ref(false);
-// const selectedPorterId = ref(null);
-// const currentPorterAbsence = ref(null);
+const showAbsenceModal = ref(false);
+const currentPorterAbsence = ref(null);
 const staffForm = ref({
   id: null,
   firstName: '',
@@ -420,9 +538,6 @@ const staffForm = ref({
   contractedHoursStart: '09:00',
   contractedHoursEnd: '17:00'
 });
-
-// Modal tabs for porter edit form
-const activeModalTab = ref('details');
 
 // Absence form state
 const absenceForm = ref({
@@ -620,7 +735,7 @@ const editSupervisor = (supervisor) => {
   showEditSupervisorForm.value = true;
 };
 
-const editPorter = (porter) => {
+const editPorter = async (porter) => {
   staffForm.value = {
     id: porter.id,
     firstName: porter.first_name,
@@ -634,28 +749,10 @@ const editPorter = (porter) => {
   showEditPorterForm.value = true;
   activeModalTab.value = 'details';
   checkHideContractedHours();
-  
-  // Initialize absence form if porter exists
+
+  // Load porter absences
   if (porter.id) {
-    absenceForm.value = {
-      porter_id: porter.id,
-      absence_type: '',
-      start_date: '',
-      end_date: '',
-      notes: ''
-    };
-    
-    // Check if porter has an active absence
-    const today = new Date();
-    currentAbsence.value = staffStore.getPorterAbsenceDetails(porter.id, today);
-    
-    if (currentAbsence.value) {
-      // Format dates for form
-      absenceForm.value.absence_type = currentAbsence.value.absence_type;
-      absenceForm.value.start_date = currentAbsence.value.start_date ? new Date(currentAbsence.value.start_date).toISOString().split('T')[0] : '';
-      absenceForm.value.end_date = currentAbsence.value.end_date ? new Date(currentAbsence.value.end_date).toISOString().split('T')[0] : '';
-      absenceForm.value.notes = currentAbsence.value.notes || '';
-    }
+    await staffStore.fetchPorterAbsencesById(porter.id);
   }
 };
 
@@ -665,6 +762,8 @@ const closeStaffForm = () => {
   showAddPorterForm.value = false;
   showEditPorterForm.value = false;
   hideContractedHours.value = false;
+  showAbsenceModal.value = false;
+  currentPorterAbsence.value = null;
   staffForm.value = {
     id: null,
     firstName: '',
@@ -687,11 +786,44 @@ const checkHideContractedHours = () => {
   // Hide contracted hours for patterns with "Days and Nights"
   const pattern = staffForm.value.availabilityPattern;
   hideContractedHours.value = pattern.includes('Days and Nights');
-  
+
   // For 24-hour patterns, set contracted hours to cover full day
   if (hideContractedHours.value) {
     staffForm.value.contractedHoursStart = '00:00';
     staffForm.value.contractedHoursEnd = '23:59';
+  }
+};
+
+// Computed property for current porter's absences
+const porterAbsences = computed(() => {
+  if (!staffForm.value.id) return [];
+  return staffStore.porterAbsences.filter(absence => absence.porter_id === staffForm.value.id);
+});
+
+// Format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString();
+};
+
+// Open absence modal
+const openAbsenceModal = (absence = null) => {
+  currentPorterAbsence.value = absence;
+  showAbsenceModal.value = true;
+};
+
+// Close absence modal
+const closeAbsenceModal = () => {
+  showAbsenceModal.value = false;
+  currentPorterAbsence.value = null;
+};
+
+// Handle absence save
+const handleAbsenceSave = async (savedAbsence) => {
+  // Refresh porter absences
+  if (staffForm.value.id) {
+    await staffStore.fetchPorterAbsencesById(staffForm.value.id);
   }
 };
 
