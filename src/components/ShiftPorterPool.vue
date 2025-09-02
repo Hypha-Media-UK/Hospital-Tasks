@@ -309,6 +309,11 @@ const selectedPorter = ref(null);
 const editingAssignment = ref(null);
 const sortFilter = ref('alphabetical'); // Default to alphabetical sorting
 
+// Force reactivity when sort filter changes
+watch(sortFilter, () => {
+  // This will trigger re-computation of sortedPorterPool
+}, { immediate: true });
+
 // Expose showPorterSelector method to parent
 const openPorterSelector = () => {
   showPorterSelector.value = true;
@@ -374,34 +379,62 @@ const regularPorters = computed(() => {
 // Sorted porter pool based on selected filter (excluding supervisors)
 const sortedPorterPool = computed(() => {
   if (!regularPorters.value.length) return [];
-  
+
   const porters = [...regularPorters.value];
-  
+
   if (sortFilter.value === 'alphabetical') {
-    // Sort alphabetically by name
+    // Sort alphabetically by name (first name + last name)
     return porters.sort((a, b) => {
-      // Sort by first name (could also sort by last name if preferred)
-      return `${a.porter.first_name} ${a.porter.last_name}`.localeCompare(
-        `${b.porter.first_name} ${b.porter.last_name}`
-      );
+      const aName = `${a.porter.first_name} ${a.porter.last_name}`;
+      const bName = `${b.porter.first_name} ${b.porter.last_name}`;
+      return aName.localeCompare(bName);
     });
   } else if (sortFilter.value === 'available') {
-    // First check which porters have active assignments
+    // Sort by availability priority: Available > Allocated > Absent/Off-duty
     return porters.sort((a, b) => {
-      const aHasActiveAssignments = hasActiveAssignments(a.porter_id);
-      const bHasActiveAssignments = hasActiveAssignments(b.porter_id);
-      
-      // First, show available porters
-      if (!aHasActiveAssignments && bHasActiveAssignments) return -1;
-      if (aHasActiveAssignments && !bHasActiveAssignments) return 1;
-      
-      // For porters with the same active/inactive status, sort alphabetically
-      return `${a.porter.first_name} ${a.porter.last_name}`.localeCompare(
-        `${b.porter.first_name} ${b.porter.last_name}`
-      );
+      // Get status for porter A
+      const aAvailable = isPorterAvailable.value(a.porter_id);
+      const aAssigned = hasActiveAssignments.value(a.porter_id);
+      const aAbsent = isPorterAbsent(a.porter_id);
+      const aDutyStatus = getPorterDutyStatus(a.porter_id);
+
+      // Get status for porter B
+      const bAvailable = isPorterAvailable.value(b.porter_id);
+      const bAssigned = hasActiveAssignments.value(b.porter_id);
+      const bAbsent = isPorterAbsent(b.porter_id);
+      const bDutyStatus = getPorterDutyStatus(b.porter_id);
+
+      // Determine priority levels (lower number = higher priority)
+      const getPriority = (available, assigned, absent, dutyStatus) => {
+        // Priority 1: Available (on duty, not assigned, not absent)
+        if (available && !assigned && !absent && dutyStatus === 'on-duty') {
+          return 1;
+        }
+        // Priority 2: Allocated (assigned to something but on duty)
+        else if (assigned && !absent && dutyStatus === 'on-duty') {
+          return 2;
+        }
+        // Priority 3: Unavailable (absent or off duty)
+        else {
+          return 3;
+        }
+      };
+
+      const aPriority = getPriority(aAvailable, aAssigned, aAbsent, aDutyStatus);
+      const bPriority = getPriority(bAvailable, bAssigned, bAbsent, bDutyStatus);
+
+      // Sort by priority first
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+
+      // For porters with the same priority, sort alphabetically
+      const aName = `${a.porter.first_name} ${a.porter.last_name}`;
+      const bName = `${b.porter.first_name} ${b.porter.last_name}`;
+      return aName.localeCompare(bName);
     });
   }
-  
+
   // Fallback - just return original order
   return porters;
 });
