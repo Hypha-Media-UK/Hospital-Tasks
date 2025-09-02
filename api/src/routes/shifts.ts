@@ -1461,4 +1461,108 @@ router.delete('/:id/support-services/porter-assignments/:assignmentId', async (r
   }
 });
 
+// GET /api/shifts/:id/porter-building-assignments - Get porter building assignments for a shift
+router.get('/:id/porter-building-assignments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const assignments = await prisma.shift_porter_building_assignments.findMany({
+      where: { shift_id: id },
+      include: {
+        staff: true,
+        buildings: true
+      }
+    });
+
+    res.json(assignments);
+  } catch (error) {
+    console.error('Error fetching porter building assignments:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to fetch porter building assignments'
+    });
+  }
+});
+
+// POST /api/shifts/:id/porter-building-assignments - Toggle porter building assignment
+router.post('/:id/porter-building-assignments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id: shiftId } = req.params;
+    const { porter_id, building_id } = req.body;
+
+    if (!porter_id || !building_id) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'porter_id and building_id are required'
+      });
+      return;
+    }
+
+    // Check if assignment already exists
+    const existingAssignment = await prisma.shift_porter_building_assignments.findFirst({
+      where: {
+        shift_id: shiftId,
+        porter_id,
+        building_id
+      }
+    });
+
+    if (existingAssignment) {
+      // Remove assignment
+      await prisma.shift_porter_building_assignments.delete({
+        where: { id: existingAssignment.id }
+      });
+
+      res.json({ assigned: false, message: 'Porter unassigned from building' });
+    } else {
+      // Check if porter is already assigned to another building (one building per porter rule)
+      const otherAssignment = await prisma.shift_porter_building_assignments.findFirst({
+        where: {
+          shift_id: shiftId,
+          porter_id
+        },
+        include: {
+          buildings: true
+        }
+      });
+
+      if (otherAssignment) {
+        // Remove existing assignment first
+        await prisma.shift_porter_building_assignments.delete({
+          where: { id: otherAssignment.id }
+        });
+      }
+
+      // Create new assignment
+      const newAssignment = await prisma.shift_porter_building_assignments.create({
+        data: {
+          shift_id: shiftId,
+          porter_id,
+          building_id
+        },
+        include: {
+          staff: true,
+          buildings: true
+        }
+      });
+
+      res.json({
+        assigned: true,
+        message: 'Porter assigned to building',
+        assignment: newAssignment,
+        previousAssignment: otherAssignment ? {
+          building_name: otherAssignment.buildings.name,
+          building_id: otherAssignment.building_id
+        } : null
+      });
+    }
+  } catch (error) {
+    console.error('Error toggling porter building assignment:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to toggle porter building assignment'
+    });
+  }
+});
+
 export default router;

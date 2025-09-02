@@ -23,6 +23,7 @@ export const useShiftsStore = defineStore('shifts', {
     shiftSupportServicePorterAssignments: [], // Porter assignments for shift support services
     shiftPorterPool: [], // Porters assigned to the current shift
     shiftPorterAbsences: [], // Porter absences for the current shift
+    shiftPorterBuildingAssignments: [], // Porter building assignments for the current shift
     loading: {
       activeShifts: false,
       archivedShifts: false,
@@ -349,15 +350,17 @@ export const useShiftsStore = defineStore('shifts', {
     },
 
     // Check if a porter is assigned to a specific building
-    isPorterAssignedToBuilding: () => (porterId, buildingId) => {
-      // For now, return false as a placeholder since building assignments aren't fully implemented
-      return false;
+    isPorterAssignedToBuilding: (state) => (porterId, buildingId) => {
+      return state.shiftPorterBuildingAssignments.some(assignment =>
+        assignment.porter_id === porterId && assignment.building_id === buildingId
+      );
     },
 
-    // Get porter building assignments (placeholder method for SitRep compatibility)
-    getPorterBuildingAssignments: () => (porterId) => {
-      // For now, return empty array as a placeholder since building assignments aren't fully implemented
-      return [];
+    // Get porter building assignments for a specific porter
+    getPorterBuildingAssignments: (state) => (porterId) => {
+      return state.shiftPorterBuildingAssignments.filter(assignment =>
+        assignment.porter_id === porterId
+      );
     },
 
     // Check if a shift is in setup mode (before actual shift start time)
@@ -673,6 +676,7 @@ export const useShiftsStore = defineStore('shifts', {
       this.shiftSupportServicePorterAssignments = [];
       this.shiftPorterPool = [];
       this.shiftPorterAbsences = [];
+      this.shiftPorterBuildingAssignments = [];
     },
     
     // Initialize store data
@@ -748,6 +752,20 @@ export const useShiftsStore = defineStore('shifts', {
         return [];
       } finally {
         this.loading.porterPool = false;
+      }
+    },
+
+    // Fetch porter building assignments for a shift
+    async fetchShiftPorterBuildingAssignments(shiftId) {
+      try {
+        const assignments = await shiftsApi.getPorterBuildingAssignments(shiftId);
+        this.shiftPorterBuildingAssignments = assignments || [];
+        return assignments;
+      } catch (error) {
+        console.error('Error fetching shift porter building assignments:', error);
+        this.error = error instanceof ApiError ? error.message : 'Failed to fetch shift porter building assignments';
+        this.shiftPorterBuildingAssignments = [];
+        return [];
       }
     },
     
@@ -1271,8 +1289,28 @@ export const useShiftsStore = defineStore('shifts', {
     // Toggle porter building assignment
     async togglePorterBuildingAssignment(porterId, buildingId, shiftId) {
       try {
-        // For now, create a placeholder implementation since building assignments aren't fully implemented
-        return true;
+        const result = await shiftsApi.togglePorterBuildingAssignment(shiftId, porterId, buildingId);
+
+        if (result.assigned) {
+          // Add new assignment to state
+          if (result.assignment) {
+            this.shiftPorterBuildingAssignments.push(result.assignment);
+          }
+
+          // Remove previous assignment if it existed
+          if (result.previousAssignment) {
+            this.shiftPorterBuildingAssignments = this.shiftPorterBuildingAssignments.filter(
+              assignment => !(assignment.porter_id === porterId && assignment.building_id === result.previousAssignment.building_id)
+            );
+          }
+        } else {
+          // Remove assignment from state
+          this.shiftPorterBuildingAssignments = this.shiftPorterBuildingAssignments.filter(
+            assignment => !(assignment.porter_id === porterId && assignment.building_id === buildingId)
+          );
+        }
+
+        return result;
       } catch (error) {
         console.error('Error toggling porter building assignment:', error);
         this.error = error instanceof ApiError ? error.message : 'Failed to toggle porter building assignment';

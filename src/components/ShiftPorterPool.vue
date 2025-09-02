@@ -897,7 +897,10 @@ onMounted(async () => {
     
     // Load shift-specific data in sequence
     await shiftsStore.fetchShiftPorterPool(props.shiftId);
-    
+
+    // Load porter building assignments
+    await shiftsStore.fetchShiftPorterBuildingAssignments(props.shiftId);
+
     // Load shift area cover assignments with full relationships
     await shiftsStore.fetchShiftAreaCover(props.shiftId);
     

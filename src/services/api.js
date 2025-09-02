@@ -617,6 +617,18 @@ export const shiftsApi = {
     return apiRequest(`/shifts/${shiftId}/support-services/porter-assignments/${assignmentId}`, {
       method: 'DELETE'
     });
+  },
+
+  // Porter building assignment endpoints
+  async getPorterBuildingAssignments(shiftId) {
+    return apiRequest(`/shifts/${shiftId}/porter-building-assignments`);
+  },
+
+  async togglePorterBuildingAssignment(shiftId, porterId, buildingId) {
+    return apiRequest(`/shifts/${shiftId}/porter-building-assignments`, {
+      method: 'POST',
+      body: JSON.stringify({ porter_id: porterId, building_id: buildingId })
+    });
   }
 };
 
